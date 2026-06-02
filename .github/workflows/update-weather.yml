@@ -26,7 +26,7 @@ jobs:
 
       - name: Fetch D-ATIS
         run: |
-          curl -L -s -A "Mozilla/5.0" "https://atis.info/KMEM" > atis.html || true
+          curl -L -s -A "Mozilla/5.0" "https://atisrelay.com/datis/KMEM" > atis.html || true
 
       - name: Build weather.json
         run: |
@@ -39,7 +39,7 @@ jobs:
           def read_file(path):
               try:
                   return open(path, "r", encoding="utf-8", errors="ignore").read()
-              except:
+              except Exception:
                   return ""
 
           def html_to_text(html):
@@ -53,15 +53,18 @@ jobs:
           metar = read_file("metar.txt").strip()
           taf = read_file("taf.txt").strip()
 
-          atis_text = html_to_text(read_file("atis.html"))
+          raw_atis = html_to_text(read_file("atis.html"))
 
-          if len(atis_text) < 40:
-              atis_text = "D-ATIS unavailable"
+          atis_display = "D-ATIS unavailable"
+
+          if "KMEM" in raw_atis.upper() or "MEM" in raw_atis.upper():
+              atis_display = raw_atis[:1500]
 
           data = {
               "metar": metar or "METAR unavailable",
               "taf": taf or "TAF unavailable",
-              "atisText": atis_text,
+              "atisText": atis_display,
+              "atisSource": "https://atisrelay.com/datis/KMEM",
               "lastUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
           }
 
