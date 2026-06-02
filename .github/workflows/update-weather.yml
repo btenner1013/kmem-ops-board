@@ -24,17 +24,9 @@ jobs:
         run: |
           curl -L -s "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw" > taf.txt
 
-      - name: Fetch AHAS
-        run: |
-          curl -L -s -A "Mozilla/5.0" \
-          "https://www.usahas.com/default.aspx?area=155THAS&type=unit" \
-          > ahas.html || true
-
       - name: Fetch D-ATIS
         run: |
-          curl -L -s -A "Mozilla/5.0" \
-          "https://atis.info/KMEM" \
-          > atis.html || true
+          curl -L -s -A "Mozilla/5.0" "https://atis.info/KMEM" > atis.html || true
 
       - name: Build weather.json
         run: |
@@ -47,7 +39,7 @@ jobs:
           def read_file(path):
               try:
                   return open(path, "r", encoding="utf-8", errors="ignore").read()
-              except:
+              except Exception:
                   return ""
 
           def html_to_text(html):
@@ -61,70 +53,32 @@ jobs:
           metar = read_file("metar.txt").strip()
           taf = read_file("taf.txt").strip()
 
-          ahas_text = html_to_text(read_file("ahas.html")).upper()
-
-          bwc_risk = "UNAVAILABLE"
-          bwc_time = ""
-
-          if "MEMPHIS INTL" in ahas_text:
-
-              start = ahas_text.find("MEMPHIS INTL")
-
-              next_points = []
-
-              for keyword in [
-                  "MILLINGTON",
-                  "SHELBY",
-                  "CAMPBELL",
-                  "DE SOTO"
-              ]:
-                  pos = ahas_text.find(keyword, start + 1)
-                  if pos != -1:
-                      next_points.append(pos)
-
-              end = min(next_points) if next_points else start + 500
-
-              row = ahas_text[start:end]
-
-              risks = re.findall(
-                  r"\b(LOW|MODERATE|SEVERE)\b",
-                  row
-              )
-
-              if risks:
-                  bwc_risk = risks[-1]
-
-              tm = re.search(
-                  r"\d{4}/\d{2}/\d{2}\s+\d{2}:?\d{2}?Z",
-                  row
-              )
-
-              if tm:
-                  bwc_time = tm.group(0)
-
           atis_text = html_to_text(read_file("atis.html"))
 
-          if len(atis_text) < 40:
+          if len(atis_text) < 40 or "KMEM" not in atis_text.upper():
               atis_display = "D-ATIS unavailable"
           else:
               atis_display = re.sub(
                   r"\s+",
                   " ",
                   atis_text
-              )[:900]
+              ).strip()[:900]
 
           data = {
-              "metar": metar,
-              "taf": taf,
-              "bwcRisk": bwc_risk,
-              "bwcTime": bwc_time,
-              "atisText": atis_display,
+              "metar": metar or "METAR unavailable",
+              "taf": taf or "TAF unavailable",
               "lastUpdatedZ": datetime.now(
                   timezone.utc
-              ).strftime("%Y-%m-%d %H:%MZ")
+              ).strftime("%Y-%m-%d %H:%MZ"),
+              "atisText": atis_display,
+              "atisSource": "https://atis.info/KMEM"
           }
 
-          with open("weather.json", "w") as f:
+          with open(
+              "weather.json",
+              "w",
+              encoding="utf-8"
+          ) as f:
               json.dump(data, f, indent=2)
 
           EOF
@@ -137,6 +91,6 @@ jobs:
           git add weather.json
 
           git diff --cached --quiet || \
-          git commit -m "Update weather, BWC and ATIS"
+          git commit -m "Update weather and ATIS"
 
           git push
