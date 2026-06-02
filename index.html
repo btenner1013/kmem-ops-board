@@ -32,17 +32,24 @@ body{margin:0;background:#000;color:var(--ops-green);font-family:Arial,sans-seri
 .detail-box{border:1px solid #333;padding:6px;font-weight:bold;font-size:1.05vw}
 .detail-label{color:#aaa;font-size:.75vw}
 .detail-value{color:var(--ops-green);font-size:1.15vw}
-.atis-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
-.atis-box{border:1px solid #333;padding:6px;font-weight:bold;min-height:46px}
-.atis-label{color:#aaa;font-size:.75vw}
-.atis-value{color:var(--ops-green);font-size:1.0vw;white-space:normal}
+.ops-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.ops-box{border:1px solid #333;padding:6px;font-weight:bold;min-height:46px}
+.ops-label{color:#aaa;font-size:.75vw}
+.ops-value{color:var(--ops-green);font-size:1.0vw;white-space:normal}
 .closed-value{color:var(--closed)}
-.trend-box{border:1px solid #333;padding:6px;margin-bottom:8px;font-weight:bold}
-.trend-label{color:#aaa;font-size:.75vw}
-.trend-value{font-size:1.2vw;letter-spacing:1px}
-.cat-vfr{color:var(--vfr)}.cat-mvfr{color:var(--mvfr)}.cat-ifr{color:var(--ifr)}.cat-lifr{color:var(--lifr)}
-.age-good{color:var(--ops-green)}.age-warn{color:var(--warning)}.age-bad{color:var(--closed)}
-.raw{font-family:Consolas,monospace;font-size:.9vw;line-height:1.25;white-space:pre-wrap;overflow:auto;height:calc(100% - 300px)}
+.bwc-pending{color:var(--warning)}
+.bwc-low{color:var(--vfr)}
+.bwc-moderate{color:var(--warning)}
+.bwc-high{color:#ff9900}
+.bwc-severe{color:var(--closed)}
+.cat-vfr{color:var(--vfr)}
+.cat-mvfr{color:var(--mvfr)}
+.cat-ifr{color:var(--ifr)}
+.cat-lifr{color:var(--lifr)}
+.age-good{color:var(--ops-green)}
+.age-warn{color:var(--warning)}
+.age-bad{color:var(--closed)}
+.raw{font-family:Consolas,monospace;font-size:.92vw;line-height:1.28;white-space:pre-wrap;overflow:auto;height:calc(100% - 250px)}
 .radar-panel{display:flex;flex-direction:column}
 .radarimg{width:100%;height:calc(100% - 32px);object-fit:contain;background:black;border:1px solid #333}
 .footer{display:grid;grid-template-columns:1fr 1fr;align-items:center;font-size:1.55vw;font-weight:bold}
@@ -95,24 +102,34 @@ body{margin:0;background:#000;color:var(--ops-green);font-family:Arial,sans-seri
         </div>
       </div>
 
-      <div class="atis-grid">
-        <div class="atis-box">
-          <div class="atis-label">ARR RWY</div>
-          <div id="arrRwy" class="atis-value">--</div>
+      <div class="ops-grid">
+        <div class="ops-box">
+          <div class="ops-label">ARR RWY</div>
+          <div id="arrRwy" class="ops-value">--</div>
         </div>
-        <div class="atis-box">
-          <div class="atis-label">DEP RWY</div>
-          <div id="depRwy" class="atis-value">--</div>
+        <div class="ops-box">
+          <div class="ops-label">DEP RWY</div>
+          <div id="depRwy" class="ops-value">--</div>
         </div>
-        <div class="atis-box">
-          <div class="atis-label">RWY CLSD</div>
-          <div id="closedRwy" class="atis-value closed-value">--</div>
+        <div class="ops-box">
+          <div class="ops-label">RWY CLSD</div>
+          <div id="closedRwy" class="ops-value closed-value">--</div>
         </div>
       </div>
 
-      <div class="trend-box">
-        <div class="trend-label">TAF TREND</div>
-        <div id="tafTrend" class="trend-value">--</div>
+      <div class="ops-grid">
+        <div class="ops-box">
+          <div class="ops-label">FLOW</div>
+          <div id="flow" class="ops-value">--</div>
+        </div>
+        <div class="ops-box">
+          <div class="ops-label">BWC</div>
+          <div id="bwc" class="ops-value bwc-pending">PENDING</div>
+        </div>
+        <div class="ops-box">
+          <div class="ops-label">BWC SRC</div>
+          <div id="bwcSource" class="ops-value">AHAS</div>
+        </div>
       </div>
 
       <div id="weather" class="raw">Loading KMEM weather...</div>
@@ -198,90 +215,6 @@ function parseAltimeter(metar){
   return m[1].slice(0,2)+"."+m[1].slice(2);
 }
 
-function parseAtisLetter(atisText){
-  const txt=(atisText||"").toUpperCase();
-  let m=txt.match(/\bATIS\s+INFO(?:RMATION)?\s+([A-Z])\b/);
-  if(m)return m[1];
-  m=txt.match(/\bINFO(?:RMATION)?\s+([A-Z])\b/);
-  if(m)return m[1];
-  m=txt.match(/\bADVS YOU HAVE INFO\s+([A-Z])\b/);
-  if(m)return m[1];
-  return"--";
-}
-
-function normalizeRwyList(text){
-  if(!text)return"--";
-  const matches=[...text.matchAll(/\b\d{1,2}[LCR]?\b/g)].map(m=>m[0]);
-  if(matches.length===0)return"--";
-  return matches.join(" / ");
-}
-
-function parseArrivalRunways(atisText){
-  const txt=(atisText||"").toUpperCase();
-  let m=txt.match(/ILS APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)/);
-  if(m)return normalizeRwyList(m[1]);
-  m=txt.match(/APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)/);
-  if(m)return normalizeRwyList(m[1]);
-  return"--";
-}
-
-function parseDepartureRunways(atisText){
-  const txt=(atisText||"").toUpperCase();
-  let m=txt.match(/SIMUL DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)/);
-  if(m)return normalizeRwyList(m[1]);
-  m=txt.match(/DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)/);
-  if(m)return normalizeRwyList(m[1]);
-  return"--";
-}
-
-function parseClosedRunways(atisText){
-  const txt=(atisText||"").toUpperCase();
-  const closed=[];
-  const regex=/RWY\s+([^\.]+?)\s+CLSD/g;
-  let m;
-  while((m=regex.exec(txt))!==null){
-    const group=normalizeRwyList(m[1]);
-    if(group!=="--")closed.push(group);
-  }
-  return closed.length?closed.join(", "):"--";
-}
-
-function tafFlightCategory(taf){
-  const text=(taf||"").toUpperCase();
-  let worst="VFR";
-  const cloudMatches=[...text.matchAll(/\b(BKN|OVC|VV)(\d{3})\b/g)];
-  cloudMatches.forEach(m=>{
-    const ceiling=parseInt(m[2],10)*100;
-    if(ceiling<500)worst="LIFR";
-    else if(ceiling<1000 && worst!=="LIFR")worst="IFR";
-    else if(ceiling<=3000 && !["LIFR","IFR"].includes(worst))worst="MVFR";
-  });
-  const visMatches=[...text.matchAll(/\b(\d{1,2})SM\b/g)];
-  visMatches.forEach(m=>{
-    const vis=parseInt(m[1],10);
-    if(vis<1)worst="LIFR";
-    else if(vis<3 && worst!=="LIFR")worst="IFR";
-    else if(vis<=5 && !["LIFR","IFR"].includes(worst))worst="MVFR";
-  });
-  return worst;
-}
-
-function setTafTrend(taf){
-  const trend=document.getElementById("tafTrend");
-  const cat=tafFlightCategory(taf);
-
-  trend.className="trend-value";
-  if(cat==="VFR")trend.classList.add("cat-vfr");
-  if(cat==="MVFR")trend.classList.add("cat-mvfr");
-  if(cat==="IFR")trend.classList.add("cat-ifr");
-  if(cat==="LIFR")trend.classList.add("cat-lifr");
-
-  if(cat==="VFR")trend.textContent="VFR NEXT 12 HRS";
-  if(cat==="MVFR")trend.textContent="MVFR EXPECTED";
-  if(cat==="IFR")trend.textContent="IFR EXPECTED";
-  if(cat==="LIFR")trend.textContent="LIFR EXPECTED";
-}
-
 function parseMetarTime(metar){
   const m=metar.match(/\b(\d{2})(\d{2})(\d{2})Z\b/);
   if(!m)return null;
@@ -300,6 +233,21 @@ function setMetarAge(metar){
   if(age<30)el.classList.add("age-good");
   else if(age<=60)el.classList.add("age-warn");
   else el.classList.add("age-bad");
+}
+
+function setBwcDisplay(value){
+  const el=document.getElementById("bwc");
+  const bwc=(value||"PENDING").toUpperCase();
+
+  el.className="ops-value";
+
+  if(bwc==="LOW")el.classList.add("bwc-low");
+  else if(bwc==="MODERATE")el.classList.add("bwc-moderate");
+  else if(bwc==="HIGH")el.classList.add("bwc-high");
+  else if(bwc==="SEVERE")el.classList.add("bwc-severe");
+  else el.classList.add("bwc-pending");
+
+  el.textContent=bwc;
 }
 
 function isWeatherStale(lastUpdatedZ){
@@ -321,20 +269,24 @@ function updateStaleWarning(lastUpdatedZ){
   }
 }
 
-function updateDetails(metar, taf, atisText){
+function updateDetails(data){
+  const metar=data.metar||"";
   const ceiling=parseCeilingFeet(metar);
   const vis=parseVisibilitySM(metar);
 
-  document.getElementById("atisLetter").textContent="ATIS: "+parseAtisLetter(atisText);
+  document.getElementById("atisLetter").textContent="ATIS: "+(data.atisLetter||"--");
   document.getElementById("altimeter").textContent=parseAltimeter(metar);
   document.getElementById("ceiling").textContent=ceiling===null?"NONE":ceiling+" FT";
   document.getElementById("visibility").textContent=vis===null?"--":vis+" SM";
   setMetarAge(metar);
-  setTafTrend(taf);
 
-  document.getElementById("arrRwy").textContent=parseArrivalRunways(atisText);
-  document.getElementById("depRwy").textContent=parseDepartureRunways(atisText);
-  document.getElementById("closedRwy").textContent=parseClosedRunways(atisText);
+  document.getElementById("arrRwy").textContent=data.arrRunways||"--";
+  document.getElementById("depRwy").textContent=data.depRunways||"--";
+  document.getElementById("closedRwy").textContent=data.closedRunways||"--";
+  document.getElementById("flow").textContent=data.flow||"--";
+
+  setBwcDisplay(data.bwc);
+  document.getElementById("bwcSource").textContent=data.bwcSource||"AHAS";
 }
 
 async function loadWeatherJson(){
@@ -344,11 +296,10 @@ async function loadWeatherJson(){
     const data=await response.json();
     const metar=data.metar||"METAR unavailable";
     const taf=data.taf||"TAF unavailable";
-    const atis=data.atisText||"";
 
     document.getElementById("weather").textContent=metar+"\n\n"+taf;
     setCategoryDisplay(determineFlightCategory(metar));
-    updateDetails(metar, taf, atis);
+    updateDetails(data);
     document.getElementById("lastRefresh").textContent=data.lastUpdatedZ||"--:--Z";
     updateStaleWarning(data.lastUpdatedZ);
   }catch(e){
@@ -359,10 +310,12 @@ async function loadWeatherJson(){
     document.getElementById("ceiling").textContent="--";
     document.getElementById("visibility").textContent="--";
     document.getElementById("metarAge").textContent="--";
-    document.getElementById("tafTrend").textContent="--";
     document.getElementById("arrRwy").textContent="--";
     document.getElementById("depRwy").textContent="--";
     document.getElementById("closedRwy").textContent="--";
+    document.getElementById("flow").textContent="--";
+    setBwcDisplay("PENDING");
+    document.getElementById("bwcSource").textContent="AHAS";
     document.getElementById("lastRefresh").textContent="--:--Z";
     updateStaleWarning(null);
   }
