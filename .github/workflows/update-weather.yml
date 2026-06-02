@@ -1,1 +1,49 @@
+name: Update KMEM Weather
 
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-weather:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch weather
+        run: |
+          curl -s "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false" -o metar.txt
+          curl -s "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw" -o taf.txt
+
+      - name: Build weather.json
+        run: |
+          python3 - <<'PY'
+          import json
+          from datetime import datetime, timezone
+
+          metar = open("metar.txt", encoding="utf-8", errors="ignore").read().strip()
+          taf = open("taf.txt", encoding="utf-8", errors="ignore").read().strip()
+
+          payload = {
+              "metar": metar or "METAR unavailable",
+              "taf": taf or "TAF unavailable",
+              "lastUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
+          }
+
+          with open("weather.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f, indent=2)
+          PY
+
+      - name: Commit updated weather
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add weather.json
+          git diff --cached --quiet || git commit -m "Update KMEM weather"
+          git push
