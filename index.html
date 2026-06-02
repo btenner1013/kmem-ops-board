@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KMEM Ops Board</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #000; color: #00ff88; font-family: Arial, sans-serif; overflow: hidden; }
+.board { height: 100vh; width: 100vw; display: grid; grid-template-rows: 22vh 58vh 20vh; gap: 8px; padding: 10px; }
+.top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.middle { display: grid; grid-template-columns: 42% 58%; gap: 8px; min-height: 0; }
+.wxstack { display: grid; grid-template-rows: 38% 62%; gap: 8px; min-height: 0; }
+.bottom { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.panel { background: #101010; border: 2px solid #00ff88; padding: 12px; overflow: hidden; min-height: 0; }
+.label, .title { color: white; font-weight: bold; letter-spacing: 1px; }
+.label { font-size: 1.45vw; }
+.title { font-size: 1.25vw; margin-bottom: 6px; }
+.clock { font-size: 5.8vw; font-weight: bold; line-height: 1.0; }
+.date { color: #cccccc; font-size: 1.25vw; margin-top: 6px; }
+.raw { font-family: Consolas, monospace; font-size: 1.05vw; line-height: 1.3; white-space: pre-wrap; overflow: auto; height: calc(100% - 28px); }
+.radar-panel { display: flex; flex-direction: column; }
+.radarimg { width: 100%; height: calc(100% - 32px); object-fit: contain; background: black; border: 1px solid #333; }
+.status-value { font-size: 2.0vw; font-weight: bold; margin-top: 6px; }
+.small { font-size: 0.9vw; color: #aaa; margin-top: 4px; }
+.warn { color: #ffcc00; }
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="top">
+    <div class="panel">
+      <div class="label">MEMPHIS LOCAL TIME</div>
+      <div id="local" class="clock">--:--:--</div>
+      <div id="localDate" class="date">Loading date...</div>
+    </div>
+    <div class="panel">
+      <div class="label">ZULU / UTC</div>
+      <div id="zulu" class="clock">--:--:--Z</div>
+      <div id="zuluDate" class="date">Loading UTC date...</div>
+    </div>
+  </div>
+  <div class="middle">
+    <div class="wxstack">
+      <div class="panel">
+        <div class="title">KMEM METAR - AUTO REFRESH</div>
+        <div id="metar" class="raw">Loading KMEM METAR...</div>
+      </div>
+      <div class="panel">
+        <div class="title">KMEM TAF - AUTO REFRESH</div>
+        <div id="taf" class="raw">Loading KMEM TAF...</div>
+      </div>
+    </div>
+    <div class="panel radar-panel">
+      <div class="title">MEMPHIS NEXRAD RADAR - AUTO REFRESH</div>
+      <img id="radar" class="radarimg" src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif">
+    </div>
+  </div>
+  <div class="bottom">
+    <div class="panel"><div class="label">AIRFIELD STATUS</div><div class="status-value">OPEN</div><div class="small">Manual placeholder</div></div>
+    <div class="panel"><div class="label">FOD CONDITION</div><div class="status-value">NORMAL</div><div class="small">Manual placeholder</div></div>
+    <div class="panel"><div class="label">RUNWAY CONFIG</div><div class="status-value">MANUAL</div><div class="small">Update locally as needed</div></div>
+    <div class="panel"><div class="label">LAST REFRESH</div><div id="lastRefresh" class="status-value">--:--Z</div><div class="small">Weather/radar every 15 min</div></div>
+  </div>
+</div>
+<script>
+function updateClock() {
+  const now = new Date();
+  document.getElementById("local").textContent = now.toLocaleTimeString("en-US", { hour12: false });
+  document.getElementById("localDate").textContent = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  document.getElementById("zulu").textContent = now.toISOString().substring(11, 19) + "Z";
+  document.getElementById("zuluDate").textContent = "UTC Date: " + now.toISOString().substring(0, 10);
+}
+async function loadWeatherJson() {
+  try {
+    const response = await fetch("weather.json?t=" + new Date().getTime(), { cache: "no-store" });
+    if (!response.ok) throw new Error("Unable to load weather.json");
+    const data = await response.json();
+    document.getElementById("metar").textContent = data.metar || "METAR unavailable";
+    document.getElementById("taf").textContent = data.taf || "TAF unavailable";
+    document.getElementById("lastRefresh").textContent = data.lastUpdatedZ || "--:--Z";
+  } catch (error) {
+    document.getElementById("metar").innerHTML = '<span class="warn">Unable to load weather.json</span>';
+    document.getElementById("taf").innerHTML = '<span class="warn">Unable to load weather.json</span>';
+  }
+}
+function refreshRadar() {
+  document.getElementById("radar").src = "https://radar.weather.gov/ridge/standard/KNQA_loop.gif?t=" + new Date().getTime();
+}
+updateClock();
+loadWeatherJson();
+refreshRadar();
+setInterval(updateClock, 1000);
+setInterval(loadWeatherJson, 300000);
+setInterval(refreshRadar, 300000);
+</script>
+</body>
+</html>
