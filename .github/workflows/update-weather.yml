@@ -18,29 +18,114 @@ jobs:
 
       - name: Fetch METAR
         run: |
-          curl -s "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false" > metar.txt
+          curl -L -s "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false" > metar.txt
 
       - name: Fetch TAF
         run: |
-          curl -s "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw" > taf.txt
+          curl -L -s "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw" > taf.txt
+
+      - name: Fetch AHAS
+        run: |
+          curl -L -s -A "Mozilla/5.0" \
+          "https://www.usahas.com/default.aspx?area=155THAS&type=unit" \
+          > ahas.html || true
+
+      - name: Fetch D-ATIS
+        run: |
+          curl -L -s -A "Mozilla/5.0" \
+          "https://atis.info/KMEM" \
+          > atis.html || true
 
       - name: Build weather.json
         run: |
           python3 - << 'EOF'
           import json
+          import re
           from datetime import datetime, timezone
+          from html import unescape
 
-          metar = open("metar.txt","r",encoding="utf-8",errors="ignore").read().strip()
-          taf = open("taf.txt","r",encoding="utf-8",errors="ignore").read().strip()
+          def read_file(path):
+              try:
+                  return open(path, "r", encoding="utf-8", errors="ignore").read()
+              except:
+                  return ""
+
+          def html_to_text(html):
+              html = re.sub(r"(?is)<script.*?</script>", " ", html)
+              html = re.sub(r"(?is)<style.*?</style>", " ", html)
+              html = re.sub(r"(?is)<[^>]+>", " ", html)
+              text = unescape(html)
+              text = re.sub(r"\s+", " ", text)
+              return text.strip()
+
+          metar = read_file("metar.txt").strip()
+          taf = read_file("taf.txt").strip()
+
+          ahas_text = html_to_text(read_file("ahas.html")).upper()
+
+          bwc_risk = "UNAVAILABLE"
+          bwc_time = ""
+
+          if "MEMPHIS INTL" in ahas_text:
+
+              start = ahas_text.find("MEMPHIS INTL")
+
+              next_points = []
+
+              for keyword in [
+                  "MILLINGTON",
+                  "SHELBY",
+                  "CAMPBELL",
+                  "DE SOTO"
+              ]:
+                  pos = ahas_text.find(keyword, start + 1)
+                  if pos != -1:
+                      next_points.append(pos)
+
+              end = min(next_points) if next_points else start + 500
+
+              row = ahas_text[start:end]
+
+              risks = re.findall(
+                  r"\b(LOW|MODERATE|SEVERE)\b",
+                  row
+              )
+
+              if risks:
+                  bwc_risk = risks[-1]
+
+              tm = re.search(
+                  r"\d{4}/\d{2}/\d{2}\s+\d{2}:?\d{2}?Z",
+                  row
+              )
+
+              if tm:
+                  bwc_time = tm.group(0)
+
+          atis_text = html_to_text(read_file("atis.html"))
+
+          if len(atis_text) < 40:
+              atis_display = "D-ATIS unavailable"
+          else:
+              atis_display = re.sub(
+                  r"\s+",
+                  " ",
+                  atis_text
+              )[:900]
 
           data = {
-            "metar": metar,
-            "taf": taf,
-            "lastUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
+              "metar": metar,
+              "taf": taf,
+              "bwcRisk": bwc_risk,
+              "bwcTime": bwc_time,
+              "atisText": atis_display,
+              "lastUpdatedZ": datetime.now(
+                  timezone.utc
+              ).strftime("%Y-%m-%d %H:%MZ")
           }
 
-          with open("weather.json","w") as f:
-            json.dump(data,f,indent=2)
+          with open("weather.json", "w") as f:
+              json.dump(data, f, indent=2)
 
           EOF
 
@@ -48,6 +133,10 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
+
           git add weather.json
-          git diff --cached --quiet || git commit -m "Update weather"
+
+          git diff --cached --quiet || \
+          git commit -m "Update weather, BWC and ATIS"
+
           git push
