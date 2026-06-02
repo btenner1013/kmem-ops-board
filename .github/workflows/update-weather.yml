@@ -3,7 +3,7 @@ name: Update KMEM Weather
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: write
@@ -16,34 +16,38 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch weather
+      - name: Fetch METAR
         run: |
-          curl -s "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false" -o metar.txt
-          curl -s "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw" -o taf.txt
+          curl -s "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false" > metar.txt
+
+      - name: Fetch TAF
+        run: |
+          curl -s "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw" > taf.txt
 
       - name: Build weather.json
         run: |
-          python3 - <<'PY'
+          python3 - << 'EOF'
           import json
           from datetime import datetime, timezone
 
-          metar = open("metar.txt", encoding="utf-8", errors="ignore").read().strip()
-          taf = open("taf.txt", encoding="utf-8", errors="ignore").read().strip()
+          metar = open("metar.txt","r",encoding="utf-8",errors="ignore").read().strip()
+          taf = open("taf.txt","r",encoding="utf-8",errors="ignore").read().strip()
 
-          payload = {
-              "metar": metar or "METAR unavailable",
-              "taf": taf or "TAF unavailable",
-              "lastUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
+          data = {
+            "metar": metar,
+            "taf": taf,
+            "lastUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
           }
 
-          with open("weather.json", "w", encoding="utf-8") as f:
-              json.dump(payload, f, indent=2)
-          PY
+          with open("weather.json","w") as f:
+            json.dump(data,f,indent=2)
 
-      - name: Commit updated weather
+          EOF
+
+      - name: Commit weather.json
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
           git add weather.json
-          git diff --cached --quiet || git commit -m "Update KMEM weather"
+          git diff --cached --quiet || git commit -m "Update weather"
           git push
