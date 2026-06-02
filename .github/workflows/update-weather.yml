@@ -73,29 +73,38 @@ jobs:
 
           def parse_arr_runways(atis_text):
               txt = (atis_text or "").upper()
-              m = re.search(r"ILS APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)", txt)
-              if m:
-                  return normalize_rwy_list(m.group(1))
-              m = re.search(r"APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)", txt)
-              if m:
-                  return normalize_rwy_list(m.group(1))
+              patterns = [
+                  r"SIMUL VISUAL APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
+                  r"VISUAL APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
+                  r"SIMUL ILS APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
+                  r"ILS APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
+                  r"ILS APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
+                  r"APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
+                  r"APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)"
+              ]
+              for pattern in patterns:
+                  m = re.search(pattern, txt)
+                  if m:
+                      return normalize_rwy_list(m.group(1))
               return "--"
 
           def parse_dep_runways(atis_text):
               txt = (atis_text or "").upper()
-              m = re.search(r"SIMUL DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)", txt)
-              if m:
-                  return normalize_rwy_list(m.group(1))
-              m = re.search(r"DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)", txt)
-              if m:
-                  return normalize_rwy_list(m.group(1))
+              patterns = [
+                  r"SIMUL DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)",
+                  r"DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)",
+                  r"DEPARTURES IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)"
+              ]
+              for pattern in patterns:
+                  m = re.search(pattern, txt)
+                  if m:
+                      return normalize_rwy_list(m.group(1))
               return "--"
 
           def parse_closed_runways(atis_text):
               txt = (atis_text or "").upper()
               closed = []
-              regex = r"RWY\s+([^\.]+?)\s+CLSD"
-              for m in re.finditer(regex, txt):
+              for m in re.finditer(r"RWY\s+([\dLRC,\s]+)\s+CLSD", txt):
                   group = normalize_rwy_list(m.group(1))
                   if group != "--":
                       closed.append(group)
@@ -140,6 +149,7 @@ jobs:
               "closedRunways": closed_runways,
 
               "flow": flow,
+
               "lightning": "NONE",
 
               "bwc": "PENDING",
