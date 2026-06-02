@@ -3,7 +3,7 @@ name: Update KMEM Weather
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/10 * * * *'
 
 permissions:
   contents: write
@@ -140,12 +140,13 @@ jobs:
               "closedRunways": closed_runways,
 
               "flow": flow,
+              "lightning": "NONE",
 
               "bwc": "PENDING",
               "bwcSource": "AHAS",
               "bwcUpdatedZ": "--",
 
-              "lastUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
+              "allFeedsUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
           }
 
           with open("weather.json", "w", encoding="utf-8") as f:
