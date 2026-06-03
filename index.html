@@ -34,7 +34,7 @@ html,body{
   height:100vh;
   width:100vw;
   display:grid;
-  grid-template-rows:minmax(110px,22vh) minmax(0,1fr) minmax(54px,8vh);
+  grid-template-rows:minmax(110px,22vh) minmax(0,1fr) minmax(64px,8vh);
   gap:6px;
   padding:8px;
 }
@@ -221,6 +221,10 @@ html,body{
 .age-warn{color:var(--warning)}
 .age-bad{color:var(--closed)}
 
+.feed-ok{color:var(--ops-green)}
+.feed-warn{color:var(--warning)}
+.feed-bad{color:var(--closed);animation:blink 1s step-start infinite}
+
 .raw{
   font-family:Consolas,monospace;
   font-size:clamp(.68rem,.75vw,.95rem);
@@ -250,13 +254,25 @@ html,body{
 .footer{
   display:grid;
   grid-template-columns:1fr 1fr;
+  grid-template-rows:auto auto;
   align-items:center;
-  font-size:clamp(1rem,1.55vw,2rem);
+  row-gap:3px;
+  font-size:clamp(.9rem,1.3vw,1.7rem);
   font-weight:bold;
   min-height:0;
 }
 
 .footer-right{text-align:right}
+
+.feed-health{
+  grid-column:1 / 3;
+  font-size:clamp(.72rem,.92vw,1.15rem);
+  letter-spacing:.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
 .warn,.stale{color:var(--warning)}
 .stale{animation:blink 1s step-start infinite}
 
@@ -371,6 +387,7 @@ html,body{
     <div class="panel footer">
       <div>DATA UPDATED: <span id="dataUpdated">--:--Z</span></div>
       <div id="staleWarning" class="footer-right">REFRESH IN: <span id="refreshCountdown">10:00</span></div>
+      <div id="feedHealth" class="feed-health feed-warn">FEEDS: CHECKING...</div>
     </div>
   </div>
 </div>
@@ -456,8 +473,8 @@ function parseAltimeter(metar){
   return m[1].slice(0,2)+"."+m[1].slice(2);
 }
 
-function parseMetarTime(metar){
-  const m=metar.match(/\b(\d{2})(\d{2})(\d{2})Z\b/);
+function parseAviationTime(text){
+  const m=(text||"").match(/\b(\d{2})(\d{2})(\d{2})Z\b/);
   if(!m)return null;
 
   const now=new Date();
@@ -474,20 +491,28 @@ function parseMetarTime(metar){
   );
 }
 
+function parseMetarTime(metar){
+  return parseAviationTime(metar);
+}
+
+function minutesSince(dateObj){
+  if(!dateObj)return null;
+
+  const age=Math.round((new Date()-dateObj)/60000);
+
+  if(age<0)return null;
+
+  return age;
+}
+
 function setMetarAge(metar){
   const el=document.getElementById("metarAge");
   const t=parseMetarTime(metar);
+  const age=minutesSince(t);
 
   el.className="detail-value";
 
-  if(!t){
-    el.textContent="--";
-    return;
-  }
-
-  const age=Math.round((new Date()-t)/60000);
-
-  if(age<0){
+  if(age===null){
     el.textContent="--";
     return;
   }
@@ -688,13 +713,30 @@ function setTafTrend(data){
   }
 }
 
+function parseUpdatedZ(updatedZ){
+  if(!updatedZ||updatedZ==="Pending")return null;
+
+  let normalized=updatedZ;
+
+  if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}Z$/.test(updatedZ)){
+    normalized=updatedZ.replace(" ","T").replace("Z",":00Z");
+  }else if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z$/.test(updatedZ)){
+    normalized=updatedZ.replace(" ","T");
+  }else if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+$/.test(updatedZ)){
+    normalized=updatedZ.replace(" ","T")+"Z";
+  }
+
+  const date=new Date(normalized);
+
+  if(isNaN(date.getTime()))return null;
+
+  return date;
+}
+
 function isWeatherStale(updatedZ){
-  if(!updatedZ||updatedZ==="Pending")return true;
+  const updated=parseUpdatedZ(updatedZ);
 
-  const normalized=updatedZ.replace(" ","T").replace("Z",":00Z");
-  const updated=new Date(normalized);
-
-  if(isNaN(updated.getTime()))return false;
+  if(!updated)return true;
 
   return((new Date()-updated)/60000)>30;
 }
@@ -702,7 +744,7 @@ function isWeatherStale(updatedZ){
 function formatZuluTime(updatedZ){
   if(!updatedZ||updatedZ==="Pending")return"--:--Z";
 
-  const m=updatedZ.match(/(\d{2}):(\d{2})Z/);
+  const m=updatedZ.match(/(\d{2}):(\d{2})/);
 
   if(m)return m[1]+":"+m[2]+"Z";
 
@@ -719,6 +761,139 @@ function updateStaleWarning(updatedZ){
     warning.innerHTML='REFRESH IN: <span id="refreshCountdown">' + formatCountdown(refreshRemaining) + '</span>';
     warning.className="footer-right";
   }
+}
+
+function isBadText(value,badWords){
+  const text=(value||"").toUpperCase();
+
+  if(!text.trim())return true;
+
+  return badWords.some(word=>text.includes(word));
+}
+
+function parseAtisTime(atisText){
+  const text=(atisText||"").toUpperCase();
+
+  let m=text.match(/\bATIS\s+INFO\s+[A-Z]\s+(\d{2})(\d{2})Z\b/);
+
+  if(!m){
+    m=text.match(/\bINFORMATION\s+[A-Z]\s+(\d{2}):(\d{2})\s*Z\b/);
+  }
+
+  if(!m)return null;
+
+  const now=new Date();
+
+  return new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      parseInt(m[1],10),
+      parseInt(m[2],10),
+      0
+    )
+  );
+}
+
+function healthPart(name,status,detail){
+  if(detail){
+    return `${name} ${status} (${detail})`;
+  }
+
+  return `${name} ${status}`;
+}
+
+function updateSourceHealth(data,updatedZ){
+  const el=document.getElementById("feedHealth");
+
+  let parts=[];
+  let worst="OK";
+
+  function addPart(name,status,detail){
+    parts.push(healthPart(name,status,detail));
+
+    if(status==="BAD"){
+      worst="BAD";
+    }else if(status!=="OK"&&worst!=="BAD"){
+      worst="WARN";
+    }
+  }
+
+  const metar=data.metar||"";
+  const taf=data.taf||"";
+  const atis=data.atisText||"";
+  const bwc=(data.bwc||"").toUpperCase();
+  const bwcStatus=(data.bwcFetchStatus||"").toUpperCase();
+
+  const metarBad=isBadText(metar,["UNAVAILABLE","ERROR","FAILED"]);
+  const tafBad=isBadText(taf,["UNAVAILABLE","ERROR","FAILED"]);
+  const atisBad=isBadText(atis,["D-ATIS UNAVAILABLE","UNAVAILABLE","ERROR","FAILED"]);
+
+  const metarAge=minutesSince(parseMetarTime(metar));
+
+  if(metarBad||!metar.toUpperCase().includes("METAR")){
+    addPart("METAR","BAD","");
+  }else if(metarAge!==null&&metarAge>60){
+    addPart("METAR","STALE",`${metarAge}M`);
+  }else if(metarAge!==null&&metarAge>30){
+    addPart("METAR","WARN",`${metarAge}M`);
+  }else{
+    addPart("METAR","OK","");
+  }
+
+  const tafIssueAge=minutesSince(parseAviationTime(taf));
+
+  if(tafBad||!taf.toUpperCase().includes("TAF")){
+    addPart("TAF","BAD","");
+  }else if(tafIssueAge!==null&&tafIssueAge>720){
+    addPart("TAF","STALE","");
+  }else{
+    addPart("TAF","OK","");
+  }
+
+  const atisAge=minutesSince(parseAtisTime(atis));
+
+  if(atisBad||!(data.atisDisplay||data.atisLetter)){
+    addPart("ATIS","BAD","");
+  }else if(atisAge!==null&&atisAge>60){
+    addPart("ATIS","STALE",`${atisAge}M`);
+  }else if(atisAge!==null&&atisAge>30){
+    addPart("ATIS","WARN",`${atisAge}M`);
+  }else{
+    addPart("ATIS","OK","");
+  }
+
+  const ahasUpdated=parseUpdatedZ(data.bwcUpdatedZ||"");
+  const ahasAge=ahasUpdated?Math.round((new Date()-ahasUpdated)/60000):null;
+
+  if(bwc==="PENDING"||bwcStatus.includes("FAILED")||bwcStatus.includes("ERROR")){
+    addPart("AHAS","PENDING","");
+  }else if(bwcStatus==="PARSED_DIRECT_XML"){
+    if(ahasAge!==null&&ahasAge>90){
+      addPart("AHAS","STALE","");
+    }else{
+      addPart("AHAS","OK","");
+    }
+  }else{
+    addPart("AHAS","WARN","");
+  }
+
+  const updated=parseUpdatedZ(updatedZ);
+  const updatedAge=updated?Math.round((new Date()-updated)/60000):null;
+
+  if(updatedAge===null||updatedAge>30){
+    if(worst!=="BAD")worst="WARN";
+  }
+
+  el.className="feed-health";
+
+  if(worst==="BAD")el.classList.add("feed-bad");
+  else if(worst==="WARN")el.classList.add("feed-warn");
+  else el.classList.add("feed-ok");
+
+  el.textContent="FEEDS: "+parts.join(" | ");
+  el.title=`Source health based on weather.json. Last board data update: ${updatedZ || "--"}`;
 }
 
 function updateDetails(data){
@@ -771,6 +946,7 @@ async function loadWeatherJson(){
     document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);
 
     updateStaleWarning(updatedZ);
+    updateSourceHealth(data,updatedZ);
 
     console.log("Ops board refresh:",new Date().toISOString(),updatedZ,data);
   }catch(e){
@@ -794,6 +970,10 @@ async function loadWeatherJson(){
     document.getElementById("dataUpdated").textContent="--:--Z";
 
     updateStaleWarning(null);
+
+    const health=document.getElementById("feedHealth");
+    health.className="feed-health feed-bad";
+    health.textContent="FEEDS: weather.json BAD";
   }
 }
 
