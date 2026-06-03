@@ -96,6 +96,14 @@ html,body{
   white-space:nowrap;
 }
 
+.local-clock{
+  color:#e6e6e6;
+}
+
+.zulu-clock{
+  color:var(--ops-green);
+}
+
 .date{
   color:#ccc;
   font-size:clamp(.8rem,1.05vw,1.25rem);
@@ -168,6 +176,18 @@ html,body{
   line-height:1.1;
   white-space:nowrap;
 }
+
+.trend-arrow{
+  font-weight:900;
+  font-size:1.08em;
+  margin-left:5px;
+  display:inline-block;
+  vertical-align:baseline;
+}
+
+.trend-up{color:var(--ops-green)}
+.trend-down{color:var(--closed)}
+.trend-steady{color:var(--warning)}
 
 .ops-value{
   color:var(--ops-green);
@@ -308,6 +328,56 @@ html,body{
 .warn,.stale{color:var(--warning)}
 .stale{animation:blink 1s step-start infinite}
 
+@media (max-width:1200px){
+  .board{
+    gap:5px;
+    padding:6px;
+  }
+
+  .panel{
+    padding:8px;
+  }
+
+  .clock{
+    font-size:clamp(2.7rem,7vw,6rem);
+  }
+
+  .ops-value{
+    font-size:clamp(.78rem,1.15vw,1.08rem);
+  }
+
+  .detail-value{
+    font-size:clamp(.82rem,1.2vw,1.12rem);
+  }
+
+  .raw{
+    font-size:clamp(.82rem,1.15vw,1.08rem);
+  }
+
+  .feed-health{
+    font-size:clamp(.62rem,.95vw,.9rem);
+  }
+}
+
+@media (max-width:900px){
+  .footer{
+    grid-template-columns:1fr 1.8fr 1fr;
+    column-gap:6px;
+  }
+
+  .feed-token{
+    margin:0 2px;
+  }
+
+  .feed-sep{
+    margin:0 2px;
+  }
+
+  .bwc-stamp{
+    font-size:.72em;
+  }
+}
+
 @keyframes blink{50%{opacity:.25}}
 @keyframes pulse{50%{opacity:.55}}
 </style>
@@ -318,13 +388,13 @@ html,body{
   <div class="top">
     <div class="panel">
       <div class="label">MEMPHIS LOCAL TIME</div>
-      <div id="local" class="clock">--:--:--</div>
+      <div id="local" class="clock local-clock">--:--:--</div>
       <div id="localDate" class="date">Loading date...</div>
     </div>
 
     <div class="panel">
       <div class="label">ZULU / UTC</div>
-      <div id="zulu" class="clock">--:--:--Z</div>
+      <div id="zulu" class="clock zulu-clock">--:--:--z</div>
       <div id="zuluDate" class="date">Loading UTC date...</div>
     </div>
   </div>
@@ -425,14 +495,26 @@ html,body{
 </div>
 
 <script>
+let lastClockTick=Date.now();
+
 function updateClock(){
   const now=new Date();
+  lastClockTick=Date.now();
 
   document.getElementById("local").textContent=now.toLocaleTimeString("en-US",{hour12:false});
   document.getElementById("localDate").textContent=now.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
 
-  document.getElementById("zulu").textContent=now.toISOString().substring(11,19)+"Z";
+  document.getElementById("zulu").textContent=now.toISOString().substring(11,19)+"z";
   document.getElementById("zuluDate").textContent="UTC Date: "+now.toISOString().substring(0,10);
+}
+
+function checkClockWatchdog(){
+  const elapsed=Date.now()-lastClockTick;
+
+  if(elapsed>90000){
+    console.warn("Clock watchdog detected stale clock. Reloading page.",elapsed);
+    window.location.reload();
+  }
 }
 
 function parseVisibilitySM(metar){
@@ -561,9 +643,31 @@ function safeValue(value,fallback="--"){
   return value;
 }
 
-function valueWithTrend(value,trend){
+function formatTrendArrow(trend,trendText){
+  const raw=(trendText||trend||"").toString().toUpperCase();
+
+  if(raw.includes("RISING")||raw.includes("IMPROVING")||raw==="UP"||raw==="↑"||raw==="⬆️"){
+    return '<span class="trend-arrow trend-up">▲</span>';
+  }
+
+  if(raw.includes("FALLING")||raw.includes("LOWERING")||raw.includes("DECREASING")||raw==="DOWN"||raw==="↓"||raw==="⬇️"){
+    return '<span class="trend-arrow trend-down">▼</span>';
+  }
+
+  if(raw.includes("STEADY")||raw==="RIGHT"||raw==="→"||raw==="➡️"){
+    return '<span class="trend-arrow trend-steady">►</span>';
+  }
+
+  if(raw.trim()===""){
+    return "";
+  }
+
+  return '<span class="trend-arrow trend-steady">►</span>';
+}
+
+function valueWithTrend(value,trend,trendText){
   const clean=safeValue(value);
-  const arrow=safeValue(trend,"");
+  const arrow=formatTrendArrow(trend,trendText);
 
   if(arrow==="")return clean;
 
@@ -987,9 +1091,9 @@ function updateDetails(data){
   const ceilingDisplay=data.ceilingDisplay||(fallbackCeiling===null?"UNL":fallbackCeiling+" FT");
   const visibilityDisplay=data.visibilityDisplay||(fallbackVis===null?"--":fallbackVis+" SM");
 
-  document.getElementById("altimeter").textContent=valueWithTrend(altimeterDisplay,data.altimeterTrend);
-  document.getElementById("ceiling").textContent=valueWithTrend(ceilingDisplay,data.ceilingTrend);
-  document.getElementById("visibility").textContent=valueWithTrend(visibilityDisplay,data.visibilityTrend);
+  document.getElementById("altimeter").innerHTML=valueWithTrend(altimeterDisplay,data.altimeterTrend,data.altimeterTrendText);
+  document.getElementById("ceiling").innerHTML=valueWithTrend(ceilingDisplay,data.ceilingTrend,data.ceilingTrendText);
+  document.getElementById("visibility").innerHTML=valueWithTrend(visibilityDisplay,data.visibilityTrend,data.visibilityTrendText);
 
   setMetarAge(metar);
 
@@ -1095,6 +1199,7 @@ updateRefreshCountdown();
 
 setInterval(updateRefreshCountdown,1000);
 setInterval(updateClock,1000);
+setInterval(checkClockWatchdog,30000);
 setInterval(loadWeatherJson,300000);
 setInterval(refreshRadar,300000);
 
