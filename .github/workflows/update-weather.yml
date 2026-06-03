@@ -1,12 +1,7 @@
-name: Update KMEM Weather Auto
+name: Update KMEM Weather Manual Backup
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-  schedule:
-    - cron: '7,17,27,37,47,57 * * * *'
 
 permissions:
   contents: write
@@ -128,7 +123,6 @@ jobs:
 
           metar = read_file("metar.txt").strip()
           taf = read_file("taf.txt").strip()
-
           atis_raw = html_to_text(read_file("atis.html"))
 
           if len(atis_raw) < 40 or ("KMEM" not in atis_raw.upper() and "MEM" not in atis_raw.upper()):
@@ -154,22 +148,16 @@ jobs:
               "metar": metar or "METAR unavailable",
               "taf": taf or "TAF unavailable",
               "atisText": atis_text,
-
               "atisLetter": atis_letter,
               "arrRunways": arr_runways,
               "depRunways": dep_runways,
               "closedRunways": closed_runways,
-
               "flow": flow,
-
               "lightning": "NONE",
-
               "bwc": "PENDING",
               "bwcSource": "AHAS",
               "bwcUpdatedZ": "--",
-
               "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
-
               "workflowMetadata": {
                   "lastWorkflowEvent": event_name,
                   "lastWorkflowActor": actor,
@@ -185,10 +173,6 @@ jobs:
 
           print("Updated weather.json")
           print("Workflow event:", event_name)
-          print("Workflow actor:", actor)
-          print("Workflow run number:", run_number)
-          print("Workflow run id:", run_id)
-
           EOF
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
@@ -205,6 +189,6 @@ jobs:
           git add weather.json
 
           git diff --cached --quiet || \
-          git commit -m "Update KMEM ops board data"
+          git commit -m "Manual backup KMEM weather update"
 
           git push
