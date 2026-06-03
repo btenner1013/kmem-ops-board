@@ -171,7 +171,7 @@ html,body{
 
 .ops-value{
   color:var(--ops-green);
-  font-size:clamp(.82rem,1.0vw,1.25rem);
+  font-size:clamp(.78rem,.92vw,1.16rem);
   line-height:1.12;
   white-space:normal;
   overflow:hidden;
@@ -236,14 +236,15 @@ html,body{
 }
 
 .raw{
+  color:#e6e6e6;
   font-family:Consolas,monospace;
-  font-size:clamp(.68rem,.75vw,.95rem);
-  line-height:1.25;
+  font-size:clamp(.85rem,1.0vw,1.25rem);
+  line-height:1.35;
   white-space:pre-wrap;
   overflow:auto;
   flex:1;
   min-height:0;
-  padding-top:4px;
+  padding-top:6px;
 }
 
 .radar-panel{
@@ -582,9 +583,36 @@ function setClosedRunwayDisplay(value){
   }
 }
 
+function formatAhasBwcDateTime(value){
+  if(!value||value==="--"){
+    return "";
+  }
+
+  const text=String(value).trim();
+  const m=text.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+
+  if(!m){
+    return "";
+  }
+
+  const day=String(parseInt(m[3],10));
+  const monthNames=[
+    "JAN","FEB","MAR","APR","MAY","JUN",
+    "JUL","AUG","SEP","OCT","NOV","DEC"
+  ];
+
+  const monthIndex=parseInt(m[2],10)-1;
+  const month=monthNames[monthIndex]||"";
+  const hh=m[4];
+  const mm=m[5];
+
+  return `${day} ${month} ${hh}${mm}Z`;
+}
+
 function setBwcDisplay(value,data){
   const el=document.getElementById("bwc");
   const bwc=(value||"PENDING").toUpperCase();
+  const ahasDateTime=formatAhasBwcDateTime(data?.bwcUpdatedZ||"");
 
   el.className="ops-value";
 
@@ -594,7 +622,11 @@ function setBwcDisplay(value,data){
   else if(bwc==="SEVERE")el.classList.add("bwc-severe");
   else el.classList.add("bwc-pending");
 
-  el.textContent=bwc;
+  if(ahasDateTime){
+    el.textContent=`${bwc} ${ahasDateTime}`;
+  }else{
+    el.textContent=bwc;
+  }
 
   const source=data?.bwcSource||"";
   const basedOn=data?.bwcBasedOn||"";
@@ -602,7 +634,7 @@ function setBwcDisplay(value,data){
   const nexrad=data?.bwcNexrad||"";
   const ahas=data?.bwcAhasRisk||"";
 
-  el.title=`BWC ${bwc} | Source: ${source} | Based on: ${basedOn} | NEXRAD: ${nexrad} | AHAS: ${ahas} | Updated: ${updated}`;
+  el.title=`BWC ${bwc} | AHAS as of: ${ahasDateTime || updated || "--"} | Source: ${source} | Based on: ${basedOn} | NEXRAD: ${nexrad} | AHAS: ${ahas}`;
 }
 
 function setLightningDisplay(value){
