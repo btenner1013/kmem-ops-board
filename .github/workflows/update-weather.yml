@@ -36,6 +36,7 @@ jobs:
           python3 - << 'EOF'
           import json
           import re
+          import os
           from datetime import datetime, timezone
           from html import unescape
 
@@ -141,6 +142,14 @@ jobs:
           closed_runways = parse_closed_runways(atis_text)
           flow = determine_flow(arr_runways, dep_runways)
 
+          event_name = os.environ.get("GITHUB_EVENT_NAME", "unknown")
+          actor = os.environ.get("GITHUB_ACTOR", "unknown")
+          workflow = os.environ.get("GITHUB_WORKFLOW", "unknown")
+          run_number = os.environ.get("GITHUB_RUN_NUMBER", "unknown")
+          run_id = os.environ.get("GITHUB_RUN_ID", "unknown")
+
+          now_z = datetime.now(timezone.utc)
+
           data = {
               "metar": metar or "METAR unavailable",
               "taf": taf or "TAF unavailable",
@@ -159,11 +168,26 @@ jobs:
               "bwcSource": "AHAS",
               "bwcUpdatedZ": "--",
 
-              "allFeedsUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
+              "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
+
+              "workflowMetadata": {
+                  "lastWorkflowEvent": event_name,
+                  "lastWorkflowActor": actor,
+                  "lastWorkflowName": workflow,
+                  "lastWorkflowRunNumber": run_number,
+                  "lastWorkflowRunId": run_id,
+                  "lastWorkflowTimestampZ": now_z.strftime("%Y-%m-%d %H:%M:%SZ")
+              }
           }
 
           with open("weather.json", "w", encoding="utf-8") as f:
               json.dump(data, f, indent=2)
+
+          print("Updated weather.json")
+          print("Workflow event:", event_name)
+          print("Workflow actor:", actor)
+          print("Workflow run number:", run_number)
+          print("Workflow run id:", run_id)
 
           EOF
 
