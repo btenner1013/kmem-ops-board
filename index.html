@@ -34,7 +34,7 @@ html,body{
   height:100vh;
   width:100vw;
   display:grid;
-  grid-template-rows:minmax(110px,22vh) minmax(0,1fr) minmax(64px,8vh);
+  grid-template-rows:minmax(110px,22vh) minmax(0,1fr) minmax(54px,8vh);
   gap:6px;
   padding:8px;
 }
@@ -225,6 +225,16 @@ html,body{
 .feed-warn{color:var(--warning)}
 .feed-bad{color:var(--closed);animation:blink 1s step-start infinite}
 
+.feed-token{
+  display:inline-block;
+  margin:0 4px;
+}
+
+.feed-sep{
+  color:var(--dim);
+  margin:0 4px;
+}
+
 .raw{
   font-family:Consolas,monospace;
   font-size:clamp(.68rem,.75vw,.95rem);
@@ -253,24 +263,38 @@ html,body{
 
 .footer{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  grid-template-rows:auto auto;
+  grid-template-columns:1fr 1.5fr 1fr;
   align-items:center;
-  row-gap:3px;
-  font-size:clamp(.9rem,1.3vw,1.7rem);
+  column-gap:10px;
+  font-size:clamp(.78rem,1.05vw,1.45rem);
   font-weight:bold;
   min-height:0;
 }
 
-.footer-right{text-align:right}
-
-.feed-health{
-  grid-column:1 / 3;
-  font-size:clamp(.72rem,.92vw,1.15rem);
-  letter-spacing:.5px;
+.footer-left{
+  text-align:left;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+}
+
+.footer-center{
+  text-align:center;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.footer-right{
+  text-align:right;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.feed-health{
+  font-size:clamp(.68rem,.82vw,1.05rem);
+  letter-spacing:.4px;
 }
 
 .warn,.stale{color:var(--warning)}
@@ -385,9 +409,9 @@ html,body{
 
   <div class="bottom">
     <div class="panel footer">
-      <div>DATA UPDATED: <span id="dataUpdated">--:--Z</span></div>
+      <div class="footer-left">DATA UPDATED: <span id="dataUpdated">--:--Z</span></div>
+      <div id="feedHealth" class="footer-center feed-health feed-warn">FEEDS: CHECKING...</div>
       <div id="staleWarning" class="footer-right">REFRESH IN: <span id="refreshCountdown">10:00</span></div>
-      <div id="feedHealth" class="feed-health feed-warn">FEEDS: CHECKING...</div>
     </div>
   </div>
 </div>
@@ -796,12 +820,23 @@ function parseAtisTime(atisText){
   );
 }
 
-function healthPart(name,status,detail){
-  if(detail){
-    return `${name} ${status} (${detail})`;
+function feedClassForStatus(status){
+  if(status==="OK"){
+    return "feed-ok";
   }
 
-  return `${name} ${status}`;
+  if(status==="BAD"||status==="STALE"){
+    return "feed-bad";
+  }
+
+  return "feed-warn";
+}
+
+function healthPart(name,status,detail){
+  const cls=feedClassForStatus(status);
+  const text=detail ? `${name} ${status} (${detail})` : `${name} ${status}`;
+
+  return `<span class="feed-token ${cls}">${text}</span>`;
 }
 
 function updateSourceHealth(data,updatedZ){
@@ -813,7 +848,7 @@ function updateSourceHealth(data,updatedZ){
   function addPart(name,status,detail){
     parts.push(healthPart(name,status,detail));
 
-    if(status==="BAD"){
+    if(status==="BAD"||status==="STALE"){
       worst="BAD";
     }else if(status!=="OK"&&worst!=="BAD"){
       worst="WARN";
@@ -834,9 +869,9 @@ function updateSourceHealth(data,updatedZ){
 
   if(metarBad||!metar.toUpperCase().includes("METAR")){
     addPart("METAR","BAD","");
-  }else if(metarAge!==null&&metarAge>60){
+  }else if(metarAge!==null&&metarAge>75){
     addPart("METAR","STALE",`${metarAge}M`);
-  }else if(metarAge!==null&&metarAge>30){
+  }else if(metarAge!==null&&metarAge>55){
     addPart("METAR","WARN",`${metarAge}M`);
   }else{
     addPart("METAR","OK","");
@@ -856,9 +891,9 @@ function updateSourceHealth(data,updatedZ){
 
   if(atisBad||!(data.atisDisplay||data.atisLetter)){
     addPart("ATIS","BAD","");
-  }else if(atisAge!==null&&atisAge>60){
+  }else if(atisAge!==null&&atisAge>90){
     addPart("ATIS","STALE",`${atisAge}M`);
-  }else if(atisAge!==null&&atisAge>30){
+  }else if(atisAge!==null&&atisAge>60){
     addPart("ATIS","WARN",`${atisAge}M`);
   }else{
     addPart("ATIS","OK","");
@@ -886,13 +921,13 @@ function updateSourceHealth(data,updatedZ){
     if(worst!=="BAD")worst="WARN";
   }
 
-  el.className="feed-health";
+  el.className="footer-center feed-health";
 
   if(worst==="BAD")el.classList.add("feed-bad");
   else if(worst==="WARN")el.classList.add("feed-warn");
   else el.classList.add("feed-ok");
 
-  el.textContent="FEEDS: "+parts.join(" | ");
+  el.innerHTML='FEEDS: '+parts.join('<span class="feed-sep">|</span>');
   el.title=`Source health based on weather.json. Last board data update: ${updatedZ || "--"}`;
 }
 
@@ -972,7 +1007,7 @@ async function loadWeatherJson(){
     updateStaleWarning(null);
 
     const health=document.getElementById("feedHealth");
-    health.className="feed-health feed-bad";
+    health.className="footer-center feed-health feed-bad";
     health.textContent="FEEDS: weather.json BAD";
   }
 }
