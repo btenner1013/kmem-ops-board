@@ -196,6 +196,13 @@ html,body{
 .bwc-moderate{color:var(--warning)}
 .bwc-severe{color:var(--closed);animation:blink 1s step-start infinite}
 
+.bwc-stamp{
+  font-size:0.78em;
+  font-weight:700;
+  opacity:0.9;
+  white-space:nowrap;
+}
+
 .lightning-none{color:var(--vfr)}
 .lightning-watch{color:var(--warning)}
 .lightning-alert{color:var(--closed)}
@@ -622,10 +629,16 @@ function setBwcDisplay(value,data){
   else if(bwc==="SEVERE")el.classList.add("bwc-severe");
   else el.classList.add("bwc-pending");
 
+  el.textContent="";
+
+  const mainText=document.createTextNode(bwc);
+  el.appendChild(mainText);
+
   if(ahasDateTime){
-    el.textContent=`${bwc} ${ahasDateTime}`;
-  }else{
-    el.textContent=bwc;
+    const stamp=document.createElement("span");
+    stamp.className="bwc-stamp";
+    stamp.textContent=` (AHAS ${ahasDateTime})`;
+    el.appendChild(stamp);
   }
 
   const source=data?.bwcSource||"";
