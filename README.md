@@ -11,3 +11,5 @@ After upload:
 1. Go to Actions and run Update KMEM Weather.
 2. Go to Settings > Pages.
 3. Deploy from branch: main, folder: /root.
+
+Scheduler test
