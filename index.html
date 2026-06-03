@@ -26,100 +26,570 @@ body{margin:0;background:#000;color:var(--ops-green);font-family:Arial,sans-seri
 .detail-value{color:var(--ops-green);font-size:1.15vw}
 .ops-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
 .ops-value{color:var(--ops-green);font-size:1.0vw;white-space:normal}
-.closed-value{color:var(--closed)}
-.bwc-pending{color:var(--warning)}.bwc-low{color:var(--vfr)}.bwc-moderate{color:var(--warning)}.bwc-severe{color:var(--closed)}
-.lightning-none{color:var(--vfr)}.lightning-watch{color:var(--warning)}.lightning-alert{color:var(--closed)}.lightning-close{color:var(--closed);animation:blink 1s step-start infinite}
+.closed-none{color:var(--ops-green)}
+.closed-active{color:var(--closed);animation:blink 1s step-start infinite}
+.bwc-none{color:var(--ops-green)}
+.bwc-pending{color:var(--warning)}
+.bwc-low{color:var(--vfr)}
+.bwc-moderate{color:var(--warning)}
+.bwc-severe{color:var(--closed);animation:blink 1s step-start infinite}
+.lightning-none{color:var(--vfr)}
+.lightning-watch{color:var(--warning)}
+.lightning-alert{color:var(--closed)}
+.lightning-close{color:var(--closed);animation:blink 1s step-start infinite}
 .trend-value{font-size:1.2vw;letter-spacing:1px}
-.cat-vfr{color:var(--vfr)}.cat-mvfr{color:var(--mvfr)}.cat-ifr{color:var(--ifr)}.cat-lifr{color:var(--lifr)}
-.age-good{color:var(--ops-green)}.age-warn{color:var(--warning)}.age-bad{color:var(--closed)}
+.cat-vfr{color:var(--vfr)}
+.cat-mvfr{color:var(--mvfr)}
+.cat-ifr{color:var(--ifr)}
+.cat-lifr{color:var(--lifr)}
+.age-good{color:var(--ops-green)}
+.age-warn{color:var(--warning)}
+.age-bad{color:var(--closed)}
 .raw{font-family:Consolas,monospace;font-size:.88vw;line-height:1.23;white-space:pre-wrap;overflow:auto;height:calc(100% - 340px)}
-.radar-panel{display:flex;flex-direction:column}.radarimg{width:100%;height:calc(100% - 32px);object-fit:contain;background:black;border:1px solid #333}
-.footer{display:grid;grid-template-columns:1fr 1fr;align-items:center;font-size:1.55vw;font-weight:bold}.footer-right{text-align:right}
-.warn,.stale{color:var(--warning)}.stale{animation:blink 1s step-start infinite}
+.radar-panel{display:flex;flex-direction:column}
+.radarimg{width:100%;height:calc(100% - 32px);object-fit:contain;background:black;border:1px solid #333}
+.footer{display:grid;grid-template-columns:1fr 1fr;align-items:center;font-size:1.55vw;font-weight:bold}
+.footer-right{text-align:right}
+.warn,.stale{color:var(--warning)}
+.stale{animation:blink 1s step-start infinite}
 @keyframes blink{50%{opacity:.25}}
 </style>
 </head>
+
 <body>
 <div class="board">
   <div class="top">
-    <div class="panel"><div class="label">MEMPHIS LOCAL TIME</div><div id="local" class="clock">--:--:--</div><div id="localDate" class="date">Loading date...</div></div>
-    <div class="panel"><div class="label">ZULU / UTC</div><div id="zulu" class="clock">--:--:--Z</div><div id="zuluDate" class="date">Loading UTC date...</div></div>
+    <div class="panel">
+      <div class="label">MEMPHIS LOCAL TIME</div>
+      <div id="local" class="clock">--:--:--</div>
+      <div id="localDate" class="date">Loading date...</div>
+    </div>
+
+    <div class="panel">
+      <div class="label">ZULU / UTC</div>
+      <div id="zulu" class="clock">--:--:--Z</div>
+      <div id="zuluDate" class="date">Loading UTC date...</div>
+    </div>
   </div>
+
   <div class="middle">
     <div class="panel">
       <div class="title">WEATHER</div>
-      <div class="summary-grid"><div id="category" class="flight-category">--</div><div id="atisLetter" class="atis-letter">ATIS: --</div></div>
+
+      <div class="summary-grid">
+        <div id="category" class="flight-category">--</div>
+        <div id="atisLetter" class="atis-letter">ATIS: --</div>
+      </div>
+
       <div class="details-grid">
-        <div class="detail-box"><div class="detail-label">ALTIMETER</div><div id="altimeter" class="detail-value">--</div></div>
-        <div class="detail-box"><div class="detail-label">CEILING</div><div id="ceiling" class="detail-value">--</div></div>
-        <div class="detail-box"><div class="detail-label">VIS</div><div id="visibility" class="detail-value">--</div></div>
-        <div class="detail-box"><div class="detail-label">METAR AGE</div><div id="metarAge" class="detail-value">--</div></div>
+        <div class="detail-box">
+          <div class="detail-label">ALTIMETER</div>
+          <div id="altimeter" class="detail-value">--</div>
+        </div>
+
+        <div class="detail-box">
+          <div class="detail-label">CEILING</div>
+          <div id="ceiling" class="detail-value">--</div>
+        </div>
+
+        <div class="detail-box">
+          <div class="detail-label">VIS</div>
+          <div id="visibility" class="detail-value">--</div>
+        </div>
+
+        <div class="detail-box">
+          <div class="detail-label">METAR AGE</div>
+          <div id="metarAge" class="detail-value">--</div>
+        </div>
       </div>
+
       <div class="ops-grid">
-        <div class="ops-box"><div class="ops-label">ARR RWY</div><div id="arrRwy" class="ops-value">--</div></div>
-        <div class="ops-box"><div class="ops-label">DEP RWY</div><div id="depRwy" class="ops-value">--</div></div>
-        <div class="ops-box"><div class="ops-label">RWY CLSD</div><div id="closedRwy" class="ops-value closed-value">--</div></div>
+        <div class="ops-box">
+          <div class="ops-label">ARR RWY</div>
+          <div id="arrRwy" class="ops-value">--</div>
+        </div>
+
+        <div class="ops-box">
+          <div class="ops-label">DEP RWY</div>
+          <div id="depRwy" class="ops-value">--</div>
+        </div>
+
+        <div class="ops-box">
+          <div class="ops-label">RWY CLSD</div>
+          <div id="closedRwy" class="ops-value closed-none">--</div>
+        </div>
       </div>
+
       <div class="ops-grid">
-        <div class="ops-box"><div class="ops-label">FLOW</div><div id="flow" class="ops-value">--</div></div>
-        <div class="ops-box"><div class="ops-label">LIGHTNING</div><div id="lightning" class="ops-value lightning-none">NONE</div></div>
-        <div class="ops-box"><div class="ops-label">BWC</div><div id="bwc" class="ops-value bwc-pending">PENDING</div></div>
+        <div class="ops-box">
+          <div class="ops-label">FLOW</div>
+          <div id="flow" class="ops-value">--</div>
+        </div>
+
+        <div class="ops-box">
+          <div class="ops-label">LIGHTNING</div>
+          <div id="lightning" class="ops-value lightning-none">NONE</div>
+        </div>
+
+        <div class="ops-box">
+          <div class="ops-label">BWC</div>
+          <div id="bwc" class="ops-value bwc-pending">PENDING</div>
+        </div>
       </div>
-      <div class="trend-box"><div class="trend-label">TAF TREND</div><div id="tafTrend" class="trend-value">--</div></div>
+
+      <div class="trend-box">
+        <div class="trend-label">TAF TREND</div>
+        <div id="tafTrend" class="trend-value">--</div>
+      </div>
+
       <div id="weather" class="raw">Loading KMEM weather...</div>
     </div>
-    <div class="panel radar-panel"><div class="title">RADAR</div><img id="radar" class="radarimg" src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif"></div>
+
+    <div class="panel radar-panel">
+      <div class="title">RADAR</div>
+      <img id="radar" class="radarimg" src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif">
+    </div>
   </div>
-  <div class="bottom"><div class="panel footer"><div>DATA UPDATED: <span id="dataUpdated">--:--Z</span></div><div id="staleWarning" class="footer-right">REFRESH IN: <span id="refreshCountdown">10:00</span></div></div></div>
+
+  <div class="bottom">
+    <div class="panel footer">
+      <div>DATA UPDATED: <span id="dataUpdated">--:--Z</span></div>
+      <div id="staleWarning" class="footer-right">REFRESH IN: <span id="refreshCountdown">10:00</span></div>
+    </div>
+  </div>
 </div>
+
 <script>
-function updateClock(){const now=new Date();document.getElementById("local").textContent=now.toLocaleTimeString("en-US",{hour12:false});document.getElementById("localDate").textContent=now.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});document.getElementById("zulu").textContent=now.toISOString().substring(11,19)+"Z";document.getElementById("zuluDate").textContent="UTC Date: "+now.toISOString().substring(0,10)}
-function parseVisibilitySM(metar){const tokens=metar.split(/\s+/);for(let i=0;i<tokens.length;i++){if(tokens[i]==="SM"&&i>0)return parseVisibilityToken(tokens[i-1]);if(tokens[i].endsWith("SM"))return parseVisibilityToken(tokens[i].replace("SM",""))}return null}
-function parseVisibilityToken(token){token=token.trim();if(token.includes("/")){const parts=token.split("/");if(parts.length===2)return parseFloat(parts[0])/parseFloat(parts[1])}const value=parseFloat(token);return isNaN(value)?null:value}
-function parseCeilingFeet(metar){const tokens=metar.split(/\s+/);let ceiling=null;tokens.forEach(token=>{const match=token.match(/^(BKN|OVC|VV)(\d{3})/);if(match){const feet=parseInt(match[2],10)*100;if(ceiling===null||feet<ceiling)ceiling=feet}});return ceiling}
-function determineFlightCategory(metar){const vis=parseVisibilitySM(metar);const ceiling=parseCeilingFeet(metar);if((ceiling!==null&&ceiling<500)||(vis!==null&&vis<1))return"LIFR";if((ceiling!==null&&ceiling<1000)||(vis!==null&&vis<3))return"IFR";if((ceiling!==null&&ceiling<=3000)||(vis!==null&&vis<=5))return"MVFR";return"VFR"}
-function setCategoryDisplay(category){const box=document.getElementById("category");box.className="flight-category";if(category==="VFR")box.classList.add("cat-vfr");if(category==="MVFR")box.classList.add("cat-mvfr");if(category==="IFR")box.classList.add("cat-ifr");if(category==="LIFR")box.classList.add("cat-lifr");box.textContent=category}
-function parseAltimeter(metar){const m=metar.match(/\bA(\d{4})\b/);if(!m)return"--";return m[1].slice(0,2)+"."+m[1].slice(2)}
-function parseMetarTime(metar){const m=metar.match(/\b(\d{2})(\d{2})(\d{2})Z\b/);if(!m)return null;const now=new Date();return new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),parseInt(m[1],10),parseInt(m[2],10),parseInt(m[3],10),0))}
-function setMetarAge(metar){const el=document.getElementById("metarAge");const t=parseMetarTime(metar);el.className="detail-value";if(!t){el.textContent="--";return}const age=Math.round((new Date()-t)/60000);if(age<0){el.textContent="--";return}el.textContent=age+" MIN";if(age<30)el.classList.add("age-good");else if(age<=60)el.classList.add("age-warn");else el.classList.add("age-bad")}
-function setBwcDisplay(value){const el=document.getElementById("bwc");const bwc=(value||"PENDING").toUpperCase();el.className="ops-value";if(bwc==="LOW")el.classList.add("bwc-low");else if(bwc==="MODERATE")el.classList.add("bwc-moderate");else if(bwc==="SEVERE")el.classList.add("bwc-severe");else el.classList.add("bwc-pending");el.textContent=bwc}
-function setLightningDisplay(value){const el=document.getElementById("lightning");const lightning=(value||"NONE").toUpperCase();el.className="ops-value";if(lightning==="NONE"){el.classList.add("lightning-none");el.textContent="NONE";return}const nmMatch=lightning.match(/(\d+)\s*NM/);if(nmMatch){const nm=parseInt(nmMatch[1],10);if(nm<5)el.classList.add("lightning-close");else if(nm<=5)el.classList.add("lightning-alert");else if(nm<=10)el.classList.add("lightning-watch");else el.classList.add("lightning-watch");el.textContent=lightning;return}el.classList.add("lightning-watch");el.textContent=lightning}
-function tafFlightCategory(taf){const text=(taf||"").toUpperCase();let worst="VFR";[...text.matchAll(/\b(BKN|OVC|VV)(\d{3})\b/g)].forEach(m=>{const ceiling=parseInt(m[2],10)*100;if(ceiling<500)worst="LIFR";else if(ceiling<1000&&worst!=="LIFR")worst="IFR";else if(ceiling<=3000&&!["LIFR","IFR"].includes(worst))worst="MVFR"});[...text.matchAll(/\b(\d{1,2})SM\b/g)].forEach(m=>{const vis=parseInt(m[1],10);if(vis<1)worst="LIFR";else if(vis<3&&worst!=="LIFR")worst="IFR";else if(vis<=5&&!["LIFR","IFR"].includes(worst))worst="MVFR"});return worst}
-function setTafTrend(taf){const trend=document.getElementById("tafTrend");const cat=tafFlightCategory(taf);trend.className="trend-value";if(cat==="VFR"){trend.classList.add("cat-vfr");trend.textContent="VFR NEXT 24 HRS"}else if(cat==="MVFR"){trend.classList.add("cat-mvfr");trend.textContent="MVFR EXPECTED"}else if(cat==="IFR"){trend.classList.add("cat-ifr");trend.textContent="IFR EXPECTED"}else if(cat==="LIFR"){trend.classList.add("cat-lifr");trend.textContent="LIFR EXPECTED"}}
-function isWeatherStale(updatedZ){if(!updatedZ||updatedZ==="Pending")return true;const normalized=updatedZ.replace(" ","T").replace("Z",":00Z");const updated=new Date(normalized);if(isNaN(updated.getTime()))return false;return((new Date()-updated)/60000)>30}
-function formatZuluTime(updatedZ){if(!updatedZ||updatedZ==="Pending")return"--:--Z";const m=updatedZ.match(/(\d{2}):(\d{2})Z/);if(m)return m[1]+":"+m[2]+"Z";return updatedZ}
-function updateStaleWarning(updatedZ){const warning=document.getElementById("staleWarning");if(isWeatherStale(updatedZ)){warning.innerHTML='DATA STALE | REFRESH IN: <span id="refreshCountdown">' + formatCountdown(refreshRemaining) + '</span>';warning.className="footer-right stale"}else{warning.innerHTML='REFRESH IN: <span id="refreshCountdown">' + formatCountdown(refreshRemaining) + '</span>';warning.className="footer-right"}}
-function updateDetails(data){const metar=data.metar||"";const taf=data.taf||"";const ceiling=parseCeilingFeet(metar);const vis=parseVisibilitySM(metar);document.getElementById("atisLetter").textContent="ATIS: "+(data.atisLetter||"--");document.getElementById("altimeter").textContent=parseAltimeter(metar);document.getElementById("ceiling").textContent=ceiling===null?"NONE":ceiling+" FT";document.getElementById("visibility").textContent=vis===null?"--":vis+" SM";setMetarAge(metar);document.getElementById("arrRwy").textContent=data.arrRunways||"--";document.getElementById("depRwy").textContent=data.depRunways||"--";document.getElementById("closedRwy").textContent=data.closedRunways||"--";document.getElementById("flow").textContent=data.flow||"--";setLightningDisplay(data.lightning||"NONE");setBwcDisplay(data.bwc);setTafTrend(taf)}
-async function loadWeatherJson(){try{const response=await fetch("weather.json?t="+new Date().getTime(),{cache:"no-store"});if(!response.ok)throw new Error("Unable to load weather.json");const data=await response.json();const metar=data.metar||"METAR unavailable";const taf=data.taf||"TAF unavailable";const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";document.getElementById("weather").textContent=metar+"\n\n"+taf;setCategoryDisplay(determineFlightCategory(metar));updateDetails(data);document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);updateStaleWarning(updatedZ);console.log("Ops board refresh:",new Date().toISOString(),updatedZ)}catch(e){document.getElementById("weather").innerHTML='<span class="warn">Unable to load weather.json</span>';document.getElementById("category").textContent="--";document.getElementById("atisLetter").textContent="ATIS: --";document.getElementById("altimeter").textContent="--";document.getElementById("ceiling").textContent="--";document.getElementById("visibility").textContent="--";document.getElementById("metarAge").textContent="--";document.getElementById("arrRwy").textContent="--";document.getElementById("depRwy").textContent="--";document.getElementById("closedRwy").textContent="--";document.getElementById("flow").textContent="--";setLightningDisplay("NONE");setBwcDisplay("PENDING");document.getElementById("tafTrend").textContent="--";document.getElementById("dataUpdated").textContent="--:--Z";updateStaleWarning(null)}}
+function updateClock(){
+  const now=new Date();
+
+  document.getElementById("local").textContent=now.toLocaleTimeString("en-US",{hour12:false});
+  document.getElementById("localDate").textContent=now.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+
+  document.getElementById("zulu").textContent=now.toISOString().substring(11,19)+"Z";
+  document.getElementById("zuluDate").textContent="UTC Date: "+now.toISOString().substring(0,10);
+}
+
+function parseVisibilitySM(metar){
+  const tokens=metar.split(/\s+/);
+
+  for(let i=0;i<tokens.length;i++){
+    if(tokens[i]==="SM"&&i>0)return parseVisibilityToken(tokens[i-1]);
+    if(tokens[i].endsWith("SM"))return parseVisibilityToken(tokens[i].replace("SM",""));
+  }
+
+  return null;
+}
+
+function parseVisibilityToken(token){
+  token=token.trim();
+
+  if(token.includes("/")){
+    const parts=token.split("/");
+    if(parts.length===2)return parseFloat(parts[0])/parseFloat(parts[1]);
+  }
+
+  const value=parseFloat(token);
+  return isNaN(value)?null:value;
+}
+
+function parseCeilingFeet(metar){
+  const tokens=metar.split(/\s+/);
+  let ceiling=null;
+
+  tokens.forEach(token=>{
+    const match=token.match(/^(BKN|OVC|VV)(\d{3})/);
+
+    if(match){
+      const feet=parseInt(match[2],10)*100;
+      if(ceiling===null||feet<ceiling)ceiling=feet;
+    }
+  });
+
+  return ceiling;
+}
+
+function determineFlightCategory(metar){
+  const vis=parseVisibilitySM(metar);
+  const ceiling=parseCeilingFeet(metar);
+
+  if((ceiling!==null&&ceiling<500)||(vis!==null&&vis<1))return"LIFR";
+  if((ceiling!==null&&ceiling<1000)||(vis!==null&&vis<3))return"IFR";
+  if((ceiling!==null&&ceiling<=3000)||(vis!==null&&vis<=5))return"MVFR";
+
+  return"VFR";
+}
+
+function setCategoryDisplay(category){
+  const box=document.getElementById("category");
+
+  box.className="flight-category";
+
+  if(category==="VFR")box.classList.add("cat-vfr");
+  if(category==="MVFR")box.classList.add("cat-mvfr");
+  if(category==="IFR")box.classList.add("cat-ifr");
+  if(category==="LIFR")box.classList.add("cat-lifr");
+
+  box.textContent=category;
+}
+
+function parseAltimeter(metar){
+  const m=metar.match(/\bA(\d{4})\b/);
+  if(!m)return"--";
+
+  return m[1].slice(0,2)+"."+m[1].slice(2);
+}
+
+function parseMetarTime(metar){
+  const m=metar.match(/\b(\d{2})(\d{2})(\d{2})Z\b/);
+  if(!m)return null;
+
+  const now=new Date();
+
+  return new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      parseInt(m[1],10),
+      parseInt(m[2],10),
+      parseInt(m[3],10),
+      0
+    )
+  );
+}
+
+function setMetarAge(metar){
+  const el=document.getElementById("metarAge");
+  const t=parseMetarTime(metar);
+
+  el.className="detail-value";
+
+  if(!t){
+    el.textContent="--";
+    return;
+  }
+
+  const age=Math.round((new Date()-t)/60000);
+
+  if(age<0){
+    el.textContent="--";
+    return;
+  }
+
+  el.textContent=age+" MIN";
+
+  if(age<30)el.classList.add("age-good");
+  else if(age<=60)el.classList.add("age-warn");
+  else el.classList.add("age-bad");
+}
+
+function safeValue(value,fallback="--"){
+  if(value===null||value===undefined||value==="")return fallback;
+  return value;
+}
+
+function valueWithTrend(value,trend){
+  const clean=safeValue(value);
+  const arrow=safeValue(trend,"");
+
+  if(arrow==="")return clean;
+
+  return clean+" "+arrow;
+}
+
+function setAtisDisplay(data){
+  const display=data.atisDisplay||data.atisPhonetic||data.atisLetter||"--";
+  document.getElementById("atisLetter").textContent="ATIS: "+display;
+}
+
+function setClosedRunwayDisplay(value){
+  const el=document.getElementById("closedRwy");
+  const closed=(value||"NONE").toUpperCase();
+
+  el.className="ops-value";
+
+  if(closed==="NONE"||closed==="--"){
+    el.classList.add("closed-none");
+    el.textContent="NONE";
+  }else{
+    el.classList.add("closed-active");
+    el.textContent=closed;
+  }
+}
+
+function setBwcDisplay(value,data){
+  const el=document.getElementById("bwc");
+  const bwc=(value||"PENDING").toUpperCase();
+
+  el.className="ops-value";
+
+  if(bwc==="NONE")el.classList.add("bwc-none");
+  else if(bwc==="LOW")el.classList.add("bwc-low");
+  else if(bwc==="MODERATE")el.classList.add("bwc-moderate");
+  else if(bwc==="SEVERE")el.classList.add("bwc-severe");
+  else el.classList.add("bwc-pending");
+
+  el.textContent=bwc;
+
+  const source=data?.bwcSource||"";
+  const basedOn=data?.bwcBasedOn||"";
+  const updated=data?.bwcUpdatedZ||"";
+  const nexrad=data?.bwcNexrad||"";
+  const ahas=data?.bwcAhasRisk||"";
+
+  el.title=`BWC ${bwc} | Source: ${source} | Based on: ${basedOn} | NEXRAD: ${nexrad} | AHAS: ${ahas} | Updated: ${updated}`;
+}
+
+function setLightningDisplay(value){
+  const el=document.getElementById("lightning");
+  const lightning=(value||"NONE").toUpperCase();
+
+  el.className="ops-value";
+
+  if(lightning==="NONE"){
+    el.classList.add("lightning-none");
+    el.textContent="NONE";
+    return;
+  }
+
+  const nmMatch=lightning.match(/(\d+)\s*NM/);
+
+  if(nmMatch){
+    const nm=parseInt(nmMatch[1],10);
+
+    if(nm<5)el.classList.add("lightning-close");
+    else if(nm<=5)el.classList.add("lightning-alert");
+    else if(nm<=10)el.classList.add("lightning-watch");
+    else el.classList.add("lightning-watch");
+
+    el.textContent=lightning;
+    return;
+  }
+
+  el.classList.add("lightning-watch");
+  el.textContent=lightning;
+}
+
+function tafFlightCategory(taf){
+  const text=(taf||"").toUpperCase();
+  let worst="VFR";
+
+  [...text.matchAll(/\b(BKN|OVC|VV)(\d{3})\b/g)].forEach(m=>{
+    const ceiling=parseInt(m[2],10)*100;
+
+    if(ceiling<500)worst="LIFR";
+    else if(ceiling<1000&&worst!=="LIFR")worst="IFR";
+    else if(ceiling<=3000&&!["LIFR","IFR"].includes(worst))worst="MVFR";
+  });
+
+  [...text.matchAll(/\b(\d{1,2})SM\b/g)].forEach(m=>{
+    const vis=parseInt(m[1],10);
+
+    if(vis<1)worst="LIFR";
+    else if(vis<3&&worst!=="LIFR")worst="IFR";
+    else if(vis<=5&&!["LIFR","IFR"].includes(worst))worst="MVFR";
+  });
+
+  return worst;
+}
+
+function setTafTrend(data){
+  const trend=document.getElementById("tafTrend");
+  const taf=data.taf||"";
+  const cat=tafFlightCategory(taf);
+  const backendTrend=data.tafTrend||"";
+  const alertText=data.wxAlertText||"NONE";
+
+  trend.className="trend-value";
+
+  if(data.wxAlertVisible===true&&alertText!=="NONE"){
+    trend.classList.add("warn");
+    trend.textContent=backendTrend||alertText;
+    return;
+  }
+
+  if(backendTrend&&backendTrend!=="NONE"){
+    if(cat==="VFR")trend.classList.add("cat-vfr");
+    else if(cat==="MVFR")trend.classList.add("cat-mvfr");
+    else if(cat==="IFR")trend.classList.add("cat-ifr");
+    else if(cat==="LIFR")trend.classList.add("cat-lifr");
+
+    trend.textContent=backendTrend;
+    return;
+  }
+
+  if(cat==="VFR"){
+    trend.classList.add("cat-vfr");
+    trend.textContent="VFR NEXT 24 HRS";
+  }else if(cat==="MVFR"){
+    trend.classList.add("cat-mvfr");
+    trend.textContent="MVFR EXPECTED";
+  }else if(cat==="IFR"){
+    trend.classList.add("cat-ifr");
+    trend.textContent="IFR EXPECTED";
+  }else if(cat==="LIFR"){
+    trend.classList.add("cat-lifr");
+    trend.textContent="LIFR EXPECTED";
+  }
+}
+
+function isWeatherStale(updatedZ){
+  if(!updatedZ||updatedZ==="Pending")return true;
+
+  const normalized=updatedZ.replace(" ","T").replace("Z",":00Z");
+  const updated=new Date(normalized);
+
+  if(isNaN(updated.getTime()))return false;
+
+  return((new Date()-updated)/60000)>30;
+}
+
+function formatZuluTime(updatedZ){
+  if(!updatedZ||updatedZ==="Pending")return"--:--Z";
+
+  const m=updatedZ.match(/(\d{2}):(\d{2})Z/);
+
+  if(m)return m[1]+":"+m[2]+"Z";
+
+  return updatedZ;
+}
+
+function updateStaleWarning(updatedZ){
+  const warning=document.getElementById("staleWarning");
+
+  if(isWeatherStale(updatedZ)){
+    warning.innerHTML='DATA STALE | REFRESH IN: <span id="refreshCountdown">' + formatCountdown(refreshRemaining) + '</span>';
+    warning.className="footer-right stale";
+  }else{
+    warning.innerHTML='REFRESH IN: <span id="refreshCountdown">' + formatCountdown(refreshRemaining) + '</span>';
+    warning.className="footer-right";
+  }
+}
+
+function updateDetails(data){
+  const metar=data.metar||"";
+  const fallbackCeiling=parseCeilingFeet(metar);
+  const fallbackVis=parseVisibilitySM(metar);
+
+  setAtisDisplay(data);
+
+  const altimeterDisplay=data.altimeter||parseAltimeter(metar);
+  const ceilingDisplay=data.ceilingDisplay||(fallbackCeiling===null?"NONE":fallbackCeiling+" FT");
+  const visibilityDisplay=data.visibilityDisplay||(fallbackVis===null?"--":fallbackVis+" SM");
+
+  document.getElementById("altimeter").textContent=valueWithTrend(altimeterDisplay,data.altimeterTrend);
+  document.getElementById("ceiling").textContent=valueWithTrend(ceilingDisplay,data.ceilingTrend);
+  document.getElementById("visibility").textContent=valueWithTrend(visibilityDisplay,data.visibilityTrend);
+
+  setMetarAge(metar);
+
+  document.getElementById("arrRwy").textContent=data.arrRunways||"--";
+  document.getElementById("depRwy").textContent=data.depRunways||"--";
+
+  setClosedRunwayDisplay(data.closedRunways);
+
+  document.getElementById("flow").textContent=data.flow||"--";
+
+  setLightningDisplay(data.lightning||"NONE");
+  setBwcDisplay(data.bwc,data);
+  setTafTrend(data);
+}
+
+async function loadWeatherJson(){
+  try{
+    const response=await fetch("weather.json?t="+new Date().getTime(),{cache:"no-store"});
+
+    if(!response.ok)throw new Error("Unable to load weather.json");
+
+    const data=await response.json();
+
+    const metar=data.metar||"METAR unavailable";
+    const taf=data.taf||"TAF unavailable";
+    const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";
+
+    document.getElementById("weather").textContent=metar+"\n\n"+taf;
+
+    setCategoryDisplay(determineFlightCategory(metar));
+    updateDetails(data);
+
+    document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);
+
+    updateStaleWarning(updatedZ);
+
+    console.log("Ops board refresh:",new Date().toISOString(),updatedZ,data);
+  }catch(e){
+    document.getElementById("weather").innerHTML='<span class="warn">Unable to load weather.json</span>';
+    document.getElementById("category").textContent="--";
+    document.getElementById("atisLetter").textContent="ATIS: --";
+    document.getElementById("altimeter").textContent="--";
+    document.getElementById("ceiling").textContent="--";
+    document.getElementById("visibility").textContent="--";
+    document.getElementById("metarAge").textContent="--";
+    document.getElementById("arrRwy").textContent="--";
+    document.getElementById("depRwy").textContent="--";
+    document.getElementById("closedRwy").textContent="--";
+    document.getElementById("flow").textContent="--";
+
+    setLightningDisplay("NONE");
+    setBwcDisplay("PENDING",{});
+
+    document.getElementById("tafTrend").textContent="--";
+    document.getElementById("dataUpdated").textContent="--:--Z";
+
+    updateStaleWarning(null);
+  }
+}
 
 let refreshRemaining=600;
+
 function formatCountdown(seconds){
   const minutes=Math.floor(seconds/60);
   const secs=seconds%60;
+
   return String(minutes).padStart(2,"0")+":"+String(secs).padStart(2,"0");
 }
+
 function updateRefreshCountdown(){
   const el=document.getElementById("refreshCountdown");
+
   if(el){
     el.textContent=formatCountdown(refreshRemaining);
   }
+
   refreshRemaining--;
+
   if(refreshRemaining<0){
     window.location.reload();
   }
 }
 
-function refreshRadar(){document.getElementById("radar").src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif?t="+new Date().getTime()}
-function refreshActiveData(){loadWeatherJson();refreshRadar()}
-updateClock();refreshActiveData();
+function refreshRadar(){
+  document.getElementById("radar").src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif?t="+new Date().getTime();
+}
+
+function refreshActiveData(){
+  loadWeatherJson();
+  refreshRadar();
+}
+
+updateClock();
+refreshActiveData();
 updateRefreshCountdown();
+
 setInterval(updateRefreshCountdown,1000);
 setInterval(updateClock,1000);
 setInterval(loadWeatherJson,300000);
 setInterval(refreshRadar,300000);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden){refreshActiveData()}});
-window.addEventListener("focus",()=>{refreshActiveData()});
+
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden){
+    refreshActiveData();
+  }
+});
+
+window.addEventListener("focus",()=>{
+  refreshActiveData();
+});
 </script>
 </body>
 </html>
-
