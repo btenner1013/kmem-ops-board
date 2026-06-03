@@ -5,54 +5,263 @@
 <title>KMEM Ops Board</title>
 <style>
 *{box-sizing:border-box}
-:root{--ops-green:#00ff88;--vfr:#00ff88;--mvfr:#2d7dff;--ifr:#ff3333;--lifr:#ff33ff;--warning:#ffcc00;--closed:#ff4444}
-body{margin:0;background:#000;color:var(--ops-green);font-family:Arial,sans-serif;overflow:hidden}
-.board{height:100vh;width:100vw;display:grid;grid-template-rows:22vh 68vh 10vh;gap:8px;padding:10px}
-.top{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.middle{display:grid;grid-template-columns:44% 56%;gap:8px;min-height:0}
-.bottom{display:grid;grid-template-columns:1fr;gap:8px}
-.panel{background:#101010;border:2px solid var(--ops-green);padding:12px;overflow:hidden;min-height:0}
-.label,.title{color:white;font-weight:bold;letter-spacing:1px}
-.label{font-size:1.45vw}.title{font-size:1.25vw;margin-bottom:6px}
-.clock{font-size:5.8vw;font-weight:bold;line-height:1}
-.date{color:#ccc;font-size:1.25vw;margin-top:6px}
-.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-.flight-category{font-size:3.1vw;font-weight:bold;letter-spacing:2px}
-.atis-letter{font-size:2.2vw;font-weight:bold;text-align:right;color:white}
-.details-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
-.detail-box,.ops-box,.trend-box{border:1px solid #333;padding:6px;font-weight:bold}
-.detail-box{font-size:1.05vw}.ops-box{min-height:46px}.trend-box{margin-bottom:8px}
-.detail-label,.ops-label,.trend-label{color:#aaa;font-size:.75vw}
-.detail-value{color:var(--ops-green);font-size:1.15vw}
-.ops-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
-.ops-value{color:var(--ops-green);font-size:1.0vw;white-space:normal}
+
+:root{
+  --ops-green:#00ff88;
+  --vfr:#00ff88;
+  --mvfr:#2d7dff;
+  --ifr:#ff3333;
+  --lifr:#ff33ff;
+  --warning:#ffcc00;
+  --closed:#ff4444;
+  --blue-info:#35b7ff;
+  --panel:#101010;
+  --border:#00ff88;
+  --dim:#aaa;
+}
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  color:var(--ops-green);
+  font-family:Arial,sans-serif;
+  overflow:hidden;
+}
+
+.board{
+  height:100vh;
+  width:100vw;
+  display:grid;
+  grid-template-rows:minmax(110px,22vh) minmax(0,1fr) minmax(54px,8vh);
+  gap:6px;
+  padding:8px;
+}
+
+.top{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  min-height:0;
+}
+
+.middle{
+  display:grid;
+  grid-template-columns:44% 56%;
+  gap:6px;
+  min-height:0;
+}
+
+.bottom{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:6px;
+  min-height:0;
+}
+
+.panel{
+  background:var(--panel);
+  border:2px solid var(--border);
+  padding:10px;
+  overflow:hidden;
+  min-height:0;
+}
+
+.weather-panel{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+
+.label,.title{
+  color:white;
+  font-weight:bold;
+  letter-spacing:1px;
+}
+
+.label{
+  font-size:clamp(1rem,1.3vw,1.6rem);
+}
+
+.title{
+  font-size:clamp(.95rem,1.1vw,1.35rem);
+  margin-bottom:6px;
+}
+
+.clock{
+  font-size:clamp(3rem,6.2vw,7.5rem);
+  font-weight:bold;
+  line-height:.95;
+  white-space:nowrap;
+}
+
+.date{
+  color:#ccc;
+  font-size:clamp(.8rem,1.05vw,1.25rem);
+  margin-top:4px;
+  white-space:nowrap;
+}
+
+.summary-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  margin-bottom:6px;
+  align-items:center;
+}
+
+.flight-category{
+  font-size:clamp(2.2rem,3.6vw,4.2rem);
+  font-weight:bold;
+  letter-spacing:2px;
+  line-height:.95;
+}
+
+.atis-letter{
+  font-size:clamp(1.5rem,2.2vw,3rem);
+  font-weight:bold;
+  text-align:right;
+  color:white;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.details-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:5px;
+  margin-bottom:5px;
+}
+
+.ops-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:5px;
+  margin-bottom:5px;
+}
+
+.status-grid{
+  display:grid;
+  grid-template-columns:1fr 2fr;
+  gap:5px;
+  margin-bottom:6px;
+}
+
+.detail-box,.ops-box,.trend-box{
+  border:1px solid #333;
+  padding:5px;
+  font-weight:bold;
+  min-height:40px;
+  overflow:hidden;
+}
+
+.detail-label,.ops-label,.trend-label{
+  color:var(--dim);
+  font-size:clamp(.62rem,.72vw,.85rem);
+  line-height:1.05;
+}
+
+.detail-value{
+  color:var(--ops-green);
+  font-size:clamp(.85rem,1.05vw,1.25rem);
+  line-height:1.1;
+  white-space:nowrap;
+}
+
+.ops-value{
+  color:var(--ops-green);
+  font-size:clamp(.82rem,1.0vw,1.25rem);
+  line-height:1.12;
+  white-space:normal;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.trend-value{
+  font-size:clamp(.9rem,1.18vw,1.45rem);
+  letter-spacing:.5px;
+  line-height:1.12;
+  white-space:normal;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
 .closed-none{color:var(--ops-green)}
 .closed-active{color:var(--closed);animation:blink 1s step-start infinite}
+
 .bwc-none{color:var(--ops-green)}
 .bwc-pending{color:var(--warning)}
 .bwc-low{color:var(--vfr)}
 .bwc-moderate{color:var(--warning)}
 .bwc-severe{color:var(--closed);animation:blink 1s step-start infinite}
+
 .lightning-none{color:var(--vfr)}
 .lightning-watch{color:var(--warning)}
 .lightning-alert{color:var(--closed)}
 .lightning-close{color:var(--closed);animation:blink 1s step-start infinite}
-.trend-value{font-size:1.2vw;letter-spacing:1px}
+
+.rcr-good{color:var(--ops-green)}
+.rcr-caution{color:var(--warning)}
+.rcr-poor{color:var(--closed);animation:blink 1s step-start infinite}
+
+.alert-none{color:var(--ops-green)}
+.alert-blue{color:var(--blue-info)}
+.alert-yellow{color:var(--warning)}
+.alert-red{color:var(--closed)}
+.alert-flash{animation:blink 1s step-start infinite}
+.alert-pulse{animation:pulse 1.4s ease-in-out infinite}
+
 .cat-vfr{color:var(--vfr)}
 .cat-mvfr{color:var(--mvfr)}
 .cat-ifr{color:var(--ifr)}
 .cat-lifr{color:var(--lifr)}
+
 .age-good{color:var(--ops-green)}
 .age-warn{color:var(--warning)}
 .age-bad{color:var(--closed)}
-.raw{font-family:Consolas,monospace;font-size:.88vw;line-height:1.23;white-space:pre-wrap;overflow:auto;height:calc(100% - 340px)}
-.radar-panel{display:flex;flex-direction:column}
-.radarimg{width:100%;height:calc(100% - 32px);object-fit:contain;background:black;border:1px solid #333}
-.footer{display:grid;grid-template-columns:1fr 1fr;align-items:center;font-size:1.55vw;font-weight:bold}
+
+.raw{
+  font-family:Consolas,monospace;
+  font-size:clamp(.68rem,.75vw,.95rem);
+  line-height:1.25;
+  white-space:pre-wrap;
+  overflow:auto;
+  flex:1;
+  min-height:0;
+  padding-top:4px;
+}
+
+.radar-panel{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+
+.radarimg{
+  width:100%;
+  flex:1;
+  min-height:0;
+  object-fit:contain;
+  background:black;
+  border:1px solid #333;
+}
+
+.footer{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+  font-size:clamp(1rem,1.55vw,2rem);
+  font-weight:bold;
+  min-height:0;
+}
+
 .footer-right{text-align:right}
 .warn,.stale{color:var(--warning)}
 .stale{animation:blink 1s step-start infinite}
+
 @keyframes blink{50%{opacity:.25}}
+@keyframes pulse{50%{opacity:.55}}
 </style>
 </head>
 
@@ -73,7 +282,7 @@ body{margin:0;background:#000;color:var(--ops-green);font-family:Arial,sans-seri
   </div>
 
   <div class="middle">
-    <div class="panel">
+    <div class="panel weather-panel">
       <div class="title">WEATHER</div>
 
       <div class="summary-grid">
@@ -137,9 +346,16 @@ body{margin:0;background:#000;color:var(--ops-green);font-family:Arial,sans-seri
         </div>
       </div>
 
-      <div class="trend-box">
-        <div class="trend-label">TAF TREND</div>
-        <div id="tafTrend" class="trend-value">--</div>
+      <div class="status-grid">
+        <div class="ops-box">
+          <div class="ops-label">RCR/RCC</div>
+          <div id="rcr" class="ops-value rcr-good">--</div>
+        </div>
+
+        <div id="wxTrendBox" class="trend-box">
+          <div id="tafTrendLabel" class="trend-label">TAF TREND</div>
+          <div id="tafTrend" class="trend-value">--</div>
+        </div>
       </div>
 
       <div id="weather" class="raw">Loading KMEM weather...</div>
@@ -370,6 +586,25 @@ function setLightningDisplay(value){
   el.textContent=lightning;
 }
 
+function setRcrDisplay(data){
+  const el=document.getElementById("rcr");
+  const value=data.rcrText||"DRY / NONE RPTD";
+  const severity=(data.rcrSeverity||"good").toLowerCase();
+
+  el.className="ops-value";
+
+  if(severity==="poor")el.classList.add("rcr-poor");
+  else if(severity==="caution")el.classList.add("rcr-caution");
+  else el.classList.add("rcr-good");
+
+  el.textContent=value;
+
+  const source=data.rcrSource||"";
+  const raw=data.rcrRaw||"";
+  const code=data.rcrCode||"--";
+  el.title=`RCR/RCC: ${value} | Code: ${code} | Source: ${source} | Raw: ${raw}`;
+}
+
 function tafFlightCategory(taf){
   const text=(taf||"").toUpperCase();
   let worst="VFR";
@@ -394,19 +629,39 @@ function tafFlightCategory(taf){
 }
 
 function setTafTrend(data){
+  const box=document.getElementById("wxTrendBox");
+  const label=document.getElementById("tafTrendLabel");
   const trend=document.getElementById("tafTrend");
   const taf=data.taf||"";
   const cat=tafFlightCategory(taf);
-  const backendTrend=data.tafTrend||"";
-  const alertText=data.wxAlertText||"NONE";
 
+  box.className="trend-box";
   trend.className="trend-value";
 
-  if(data.wxAlertVisible===true&&alertText!=="NONE"){
-    trend.classList.add("warn");
-    trend.textContent=backendTrend||alertText;
+  if(data.wxAlertVisible===true && data.wxAlertText && data.wxAlertText!=="NONE"){
+    const tone=(data.wxAlertTone||"yellow").toLowerCase();
+
+    label.textContent="WX ALERT";
+
+    if(tone==="red"){
+      trend.classList.add("alert-red");
+    }else if(tone==="blue"){
+      trend.classList.add("alert-blue");
+    }else{
+      trend.classList.add("alert-yellow");
+    }
+
+    if(data.wxAlertFlash===true)trend.classList.add("alert-flash");
+    if(data.wxAlertPulse===true)trend.classList.add("alert-pulse");
+
+    trend.textContent=data.wxAlertText;
+    trend.title=data.wxAlertLogText||data.wxAlertText;
     return;
   }
+
+  label.textContent="TAF TREND";
+
+  const backendTrend=data.tafTrend||"";
 
   if(backendTrend&&backendTrend!=="NONE"){
     if(cat==="VFR")trend.classList.add("cat-vfr");
@@ -474,7 +729,7 @@ function updateDetails(data){
   setAtisDisplay(data);
 
   const altimeterDisplay=data.altimeter||parseAltimeter(metar);
-  const ceilingDisplay=data.ceilingDisplay||(fallbackCeiling===null?"NONE":fallbackCeiling+" FT");
+  const ceilingDisplay=data.ceilingDisplay||(fallbackCeiling===null?"UNL":fallbackCeiling+" FT");
   const visibilityDisplay=data.visibilityDisplay||(fallbackVis===null?"--":fallbackVis+" SM");
 
   document.getElementById("altimeter").textContent=valueWithTrend(altimeterDisplay,data.altimeterTrend);
@@ -492,6 +747,7 @@ function updateDetails(data){
 
   setLightningDisplay(data.lightning||"NONE");
   setBwcDisplay(data.bwc,data);
+  setRcrDisplay(data);
   setTafTrend(data);
 }
 
@@ -532,6 +788,7 @@ async function loadWeatherJson(){
 
     setLightningDisplay("NONE");
     setBwcDisplay("PENDING",{});
+    setRcrDisplay({rcrText:"--",rcrSeverity:"good"});
 
     document.getElementById("tafTrend").textContent="--";
     document.getElementById("dataUpdated").textContent="--:--Z";
