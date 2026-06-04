@@ -20,6 +20,7 @@ except Exception:
 
 
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+MANUAL_M_NOTAMS_PATH = os.path.join(REPO_DIR, "manual_m_notams.json")
 LOCAL_CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", REPO_DIR), "KMEMOpsBoard")
 LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
 TREND_HISTORY_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_trend_history.json")
@@ -1751,6 +1752,111 @@ def normalize_bwc_risk(raw_value, parsed_ok):
     return "PENDING"
 
 
+
+def normalize_m_notam_item(item):
+    if isinstance(item, str):
+        raw_text = re.sub(r"\s+", " ", item).strip()
+        id_match = re.search(r"\bM\d{4}/\d{2}\b", raw_text.upper())
+        notam_id = id_match.group(0) if id_match else "M-NOTAM"
+        text = raw_text
+    elif isinstance(item, dict):
+        raw_id = str(item.get("id") or item.get("notamId") or item.get("number") or "").upper().strip()
+        raw_text = str(item.get("text") or item.get("rawText") or item.get("message") or item.get("notamText") or "").strip()
+        id_match = re.search(r"\bM\d{4}/\d{2}\b", raw_id + " " + raw_text.upper())
+        notam_id = id_match.group(0) if id_match else raw_id or "M-NOTAM"
+        text = re.sub(r"\s+", " ", raw_text).strip()
+
+        valid = str(item.get("valid") or "").strip()
+        starts = str(item.get("starts") or item.get("start") or item.get("effective") or "").strip()
+        ends = str(item.get("ends") or item.get("end") or item.get("expires") or "").strip()
+
+        if valid:
+            text = f"{text} VALID {valid}".strip()
+        elif starts or ends:
+            text = f"{text} VALID {starts or '--'} - {ends or '--'}".strip()
+    else:
+        return None
+
+    if not notam_id.startswith("M"):
+        return None
+
+    if not text:
+        return None
+
+    if not text.upper().startswith(notam_id):
+        display_text = f"{notam_id} — {text}"
+    else:
+        display_text = text
+
+    return {
+        "id": notam_id,
+        "rawText": text,
+        "displayText": display_text,
+        "source": "MANUAL_FILE"
+    }
+
+
+def load_manual_m_notams():
+    if not os.path.exists(MANUAL_M_NOTAMS_PATH):
+        return []
+
+    try:
+        with open(MANUAL_M_NOTAMS_PATH, "r", encoding="utf-8") as file:
+            raw = json.load(file)
+    except Exception as error:
+        print("M NOTAM manual file load failed:", error)
+        return []
+
+    if isinstance(raw, dict):
+        items = raw.get("milNotams") or raw.get("mNotams") or raw.get("notams") or []
+    elif isinstance(raw, list):
+        items = raw
+    else:
+        items = []
+
+    normalized = []
+
+    for item in items:
+        active = True
+        if isinstance(item, dict):
+            active = bool(item.get("active", True))
+
+        if not active:
+            continue
+
+        normalized_item = normalize_m_notam_item(item)
+
+        if normalized_item:
+            normalized.append(normalized_item)
+
+    return normalized
+
+
+def build_mil_notam_data(now_z):
+    notams = load_manual_m_notams()
+    count = len(notams)
+
+    if count == 0:
+        return {
+            "milNotamCount": 0,
+            "milNotamStatus": "NONE ACTIVE",
+            "milNotamSource": "MANUAL_FILE_NONE",
+            "milNotamUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
+            "milNotamScrollText": "",
+            "milNotams": []
+        }
+
+    scroll_text = "\n\n".join(item["displayText"] for item in notams)
+
+    return {
+        "milNotamCount": count,
+        "milNotamStatus": f"{count} ACTIVE",
+        "milNotamSource": "MANUAL_FILE",
+        "milNotamUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
+        "milNotamScrollText": scroll_text,
+        "milNotams": notams
+    }
+
 def fetch_ahas_bwc(now_z):
     month = now_z.month
     day = now_z.day
@@ -2191,6 +2297,13 @@ def build_weather_json():
         "bwcRiskUrl": ahas_data["bwcRiskUrl"],
         "bwcFetchStatus": ahas_data["bwcFetchStatus"],
 
+        "milNotamCount": mil_notam_data["milNotamCount"],
+        "milNotamStatus": mil_notam_data["milNotamStatus"],
+        "milNotamSource": mil_notam_data["milNotamSource"],
+        "milNotamUpdatedZ": mil_notam_data["milNotamUpdatedZ"],
+        "milNotamScrollText": mil_notam_data["milNotamScrollText"],
+        "milNotams": mil_notam_data["milNotams"],
+
         "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
 
         "workflowMetadata": {
@@ -2242,6 +2355,7 @@ def build_weather_json():
         data["bwcFetchStatus"]
     )
     print("WX ALERTS:", data["wxAlertLogText"])
+    print("M NOTAMS:", data["milNotamStatus"], "SOURCE:", data["milNotamSource"])
     print("LIGHTNING:", data["lightning"], "SOURCE:", data["lightningSource"], "TONE:", data["lightningTone"])
     print("METAR:", data["metar"])
     print("FETCH STATUS:", "METAR", data["metarFetchStatus"], "TAF", data["tafFetchStatus"], "ATIS", data["atisFetchStatus"], "LKG", data["lastKnownGoodUsed"])
