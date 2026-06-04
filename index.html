@@ -257,6 +257,12 @@ html,body{
 .lightning-watch{color:var(--warning)}
 .lightning-alert{color:var(--closed)}
 .lightning-close{color:var(--closed);animation:blink 1s step-start infinite}
+.lightning-green{color:var(--vfr)}
+.lightning-yellow{color:var(--warning)}
+.lightning-red{color:var(--closed)}
+.lightning-blue{color:var(--blue-info)}
+.lightning-flash{animation:blink 1s step-start infinite}
+.lightning-pulse{animation:pulse 1.4s ease-in-out infinite}
 
 .rcr-good{color:var(--ops-green)}
 .rcr-caution{color:var(--warning)}
@@ -985,34 +991,26 @@ function setBwcDisplay(value,data){
   el.title=`BWC ${bwc} | AHAS as of: ${ahasDateTime || updated || "--"} | Source: ${source} | Based on: ${basedOn} | NEXRAD: ${nexrad} | AHAS: ${ahas}`;
 }
 
-function setLightningDisplay(value){
+function setLightningDisplay(value,data={}){
   const el=document.getElementById("lightning");
-  const lightning=(value||"NONE").toUpperCase();
+  const display=safeValue(value,"NONE");
+  const lightning=String(display).toUpperCase();
+  const tone=String(data.lightningTone||"").toLowerCase();
 
   el.className="ops-value";
 
-  if(lightning==="NONE"){
-    el.classList.add("lightning-none");
-    el.textContent="NONE";
-    return;
-  }
+  if(tone==="red")el.classList.add("lightning-red");
+  else if(tone==="yellow")el.classList.add("lightning-yellow");
+  else if(tone==="blue")el.classList.add("lightning-blue");
+  else if(tone==="green")el.classList.add("lightning-green");
+  else if(lightning==="NONE")el.classList.add("lightning-none");
+  else el.classList.add("lightning-watch");
 
-  const nmMatch=lightning.match(/(\d+)\s*NM/);
+  if(data.lightningFlash===true)el.classList.add("lightning-flash");
+  if(data.lightningPulse===true)el.classList.add("lightning-pulse");
 
-  if(nmMatch){
-    const nm=parseInt(nmMatch[1],10);
-
-    if(nm<5)el.classList.add("lightning-close");
-    else if(nm<=5)el.classList.add("lightning-alert");
-    else if(nm<=10)el.classList.add("lightning-watch");
-    else el.classList.add("lightning-watch");
-
-    el.textContent=lightning;
-    return;
-  }
-
-  el.classList.add("lightning-watch");
-  el.textContent=lightning;
+  el.textContent=display;
+  el.title=data.lightningLogText||`Lightning source: ${data.lightningSource||"--"}`;
 }
 
 function setRcrDisplay(data){
@@ -1355,7 +1353,7 @@ function updateDetails(data){
   setWindDisplay(data);
   setTempDpDisplay(data);
 
-  setLightningDisplay(data.lightning||"NONE");
+  setLightningDisplay(data.lightning||"NONE",data);
   setBwcDisplay(data.bwc,data);
   setRcrDisplay(data);
   setTafTrend(data);
@@ -1399,7 +1397,7 @@ async function loadWeatherJson(){
     if(document.getElementById("wind"))document.getElementById("wind").textContent="--";
     if(document.getElementById("tempDp"))document.getElementById("tempDp").textContent="--";
 
-    setLightningDisplay("NONE");
+    setLightningDisplay("NONE",{lightningTone:"green"});
     setBwcDisplay("PENDING",{});
     setRcrDisplay({rcrText:"--",rcrSeverity:"good"});
 
