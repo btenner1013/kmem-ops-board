@@ -1045,6 +1045,13 @@ html,body{
   }
 }
 
+
+/* Phase 12A — current vs forecast alert cleanup + IFR field coloring */
+.detail-value.cat-vfr{color:var(--vfr) !important}
+.detail-value.cat-mvfr{color:var(--mvfr) !important}
+.detail-value.cat-ifr{color:var(--ifr) !important}
+.detail-value.cat-lifr{color:var(--lifr) !important}
+
 </style>
 </head>
 
@@ -1595,9 +1602,24 @@ function setBwcDisplay(value,data){
 
 function setLightningDisplay(value,data={}){
   const el=document.getElementById("lightning");
-  const display=safeValue(value,"NONE");
-  const lightning=String(display).toUpperCase();
-  const tone=String(data.lightningTone||"").toLowerCase();
+  let display=safeValue(value,"NONE");
+  let lightning=String(display).toUpperCase();
+  let tone=String(data.lightningTone||"").toLowerCase();
+
+  /*
+    TAF future thunder belongs in WX ALERT / TAF TREND, not the current LIGHTNING box.
+    LIGHTNING should represent current or near-current METAR/ATIS lightning cues.
+  */
+  if(String(data.lightningSource||"").toUpperCase()==="TAF"){
+    display="NONE";
+    lightning="NONE";
+    tone="green";
+    data=Object.assign({},data,{
+      lightningFlash:false,
+      lightningPulse:false,
+      lightningLogText:(data.lightningLogText||"")+" | TAF future thunder displayed in WX ALERT/TAF TREND only."
+    });
+  }
 
   el.className="ops-value";
 
@@ -1959,6 +1981,55 @@ function setMilNotamsDisplay(data){
   crawl.title="MIL NOTAM automation paused. Waiting for approved FAA NMS API access.";
 }
 
+
+function setDetailValue(id,html,conditionClass){
+  const el=document.getElementById(id);
+
+  if(!el)return;
+
+  el.className="detail-value";
+
+  if(conditionClass){
+    el.classList.add(conditionClass);
+  }
+
+  el.innerHTML=html;
+}
+
+function ceilingConditionClass(data,fallbackCeiling){
+  let ceiling=null;
+
+  if(data.ceilingFt!==undefined&&data.ceilingFt!==null&&!isNaN(Number(data.ceilingFt))){
+    ceiling=Number(data.ceilingFt);
+  }else if(fallbackCeiling!==null&&fallbackCeiling!==undefined&&!isNaN(Number(fallbackCeiling))){
+    ceiling=Number(fallbackCeiling);
+  }
+
+  if(ceiling===null)return "cat-vfr";
+  if(ceiling<500)return "cat-lifr";
+  if(ceiling<1000)return "cat-ifr";
+  if(ceiling<=3000)return "cat-mvfr";
+
+  return "cat-vfr";
+}
+
+function visibilityConditionClass(data,fallbackVis){
+  let vis=null;
+
+  if(data.visibilitySm!==undefined&&data.visibilitySm!==null&&!isNaN(Number(data.visibilitySm))){
+    vis=Number(data.visibilitySm);
+  }else if(fallbackVis!==null&&fallbackVis!==undefined&&!isNaN(Number(fallbackVis))){
+    vis=Number(fallbackVis);
+  }
+
+  if(vis===null)return "cat-vfr";
+  if(vis<1)return "cat-lifr";
+  if(vis<3)return "cat-ifr";
+  if(vis<=5)return "cat-mvfr";
+
+  return "cat-vfr";
+}
+
 function updateDetails(data){
   const metar=data.metar||"";
   const fallbackCeiling=parseCeilingFeet(metar);
@@ -1970,9 +2041,9 @@ function updateDetails(data){
   const ceilingDisplay=data.ceilingDisplay||(fallbackCeiling===null?"UNL":fallbackCeiling+" FT");
   const visibilityDisplay=data.visibilityDisplay||(fallbackVis===null?"--":fallbackVis+" SM");
 
-  document.getElementById("altimeter").innerHTML=valueWithTrend(altimeterDisplay,data.altimeterTrend,data.altimeterTrendText);
-  document.getElementById("ceiling").innerHTML=valueWithTrend(ceilingDisplay,data.ceilingTrend,data.ceilingTrendText);
-  document.getElementById("visibility").innerHTML=valueWithTrend(visibilityDisplay,data.visibilityTrend,data.visibilityTrendText);
+  setDetailValue("altimeter",valueWithTrend(altimeterDisplay,data.altimeterTrend,data.altimeterTrendText),"cat-vfr");
+  setDetailValue("ceiling",valueWithTrend(ceilingDisplay,data.ceilingTrend,data.ceilingTrendText),ceilingConditionClass(data,fallbackCeiling));
+  setDetailValue("visibility",valueWithTrend(visibilityDisplay,data.visibilityTrend,data.visibilityTrendText),visibilityConditionClass(data,fallbackVis));
 
   setMetarAge(metar);
 
