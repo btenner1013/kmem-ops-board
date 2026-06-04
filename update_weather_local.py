@@ -2187,6 +2187,8 @@ def build_weather_json():
         else:
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
 
+    mil_notam_data = build_mil_notam_data(now_z)
+
     data = {
         "metar": metar or "METAR unavailable",
         "taf": taf or "TAF unavailable",
