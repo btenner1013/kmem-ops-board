@@ -705,13 +705,13 @@ html,body{
   </div>
 
 
-  <div id="milNotamPanel" class="panel mil-notam-panel mil-notam-none">
+  <div id="milNotamPanel" class="panel mil-notam-panel mil-notam-placeholder">
     <div class="mil-notam-header">
       <div class="mil-notam-title">KMEM MIL NOTAMS</div>
-      <div id="milNotamStatus" class="mil-notam-status">NONE ACTIVE</div>
+      <div id="milNotamStatus" class="mil-notam-status">PLACEHOLDER</div>
     </div>
     <div class="mil-notam-window">
-      <div id="milNotamCrawl" class="mil-notam-crawl">NONE ACTIVE</div>
+      <div id="milNotamCrawl" class="mil-notam-crawl">FAA NMS API PENDING</div>
     </div>
   </div>
 
@@ -1433,24 +1433,16 @@ function setMilNotamsDisplay(data){
   const status=document.getElementById("milNotamStatus");
   const crawl=document.getElementById("milNotamCrawl");
 
-  if(!panel||!status||!crawl)return;
-
-  const count=Number(data.milNotamCount||0);
-  const statusText=data.milNotamStatus || (count>0 ? `${count} ACTIVE` : "NONE ACTIVE");
-  const scrollText=(data.milNotamScrollText||"").trim();
+  if(!panel||!status||!crawl){
+    return;
+  }
 
   panel.classList.remove("mil-notam-active","mil-notam-none");
-  status.textContent=statusText;
+  panel.classList.add("mil-notam-placeholder");
 
-  if(count>0 && scrollText){
-    panel.classList.add("mil-notam-active");
-    crawl.textContent=scrollText;
-    crawl.title=data.milNotamSource ? `M NOTAM source: ${data.milNotamSource}` : "KMEM M NOTAMs";
-  }else{
-    panel.classList.add("mil-notam-none");
-    crawl.textContent="NONE ACTIVE";
-    crawl.title="No KMEM M-series NOTAM text loaded.";
-  }
+  status.textContent="PLACEHOLDER";
+  crawl.textContent="FAA NMS API PENDING";
+  crawl.title="MIL NOTAM automation paused. Waiting for approved FAA NMS API access.";
 }
 
 function updateDetails(data){
@@ -1527,7 +1519,7 @@ async function loadWeatherJson(){
     setLightningDisplay("NONE",{lightningTone:"green"});
     setBwcDisplay("PENDING",{});
     setRcrDisplay({rcrText:"--",rcrSeverity:"good"});
-    setMilNotamsDisplay({milNotamCount:0,milNotamStatus:"NONE ACTIVE"});
+    setMilNotamsDisplay({});
 
     document.getElementById("tafTrend").textContent="--";
     document.getElementById("dataUpdated").textContent="--:--Z";
