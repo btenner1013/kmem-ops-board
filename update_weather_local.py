@@ -20,6 +20,8 @@ except Exception:
 
 
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCAL_CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", REPO_DIR), "KMEMOpsBoard")
+LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
 
 MEM_RUNWAY_PAIRS = [
     "9/27",
@@ -141,14 +143,46 @@ def html_to_text(html):
     return text.strip()
 
 
-def load_previous_weather():
-    weather_path = os.path.join(REPO_DIR, "weather.json")
-
+def load_json_file(path):
     try:
-        with open(weather_path, "r", encoding="utf-8") as file:
+        with open(path, "r", encoding="utf-8") as file:
             return json.load(file)
     except Exception:
         return {}
+
+
+def load_previous_weather():
+    """
+    Prefer the local last-known-good cache over repo weather.json.
+
+    This prevents a weak GitHub/manual fallback weather.json from becoming the only
+    backup source after git reset --hard origin/main.
+    """
+    cached = load_json_file(LAST_GOOD_WEATHER_PATH)
+
+    if cached:
+        print(f"Loaded last-known-good cache: {LAST_GOOD_WEATHER_PATH}")
+        return cached
+
+    weather_path = os.path.join(REPO_DIR, "weather.json")
+    repo_weather = load_json_file(weather_path)
+
+    if repo_weather:
+        print("Loaded previous weather.json from repo.")
+
+    return repo_weather
+
+
+def save_last_good_weather(data):
+    try:
+        os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
+
+        with open(LAST_GOOD_WEATHER_PATH, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+
+        print(f"Last-known-good cache saved: {LAST_GOOD_WEATHER_PATH}")
+    except Exception as error:
+        print("Unable to save last-known-good cache:", error)
 
 
 def normalize_rwy_list(text):
@@ -1053,16 +1087,107 @@ def sync_repo_before_update():
     run_cmd(["git", "reset", "--hard", "origin/main"])
 
 
+
+def text_is_bad(value):
+    text = (value or "").upper().strip()
+
+    if not text:
+        return True
+
+    bad_markers = [
+        "UNAVAILABLE",
+        "ERROR",
+        "FAILED",
+        "PENDING",
+        "NO DATA"
+    ]
+
+    return any(marker in text for marker in bad_markers)
+
+
+def is_good_metar(metar):
+    text = (metar or "").upper().strip()
+
+    if text_is_bad(text):
+        return False
+
+    return "METAR" in text and "KMEM" in text and re.search(r"\b\d{6}Z\b", text) is not None
+
+
+def is_good_taf(taf):
+    text = (taf or "").upper().strip()
+
+    if text_is_bad(text):
+        return False
+
+    return "TAF" in text and "KMEM" in text and re.search(r"\b\d{4}/\d{4}\b", text) is not None
+
+
+def is_good_atis(atis_text):
+    text = (atis_text or "").upper().strip()
+
+    if text_is_bad(text):
+        return False
+
+    if len(text) < 40:
+        return False
+
+    if "KMEM" not in text and "MEM" not in text:
+        return False
+
+    return parse_atis_letter(text) != "--"
+
+
+def is_good_bwc(data):
+    bwc = (data or {}).get("bwc", "").upper()
+    updated = (data or {}).get("bwcUpdatedZ", "")
+
+    if bwc not in {"NONE", "LOW", "MODERATE", "SEVERE"}:
+        return False
+
+    if not updated or updated == "--":
+        return False
+
+    return True
+
+
+def use_previous_field(previous_data, key, default=""):
+    value = (previous_data or {}).get(key, default)
+
+    if value is None:
+        return default
+
+    return value
+
+
+def should_save_last_good(data):
+    return (
+        is_good_metar(data.get("metar", ""))
+        and is_good_taf(data.get("taf", ""))
+        and is_good_atis(data.get("atisText", ""))
+        and is_good_bwc(data)
+    )
+
 def build_weather_json():
     print("Fetching KMEM weather data...")
 
     previous_data = load_previous_weather()
+    last_known_good_used = {
+        "metar": False,
+        "taf": False,
+        "atis": False,
+        "ahas": False
+    }
 
-    metar = fetch_url(
+    metar_fetch_status = "OK"
+    taf_fetch_status = "OK"
+    atis_fetch_status = "OK"
+
+    metar_current = fetch_url(
         "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false"
     ).strip()
 
-    taf = fetch_url(
+    taf_current = fetch_url(
         "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw"
     ).strip()
 
@@ -1073,9 +1198,45 @@ def build_weather_json():
     atis_raw = html_to_text(atis_html)
 
     if len(atis_raw) < 40 or ("KMEM" not in atis_raw.upper() and "MEM" not in atis_raw.upper()):
-        atis_text = "D-ATIS unavailable"
+        atis_current = "D-ATIS unavailable"
     else:
-        atis_text = re.sub(r"\s+", " ", atis_raw).strip()[:1500]
+        atis_current = re.sub(r"\s+", " ", atis_raw).strip()[:1500]
+
+    if is_good_metar(metar_current):
+        metar = metar_current
+    elif is_good_metar(previous_data.get("metar", "")):
+        metar = previous_data.get("metar", "")
+        metar_fetch_status = "USED_LAST_GOOD"
+        last_known_good_used["metar"] = True
+        print("METAR fetch failed; using last-known-good METAR.")
+    else:
+        metar = "METAR unavailable"
+        metar_fetch_status = "FAILED_NO_LAST_GOOD"
+        print("METAR fetch failed; no valid last-known-good METAR available.")
+
+    if is_good_taf(taf_current):
+        taf = taf_current
+    elif is_good_taf(previous_data.get("taf", "")):
+        taf = previous_data.get("taf", "")
+        taf_fetch_status = "USED_LAST_GOOD"
+        last_known_good_used["taf"] = True
+        print("TAF fetch failed; using last-known-good TAF.")
+    else:
+        taf = "TAF unavailable"
+        taf_fetch_status = "FAILED_NO_LAST_GOOD"
+        print("TAF fetch failed; no valid last-known-good TAF available.")
+
+    if is_good_atis(atis_current):
+        atis_text = atis_current
+    elif is_good_atis(previous_data.get("atisText", "")):
+        atis_text = previous_data.get("atisText", "")
+        atis_fetch_status = "USED_LAST_GOOD"
+        last_known_good_used["atis"] = True
+        print("D-ATIS fetch failed; using last-known-good D-ATIS.")
+    else:
+        atis_text = "D-ATIS unavailable"
+        atis_fetch_status = "FAILED_NO_LAST_GOOD"
+        print("D-ATIS fetch failed; no valid last-known-good D-ATIS available.")
 
     atis_letter = parse_atis_letter(atis_text)
     atis_phonetic = phonetic_for_letter(atis_letter)
@@ -1123,6 +1284,27 @@ def build_weather_json():
     now_z = datetime.now(timezone.utc)
     ahas_data = fetch_ahas_bwc(now_z)
 
+    if not is_good_bwc(ahas_data):
+        if is_good_bwc(previous_data):
+            print("AHAS/BWC fetch failed; using last-known-good BWC.")
+            last_known_good_used["ahas"] = True
+            ahas_data = {
+                "bwc": use_previous_field(previous_data, "bwc", "PENDING"),
+                "bwcSource": use_previous_field(previous_data, "bwcSource", "AHAS"),
+                "bwcUpdatedZ": use_previous_field(previous_data, "bwcUpdatedZ", "--"),
+                "bwcNexrad": use_previous_field(previous_data, "bwcNexrad", "--"),
+                "bwcSoarRisk": use_previous_field(previous_data, "bwcSoarRisk", "--"),
+                "bwcBamRisk": use_previous_field(previous_data, "bwcBamRisk", "--"),
+                "bwcAhasRisk": use_previous_field(previous_data, "bwcAhasRisk", "--"),
+                "bwcBasedOn": use_previous_field(previous_data, "bwcBasedOn", "--"),
+                "bwcHeight100FtAgl": use_previous_field(previous_data, "bwcHeight100FtAgl", "--"),
+                "bwcUrl": use_previous_field(previous_data, "bwcUrl", "--"),
+                "bwcRiskUrl": use_previous_field(previous_data, "bwcRiskUrl", "--"),
+                "bwcFetchStatus": use_previous_field(previous_data, "bwcFetchStatus", "PARSED_DIRECT_XML")
+            }
+        else:
+            print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
+
     data = {
         "metar": metar or "METAR unavailable",
         "taf": taf or "TAF unavailable",
@@ -1131,6 +1313,12 @@ def build_weather_json():
         "atisLetter": atis_letter,
         "atisPhonetic": atis_phonetic,
         "atisDisplay": atis_display,
+
+        "metarFetchStatus": metar_fetch_status,
+        "tafFetchStatus": taf_fetch_status,
+        "atisFetchStatus": atis_fetch_status,
+        "lastKnownGoodUsed": last_known_good_used,
+        "lastKnownGoodCachePath": LAST_GOOD_WEATHER_PATH,
 
         "arrRunways": arr_runways,
         "depRunways": dep_runways,
@@ -1224,6 +1412,11 @@ def build_weather_json():
     with open(weather_path, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=2)
 
+    if should_save_last_good(data):
+        save_last_good_weather(data)
+    else:
+        print("Last-known-good cache not updated because one or more primary feeds are not valid.")
+
     print("weather.json updated.")
     print("DATA UPDATED:", data["allFeedsUpdatedZ"])
     print("ATIS:", data["atisLetter"], data["atisPhonetic"])
@@ -1248,6 +1441,7 @@ def build_weather_json():
     )
     print("WX ALERTS:", data["wxAlertLogText"])
     print("METAR:", data["metar"])
+    print("FETCH STATUS:", "METAR", data["metarFetchStatus"], "TAF", data["tafFetchStatus"], "ATIS", data["atisFetchStatus"], "LKG", data["lastKnownGoodUsed"])
     print("Trigger:", data["workflowMetadata"]["lastWorkflowEvent"])
 
 
