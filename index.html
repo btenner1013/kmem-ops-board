@@ -151,7 +151,7 @@ html,body{
 
 .status-grid{
   display:grid;
-  grid-template-columns:1fr 2fr;
+  grid-template-columns:1fr;
   gap:5px;
   margin-bottom:6px;
 }
@@ -188,6 +188,23 @@ html,body{
 .trend-up{color:var(--ops-green)}
 .trend-down{color:var(--closed)}
 .trend-steady{color:var(--warning)}
+
+.wind-arrow{
+  font-weight:900;
+  font-size:1.05em;
+  margin-left:5px;
+  display:inline-block;
+  vertical-align:baseline;
+}
+
+.wind-improving{color:var(--ops-green)}
+.wind-worsening{color:var(--closed)}
+.wind-steady{color:var(--warning)}
+.wind-info{color:var(--blue-info)}
+
+.tempdp-value{
+  white-space:nowrap;
+}
 
 .ops-value{
   color:var(--ops-green);
@@ -529,6 +546,18 @@ html,body{
         </div>
 
         <div class="ops-box">
+          <div class="ops-label">WIND</div>
+          <div id="wind" class="ops-value">--</div>
+        </div>
+
+        <div class="ops-box">
+          <div class="ops-label">TEMP/DP</div>
+          <div id="tempDp" class="ops-value tempdp-value">--</div>
+        </div>
+      </div>
+
+      <div class="ops-grid">
+        <div class="ops-box">
           <div class="ops-label">LIGHTNING</div>
           <div id="lightning" class="ops-value lightning-none">NONE</div>
         </div>
@@ -537,14 +566,14 @@ html,body{
           <div class="ops-label">BWC</div>
           <div id="bwc" class="ops-value bwc-pending">PENDING</div>
         </div>
-      </div>
 
-      <div class="status-grid">
         <div class="ops-box">
           <div class="ops-label">RCR/RCC</div>
           <div id="rcr" class="ops-value rcr-good">--</div>
         </div>
+      </div>
 
+      <div class="status-grid">
         <div id="wxTrendBox" class="trend-box">
           <div id="tafTrendLabel" class="trend-label">TAF TREND</div>
           <div id="tafTrend" class="trend-value">--</div>
@@ -747,6 +776,64 @@ function valueWithTrend(value,trend,trendText){
   if(arrow==="")return clean;
 
   return clean+" "+arrow;
+}
+
+function windTrendClass(data){
+  const cls=(data.windTrendClass||data.windTrendText||data.windTrend||"steady").toString().toLowerCase();
+
+  if(cls.includes("improv")||cls.includes("decreas")){
+    return "wind-improving";
+  }
+
+  if(cls.includes("wors")||cls.includes("increas")){
+    return "wind-worsening";
+  }
+
+  return "wind-steady";
+}
+
+function setWindDisplay(data){
+  const el=document.getElementById("wind");
+
+  if(!el)return;
+
+  const display=(data.windDisplay||"--").toString().toUpperCase();
+  const arrow=(data.windArrow||"").toString();
+
+  el.className="ops-value";
+  el.textContent="";
+
+  if(display==="--"||display===""){
+    el.textContent="--";
+    return;
+  }
+
+  el.appendChild(document.createTextNode(display));
+
+  if(arrow){
+    const span=document.createElement("span");
+    span.className="wind-arrow "+windTrendClass(data);
+    span.textContent=arrow;
+    el.appendChild(span);
+  }
+
+  const trend=data.windTrendText||"";
+  const meaning=data.windArrowMeaning||"Arrow shows where wind is blowing toward";
+  el.title=`Wind ${display} ${arrow} | ${meaning} | Trend: ${trend}`;
+}
+
+function setTempDpDisplay(data){
+  const el=document.getElementById("tempDp");
+
+  if(!el)return;
+
+  const display=data.tempDpDisplay||"--";
+  el.className="ops-value tempdp-value";
+  el.textContent=display;
+
+  const tempTrend=data.tempTrendText||"";
+  const dpTrend=data.dewpointTrendText||"";
+  el.title=`Temp/Dewpoint ${display} | Temp trend: ${tempTrend} | Dew point trend: ${dpTrend}`;
 }
 
 function setAtisDisplay(data){
@@ -1192,6 +1279,8 @@ function updateDetails(data){
   setClosedRunwayDisplay(data.closedRunways);
 
   document.getElementById("flow").textContent=data.flow||"--";
+  setWindDisplay(data);
+  setTempDpDisplay(data);
 
   setLightningDisplay(data.lightning||"NONE");
   setBwcDisplay(data.bwc,data);
@@ -1234,6 +1323,8 @@ async function loadWeatherJson(){
     document.getElementById("depRwy").textContent="--";
     document.getElementById("closedRwy").textContent="--";
     document.getElementById("flow").textContent="--";
+    if(document.getElementById("wind"))document.getElementById("wind").textContent="--";
+    if(document.getElementById("tempDp"))document.getElementById("tempDp").textContent="--";
 
     setLightningDisplay("NONE");
     setBwcDisplay("PENDING",{});
