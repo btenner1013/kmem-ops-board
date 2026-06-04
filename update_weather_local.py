@@ -1201,6 +1201,80 @@ def alert_text_for(label, sources):
     return label
 
 
+
+def taf_window_display_from_token(window_token):
+    token = (window_token or "").upper().strip()
+
+    if re.match(r"^\d{4}/\d{4}$", token):
+        return f"{token[2:4]}-{token[7:9]}Z"
+
+    if re.match(r"^FM\d{6}$", token):
+        return f"FM {token[4:6]}Z"
+
+    return ""
+
+
+def taf_window_sort_key(window_token, fallback_order=999):
+    token = (window_token or "").upper().strip()
+
+    if re.match(r"^\d{4}/\d{4}$", token):
+        return int(token[0:2]) * 24 + int(token[2:4])
+
+    if re.match(r"^FM\d{6}$", token):
+        return int(token[2:4]) * 24 + int(token[4:6])
+
+    return 100000 + fallback_order
+
+
+def split_taf_groups_for_windows(taf):
+    text = re.sub(r"\s+", " ", (taf or "").upper()).strip()
+
+    if not text or "UNAVAILABLE" in text or "ERROR" in text or "FAILED" in text:
+        return []
+
+    groups = []
+    main_valid_match = re.search(r"\b(\d{4}/\d{4})\b", text)
+    main_valid = main_valid_match.group(1) if main_valid_match else ""
+    markers = list(re.finditer(r"\b(FM\d{6}|TEMPO|BECMG|PROB30|PROB40)\b", text))
+
+    if main_valid_match:
+        base_start = main_valid_match.end()
+        base_end = markers[0].start() if markers else len(text)
+        base_text = text[base_start:base_end]
+        groups.append({
+            "tafGroupType": "PREVAILING",
+            "tafWindowToken": main_valid,
+            "tafWindow": taf_window_display_from_token(main_valid),
+            "tafStartKey": taf_window_sort_key(main_valid, 0),
+            "tafGroupText": base_text.strip()
+        })
+
+    for idx, marker in enumerate(markers):
+        marker_text = marker.group(1)
+        next_start = markers[idx + 1].start() if idx + 1 < len(markers) else len(text)
+        group_text = text[marker.start():next_start].strip()
+        window_token = ""
+
+        if marker_text.startswith("FM"):
+            window_token = marker_text
+        else:
+            window_match = re.search(r"\b(\d{4}/\d{4})\b", group_text)
+            if window_match:
+                window_token = window_match.group(1)
+            else:
+                window_token = main_valid
+
+        groups.append({
+            "tafGroupType": marker_text if not marker_text.startswith("FM") else "FM",
+            "tafWindowToken": window_token,
+            "tafWindow": taf_window_display_from_token(window_token),
+            "tafStartKey": taf_window_sort_key(window_token, idx + 1),
+            "tafGroupText": group_text
+        })
+
+    return groups
+
+
 def detect_weather_alerts(metar, taf):
     checks = [
         {"code": "+TSRA", "label": "HEAVY THUNDERSTORM RAIN", "emoji": "⛈️", "category": "thunder"},
@@ -1247,52 +1321,94 @@ def detect_weather_alerts(metar, taf):
         {"code": "LLWS", "label": "LOW LEVEL WIND SHEAR", "emoji": "💨", "category": "wind_shear"}
     ]
 
-    sources = [
-        ("METAR", metar or ""),
-        ("TAF", taf or "")
-    ]
-
     alerts = []
-    seen_codes = set()
+    metar_seen = set()
+    taf_seen_by_group = set()
 
     for check in checks:
         code = check["code"]
-        found_sources = []
-
-        for source_name, source_text in sources:
-            if weather_code_present(source_text, code):
-                found_sources.append(source_name)
-
-        if found_sources and code not in seen_codes:
-            seen_codes.add(code)
-
+        if weather_code_present(metar or "", code) and code not in metar_seen:
+            metar_seen.add(code)
             severity, display_tone, flash, pulse, priority = classify_alert(
                 code,
-                found_sources,
+                ["METAR"],
                 check["category"]
             )
-
-            text = alert_text_for(check["label"], found_sources)
-            display_text = f"{check['emoji']} {text}".strip()
-
+            text = f"{check['label']} IN METAR"
             alerts.append({
                 "code": code,
                 "label": check["label"],
                 "emoji": check["emoji"],
                 "category": check["category"],
-                "sources": found_sources,
+                "sources": ["METAR"],
                 "severity": severity,
                 "displayTone": display_tone,
                 "flash": flash,
                 "pulse": pulse,
                 "priority": priority,
                 "text": text,
-                "displayText": display_text
+                "displayText": f"{check['emoji']} {text}".strip(),
+                "tafWindow": "",
+                "tafStartKey": -1,
+                "tafGroupType": ""
             })
 
-    alerts.sort(key=lambda item: item.get("priority", 99))
+    taf_groups = split_taf_groups_for_windows(taf)
 
-    return alerts
+    for group_idx, group in enumerate(taf_groups):
+        group_text = group.get("tafGroupText", "")
+        if not group_text:
+            continue
+
+        for check in checks:
+            code = check["code"]
+            key = (group_idx, code)
+            if key in taf_seen_by_group:
+                continue
+
+            if not weather_code_present(group_text, code):
+                continue
+
+            taf_seen_by_group.add(key)
+            severity, display_tone, flash, pulse, priority = classify_alert(
+                code,
+                ["TAF"],
+                check["category"]
+            )
+            window = group.get("tafWindow", "")
+            text = f"{check['label']} POSSIBLE {window}".strip()
+            alerts.append({
+                "code": code,
+                "label": check["label"],
+                "emoji": check["emoji"],
+                "category": check["category"],
+                "sources": ["TAF"],
+                "severity": severity,
+                "displayTone": display_tone,
+                "flash": flash,
+                "pulse": pulse,
+                "priority": priority,
+                "text": text,
+                "displayText": f"{check['emoji']} {text}".strip(),
+                "tafWindow": window,
+                "tafStartKey": group.get("tafStartKey", 999999),
+                "tafGroupType": group.get("tafGroupType", "")
+            })
+
+    # Do not show several TAF hazards at once. METAR current hazards win.
+    metar_alerts = [alert for alert in alerts if "METAR" in alert.get("sources", [])]
+    taf_alerts = [alert for alert in alerts if "TAF" in alert.get("sources", [])]
+
+    metar_alerts.sort(key=lambda item: item.get("priority", 99))
+    taf_alerts.sort(key=lambda item: (item.get("tafStartKey", 999999), item.get("priority", 99)))
+
+    if metar_alerts:
+        return metar_alerts[:1]
+
+    if taf_alerts:
+        return taf_alerts[:1]
+
+    return []
 
 
 def summarize_weather_alerts(alerts):
@@ -1310,28 +1426,300 @@ def summarize_weather_alerts(alerts):
         }
 
     primary = alerts[0]
-    secondary = alerts[1] if len(alerts) > 1 else None
-
-    display_parts = [primary["displayText"]]
-
-    if secondary:
-        display_parts.append(f"NEXT: {secondary['displayText']}")
-
-    wx_alert_text = " | ".join(display_parts)
-    wx_alert_log_text = " | ".join(
-        alert["text"] for alert in alerts[:3]
-    )
+    wx_alert_text = primary["displayText"]
+    wx_alert_log_text = primary["text"]
 
     return {
         "wxAlertText": wx_alert_text,
         "wxAlertLogText": wx_alert_log_text,
         "wxAlertVisible": True,
         "wxPrimaryAlert": primary,
-        "wxSecondaryAlert": secondary,
+        "wxSecondaryAlert": None,
         "wxAlertTone": primary.get("displayTone", "yellow"),
         "wxAlertFlash": bool(primary.get("flash", False)),
         "wxAlertPulse": bool(primary.get("pulse", False)),
         "tafTrend": f"WX ALERT | {wx_alert_text}"
+    }
+
+
+LIGHTNING_DIRECTIONS = {
+    "N", "NE", "E", "SE", "S", "SW", "W", "NW",
+    "ALQDS", "ALL", "QUADS", "ALLQUADS"
+}
+
+
+def normalize_lightning_direction(direction):
+    text = (direction or "").upper().strip()
+    text = text.replace("ALL QUADRANTS", "ALQDS")
+    text = text.replace("ALL QUADS", "ALQDS")
+    text = text.replace("ALLQDS", "ALQDS")
+    text = text.replace("ALLQUADS", "ALQDS")
+    text = re.sub(r"\s+", " ", text)
+
+    if not text:
+        return ""
+
+    parts = []
+    for token in text.split():
+        token = token.strip(".,;:()[]{}")
+        if token in {"ALL", "QUADS", "QUADRANTS"}:
+            return "ALQDS"
+        if token in LIGHTNING_DIRECTIONS:
+            if token == "ALLQUADS":
+                return "ALQDS"
+            parts.append(token)
+
+    if not parts:
+        return ""
+
+    # Keep the first reported direction for compact board display.
+    return parts[0]
+
+
+def extract_metar_ltg_dsnt_direction(metar):
+    text = (metar or "").upper()
+    tokens = [token.strip(".,;:()[]{}=") for token in text.split()]
+
+    for idx, token in enumerate(tokens):
+        if token == "LTG" and idx + 1 < len(tokens) and tokens[idx + 1] == "DSNT":
+            collected = []
+
+            for follow in tokens[idx + 2:idx + 6]:
+                if follow in LIGHTNING_DIRECTIONS or follow in {"ALL", "QUADS", "QUADRANTS", "ALLQUADS"}:
+                    collected.append(follow)
+                else:
+                    break
+
+            direction = normalize_lightning_direction(" ".join(collected))
+            return direction or ""
+
+    return ""
+
+
+def has_metar_field_thunder(metar):
+    text = (metar or "").upper()
+
+    # Avoid scanning the entire remarks for random words. Look for aviation weather tokens.
+    thunder_codes = ["+TSRA", "TSRA", "-TSRA", "TS", "TSGR", "TSGS"]
+
+    for code in thunder_codes:
+        if weather_code_present(text, code):
+            return True
+
+    return False
+
+
+def has_metar_vcts(metar):
+    return weather_code_present(metar or "", "VCTS")
+
+
+def extract_atis_ltg_direction(atis_text):
+    text = (atis_text or "").upper()
+
+    # Common spoken/text variants.
+    patterns = [
+        r"\bLTG\s+DSNT\s+([A-Z ]{1,18})",
+        r"\bLIGHTNING\s+DISTANT\s+([A-Z ]{1,18})",
+        r"\bDISTANT\s+LIGHTNING\s+([A-Z ]{1,18})"
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            direction = normalize_lightning_direction(match.group(1))
+            if direction:
+                return direction
+
+    if "LIGHTNING DISTANT" in text or "DISTANT LIGHTNING" in text or "LTG DSNT" in text:
+        return ""
+
+    return ""
+
+
+def has_atis_vicinity_thunder(atis_text):
+    text = (atis_text or "").upper()
+    return (
+        "VCTS" in text
+        or "VICINITY THUNDER" in text
+        or "THUNDERSTORMS IN THE VICINITY" in text
+        or "THUNDERSTORM IN THE VICINITY" in text
+    )
+
+
+def has_atis_field_thunder(atis_text):
+    text = (atis_text or "").upper()
+
+    if has_atis_vicinity_thunder(text):
+        return False
+
+    return (
+        "TSRA" in text
+        or "THUNDERSTORM RAIN" in text
+        or "THUNDERSTORM OVER" in text
+        or "THUNDERSTORM AT" in text
+        or "THUNDERSTORM ON" in text
+    )
+
+
+def taf_group_has_thunder(group_text):
+    text = (group_text or "").upper()
+    return any(
+        weather_code_present(text, code)
+        for code in ["+TSRA", "TSRA", "-TSRA", "VCTS", "TS", "TSGR", "TSGS"]
+    )
+
+
+def format_taf_window(window_token, prefix=""):
+    if not window_token:
+        return ""
+
+    if re.match(r"^\d{4}/\d{4}$", window_token):
+        start_hh = window_token[2:4]
+        end_hh = window_token[7:9]
+        return f"{start_hh}-{end_hh}Z"
+
+    if re.match(r"^FM\d{6}$", window_token):
+        hh = window_token[4:6]
+        return f"FM {hh}Z"
+
+    return ""
+
+
+def find_taf_thunder_window(taf):
+    text = re.sub(r"\s+", " ", (taf or "").upper()).strip()
+
+    if not text or text_is_bad(text):
+        return ""
+
+    # Main prevailing TAF valid period before first change group.
+    main_valid_match = re.search(r"\b(\d{4}/\d{4})\b", text)
+    main_valid = main_valid_match.group(1) if main_valid_match else ""
+
+    markers = list(re.finditer(r"\b(FM\d{6}|TEMPO|BECMG|PROB30|PROB40)\b", text))
+
+    # Check base prevailing section first.
+    if main_valid_match:
+        base_start = main_valid_match.end()
+        base_end = markers[0].start() if markers else len(text)
+        base_group = text[base_start:base_end]
+
+        if taf_group_has_thunder(base_group):
+            return format_taf_window(main_valid)
+
+    for idx, marker in enumerate(markers):
+        marker_text = marker.group(1)
+        next_start = markers[idx + 1].start() if idx + 1 < len(markers) else len(text)
+        group_text = text[marker.start():next_start]
+
+        if not taf_group_has_thunder(group_text):
+            continue
+
+        if marker_text.startswith("FM"):
+            return format_taf_window(marker_text)
+
+        # TEMPO/BECMG/PROB groups should have DDHH/DDHH after the keyword.
+        window_match = re.search(r"\b(\d{4}/\d{4})\b", group_text)
+        if window_match:
+            return format_taf_window(window_match.group(1))
+
+        if main_valid:
+            return format_taf_window(main_valid)
+
+        return ""
+
+    return ""
+
+
+def build_lightning_summary(metar, taf, atis_text):
+    # Priority: METAR current > ATIS current text > TAF forecast.
+    if has_metar_field_thunder(metar):
+        return {
+            "lightning": "⛈️ TS OVER FIELD",
+            "lightningSeverity": "active_field",
+            "lightningTone": "red",
+            "lightningFlash": True,
+            "lightningPulse": False,
+            "lightningSource": "METAR",
+            "lightningLogText": "METAR thunderstorm over/near field."
+        }
+
+    if has_metar_vcts(metar):
+        return {
+            "lightning": "⚡ VCTS APPROX 5-10 NM",
+            "lightningSeverity": "vicinity",
+            "lightningTone": "yellow",
+            "lightningFlash": False,
+            "lightningPulse": True,
+            "lightningSource": "METAR",
+            "lightningLogText": "METAR VCTS. Approx 5-10 NM."
+        }
+
+    metar_dsnt_dir = extract_metar_ltg_dsnt_direction(metar)
+    if metar_dsnt_dir:
+        return {
+            "lightning": f"⚡ DSNT {metar_dsnt_dir} APPROX 10-30 NM",
+            "lightningSeverity": "distant",
+            "lightningTone": "yellow",
+            "lightningFlash": False,
+            "lightningPulse": False,
+            "lightningSource": "METAR",
+            "lightningLogText": f"METAR LTG DSNT {metar_dsnt_dir}. Approx 10-30 NM."
+        }
+
+    if has_atis_field_thunder(atis_text):
+        return {
+            "lightning": "⛈️ TS OVER FIELD",
+            "lightningSeverity": "active_field",
+            "lightningTone": "red",
+            "lightningFlash": True,
+            "lightningPulse": False,
+            "lightningSource": "ATIS",
+            "lightningLogText": "ATIS thunderstorm wording."
+        }
+
+    if has_atis_vicinity_thunder(atis_text):
+        return {
+            "lightning": "⚡ VCTS APPROX 5-10 NM",
+            "lightningSeverity": "vicinity",
+            "lightningTone": "yellow",
+            "lightningFlash": False,
+            "lightningPulse": True,
+            "lightningSource": "ATIS",
+            "lightningLogText": "ATIS vicinity thunderstorm wording."
+        }
+
+    atis_dsnt_dir = extract_atis_ltg_direction(atis_text)
+    if atis_dsnt_dir:
+        return {
+            "lightning": f"⚡ DSNT {atis_dsnt_dir} APPROX 10-30 NM",
+            "lightningSeverity": "distant",
+            "lightningTone": "yellow",
+            "lightningFlash": False,
+            "lightningPulse": False,
+            "lightningSource": "ATIS",
+            "lightningLogText": f"ATIS distant lightning {atis_dsnt_dir}. Approx 10-30 NM."
+        }
+
+    taf_window = find_taf_thunder_window(taf)
+    if taf_window:
+        return {
+            "lightning": f"⛈️ TS POSSIBLE {taf_window}",
+            "lightningSeverity": "forecast",
+            "lightningTone": "yellow",
+            "lightningFlash": False,
+            "lightningPulse": True,
+            "lightningSource": "TAF",
+            "lightningLogText": f"TAF thunder possible {taf_window}."
+        }
+
+    return {
+        "lightning": "NONE",
+        "lightningSeverity": "none",
+        "lightningTone": "green",
+        "lightningFlash": False,
+        "lightningPulse": False,
+        "lightningSource": "NONE",
+        "lightningLogText": "No METAR/ATIS/TAF lightning or thunder cues."
     }
 
 
@@ -1668,6 +2056,7 @@ def build_weather_json():
 
     wx_alerts = detect_weather_alerts(metar, taf)
     wx_summary = summarize_weather_alerts(wx_alerts)
+    lightning_summary = build_lightning_summary(metar, taf, atis_text)
 
     ahas_data = fetch_ahas_bwc(now_z)
 
@@ -1769,7 +2158,13 @@ def build_weather_json():
         "dewpointTrend": dewpoint_trend,
         "dewpointTrendText": dewpoint_trend_text,
 
-        "lightning": "NONE",
+        "lightning": lightning_summary["lightning"],
+        "lightningSeverity": lightning_summary["lightningSeverity"],
+        "lightningTone": lightning_summary["lightningTone"],
+        "lightningFlash": lightning_summary["lightningFlash"],
+        "lightningPulse": lightning_summary["lightningPulse"],
+        "lightningSource": lightning_summary["lightningSource"],
+        "lightningLogText": lightning_summary["lightningLogText"],
 
         "wxAlerts": wx_alerts,
         "wxAlertText": wx_summary["wxAlertText"],
@@ -1847,6 +2242,7 @@ def build_weather_json():
         data["bwcFetchStatus"]
     )
     print("WX ALERTS:", data["wxAlertLogText"])
+    print("LIGHTNING:", data["lightning"], "SOURCE:", data["lightningSource"], "TONE:", data["lightningTone"])
     print("METAR:", data["metar"])
     print("FETCH STATUS:", "METAR", data["metarFetchStatus"], "TAF", data["tafFetchStatus"], "ATIS", data["atisFetchStatus"], "LKG", data["lastKnownGoodUsed"])
     print("Trigger:", data["workflowMetadata"]["lastWorkflowEvent"])
