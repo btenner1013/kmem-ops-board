@@ -34,7 +34,7 @@ html,body{
   height:100vh;
   width:100vw;
   display:grid;
-  grid-template-rows:minmax(110px,22vh) minmax(0,1fr) minmax(54px,8vh);
+  grid-template-rows:minmax(110px,21vh) minmax(0,1fr) minmax(58px,7.5vh) minmax(54px,7.5vh);
   gap:6px;
   padding:8px;
 }
@@ -59,6 +59,82 @@ html,body{
   gap:6px;
   min-height:0;
 }
+
+.mil-notam-panel{
+  display:grid;
+  grid-template-columns:minmax(140px,16%) 1fr;
+  align-items:center;
+  column-gap:10px;
+  padding:8px 12px;
+  min-height:0;
+}
+
+.mil-notam-header{
+  border-right:2px solid rgba(230,230,230,.45);
+  padding-right:10px;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-width:0;
+}
+
+.mil-notam-title{
+  color:#e6e6e6;
+  font-size:clamp(.9rem,1.0vw,1.35rem);
+  font-weight:900;
+  letter-spacing:1px;
+  white-space:nowrap;
+}
+
+.mil-notam-status{
+  color:#b8c7d9;
+  font-size:clamp(.78rem,.9vw,1.1rem);
+  font-weight:900;
+  margin-top:2px;
+  white-space:nowrap;
+}
+
+.mil-notam-window{
+  height:100%;
+  overflow:hidden;
+  position:relative;
+  min-height:0;
+}
+
+.mil-notam-crawl{
+  color:#c7d0dc;
+  font-family:Consolas,monospace;
+  font-size:clamp(.72rem,.88vw,1.05rem);
+  line-height:1.25;
+  white-space:pre-wrap;
+  overflow-wrap:break-word;
+  padding:2px 4px;
+}
+
+.mil-notam-active .mil-notam-crawl{
+  position:absolute;
+  width:100%;
+  top:100%;
+  animation:notamScrollUp 80s linear infinite;
+}
+
+.mil-notam-none .mil-notam-crawl{
+  position:relative;
+  top:auto;
+  animation:none;
+  color:#9fb0c0;
+  display:flex;
+  align-items:center;
+  height:100%;
+  font-weight:900;
+}
+
+@keyframes notamScrollUp{
+  0%{transform:translateY(0)}
+  100%{transform:translateY(calc(-100% - 100%))}
+}
+
 
 .panel{
   background:var(--panel);
@@ -437,13 +513,26 @@ html,body{
     height:auto;
     min-height:100vh;
     width:100vw;
-    grid-template-rows:auto auto auto;
+    grid-template-rows:auto auto auto auto;
     overflow:visible;
   }
 
   .top,
   .middle{
     grid-template-columns:1fr;
+  }
+
+  .mil-notam-panel{
+    grid-template-columns:1fr;
+    row-gap:6px;
+    min-height:130px;
+  }
+
+  .mil-notam-header{
+    border-right:0;
+    border-bottom:1px solid rgba(230,230,230,.35);
+    padding-right:0;
+    padding-bottom:5px;
   }
 
   .panel{
@@ -612,6 +701,17 @@ html,body{
     <div class="panel radar-panel">
       <div class="title">RADAR</div>
       <img id="radar" class="radarimg" src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif">
+    </div>
+  </div>
+
+
+  <div id="milNotamPanel" class="panel mil-notam-panel mil-notam-none">
+    <div class="mil-notam-header">
+      <div class="mil-notam-title">KMEM MIL NOTAMS</div>
+      <div id="milNotamStatus" class="mil-notam-status">NONE ACTIVE</div>
+    </div>
+    <div class="mil-notam-window">
+      <div id="milNotamCrawl" class="mil-notam-crawl">NONE ACTIVE</div>
     </div>
   </div>
 
@@ -1327,6 +1427,32 @@ function updateSourceHealth(data,updatedZ){
   el.title=`Source health based on weather.json. Last board data update: ${updatedZ || "--"}`;
 }
 
+
+function setMilNotamsDisplay(data){
+  const panel=document.getElementById("milNotamPanel");
+  const status=document.getElementById("milNotamStatus");
+  const crawl=document.getElementById("milNotamCrawl");
+
+  if(!panel||!status||!crawl)return;
+
+  const count=Number(data.milNotamCount||0);
+  const statusText=data.milNotamStatus || (count>0 ? `${count} ACTIVE` : "NONE ACTIVE");
+  const scrollText=(data.milNotamScrollText||"").trim();
+
+  panel.classList.remove("mil-notam-active","mil-notam-none");
+  status.textContent=statusText;
+
+  if(count>0 && scrollText){
+    panel.classList.add("mil-notam-active");
+    crawl.textContent=scrollText;
+    crawl.title=data.milNotamSource ? `M NOTAM source: ${data.milNotamSource}` : "KMEM M NOTAMs";
+  }else{
+    panel.classList.add("mil-notam-none");
+    crawl.textContent="NONE ACTIVE";
+    crawl.title="No KMEM M-series NOTAM text loaded.";
+  }
+}
+
 function updateDetails(data){
   const metar=data.metar||"";
   const fallbackCeiling=parseCeilingFeet(metar);
@@ -1357,6 +1483,7 @@ function updateDetails(data){
   setBwcDisplay(data.bwc,data);
   setRcrDisplay(data);
   setTafTrend(data);
+  setMilNotamsDisplay(data);
 }
 
 async function loadWeatherJson(){
@@ -1400,6 +1527,7 @@ async function loadWeatherJson(){
     setLightningDisplay("NONE",{lightningTone:"green"});
     setBwcDisplay("PENDING",{});
     setRcrDisplay({rcrText:"--",rcrSeverity:"good"});
+    setMilNotamsDisplay({milNotamCount:0,milNotamStatus:"NONE ACTIVE"});
 
     document.getElementById("tafTrend").textContent="--";
     document.getElementById("dataUpdated").textContent="--:--Z";
