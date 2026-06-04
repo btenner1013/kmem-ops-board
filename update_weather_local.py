@@ -628,6 +628,195 @@ def numeric_trend_with_threshold(current, previous, threshold=1.0):
 
     return "▼", "FALLING"
 
+
+def parse_atis_altimeter(atis_text):
+    txt = (atis_text or "").upper()
+
+    match = re.search(r"\bALTIMETER\s+(\d{2}\.\d{2})\b", txt)
+    if match:
+        return float(match.group(1))
+
+    match = re.search(r"\bALTIMETER\s+(\d{4})\b", txt)
+    if match:
+        raw = match.group(1)
+        return int(raw) / 100.0
+
+    return None
+
+
+def parse_atis_visibility_sm(atis_text):
+    txt = (atis_text or "").upper()
+
+    patterns = [
+        r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(P?\d{1,2})(?:\s*SM)?\b",
+        r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(\d+)\s+(\d+)/(\d+)(?:\s*SM)?\b",
+        r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(\d+)/(\d+)(?:\s*SM)?\b"
+    ]
+
+    whole_frac = re.search(patterns[1], txt)
+    if whole_frac:
+        return float(whole_frac.group(1)) + float(whole_frac.group(2)) / float(whole_frac.group(3))
+
+    frac = re.search(patterns[2], txt)
+    if frac:
+        return float(frac.group(1)) / float(frac.group(2))
+
+    whole = re.search(patterns[0], txt)
+    if whole:
+        token = whole.group(1).replace("P", "")
+        try:
+            return float(token)
+        except Exception:
+            return None
+
+    return None
+
+
+def parse_atis_wind(atis_text):
+    txt = (atis_text or "").upper()
+
+    # D-ATIS text often says: WIND 130 AT 07, WIND 13007KT, WIND VRB AT 04, or WIND CALM.
+    if re.search(r"\bWIND\s+CALM\b", txt):
+        return {
+            "windRaw": "00000KT",
+            "windDisplay": "CALM",
+            "windDirDeg": None,
+            "windSpeedKt": 0,
+            "windGustKt": None,
+            "windArrow": "",
+            "windArrowMeaning": "CALM"
+        }
+
+    standard = re.search(r"\bWIND\s+((?:\d{3}|VRB)\d{2,3}(?:G\d{2,3})?KT)\b", txt)
+    if standard:
+        return parse_wind(standard.group(1))
+
+    spoken = re.search(
+        r"\bWIND\s+(?P<dir>\d{3}|VRB)\s+(?:AT\s+)?(?P<speed>\d{1,3})(?:\s*(?:G|GUST|GUSTS)\s*(?P<gust>\d{1,3}))?\b",
+        txt
+    )
+
+    if not spoken:
+        return None
+
+    direction = spoken.group("dir")
+    speed = int(spoken.group("speed"))
+    gust = int(spoken.group("gust")) if spoken.group("gust") else None
+
+    if direction == "VRB":
+        raw = f"VRB{speed:02d}" + (f"G{gust:02d}" if gust is not None else "") + "KT"
+        return {
+            "windRaw": raw,
+            "windDisplay": raw,
+            "windDirDeg": None,
+            "windSpeedKt": speed,
+            "windGustKt": gust,
+            "windArrow": "",
+            "windArrowMeaning": "VARIABLE"
+        }
+
+    direction_degrees = int(direction)
+    raw = f"{direction}{speed:02d}" + (f"G{gust:02d}" if gust is not None else "") + "KT"
+
+    return {
+        "windRaw": raw,
+        "windDisplay": raw,
+        "windDirDeg": direction_degrees,
+        "windSpeedKt": speed,
+        "windGustKt": gust,
+        "windArrow": wind_blowing_to_arrow(direction_degrees),
+        "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD"
+    }
+
+
+def parse_atis_temp_dewpoint(atis_text):
+    txt = (atis_text or "").upper()
+
+    patterns = [
+        r"\bTEMP(?:ERATURE)?\s+(M?\d{1,2})\s+(?:DEW(?:POINT|\s+POINT)?|DP)\s+(M?\d{1,2})\b",
+        r"\bTEMP(?:ERATURE)?\s+(M?\d{1,2})\s*/\s*(M?\d{1,2})\b",
+        r"\b(M?\d{1,2})\s*/\s*(M?\d{1,2})\b"
+    ]
+
+    # Preserve minus values written as M05.
+    for pattern in patterns:
+        match = re.search(pattern, txt)
+        if match:
+            def decode(token):
+                token = str(token).upper()
+                if token.startswith("M"):
+                    return -int(token[1:])
+                return int(token)
+
+            if "M?" in pattern:
+                return decode(match.group(1)), decode(match.group(2))
+
+            # First pattern did not capture the M prefix separately. Fall back to positive only.
+            return int(match.group(1)), int(match.group(2))
+
+    return None, None
+
+
+def parse_best_observation_values(metar, atis_text, atis_fetch_status):
+    metar_altimeter = parse_altimeter(metar)
+    metar_visibility_sm = parse_visibility_sm(metar)
+    metar_ceiling_ft = parse_ceiling_ft(metar)
+    metar_wind = parse_wind(metar)
+    metar_temp_c, metar_dewpoint_c = parse_temp_dewpoint(metar)
+
+    atis_available = is_good_atis(atis_text) and atis_fetch_status in {"OK", "USED_LAST_GOOD"}
+
+    atis_altimeter = parse_atis_altimeter(atis_text) if atis_available else None
+    atis_visibility_sm = parse_atis_visibility_sm(atis_text) if atis_available else None
+    atis_ceiling_ft = parse_ceiling_ft(atis_text) if atis_available else None
+    atis_wind = parse_atis_wind(atis_text) if atis_available else None
+    atis_temp_c, atis_dewpoint_c = parse_atis_temp_dewpoint(atis_text) if atis_available else (None, None)
+
+    field_sources = {}
+
+    def pick_value(name, atis_value, metar_value):
+        if atis_value is not None:
+            field_sources[name] = "ATIS"
+            return atis_value
+        field_sources[name] = "METAR" if metar_value is not None else "NONE"
+        return metar_value
+
+    wind_source = "ATIS" if atis_wind and atis_wind.get("windDisplay") not in {"--", ""} else "METAR"
+    wind_data = atis_wind if wind_source == "ATIS" else metar_wind
+    field_sources["wind"] = wind_source if wind_data and wind_data.get("windDisplay") != "--" else "NONE"
+
+    temp_source = "ATIS" if atis_temp_c is not None and atis_dewpoint_c is not None else "METAR"
+    temp_c = atis_temp_c if temp_source == "ATIS" else metar_temp_c
+    dewpoint_c = atis_dewpoint_c if temp_source == "ATIS" else metar_dewpoint_c
+    field_sources["tempDp"] = temp_source if temp_c is not None and dewpoint_c is not None else "NONE"
+
+    observation_source = "ATIS" if any(source == "ATIS" for source in field_sources.values()) else "METAR"
+    if "ATIS" in field_sources.values() and "METAR" in field_sources.values():
+        observation_source = "MIXED"
+
+    return {
+        "obsSource": observation_source,
+        "obsFieldSources": field_sources,
+        "altimeter": pick_value("altimeter", atis_altimeter, metar_altimeter),
+        "visibilitySm": pick_value("visibility", atis_visibility_sm, metar_visibility_sm),
+        "ceilingFt": pick_value("ceiling", atis_ceiling_ft, metar_ceiling_ft),
+        "windData": wind_data,
+        "tempC": temp_c,
+        "dewpointC": dewpoint_c,
+        "metarAltimeter": metar_altimeter,
+        "metarVisibilitySm": metar_visibility_sm,
+        "metarCeilingFt": metar_ceiling_ft,
+        "metarWindData": metar_wind,
+        "metarTempC": metar_temp_c,
+        "metarDewpointC": metar_dewpoint_c,
+        "atisAltimeter": atis_altimeter,
+        "atisVisibilitySm": atis_visibility_sm,
+        "atisCeilingFt": atis_ceiling_ft,
+        "atisWindData": atis_wind,
+        "atisTempC": atis_temp_c,
+        "atisDewpointC": atis_dewpoint_c
+    }
+
 def parse_ceiling_ft(metar):
     txt = metar or ""
     ceilings = []
@@ -1248,16 +1437,18 @@ def build_weather_json():
     flow = determine_flow(arr_runways, dep_runways)
     rcr_data = parse_rcr_rcc(atis_text)
 
-    altimeter = parse_altimeter(metar)
-    visibility_sm = parse_visibility_sm(metar)
-    ceiling_ft = parse_ceiling_ft(metar)
+    best_obs = parse_best_observation_values(metar, atis_text, atis_fetch_status)
+
+    altimeter = best_obs["altimeter"]
+    visibility_sm = best_obs["visibilitySm"]
+    ceiling_ft = best_obs["ceilingFt"]
+    wind_data = best_obs["windData"]
+    temp_c = best_obs["tempC"]
+    dewpoint_c = best_obs["dewpointC"]
 
     previous_altimeter = parse_previous_numeric(previous_data, "altimeterRaw", parse_altimeter)
     previous_visibility_sm = parse_previous_numeric(previous_data, "visibilitySm", parse_visibility_sm)
     previous_ceiling_ft = parse_previous_numeric(previous_data, "ceilingFt", parse_ceiling_ft)
-
-    wind_data = parse_wind(metar)
-    temp_c, dewpoint_c = parse_temp_dewpoint(metar)
 
     previous_wind_speed = parse_previous_numeric(previous_data, "windSpeedKt")
     previous_wind_gust = parse_previous_numeric(previous_data, "windGustKt")
@@ -1319,6 +1510,15 @@ def build_weather_json():
         "atisFetchStatus": atis_fetch_status,
         "lastKnownGoodUsed": last_known_good_used,
         "lastKnownGoodCachePath": LAST_GOOD_WEATHER_PATH,
+
+        "obsSource": best_obs["obsSource"],
+        "obsFieldSources": best_obs["obsFieldSources"],
+        "metarAltimeterRaw": best_obs["metarAltimeter"],
+        "metarVisibilitySm": best_obs["metarVisibilitySm"],
+        "metarCeilingFt": best_obs["metarCeilingFt"],
+        "atisAltimeterRaw": best_obs["atisAltimeter"],
+        "atisVisibilitySm": best_obs["atisVisibilitySm"],
+        "atisCeilingFt": best_obs["atisCeilingFt"],
 
         "arrRunways": arr_runways,
         "depRunways": dep_runways,
@@ -1420,6 +1620,7 @@ def build_weather_json():
     print("weather.json updated.")
     print("DATA UPDATED:", data["allFeedsUpdatedZ"])
     print("ATIS:", data["atisLetter"], data["atisPhonetic"])
+    print("OBS SOURCE:", data["obsSource"], data["obsFieldSources"])
     print("ARR RWY:", data["arrRunways"])
     print("DEP RWY:", data["depRunways"])
     print("RWY CLSD:", data["closedRunways"])
