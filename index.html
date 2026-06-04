@@ -191,10 +191,18 @@ html,body{
 
 .wind-arrow{
   font-weight:900;
-  font-size:1.05em;
-  margin-left:5px;
+  font-size:1.35em;
+  margin-left:12px;
   display:inline-block;
-  vertical-align:baseline;
+  vertical-align:-0.06em;
+}
+
+.flow-arrow{
+  font-weight:900;
+  font-size:1.28em;
+  margin-left:10px;
+  display:inline-block;
+  vertical-align:-0.05em;
 }
 
 .wind-improving{color:var(--ops-green)}
@@ -778,6 +786,54 @@ function valueWithTrend(value,trend,trendText){
   return clean+" "+arrow;
 }
 
+
+function formatWindDisplay(value){
+  const text=(value||"--").toString().trim().toUpperCase();
+
+  if(text==="--"||text==="")return "--";
+  if(text==="00000KT")return "CALM";
+
+  let match=text.match(/^VRB(\d{2})(G\d{2})?KT$/);
+  if(match){
+    const speed=parseInt(match[1],10);
+    const gust=match[2]?"G"+parseInt(match[2].substring(1),10):"";
+    return `VRB@${speed}${gust}KT`;
+  }
+
+  match=text.match(/^(\d{3})(\d{2})(G\d{2})?KT$/);
+  if(match){
+    const dir=match[1];
+    const speed=parseInt(match[2],10);
+    const gust=match[3]?"G"+parseInt(match[3].substring(1),10):"";
+    return `${dir}@${speed}${gust}KT`;
+  }
+
+  return text;
+}
+
+function formatTempDpDisplay(value){
+  const text=(value||"--").toString().trim();
+  const match=text.match(/^(-?\d+)\s*\/\s*(-?\d+)$/);
+
+  if(match){
+    return `${match[1]} / ${match[2]}`;
+  }
+
+  return text;
+}
+
+function formatFlowHtml(value){
+  const text=(value||"--").toString().trim();
+  const match=text.match(/^(.*?)([↑↓←→])$/);
+
+  if(!match)return safeValue(text);
+
+  const label=safeValue(match[1].trim());
+  const arrow=match[2];
+
+  return `${label}<span class="flow-arrow">${arrow}</span>`;
+}
+
 function windTrendClass(data){
   const cls=(data.windTrendClass||data.windTrendText||data.windTrend||"steady").toString().toLowerCase();
 
@@ -797,7 +853,8 @@ function setWindDisplay(data){
 
   if(!el)return;
 
-  const display=(data.windDisplay||"--").toString().toUpperCase();
+  const rawDisplay=(data.windDisplay||"--").toString().toUpperCase();
+  const display=formatWindDisplay(rawDisplay);
   const arrow=(data.windArrow||"").toString();
 
   el.className="ops-value";
@@ -827,7 +884,7 @@ function setTempDpDisplay(data){
 
   if(!el)return;
 
-  const display=data.tempDpDisplay||"--";
+  const display=formatTempDpDisplay(data.tempDpDisplay||"--");
   el.className="ops-value tempdp-value";
   el.textContent=display;
 
@@ -1278,7 +1335,7 @@ function updateDetails(data){
 
   setClosedRunwayDisplay(data.closedRunways);
 
-  document.getElementById("flow").textContent=data.flow||"--";
+  document.getElementById("flow").innerHTML=formatFlowHtml(data.flow||"--");
   setWindDisplay(data);
   setTempDpDisplay(data);
 
