@@ -1562,6 +1562,10 @@ def build_weather_json():
     taf_fetch_status = "OK"
     atis_fetch_status = "OK"
 
+    now_z = datetime.now(timezone.utc)
+    trend_history = load_trend_history()
+    trend_reference_sample = choose_trend_reference_sample(trend_history, now_z)
+
     metar_current = fetch_url(
         "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false"
     ).strip()
