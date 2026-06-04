@@ -280,7 +280,19 @@ html,body{
 
 .feed-ok{color:var(--ops-green)}
 .feed-warn{color:var(--warning)}
-.feed-bad{color:var(--closed);animation:blink 1s step-start infinite}
+.feed-bad{color:var(--closed)}
+.feed-stale{color:var(--closed)}
+
+.feed-token.feed-bad,
+.feed-token.feed-stale{
+  animation:blink 1s step-start infinite;
+}
+
+.feed-health.feed-bad,
+.feed-health.feed-warn,
+.feed-health.feed-ok{
+  animation:none;
+}
 
 .feed-token{
   display:inline-block;
@@ -1193,8 +1205,12 @@ function feedClassForStatus(status){
     return "feed-ok";
   }
 
-  if(status==="BAD"||status==="STALE"){
+  if(status==="BAD"){
     return "feed-bad";
+  }
+
+  if(status==="STALE"){
+    return "feed-stale";
   }
 
   return "feed-warn";
@@ -1305,7 +1321,7 @@ function updateSourceHealth(data,updatedZ){
 
   el.className="footer-center feed-health";
 
-  if(worst==="BAD")el.classList.add("feed-bad");
+  if(worst==="BAD")el.classList.add("feed-warn");
   else if(worst==="WARN")el.classList.add("feed-warn");
   else el.classList.add("feed-ok");
 
@@ -1393,8 +1409,8 @@ async function loadWeatherJson(){
     updateStaleWarning(null);
 
     const health=document.getElementById("feedHealth");
-    health.className="footer-center feed-health feed-bad";
-    health.textContent="FEEDS: weather.json BAD";
+    health.className="footer-center feed-health feed-warn";
+    health.innerHTML='FEEDS: <span class="feed-token feed-bad">weather.json BAD</span>';
   }
 }
 
