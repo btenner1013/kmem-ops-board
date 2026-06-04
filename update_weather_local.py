@@ -22,6 +22,8 @@ except Exception:
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 LOCAL_CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", REPO_DIR), "KMEMOpsBoard")
 LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
+TREND_HISTORY_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_trend_history.json")
+TREND_LOOKBACK_HOURS = 3
 
 MEM_RUNWAY_PAIRS = [
     "9/27",
@@ -183,6 +185,194 @@ def save_last_good_weather(data):
         print(f"Last-known-good cache saved: {LAST_GOOD_WEATHER_PATH}")
     except Exception as error:
         print("Unable to save last-known-good cache:", error)
+
+
+def parse_z_datetime(value):
+    if not value:
+        return None
+
+    text = str(value).strip()
+
+    for fmt in [
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%d %H:%M:%SZ",
+        "%Y-%m-%d %H:%MZ"
+    ]:
+        try:
+            return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
+        except Exception:
+            pass
+
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def load_trend_history():
+    history = load_json_file(TREND_HISTORY_PATH)
+
+    if not isinstance(history, list):
+        return []
+
+    return history
+
+
+def save_trend_history(history):
+    try:
+        os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
+
+        with open(TREND_HISTORY_PATH, "w", encoding="utf-8") as file:
+            json.dump(history, file, indent=2)
+
+        print(f"Trend history saved: {TREND_HISTORY_PATH}")
+    except Exception as error:
+        print("Unable to save trend history:", error)
+
+
+def as_number(value):
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    if isinstance(value, str):
+        try:
+            return float(value.replace("FT", "").replace("SM", "").strip())
+        except Exception:
+            return None
+
+    return None
+
+
+def build_trend_sample(timestamp_z, altimeter, visibility_sm, ceiling_ft, wind_data, temp_c, dewpoint_c):
+    return {
+        "timestampZ": timestamp_z.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "altimeterRaw": altimeter,
+        "visibilitySm": visibility_sm,
+        "ceilingFt": ceiling_ft,
+        "windSpeedKt": wind_data.get("windSpeedKt") if wind_data else None,
+        "windGustKt": wind_data.get("windGustKt") if wind_data else None,
+        "tempC": temp_c,
+        "dewpointC": dewpoint_c
+    }
+
+
+def prune_and_append_trend_sample(history, sample, now_z):
+    cutoff_seconds = (TREND_LOOKBACK_HOURS * 60 * 60) + (30 * 60)
+    cleaned = []
+
+    for item in history:
+        ts = parse_z_datetime(item.get("timestampZ"))
+        if not ts:
+            continue
+
+        if (now_z - ts).total_seconds() <= cutoff_seconds:
+            cleaned.append(item)
+
+    cleaned.append(sample)
+
+    # Keep the file small even if the updater runs more often later.
+    return cleaned[-80:]
+
+
+def choose_trend_reference_sample(history, now_z):
+    cutoff = now_z.timestamp() - (TREND_LOOKBACK_HOURS * 60 * 60)
+    candidates = []
+
+    for item in history:
+        ts = parse_z_datetime(item.get("timestampZ"))
+        if not ts:
+            continue
+
+        # Use the oldest available sample inside the last 3 hours.
+        if ts.timestamp() >= cutoff and ts < now_z:
+            candidates.append((ts, item))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda pair: pair[0])
+    return candidates[0][1]
+
+
+def reference_numeric(reference_sample, previous_data, key, fallback_parser=None):
+    if reference_sample and key in reference_sample:
+        value = as_number(reference_sample.get(key))
+        if value is not None:
+            return value
+
+    return parse_previous_numeric(previous_data, key, fallback_parser)
+
+
+def trend_symbol_threshold(current, previous, threshold):
+    if current is None or previous is None:
+        return "→"
+
+    delta = float(current) - float(previous)
+
+    if abs(delta) < threshold:
+        return "→"
+
+    if delta > 0:
+        return "↑"
+
+    return "↓"
+
+
+def visibility_category_value(value):
+    if value is None:
+        return None
+
+    if value < 1:
+        return 0
+    if value < 3:
+        return 1
+    if value <= 5:
+        return 2
+    return 3
+
+
+def ceiling_category_value(value):
+    # Treat unlimited/no ceiling as best category for trend purposes.
+    if value is None:
+        return 3
+
+    if value < 500:
+        return 0
+    if value < 1000:
+        return 1
+    if value <= 3000:
+        return 2
+    return 3
+
+
+def visibility_trend_meaningful(current, previous):
+    if current is None or previous is None:
+        return "→"
+
+    current_cat = visibility_category_value(current)
+    previous_cat = visibility_category_value(previous)
+
+    if current_cat != previous_cat:
+        return "↑" if current_cat > previous_cat else "↓"
+
+    return trend_symbol_threshold(current, previous, 1.0)
+
+
+def ceiling_trend_meaningful(current, previous):
+    if current is None and previous is None:
+        return "→"
+
+    current_cat = ceiling_category_value(current)
+    previous_cat = ceiling_category_value(previous)
+
+    if current_cat != previous_cat:
+        return "↑" if current_cat > previous_cat else "↓"
+
+    # Unlimited vs high VFR ceiling should not bounce the display.
+    if current is None or previous is None:
+        return "→"
+
+    return trend_symbol_threshold(current, previous, 500.0)
 
 
 def normalize_rwy_list(text):
@@ -1446,14 +1636,14 @@ def build_weather_json():
     temp_c = best_obs["tempC"]
     dewpoint_c = best_obs["dewpointC"]
 
-    previous_altimeter = parse_previous_numeric(previous_data, "altimeterRaw", parse_altimeter)
-    previous_visibility_sm = parse_previous_numeric(previous_data, "visibilitySm", parse_visibility_sm)
-    previous_ceiling_ft = parse_previous_numeric(previous_data, "ceilingFt", parse_ceiling_ft)
+    previous_altimeter = reference_numeric(trend_reference_sample, previous_data, "altimeterRaw", parse_altimeter)
+    previous_visibility_sm = reference_numeric(trend_reference_sample, previous_data, "visibilitySm", parse_visibility_sm)
+    previous_ceiling_ft = reference_numeric(trend_reference_sample, previous_data, "ceilingFt", parse_ceiling_ft)
 
-    previous_wind_speed = parse_previous_numeric(previous_data, "windSpeedKt")
-    previous_wind_gust = parse_previous_numeric(previous_data, "windGustKt")
-    previous_temp_c = parse_previous_numeric(previous_data, "tempC")
-    previous_dewpoint_c = parse_previous_numeric(previous_data, "dewpointC")
+    previous_wind_speed = reference_numeric(trend_reference_sample, previous_data, "windSpeedKt")
+    previous_wind_gust = reference_numeric(trend_reference_sample, previous_data, "windGustKt")
+    previous_temp_c = reference_numeric(trend_reference_sample, previous_data, "tempC")
+    previous_dewpoint_c = reference_numeric(trend_reference_sample, previous_data, "dewpointC")
 
     wind_trend_arrow, wind_trend_text, wind_trend_class = wind_trend(
         wind_data["windSpeedKt"],
@@ -1465,14 +1655,16 @@ def build_weather_json():
     temp_trend, temp_trend_text = numeric_trend_with_threshold(temp_c, previous_temp_c, 1.0)
     dewpoint_trend, dewpoint_trend_text = numeric_trend_with_threshold(dewpoint_c, previous_dewpoint_c, 1.0)
 
-    altimeter_trend = trend_symbol(altimeter, previous_altimeter)
-    visibility_trend = trend_symbol(visibility_sm, previous_visibility_sm)
-    ceiling_trend = trend_symbol(ceiling_ft, previous_ceiling_ft)
+    altimeter_trend = trend_symbol_threshold(altimeter, previous_altimeter, 0.02)
+    visibility_trend = visibility_trend_meaningful(visibility_sm, previous_visibility_sm)
+    ceiling_trend = ceiling_trend_meaningful(ceiling_ft, previous_ceiling_ft)
+
+    trend_reference_timestamp = trend_reference_sample.get("timestampZ") if trend_reference_sample else "LAST_GOOD_FALLBACK"
+    trend_reference_source = "3HR_HISTORY" if trend_reference_sample else "LAST_GOOD_FALLBACK"
 
     wx_alerts = detect_weather_alerts(metar, taf)
     wx_summary = summarize_weather_alerts(wx_alerts)
 
-    now_z = datetime.now(timezone.utc)
     ahas_data = fetch_ahas_bwc(now_z)
 
     if not is_good_bwc(ahas_data):
@@ -1510,6 +1702,11 @@ def build_weather_json():
         "atisFetchStatus": atis_fetch_status,
         "lastKnownGoodUsed": last_known_good_used,
         "lastKnownGoodCachePath": LAST_GOOD_WEATHER_PATH,
+        "trendLookbackHours": TREND_LOOKBACK_HOURS,
+        "trendReferenceSource": trend_reference_source,
+        "trendReferenceTimestampZ": trend_reference_timestamp,
+        "trendSampleCount": len(trend_history),
+        "trendHistoryPath": TREND_HISTORY_PATH,
 
         "obsSource": best_obs["obsSource"],
         "obsFieldSources": best_obs["obsFieldSources"],
@@ -1617,10 +1814,15 @@ def build_weather_json():
     else:
         print("Last-known-good cache not updated because one or more primary feeds are not valid.")
 
+    trend_sample = build_trend_sample(now_z, altimeter, visibility_sm, ceiling_ft, wind_data, temp_c, dewpoint_c)
+    updated_trend_history = prune_and_append_trend_sample(trend_history, trend_sample, now_z)
+    save_trend_history(updated_trend_history)
+
     print("weather.json updated.")
     print("DATA UPDATED:", data["allFeedsUpdatedZ"])
     print("ATIS:", data["atisLetter"], data["atisPhonetic"])
     print("OBS SOURCE:", data["obsSource"], data["obsFieldSources"])
+    print("TREND REF:", data["trendReferenceSource"], data["trendReferenceTimestampZ"], "SAMPLES:", data["trendSampleCount"])
     print("ARR RWY:", data["arrRunways"])
     print("DEP RWY:", data["depRunways"])
     print("RWY CLSD:", data["closedRunways"])
