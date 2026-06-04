@@ -937,6 +937,114 @@ html,body{
   }
 }
 
+
+/* Phase 11C — wall-display font readability + spaced wind format */
+@media (min-width:901px){
+  .date{
+    font-size:clamp(1.02rem,1.08vw,1.35rem) !important;
+    font-weight:800 !important;
+  }
+
+  .title{
+    font-size:clamp(1.12rem,1.22vw,1.55rem) !important;
+    font-weight:900 !important;
+  }
+
+  .mil-notam-title{
+    font-size:clamp(1.05rem,1.15vw,1.55rem) !important;
+  }
+
+  .mil-notam-status{
+    font-size:clamp(.92rem,1.0vw,1.3rem) !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.88rem,1.0vw,1.25rem) !important;
+    line-height:1.35 !important;
+  }
+
+  .detail-label,
+  .ops-label,
+  .trend-label{
+    font-size:clamp(.80rem,.88vw,1.08rem) !important;
+    font-weight:800 !important;
+  }
+
+  .detail-value{
+    font-size:clamp(1.08rem,1.18vw,1.50rem) !important;
+    font-weight:900 !important;
+  }
+
+  .ops-value{
+    font-size:clamp(1.02rem,1.10vw,1.42rem) !important;
+    font-weight:900 !important;
+    line-height:1.16 !important;
+  }
+
+  .trend-value{
+    font-size:clamp(1.12rem,1.28vw,1.70rem) !important;
+    font-weight:900 !important;
+  }
+
+  .raw{
+    font-size:clamp(1.02rem,1.08vw,1.34rem) !important;
+    line-height:1.48 !important;
+    padding-top:8px !important;
+  }
+
+  .footer{
+    font-size:clamp(.98rem,1.05vw,1.35rem) !important;
+    font-weight:900 !important;
+  }
+
+  .feed-health{
+    font-size:clamp(.82rem,.90vw,1.12rem) !important;
+    font-weight:900 !important;
+  }
+
+  .bwc-stamp{
+    font-size:.80em !important;
+  }
+
+  .wind-arrow{
+    font-size:1.45em !important;
+    margin-left:14px !important;
+  }
+
+  .flow-arrow{
+    font-size:1.38em !important;
+    margin-left:12px !important;
+  }
+
+  .trend-arrow{
+    font-size:1.25em !important;
+    margin-left:9px !important;
+  }
+}
+
+/* Keep split-screen readable without letting bigger fonts crush the layout */
+@media (min-width:901px) and (max-width:1400px){
+  .raw{
+    font-size:clamp(.95rem,1.0vw,1.18rem) !important;
+    line-height:1.38 !important;
+  }
+
+  .detail-value,
+  .ops-value{
+    font-size:clamp(.96rem,1.06vw,1.22rem) !important;
+  }
+
+  .detail-label,
+  .ops-label,
+  .trend-label{
+    font-size:clamp(.72rem,.82vw,.95rem) !important;
+  }
+
+  .feed-health{
+    font-size:clamp(.70rem,.82vw,.95rem) !important;
+  }
+}
+
 </style>
 </head>
 
@@ -1115,7 +1223,7 @@ function clockHealthToken(){
   if(absOffset<=5)return "";
 
   const sign=clockOffsetSec>0?"+":"";
-  const detail=`${sign}${clockOffsetSec}S`;
+  const detail=`${sign}${clockOffsetSec} SEC`;
   const status=absOffset>60?"BAD":"WARN";
 
   return healthPart("CLOCK",status,detail);
@@ -1309,7 +1417,7 @@ function formatWindDisplay(value){
   if(match){
     const speed=parseInt(match[1],10);
     const gust=match[2]?"G"+parseInt(match[2].substring(1),10):"";
-    return `VRB@${speed}${gust}KT`;
+    return `VRB @ ${speed}${gust}KT`;
   }
 
   match=text.match(/^(\d{3})(\d{2})(G\d{2})?KT$/);
@@ -1317,7 +1425,7 @@ function formatWindDisplay(value){
     const dir=match[1];
     const speed=parseInt(match[2],10);
     const gust=match[3]?"G"+parseInt(match[3].substring(1),10):"";
-    return `${dir}@${speed}${gust}KT`;
+    return `${dir} @ ${speed}${gust}KT`;
   }
 
   return text;
