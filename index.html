@@ -727,12 +727,56 @@ html,body{
 <script>
 let lastClockTick=Date.now();
 
+let clockOffsetMs=0;
+let clockOffsetKnown=false;
+let clockOffsetSec=0;
+
+function getBoardNow(){
+  return new Date(Date.now()+clockOffsetMs);
+}
+
+function getBoardNowMs(){
+  return Date.now()+clockOffsetMs;
+}
+
+function updateClockOffsetFromResponse(response){
+  try{
+    const dateHeader=response.headers.get("Date");
+
+    if(!dateHeader)return;
+
+    const serverMs=Date.parse(dateHeader);
+
+    if(isNaN(serverMs))return;
+
+    clockOffsetMs=serverMs-Date.now();
+    clockOffsetSec=Math.round(clockOffsetMs/1000);
+    clockOffsetKnown=true;
+  }catch(e){
+    console.warn("Clock sync check failed",e);
+  }
+}
+
+function clockHealthToken(){
+  if(!clockOffsetKnown)return "";
+
+  const absOffset=Math.abs(clockOffsetSec);
+
+  if(absOffset<=5)return "";
+
+  const sign=clockOffsetSec>0?"+":"";
+  const detail=`${sign}${clockOffsetSec}S`;
+  const status=absOffset>60?"BAD":"WARN";
+
+  return healthPart("CLOCK",status,detail);
+}
+
 function updateClock(){
-  const now=new Date();
+  const now=getBoardNow();
   lastClockTick=Date.now();
 
-  document.getElementById("local").textContent=now.toLocaleTimeString("en-US",{hour12:false});
-  document.getElementById("localDate").textContent=now.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  document.getElementById("local").textContent=now.toLocaleTimeString("en-US",{hour12:false,timeZone:"America/Chicago"});
+  document.getElementById("localDate").textContent=now.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric",timeZone:"America/Chicago"});
 
   document.getElementById("zulu").textContent=now.toISOString().substring(11,19)+"z";
   document.getElementById("zuluDate").textContent="UTC Date: "+now.toISOString().substring(0,10);
@@ -842,7 +886,7 @@ function parseMetarTime(metar){
 function minutesSince(dateObj){
   if(!dateObj)return null;
 
-  const age=Math.round((new Date()-dateObj)/60000);
+  const age=Math.round((getBoardNowMs()-dateObj.getTime())/60000);
 
   if(age<0)return null;
 
@@ -1240,7 +1284,7 @@ function isWeatherStale(updatedZ){
 
   if(!updated)return true;
 
-  return((new Date()-updated)/60000)>30;
+  return((getBoardNowMs()-updated.getTime())/60000)>30;
 }
 
 function formatZuluTime(updatedZ){
@@ -1284,7 +1328,7 @@ function parseAtisTime(atisText){
 
   if(!m)return null;
 
-  const now=new Date();
+  const now=getBoardNow();
 
   return new Date(
     Date.UTC(
@@ -1396,7 +1440,7 @@ function updateSourceHealth(data,updatedZ){
   }
 
   const ahasUpdated=parseUpdatedZ(data.bwcUpdatedZ||"");
-  const ahasAge=ahasUpdated?Math.round((new Date()-ahasUpdated)/60000):null;
+  const ahasAge=ahasUpdated?Math.round((getBoardNowMs()-ahasUpdated.getTime())/60000):null;
 
   if(bwc==="PENDING"||bwcStatus.includes("FAILED")||bwcStatus.includes("ERROR")){
     addPart("AHAS","PENDING","");
@@ -1411,10 +1455,22 @@ function updateSourceHealth(data,updatedZ){
   }
 
   const updated=parseUpdatedZ(updatedZ);
-  const updatedAge=updated?Math.round((new Date()-updated)/60000):null;
+  const updatedAge=updated?Math.round((getBoardNowMs()-updated.getTime())/60000):null;
 
   if(updatedAge===null||updatedAge>30){
     if(worst!=="BAD")worst="WARN";
+  }
+
+  const clockToken=clockHealthToken();
+
+  if(clockToken){
+    parts.push(clockToken);
+
+    if(Math.abs(clockOffsetSec)>60){
+      worst="BAD";
+    }else if(worst!=="BAD"){
+      worst="WARN";
+    }
   }
 
   el.className="footer-center feed-health";
@@ -1483,6 +1539,9 @@ async function loadWeatherJson(){
     const response=await fetch("weather.json?t="+new Date().getTime(),{cache:"no-store"});
 
     if(!response.ok)throw new Error("Unable to load weather.json");
+
+    updateClockOffsetFromResponse(response);
+    updateClock();
 
     const data=await response.json();
 
