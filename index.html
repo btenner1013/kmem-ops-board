@@ -160,7 +160,7 @@ html,body{
   border:1px solid #333;
   padding:5px;
   font-weight:bold;
-  min-height:40px;
+  min-height:42px;
   overflow:hidden;
 }
 
@@ -196,6 +196,7 @@ html,body{
   white-space:normal;
   overflow:hidden;
   text-overflow:ellipsis;
+  overflow-wrap:anywhere;
 }
 
 .trend-value{
@@ -217,10 +218,14 @@ html,body{
 .bwc-severe{color:var(--closed);animation:blink 1s step-start infinite}
 
 .bwc-stamp{
-  font-size:0.78em;
+  display:block;
+  font-size:0.72em;
   font-weight:700;
-  opacity:0.9;
-  white-space:nowrap;
+  opacity:0.92;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.05;
+  margin-top:2px;
 }
 
 .lightning-none{color:var(--vfr)}
@@ -291,7 +296,7 @@ html,body{
 
 .footer{
   display:grid;
-  grid-template-columns:1fr 1.5fr 1fr;
+  grid-template-columns:.95fr 1.9fr .95fr;
   align-items:center;
   column-gap:10px;
   font-size:clamp(.78rem,1.05vw,1.45rem);
@@ -321,8 +326,8 @@ html,body{
 }
 
 .feed-health{
-  font-size:clamp(.68rem,.82vw,1.05rem);
-  letter-spacing:.4px;
+  font-size:clamp(.64rem,.78vw,1rem);
+  letter-spacing:.25px;
 }
 
 .warn,.stale{color:var(--warning)}
@@ -375,6 +380,76 @@ html,body{
 
   .bwc-stamp{
     font-size:.72em;
+  }
+}
+
+
+@media (max-width:700px){
+  html,body{
+    height:auto;
+    overflow:auto;
+  }
+
+  .board{
+    height:auto;
+    min-height:100vh;
+    width:100vw;
+    grid-template-rows:auto auto auto;
+    overflow:visible;
+  }
+
+  .top,
+  .middle{
+    grid-template-columns:1fr;
+  }
+
+  .panel{
+    min-height:auto;
+  }
+
+  .clock{
+    font-size:clamp(3.1rem,15vw,5.6rem);
+  }
+
+  .middle{
+    min-height:auto;
+  }
+
+  .weather-panel{
+    min-height:70vh;
+  }
+
+  .radar-panel{
+    min-height:55vh;
+  }
+
+  .details-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .ops-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .status-grid{
+    grid-template-columns:1fr;
+  }
+
+  .footer{
+    grid-template-columns:1fr;
+    row-gap:4px;
+    text-align:center;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-right{
+    text-align:center;
+    white-space:normal;
+  }
+
+  .feed-health{
+    font-size:clamp(.75rem,2.7vw,1rem);
   }
 }
 
@@ -741,7 +816,7 @@ function setBwcDisplay(value,data){
   if(ahasDateTime){
     const stamp=document.createElement("span");
     stamp.className="bwc-stamp";
-    stamp.textContent=` (AHAS ${ahasDateTime})`;
+    stamp.textContent=`(AHAS ${ahasDateTime})`;
     el.appendChild(stamp);
   }
 
@@ -981,9 +1056,23 @@ function feedClassForStatus(status){
   return "feed-warn";
 }
 
+function compactFeedName(name){
+  if(window.innerWidth>=1300)return name;
+
+  const map={
+    "METAR":"MTR",
+    "TAF":"TAF",
+    "ATIS":"ATIS",
+    "AHAS":"AHAS"
+  };
+
+  return map[name]||name;
+}
+
 function healthPart(name,status,detail){
   const cls=feedClassForStatus(status);
-  const text=detail ? `${name} ${status} (${detail})` : `${name} ${status}`;
+  const displayName=compactFeedName(name);
+  const text=detail ? `${displayName} ${status} ${detail}` : `${displayName} ${status}`;
 
   return `<span class="feed-token ${cls}">${text}</span>`;
 }
