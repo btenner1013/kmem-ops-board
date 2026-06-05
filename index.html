@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>KMEM Ops Board</title>
 <style>
 *{box-sizing:border-box}
@@ -1672,6 +1673,309 @@ html,body{
 
   .raw{
     font-size:clamp(.88rem,2vw,1.05rem) !important;
+  }
+}
+
+
+/* Phase 16 — mobile viewport/layout repair + radar no-crop */
+
+/*
+  Desktop/TV radar:
+  Do not crop the NWS legend/timestamp. Contain is better for ops use than cover.
+*/
+@media (min-width:901px){
+  .radarimg{
+    width:100% !important;
+    height:100% !important;
+    object-fit:contain !important;
+    object-position:center center !important;
+    background:#000 !important;
+  }
+}
+
+/*
+  Touch/mobile master reset:
+  The viewport meta tag above lets mobile browsers use the real device width.
+  These rules prevent the old wall-board squeeze from creating overlap/clipping.
+*/
+@media (hover:none) and (pointer:coarse){
+  *{
+    max-width:100% !important;
+  }
+
+  html,body{
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  body{
+    position:relative !important;
+  }
+
+  .board{
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:100vh !important;
+    display:grid !important;
+    grid-template-rows:auto auto auto auto !important;
+    gap:4px !important;
+    padding:4px !important;
+    overflow:visible !important;
+  }
+
+  .top,
+  .middle,
+  .bottom{
+    width:100% !important;
+    max-width:100% !important;
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:4px !important;
+    overflow:visible !important;
+  }
+
+  .panel{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    height:auto !important;
+    min-height:0 !important;
+    overflow:visible !important;
+    padding:6px !important;
+  }
+
+  .top > .panel{
+    min-height:118px !important;
+    display:block !important;
+  }
+
+  .label,
+  .title{
+    display:block !important;
+    line-height:1.05 !important;
+    margin:0 0 4px 0 !important;
+    white-space:normal !important;
+  }
+
+  .clock{
+    display:block !important;
+    line-height:.92 !important;
+    margin:0 !important;
+    white-space:nowrap !important;
+  }
+
+  .date{
+    display:block !important;
+    position:relative !important;
+    line-height:1.15 !important;
+    margin-top:8px !important;
+    white-space:normal !important;
+  }
+
+  .summary-grid{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:2px !important;
+    margin-bottom:6px !important;
+    width:100% !important;
+  }
+
+  .atis-letter{
+    text-align:left !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+
+  .details-grid,
+  .ops-grid,
+  .status-grid{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:4px !important;
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  .detail-box,
+  .ops-box,
+  .trend-box{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    min-height:44px !important;
+    overflow:visible !important;
+  }
+
+  .detail-value,
+  .ops-value,
+  .trend-value{
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  .raw{
+    width:100% !important;
+    max-width:100% !important;
+    white-space:pre-wrap !important;
+    overflow:visible !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  .radar-panel{
+    width:100% !important;
+    max-width:100% !important;
+    min-height:auto !important;
+    height:auto !important;
+    overflow:visible !important;
+  }
+
+  .radarimg{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    object-fit:contain !important;
+    object-position:center top !important;
+    background:#000 !important;
+  }
+
+  .mil-notam-panel{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-height:auto !important;
+    height:auto !important;
+    overflow:visible !important;
+  }
+
+  .mil-notam-header{
+    display:block !important;
+    border-right:0 !important;
+    border-bottom:1px solid rgba(230,230,230,.35) !important;
+    padding-right:0 !important;
+    padding-bottom:6px !important;
+    margin-bottom:6px !important;
+  }
+
+  .mil-notam-window{
+    display:block !important;
+    height:auto !important;
+    min-height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    position:relative !important;
+  }
+
+  .mil-notam-active .mil-notam-crawl{
+    position:relative !important;
+    width:100% !important;
+    top:auto !important;
+    transform:none !important;
+    animation:none !important;
+  }
+
+  .mil-notam-crawl{
+    white-space:pre-wrap !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  .footer{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    row-gap:3px !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-height:auto !important;
+    height:auto !important;
+    padding:5px 7px !important;
+    overflow:visible !important;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-right{
+    text-align:left !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+
+  .feed-health{
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+}
+
+/* Phone portrait sizing */
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  .top > .panel{
+    min-height:116px !important;
+  }
+
+  .clock{
+    font-size:clamp(2.9rem,13.5vw,4.6rem) !important;
+  }
+
+  .date{
+    font-size:clamp(.92rem,3.4vw,1.15rem) !important;
+  }
+
+  .flight-category{
+    font-size:clamp(2.35rem,12vw,3.8rem) !important;
+  }
+
+  .raw{
+    font-size:clamp(.88rem,3vw,1.08rem) !important;
+    line-height:1.42 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.86rem,2.9vw,1.08rem) !important;
+    line-height:1.35 !important;
+  }
+}
+
+/* Phone landscape sizing:
+   Still stack vertically so it can scroll naturally. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .top > .panel{
+    min-height:106px !important;
+  }
+
+  .clock{
+    font-size:clamp(2.4rem,8vw,4rem) !important;
+  }
+
+  .date{
+    font-size:clamp(.78rem,2.3vw,1rem) !important;
+  }
+
+  .details-grid,
+  .ops-grid{
+    grid-template-columns:repeat(2,1fr) !important;
+  }
+
+  .raw{
+    font-size:clamp(.82rem,2vw,1rem) !important;
+    line-height:1.36 !important;
+  }
+
+  .footer{
+    font-size:clamp(.76rem,1.8vw,.96rem) !important;
+  }
+
+  .feed-health{
+    font-size:clamp(.62rem,1.55vw,.84rem) !important;
   }
 }
 
