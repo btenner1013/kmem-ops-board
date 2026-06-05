@@ -25,6 +25,10 @@ LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
 TREND_HISTORY_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_trend_history.json")
 TREND_LOOKBACK_HOURS = 3
 
+NMS_MIL_NOTAMS_SCRIPT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_test.py")
+NMS_MIL_NOTAMS_OUTPUT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_output.json")
+NMS_MIL_NOTAMS_TIMEOUT_SECONDS = 120
+
 MEM_RUNWAY_PAIRS = [
     "9/27",
     "18L/36R",
@@ -1927,6 +1931,179 @@ def use_previous_field(previous_data, key, default=""):
     return value
 
 
+
+
+def summarize_mil_notams_for_scroll(items):
+    parts = []
+
+    for item in items or []:
+        number = str(item.get("number") or item.get("id") or "UNKNOWN").strip()
+        display_text = str(
+            item.get("displayText")
+            or item.get("text")
+            or item.get("plainLanguage")
+            or ""
+        ).strip()
+
+        if number and display_text:
+            parts.append(f"{number} {display_text}")
+        elif number:
+            parts.append(number)
+        elif display_text:
+            parts.append(display_text)
+
+    return "  |  ".join(parts)
+
+
+def normalize_mil_notams_output(raw, fetch_status="OK"):
+    raw = raw or {}
+    items = raw.get("milNotams") or raw.get("items") or []
+
+    if not isinstance(items, list):
+        items = []
+
+    normalized_items = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        number = str(item.get("number") or item.get("id") or "UNKNOWN").strip()
+        text = str(item.get("text") or item.get("displayText") or "").strip()
+        display_text = str(item.get("displayText") or text).strip()
+        severity = str(item.get("severity") or "amber").strip().lower()
+
+        normalized_items.append({
+            "number": number,
+            "classification": item.get("classification") or item.get("type") or "MIL",
+            "severity": severity,
+            "text": text,
+            "displayText": display_text,
+            "effectiveStart": item.get("effectiveStart") or item.get("start") or "",
+            "effectiveEnd": item.get("effectiveEnd") or item.get("end") or "",
+            "lastUpdated": item.get("lastUpdated") or item.get("updated") or "",
+            "source": item.get("source") or raw.get("source") or "FAA_NMS_STAGING"
+        })
+
+    count = raw.get("milNotamCount")
+
+    if count is None:
+        count = raw.get("count")
+
+    try:
+        count = int(count)
+    except Exception:
+        count = len(normalized_items)
+
+    scroll_text = str(raw.get("milNotamScrollText") or "").strip()
+
+    if not scroll_text:
+        scroll_text = summarize_mil_notams_for_scroll(normalized_items)
+
+    if count > 0:
+        status = raw.get("milNotamStatus") or f"{count} ACTIVE"
+    else:
+        status = raw.get("milNotamStatus") or "NONE ACTIVE"
+
+    return {
+        "milNotamCount": count,
+        "milNotamStatus": status,
+        "milNotamSource": raw.get("source") or "FAA_NMS_STAGING",
+        "milNotamUpdatedZ": raw.get("generatedZ") or raw.get("updated_at_z") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"),
+        "milNotamScrollText": scroll_text,
+        "milNotams": normalized_items,
+        "milNotamFetchStatus": fetch_status,
+        "milNotamRawStatus": raw.get("status") or "UNKNOWN"
+    }
+
+
+def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
+    previous_data = previous_data or {}
+
+    if "milNotams" in previous_data or "milNotamCount" in previous_data:
+        return {
+            "milNotamCount": use_previous_field(previous_data, "milNotamCount", 0),
+            "milNotamStatus": use_previous_field(previous_data, "milNotamStatus", "LAST KNOWN"),
+            "milNotamSource": use_previous_field(previous_data, "milNotamSource", "FAA_NMS_STAGING"),
+            "milNotamUpdatedZ": use_previous_field(previous_data, "milNotamUpdatedZ", "--"),
+            "milNotamScrollText": use_previous_field(previous_data, "milNotamScrollText", ""),
+            "milNotams": use_previous_field(previous_data, "milNotams", []),
+            "milNotamFetchStatus": fetch_status,
+            "milNotamRawStatus": use_previous_field(previous_data, "milNotamRawStatus", "LAST_GOOD")
+        }
+
+    return {
+        "milNotamCount": 0,
+        "milNotamStatus": "NMS NOT CHECKED",
+        "milNotamSource": "FAA_NMS_STAGING",
+        "milNotamUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"),
+        "milNotamScrollText": "",
+        "milNotams": [],
+        "milNotamFetchStatus": fetch_status,
+        "milNotamRawStatus": "NO_PREVIOUS_DATA"
+    }
+
+
+def fetch_mil_notams(previous_data):
+    """
+    Runs the working FAA NMS KMEM MIL NOTAM test script and merges its JSON output.
+
+    This is intentionally non-fatal. If NMS credentials are missing, NMS rate-limits,
+    or the script fails, the weather board still updates and uses the previous MIL
+    NOTAM block when available.
+    """
+
+    client_id = os.environ.get("NMS_CLIENT_ID", "").strip()
+    client_secret = os.environ.get("NMS_CLIENT_SECRET", "").strip()
+
+    if not client_id or not client_secret:
+        print("MIL NOTAMS: NMS_CLIENT_ID/NMS_CLIENT_SECRET not set; using previous MIL NOTAM data if available.")
+        return previous_mil_notams_or_default(previous_data, "NO_CREDENTIALS")
+
+    if not os.path.exists(NMS_MIL_NOTAMS_SCRIPT_PATH):
+        print(f"MIL NOTAMS: script missing: {NMS_MIL_NOTAMS_SCRIPT_PATH}")
+        return previous_mil_notams_or_default(previous_data, "NO_NMS_SCRIPT")
+
+    try:
+        print("MIL NOTAMS: running FAA NMS pull...")
+
+        result = subprocess.run(
+            [sys.executable, NMS_MIL_NOTAMS_SCRIPT_PATH],
+            cwd=REPO_DIR,
+            text=True,
+            capture_output=True,
+            timeout=NMS_MIL_NOTAMS_TIMEOUT_SECONDS
+        )
+
+        if result.stdout:
+            print(result.stdout.strip())
+
+        if result.stderr:
+            print(result.stderr.strip())
+
+        if result.returncode != 0:
+            print(f"MIL NOTAMS: NMS script returned {result.returncode}; using previous data if available.")
+            return previous_mil_notams_or_default(previous_data, "SCRIPT_FAILED")
+
+        raw = load_json_file(NMS_MIL_NOTAMS_OUTPUT_PATH)
+
+        if not raw:
+            print("MIL NOTAMS: output JSON missing or empty; using previous data if available.")
+            return previous_mil_notams_or_default(previous_data, "NO_OUTPUT_JSON")
+
+        mil_data = normalize_mil_notams_output(raw, "OK")
+        print("MIL NOTAMS:", mil_data["milNotamStatus"], "SOURCE:", mil_data["milNotamSource"])
+        return mil_data
+
+    except subprocess.TimeoutExpired:
+        print("MIL NOTAMS: NMS script timed out; using previous data if available.")
+        return previous_mil_notams_or_default(previous_data, "TIMEOUT")
+
+    except Exception as error:
+        print("MIL NOTAMS: failed:", error)
+        return previous_mil_notams_or_default(previous_data, "ERROR")
+
+
 def should_save_last_good(data):
     return (
         is_good_metar(data.get("metar", ""))
@@ -2081,6 +2258,8 @@ def build_weather_json():
         else:
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
 
+    mil_notam_data = fetch_mil_notams(previous_data)
+
     data = {
         "metar": metar or "METAR unavailable",
         "taf": taf or "TAF unavailable",
@@ -2191,6 +2370,15 @@ def build_weather_json():
         "bwcRiskUrl": ahas_data["bwcRiskUrl"],
         "bwcFetchStatus": ahas_data["bwcFetchStatus"],
 
+        "milNotamCount": mil_notam_data["milNotamCount"],
+        "milNotamStatus": mil_notam_data["milNotamStatus"],
+        "milNotamSource": mil_notam_data["milNotamSource"],
+        "milNotamUpdatedZ": mil_notam_data["milNotamUpdatedZ"],
+        "milNotamScrollText": mil_notam_data["milNotamScrollText"],
+        "milNotams": mil_notam_data["milNotams"],
+        "milNotamFetchStatus": mil_notam_data["milNotamFetchStatus"],
+        "milNotamRawStatus": mil_notam_data["milNotamRawStatus"],
+
         "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
 
         "workflowMetadata": {
@@ -2242,6 +2430,7 @@ def build_weather_json():
         data["bwcFetchStatus"]
     )
     print("WX ALERTS:", data["wxAlertLogText"])
+    print("MIL NOTAMS:", data["milNotamStatus"], "STATUS:", data["milNotamFetchStatus"], "UPDATED:", data["milNotamUpdatedZ"])
     print("LIGHTNING:", data["lightning"], "SOURCE:", data["lightningSource"], "TONE:", data["lightningTone"])
     print("METAR:", data["metar"])
     print("FETCH STATUS:", "METAR", data["metarFetchStatus"], "TAF", data["tafFetchStatus"], "ATIS", data["atisFetchStatus"], "LKG", data["lastKnownGoodUsed"])
