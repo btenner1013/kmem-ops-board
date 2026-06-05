@@ -3162,6 +3162,32 @@ function determineFlightCategory(metar){
   return"VFR";
 }
 
+function determineFlightCategoryFromData(data, metar){
+  const fallbackVis=parseVisibilitySM(metar||"");
+  const fallbackCeiling=parseCeilingFeet(metar||"");
+
+  let vis=null;
+  let ceiling=null;
+
+  if(data&&data.visibilitySm!==undefined&&data.visibilitySm!==null&&!isNaN(Number(data.visibilitySm))){
+    vis=Number(data.visibilitySm);
+  }else if(fallbackVis!==null&&fallbackVis!==undefined&&!isNaN(Number(fallbackVis))){
+    vis=Number(fallbackVis);
+  }
+
+  if(data&&data.ceilingFt!==undefined&&data.ceilingFt!==null&&!isNaN(Number(data.ceilingFt))){
+    ceiling=Number(data.ceilingFt);
+  }else if(fallbackCeiling!==null&&fallbackCeiling!==undefined&&!isNaN(Number(fallbackCeiling))){
+    ceiling=Number(fallbackCeiling);
+  }
+
+  if((ceiling!==null&&ceiling<500)||(vis!==null&&vis<1))return"LIFR";
+  if((ceiling!==null&&ceiling<1000)||(vis!==null&&vis<3))return"IFR";
+  if((ceiling!==null&&ceiling<=3000)||(vis!==null&&vis<=5))return"MVFR";
+
+  return"VFR";
+}
+
 function setCategoryDisplay(category){
   const box=document.getElementById("category");
 
@@ -4090,7 +4116,7 @@ async function loadWeatherJson(){
 
     document.getElementById("weather").textContent=metar+"\n\n"+taf;
 
-    setCategoryDisplay(determineFlightCategory(metar));
+    setCategoryDisplay(determineFlightCategoryFromData(data,metar));
     updateDetails(data);
 
     document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);
