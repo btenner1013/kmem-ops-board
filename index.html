@@ -1979,6 +1979,315 @@ html,body{
   }
 }
 
+
+/* Phase 17 — phone compact scroll repair */
+
+/*
+  Phone/touch devices:
+  The previous mobile layout was readable but too tall at the top.
+  This compresses clocks/weather enough that the user can scroll through the full board normally.
+*/
+@media (hover:none) and (pointer:coarse){
+  html,body{
+    overscroll-behavior:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  .board{
+    padding:3px !important;
+    gap:3px !important;
+    padding-bottom:90px !important; /* room for mobile browser bottom bar */
+  }
+
+  .top{
+    gap:3px !important;
+  }
+
+  .top > .panel{
+    min-height:auto !important;
+    padding:5px 6px !important;
+  }
+
+  .label,
+  .title{
+    font-size:clamp(.86rem,3.4vw,1.05rem) !important;
+    line-height:1.0 !important;
+    margin-bottom:2px !important;
+  }
+
+  .clock{
+    font-size:clamp(2.15rem,10.5vw,3.45rem) !important;
+    line-height:.9 !important;
+    margin:0 !important;
+  }
+
+  .date{
+    font-size:clamp(.74rem,2.75vw,.95rem) !important;
+    line-height:1.05 !important;
+    margin-top:3px !important;
+  }
+
+  .panel{
+    padding:5px !important;
+  }
+
+  .summary-grid{
+    gap:2px !important;
+    margin-bottom:4px !important;
+  }
+
+  .flight-category{
+    font-size:clamp(1.85rem,9.5vw,3.0rem) !important;
+    line-height:.95 !important;
+  }
+
+  .atis-letter{
+    font-size:clamp(1.0rem,4.7vw,1.45rem) !important;
+    line-height:1.05 !important;
+  }
+
+  .detail-box,
+  .ops-box,
+  .trend-box{
+    min-height:36px !important;
+    padding:4px 5px !important;
+  }
+
+  .detail-label,
+  .ops-label,
+  .trend-label{
+    font-size:clamp(.66rem,2.55vw,.86rem) !important;
+    line-height:1.0 !important;
+  }
+
+  .detail-value,
+  .ops-value,
+  .trend-value{
+    font-size:clamp(.82rem,3.2vw,1.08rem) !important;
+    line-height:1.08 !important;
+  }
+
+  .bwc-stamp{
+    font-size:.68em !important;
+  }
+
+  .raw{
+    font-size:clamp(.74rem,2.55vw,.95rem) !important;
+    line-height:1.34 !important;
+    padding-top:5px !important;
+  }
+
+  .radar-panel{
+    padding:5px !important;
+  }
+
+  .radarimg{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+  }
+
+  .mil-notam-panel{
+    padding:5px 6px !important;
+  }
+
+  .mil-notam-title{
+    font-size:clamp(.78rem,3vw,.98rem) !important;
+  }
+
+  .mil-notam-status{
+    font-size:clamp(.76rem,2.9vw,.95rem) !important;
+  }
+
+  .mil-notam-cao{
+    font-size:clamp(.68rem,2.55vw,.86rem) !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.68rem,2.45vw,.9rem) !important;
+    line-height:1.28 !important;
+  }
+
+  .footer{
+    padding:5px 6px !important;
+    row-gap:2px !important;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-right{
+    line-height:1.08 !important;
+  }
+
+  .footer{
+    font-size:clamp(.78rem,2.8vw,1rem) !important;
+  }
+
+  .feed-health{
+    font-size:clamp(.62rem,2.25vw,.82rem) !important;
+  }
+}
+
+/* Phone portrait: keep everything single-column and compact */
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  .top > .panel{
+    min-height:auto !important;
+  }
+
+  .details-grid,
+  .ops-grid,
+  .status-grid{
+    gap:3px !important;
+  }
+
+  .weather-panel{
+    min-height:auto !important;
+  }
+}
+
+/* Phone landscape:
+   Use two-column data boxes to reduce vertical travel while still scrolling normally. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .board{
+    padding-bottom:70px !important;
+  }
+
+  .top{
+    grid-template-columns:1fr 1fr !important;
+  }
+
+  .clock{
+    font-size:clamp(1.9rem,5.8vw,3rem) !important;
+  }
+
+  .date{
+    font-size:clamp(.66rem,1.9vw,.85rem) !important;
+  }
+
+  .summary-grid{
+    grid-template-columns:1fr 1fr !important;
+    align-items:center !important;
+  }
+
+  .atis-letter{
+    text-align:right !important;
+  }
+
+  .details-grid{
+    grid-template-columns:repeat(4,1fr) !important;
+  }
+
+  .ops-grid{
+    grid-template-columns:repeat(3,1fr) !important;
+  }
+
+  .detail-box,
+  .ops-box,
+  .trend-box{
+    min-height:34px !important;
+  }
+
+  .raw{
+    font-size:clamp(.68rem,1.75vw,.88rem) !important;
+    line-height:1.28 !important;
+  }
+}
+
+
+/* Phase 18 — readability, centered values, CAO status, and cleaner gust display */
+
+/* Center data values inside the operational boxes, but keep labels/titles left aligned */
+.detail-value,
+.ops-value,
+.trend-value{
+  text-align:center !important;
+}
+
+.bwc-stamp{
+  text-align:center !important;
+}
+
+/* Cleaner wind/gust layout */
+.wind-gust{
+  color:var(--warning);
+  font-weight:900;
+  margin-left:8px;
+  white-space:nowrap;
+}
+
+/* CAO timestamp gets its own status colors */
+.mil-notam-cao{
+  margin-top:6px !important;
+}
+
+.mil-notam-cao-ok{
+  color:var(--ops-green) !important;
+}
+
+.mil-notam-cao-warn{
+  color:var(--warning) !important;
+}
+
+.mil-notam-cao-stale,
+.mil-notam-cao-bad{
+  color:var(--closed) !important;
+  animation:blink 1s step-start infinite;
+}
+
+/* Larger METAR/TAF and MIL NOTAM text */
+@media (min-width:901px){
+  .raw{
+    font-size:clamp(1.22rem,1.28vw,1.58rem) !important;
+    line-height:1.58 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(1.08rem,1.20vw,1.48rem) !important;
+    line-height:1.42 !important;
+  }
+}
+
+@media (min-width:901px) and (max-width:1400px){
+  .raw{
+    font-size:clamp(1.08rem,1.16vw,1.34rem) !important;
+    line-height:1.48 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.98rem,1.08vw,1.28rem) !important;
+    line-height:1.38 !important;
+  }
+}
+
+@media (hover:none) and (pointer:coarse){
+  .raw{
+    font-size:clamp(.82rem,2.85vw,1.02rem) !important;
+    line-height:1.38 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.78rem,2.75vw,1.0rem) !important;
+    line-height:1.32 !important;
+  }
+
+  .mil-notam-cao{
+    margin-top:5px !important;
+  }
+}
+
+/* Phone landscape: keep centered values but avoid over-growing text */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .raw{
+    font-size:clamp(.76rem,1.95vw,.96rem) !important;
+    line-height:1.32 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.70rem,1.85vw,.90rem) !important;
+  }
+}
+
 </style>
 </head>
 
@@ -2348,19 +2657,19 @@ function formatWindDisplay(value){
   if(text==="--"||text==="")return "--";
   if(text==="00000KT")return "CALM";
 
-  let match=text.match(/^VRB(\d{2})(G\d{2})?KT$/);
+  let match=text.match(/^VRB(\d{2})(G(\d{2}))?KT$/);
   if(match){
     const speed=parseInt(match[1],10);
-    const gust=match[2]?"G"+parseInt(match[2].substring(1),10):"";
-    return `VRB @ ${speed}${gust}KT`;
+    const gust=match[3]?parseInt(match[3],10):null;
+    return gust===null ? `VRB @ ${speed}KT` : `VRB @ ${speed}KT G${gust}`;
   }
 
-  match=text.match(/^(\d{3})(\d{2})(G\d{2})?KT$/);
+  match=text.match(/^(\d{3})(\d{2})(G(\d{2}))?KT$/);
   if(match){
     const dir=match[1];
     const speed=parseInt(match[2],10);
-    const gust=match[3]?"G"+parseInt(match[3].substring(1),10):"";
-    return `${dir} @ ${speed}${gust}KT`;
+    const gust=match[4]?parseInt(match[4],10):null;
+    return gust===null ? `${dir} @ ${speed}KT` : `${dir} @ ${speed}KT G${gust}`;
   }
 
   return text;
@@ -2420,7 +2729,18 @@ function setWindDisplay(data){
     return;
   }
 
-  el.appendChild(document.createTextNode(display));
+  const gustMatch=display.match(/^(.*?)(\sG\d+)$/);
+
+  if(gustMatch){
+    el.appendChild(document.createTextNode(gustMatch[1]));
+
+    const gustSpan=document.createElement("span");
+    gustSpan.className="wind-gust";
+    gustSpan.textContent=gustMatch[2].trim();
+    el.appendChild(gustSpan);
+  }else{
+    el.appendChild(document.createTextNode(display));
+  }
 
   if(arrow){
     const span=document.createElement("span");
@@ -2925,12 +3245,24 @@ function updateSourceHealth(data,updatedZ){
 
 
 
-function formatCaoZulu(value){
+function parseCaoDate(value){
   if(!value||value==="--"||value==="Pending"){
-    return "CAO --";
+    return null;
   }
 
-  const text=String(value).trim();
+  return parseUpdatedZ(String(value).trim());
+}
+
+function formatCaoZulu(value){
+  const parsed=parseCaoDate(value);
+
+  if(parsed){
+    const hh=String(parsed.getUTCHours()).padStart(2,"0");
+    const mm=String(parsed.getUTCMinutes()).padStart(2,"0");
+    return `CAO ${hh}${mm}Z`;
+  }
+
+  const text=String(value||"").trim();
 
   let match=text.match(/(?:T|\s)(\d{2}):(\d{2})(?::\d{2})?/);
 
@@ -2944,15 +3276,39 @@ function formatCaoZulu(value){
     return `CAO ${match[1]}${match[2]}Z`;
   }
 
-  const parsed=parseUpdatedZ(text);
+  return "CAO --";
+}
 
-  if(parsed){
-    const hh=String(parsed.getUTCHours()).padStart(2,"0");
-    const mm=String(parsed.getUTCMinutes()).padStart(2,"0");
-    return `CAO ${hh}${mm}Z`;
+function setCaoStatusDisplay(cao,value,fetchStatus,rawStatus){
+  if(!cao){
+    return;
   }
 
-  return "CAO --";
+  cao.className="mil-notam-cao";
+  cao.textContent=formatCaoZulu(value);
+
+  const fetch=(fetchStatus||"").toString().toUpperCase();
+  const raw=(rawStatus||"").toString().toUpperCase();
+  const parsed=parseCaoDate(value);
+  const ageMin=parsed?Math.round((getBoardNowMs()-parsed.getTime())/60000):null;
+
+  if(fetch.includes("FAILED")||fetch.includes("ERROR")||raw.includes("FAILED")||raw.includes("ERROR")){
+    cao.classList.add("mil-notam-cao-bad");
+    return;
+  }
+
+  if(ageMin===null){
+    cao.classList.add("mil-notam-cao-warn");
+    return;
+  }
+
+  if(ageMin>720){
+    cao.classList.add("mil-notam-cao-stale");
+  }else if(ageMin>240){
+    cao.classList.add("mil-notam-cao-warn");
+  }else{
+    cao.classList.add("mil-notam-cao-ok");
+  }
 }
 
 function setMilNotamsDisplay(data){
@@ -2971,12 +3327,10 @@ function setMilNotamsDisplay(data){
   const source=data.milNotamSource||"FAA NMS";
   const updated=data.milNotamUpdatedZ||data.allFeedsUpdatedZ||"--";
 
-  if(cao){
-    cao.textContent=formatCaoZulu(updated);
-  }
-
   const fetchStatus=(data.milNotamFetchStatus||"").toUpperCase();
   const rawStatus=(data.milNotamRawStatus||"").toUpperCase();
+
+  setCaoStatusDisplay(cao,updated,fetchStatus,rawStatus);
 
   /*
     Use the full NOTAM text first.
