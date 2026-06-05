@@ -1845,7 +1845,8 @@ function compactFeedName(name){
     "METAR":"MTR",
     "TAF":"TAF",
     "ATIS":"ATIS",
-    "AHAS":"AHAS"
+    "AHAS":"AHAS",
+    "FAA NOTAMS":"FAA NOTAMS"
   };
 
   return map[name]||name;
@@ -1932,6 +1933,39 @@ function updateSourceHealth(data,updatedZ){
     }
   }else{
     addPart("AHAS","WARN","");
+  }
+
+  /*
+    FAA NOTAMS feed status comes from the NMS MIL NOTAM fields in weather.json.
+    Expected healthy fields:
+      milNotamFetchStatus: OK
+      milNotamRawStatus: Success
+      milNotamUpdatedZ: UTC timestamp
+      milNotamStatus: example "2 ACTIVE"
+  */
+  const notamFetchStatus=(data.milNotamFetchStatus||"").toString().toUpperCase();
+  const notamRawStatus=(data.milNotamRawStatus||"").toString().toUpperCase();
+  const notamStatusText=(data.milNotamStatus||"").toString().toUpperCase();
+  const notamUpdated=parseUpdatedZ(data.milNotamUpdatedZ||"");
+  const notamAge=notamUpdated?Math.round((getBoardNowMs()-notamUpdated.getTime())/60000):null;
+  const notamDetail=notamStatusText||`${Number(data.milNotamCount||0)} ACTIVE`;
+
+  if(notamFetchStatus==="OK"||notamRawStatus==="SUCCESS"){
+    if(notamAge!==null&&notamAge>720){
+      addPart("FAA NOTAMS","STALE",notamDetail);
+    }else if(notamAge!==null&&notamAge>240){
+      addPart("FAA NOTAMS","WARN",notamDetail);
+    }else{
+      addPart("FAA NOTAMS","OK",notamDetail);
+    }
+  }else if(notamFetchStatus==="NO_DATA"){
+    addPart("FAA NOTAMS","WARN","NO DATA");
+  }else if(notamFetchStatus.includes("FAILED")||notamFetchStatus.includes("ERROR")||notamRawStatus.includes("FAILED")||notamRawStatus.includes("ERROR")){
+    addPart("FAA NOTAMS","BAD",notamFetchStatus||notamRawStatus);
+  }else if(data.milNotams||data.milNotamCount!==undefined||data.milNotamStatus){
+    addPart("FAA NOTAMS","WARN",notamDetail);
+  }else{
+    addPart("FAA NOTAMS","WARN","NO DATA");
   }
 
   const updated=parseUpdatedZ(updatedZ);
