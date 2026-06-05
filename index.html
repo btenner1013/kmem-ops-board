@@ -95,6 +95,14 @@ html,body{
   white-space:nowrap;
 }
 
+.mil-notam-cao{
+  color:#9fb0c0;
+  font-size:clamp(.68rem,.78vw,.98rem);
+  font-weight:900;
+  margin-top:2px;
+  white-space:nowrap;
+}
+
 .mil-notam-window{
   height:100%;
   overflow:hidden;
@@ -1174,6 +1182,7 @@ html,body{
     <div class="mil-notam-header">
       <div class="mil-notam-title">KMEM MIL NOTAMS</div>
       <div id="milNotamStatus" class="mil-notam-status">PLACEHOLDER</div>
+      <div id="milNotamCao" class="mil-notam-cao">CAO --</div>
     </div>
     <div class="mil-notam-window">
       <div id="milNotamCrawl" class="mil-notam-crawl">FAA NMS API PENDING</div>
@@ -1996,9 +2005,41 @@ function updateSourceHealth(data,updatedZ){
 }
 
 
+
+function formatCaoZulu(value){
+  if(!value||value==="--"||value==="Pending"){
+    return "CAO --";
+  }
+
+  const text=String(value).trim();
+
+  let match=text.match(/(?:T|\s)(\d{2}):(\d{2})(?::\d{2})?/);
+
+  if(match){
+    return `CAO ${match[1]}${match[2]}Z`;
+  }
+
+  match=text.match(/\b(\d{2})(\d{2})Z\b/);
+
+  if(match){
+    return `CAO ${match[1]}${match[2]}Z`;
+  }
+
+  const parsed=parseUpdatedZ(text);
+
+  if(parsed){
+    const hh=String(parsed.getUTCHours()).padStart(2,"0");
+    const mm=String(parsed.getUTCMinutes()).padStart(2,"0");
+    return `CAO ${hh}${mm}Z`;
+  }
+
+  return "CAO --";
+}
+
 function setMilNotamsDisplay(data){
   const panel=document.getElementById("milNotamPanel");
   const status=document.getElementById("milNotamStatus");
+  const cao=document.getElementById("milNotamCao");
   const crawl=document.getElementById("milNotamCrawl");
 
   if(!panel||!status||!crawl){
@@ -2010,6 +2051,11 @@ function setMilNotamsDisplay(data){
   const count=Number.isFinite(explicitCount)?explicitCount:items.length;
   const source=data.milNotamSource||"FAA NMS";
   const updated=data.milNotamUpdatedZ||data.allFeedsUpdatedZ||"--";
+
+  if(cao){
+    cao.textContent=formatCaoZulu(updated);
+  }
+
   const fetchStatus=(data.milNotamFetchStatus||"").toUpperCase();
   const rawStatus=(data.milNotamRawStatus||"").toUpperCase();
 
