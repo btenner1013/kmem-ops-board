@@ -873,8 +873,48 @@ def numeric_trend_with_threshold(current, previous, threshold=1.0):
     return "▼", "FALLING"
 
 
+def atis_observation_scan_text(atis_text):
+    """Return the likely operational ATIS broadcast/weather section.
+
+    ATIS relay pages can include boilerplate, NOTAMS/frequencies, and a copied
+    METAR detail block after the broadcast. This helper keeps ATIS parsing focused
+    on the broadcast portion used by crews.
+    """
+    text = re.sub(r"\s+", " ", (atis_text or "").upper()).strip()
+
+    if not text or text_is_bad(text):
+        return ""
+
+    stop_markers = [
+        " NOTICE: INFO FROM FAA SWIM",
+        " NOTAMS ",
+        " LOADING FREQUENCIES",
+        " FREQUENCIES ",
+        " TEXT FOR ATIS ",
+        " SEND KMEM "
+    ]
+
+    end = len(text)
+    for marker in stop_markers:
+        marker_idx = text.find(marker)
+        if marker_idx != -1:
+            end = min(end, marker_idx)
+
+    text = text[:end].strip()
+
+    start_candidates = []
+    for marker in ["MEM ATIS INFO", "KMEM ATIS INFO", "ATIS INFO"]:
+        marker_idx = text.find(marker)
+        if marker_idx != -1:
+            start_candidates.append(marker_idx)
+
+    if start_candidates:
+        text = text[min(start_candidates):]
+
+    return text
+
 def parse_atis_altimeter(atis_text):
-    txt = (atis_text or "").upper()
+    txt = atis_observation_scan_text(atis_text)
 
     match = re.search(r"\bALTIMETER\s+(\d{2}\.\d{2})\b", txt)
     if match:
@@ -885,11 +925,15 @@ def parse_atis_altimeter(atis_text):
         raw = match.group(1)
         return int(raw) / 100.0
 
+    # ATIS often includes standard weather string format, e.g. A3000.
+    match = re.search(r"\bA(\d{4})\b", txt)
+    if match:
+        return int(match.group(1)) / 100.0
+
     return None
 
-
 def parse_atis_visibility_sm(atis_text):
-    txt = (atis_text or "").upper()
+    txt = atis_observation_scan_text(atis_text)
 
     patterns = [
         r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(P?\d{1,2})(?:\s*SM)?\b",
@@ -913,11 +957,23 @@ def parse_atis_visibility_sm(atis_text):
         except Exception:
             return None
 
+    # ATIS commonly includes raw METAR-style visibility in the broadcast, e.g. 10SM or P6SM.
+    match = re.search(r"\bP?(\d{1,2})SM\b", txt)
+    if match:
+        return float(match.group(1))
+
+    match = re.search(r"\b(\d+)\s+(\d+)/(\d+)SM\b", txt)
+    if match:
+        return float(match.group(1)) + float(match.group(2)) / float(match.group(3))
+
+    match = re.search(r"\b(\d+)/(\d+)SM\b", txt)
+    if match:
+        return float(match.group(1)) / float(match.group(2))
+
     return None
 
-
 def parse_atis_wind(atis_text):
-    txt = (atis_text or "").upper()
+    txt = atis_observation_scan_text(atis_text)
 
     # D-ATIS text often says: WIND 130 AT 07, WIND 13007KT, WIND VRB AT 04, or WIND CALM.
     if re.search(r"\bWIND\s+CALM\b", txt):
@@ -934,6 +990,10 @@ def parse_atis_wind(atis_text):
     standard = re.search(r"\bWIND\s+((?:\d{3}|VRB)\d{2,3}(?:G\d{2,3})?KT)\b", txt)
     if standard:
         return parse_wind(standard.group(1))
+
+    bare_standard = re.search(r"\b((?:\d{3}|VRB)\d{2,3}(?:G\d{2,3})?KT)\b", txt)
+    if bare_standard:
+        return parse_wind(bare_standard.group(1))
 
     spoken = re.search(
         r"\bWIND\s+(?P<dir>\d{3}|VRB)\s+(?:AT\s+)?(?P<speed>\d{1,3})(?:\s*(?:G|GUST|GUSTS)\s*(?P<gust>\d{1,3}))?\b",
@@ -974,7 +1034,7 @@ def parse_atis_wind(atis_text):
 
 
 def parse_atis_temp_dewpoint(atis_text):
-    txt = (atis_text or "").upper()
+    txt = atis_observation_scan_text(atis_text)
 
     patterns = [
         r"\bTEMP(?:ERATURE)?\s+(M?\d{1,2})\s+(?:DEW(?:POINT|\s+POINT)?|DP)\s+(M?\d{1,2})\b",
@@ -1002,6 +1062,21 @@ def parse_atis_temp_dewpoint(atis_text):
 
 
 def parse_best_observation_values(metar, atis_text, atis_fetch_status):
+    """
+    Select the operational current observation values for the board.
+
+    Final rule set:
+      - Wind: use the more restrictive current wind between ATIS and METAR.
+        Higher gust wins first; if gusts are close, higher sustained speed wins;
+        if still close, ATIS wins.
+      - Altimeter: prefer ATIS when valid; METAR is backup.
+      - Visibility: use the lower/more restrictive value; if within 1 SM, ATIS wins.
+      - Ceiling: use the lower/more restrictive value; if within 500 FT, ATIS wins.
+      - Temp/dewpoint: prefer ATIS when valid; METAR is backup.
+
+    The selected values feed both the display and the trend history, so trends follow
+    the value the board is actually showing regardless of source.
+    """
     metar_altimeter = parse_altimeter(metar)
     metar_visibility_sm = parse_visibility_sm(metar)
     metar_ceiling_ft = parse_ceiling_ft(metar)
@@ -1010,40 +1085,131 @@ def parse_best_observation_values(metar, atis_text, atis_fetch_status):
 
     atis_available = is_good_atis(atis_text) and atis_fetch_status in {"OK", "USED_LAST_GOOD"}
 
-    atis_altimeter = parse_atis_altimeter(atis_text) if atis_available else None
-    atis_visibility_sm = parse_atis_visibility_sm(atis_text) if atis_available else None
-    atis_ceiling_ft = parse_ceiling_ft(atis_text) if atis_available else None
-    atis_wind = parse_atis_wind(atis_text) if atis_available else None
-    atis_temp_c, atis_dewpoint_c = parse_atis_temp_dewpoint(atis_text) if atis_available else (None, None)
+    atis_obs_text = atis_observation_scan_text(atis_text) if atis_available else ""
+
+    atis_altimeter = parse_atis_altimeter(atis_obs_text) if atis_available else None
+    atis_visibility_sm = parse_atis_visibility_sm(atis_obs_text) if atis_available else None
+    atis_ceiling_ft = parse_ceiling_ft(atis_obs_text) if atis_available else None
+    atis_wind = parse_atis_wind(atis_obs_text) if atis_available else None
+    atis_temp_c, atis_dewpoint_c = parse_atis_temp_dewpoint(atis_obs_text) if atis_available else (None, None)
 
     field_sources = {}
 
-    def pick_value(name, atis_value, metar_value):
+    def valid_wind(wind):
+        return bool(wind and wind.get("windDisplay") not in {None, "", "--"})
+
+    def choose_altimeter(atis_value, metar_value):
+        # Crews hear/use ATIS altimeter; METAR is backup.
         if atis_value is not None:
-            field_sources[name] = "ATIS"
+            field_sources["altimeter"] = "ATIS"
             return atis_value
-        field_sources[name] = "METAR" if metar_value is not None else "NONE"
+        field_sources["altimeter"] = "METAR" if metar_value is not None else "NONE"
         return metar_value
 
-    wind_source = "ATIS" if atis_wind and atis_wind.get("windDisplay") not in {"--", ""} else "METAR"
-    wind_data = atis_wind if wind_source == "ATIS" else metar_wind
-    field_sources["wind"] = wind_source if wind_data and wind_data.get("windDisplay") != "--" else "NONE"
+    def choose_visibility(atis_value, metar_value):
+        # Lower visibility is more restrictive. If almost equal, use ATIS.
+        if atis_value is not None and metar_value is not None:
+            if abs(float(atis_value) - float(metar_value)) <= 1.0:
+                field_sources["visibility"] = "ATIS"
+                return atis_value
+            if float(atis_value) < float(metar_value):
+                field_sources["visibility"] = "ATIS"
+                return atis_value
+            field_sources["visibility"] = "METAR"
+            return metar_value
+
+        if atis_value is not None:
+            field_sources["visibility"] = "ATIS"
+            return atis_value
+
+        field_sources["visibility"] = "METAR" if metar_value is not None else "NONE"
+        return metar_value
+
+    def choose_ceiling(atis_value, metar_value):
+        # A missing ceiling means unlimited/no reported ceiling and is less restrictive.
+        if atis_value is not None and metar_value is not None:
+            if abs(int(atis_value) - int(metar_value)) <= 500:
+                field_sources["ceiling"] = "ATIS"
+                return atis_value
+            if int(atis_value) < int(metar_value):
+                field_sources["ceiling"] = "ATIS"
+                return atis_value
+            field_sources["ceiling"] = "METAR"
+            return metar_value
+
+        if atis_value is not None:
+            field_sources["ceiling"] = "ATIS"
+            return atis_value
+
+        field_sources["ceiling"] = "METAR" if metar_value is not None else "NONE"
+        return metar_value
+
+    def choose_wind(atis_value, metar_value):
+        if valid_wind(atis_value) and valid_wind(metar_value):
+            atis_gust = atis_value.get("windGustKt") if atis_value.get("windGustKt") is not None else atis_value.get("windSpeedKt")
+            metar_gust = metar_value.get("windGustKt") if metar_value.get("windGustKt") is not None else metar_value.get("windSpeedKt")
+            atis_speed = atis_value.get("windSpeedKt")
+            metar_speed = metar_value.get("windSpeedKt")
+
+            if atis_gust is not None and metar_gust is not None and abs(float(atis_gust) - float(metar_gust)) > 5:
+                if float(atis_gust) > float(metar_gust):
+                    field_sources["wind"] = "ATIS"
+                    return atis_value
+                field_sources["wind"] = "METAR"
+                return metar_value
+
+            if atis_speed is not None and metar_speed is not None and abs(float(atis_speed) - float(metar_speed)) > 3:
+                if float(atis_speed) > float(metar_speed):
+                    field_sources["wind"] = "ATIS"
+                    return atis_value
+                field_sources["wind"] = "METAR"
+                return metar_value
+
+            field_sources["wind"] = "ATIS"
+            return atis_value
+
+        if valid_wind(atis_value):
+            field_sources["wind"] = "ATIS"
+            return atis_value
+
+        if valid_wind(metar_value):
+            field_sources["wind"] = "METAR"
+            return metar_value
+
+        field_sources["wind"] = "NONE"
+        return metar_value or atis_value or {
+            "windRaw": "--",
+            "windDisplay": "--",
+            "windDirDeg": None,
+            "windSpeedKt": None,
+            "windGustKt": None,
+            "windArrow": "",
+            "windArrowMeaning": "UNKNOWN"
+        }
+
+    wind_data = choose_wind(atis_wind, metar_wind)
 
     temp_source = "ATIS" if atis_temp_c is not None and atis_dewpoint_c is not None else "METAR"
     temp_c = atis_temp_c if temp_source == "ATIS" else metar_temp_c
     dewpoint_c = atis_dewpoint_c if temp_source == "ATIS" else metar_dewpoint_c
     field_sources["tempDp"] = temp_source if temp_c is not None and dewpoint_c is not None else "NONE"
 
+    altimeter = choose_altimeter(atis_altimeter, metar_altimeter)
+    visibility_sm = choose_visibility(atis_visibility_sm, metar_visibility_sm)
+    ceiling_ft = choose_ceiling(atis_ceiling_ft, metar_ceiling_ft)
+
     observation_source = "ATIS" if any(source == "ATIS" for source in field_sources.values()) else "METAR"
     if "ATIS" in field_sources.values() and "METAR" in field_sources.values():
         observation_source = "MIXED"
+    if all(source == "NONE" for source in field_sources.values()):
+        observation_source = "NONE"
 
     return {
         "obsSource": observation_source,
         "obsFieldSources": field_sources,
-        "altimeter": pick_value("altimeter", atis_altimeter, metar_altimeter),
-        "visibilitySm": pick_value("visibility", atis_visibility_sm, metar_visibility_sm),
-        "ceilingFt": pick_value("ceiling", atis_ceiling_ft, metar_ceiling_ft),
+        "altimeter": altimeter,
+        "visibilitySm": visibility_sm,
+        "ceilingFt": ceiling_ft,
         "windData": wind_data,
         "tempC": temp_c,
         "dewpointC": dewpoint_c,
@@ -1178,6 +1344,7 @@ def weather_code_present(source_text, code):
 
 def classify_alert(code, sources, category):
     source_set = set(sources)
+    current_source = bool(source_set.intersection({"METAR", "ATIS"}))
 
     high_impact_categories = {
         "thunder",
@@ -1205,40 +1372,39 @@ def classify_alert(code, sources, category):
     }
 
     if category in high_impact_categories:
-        if "METAR" in source_set:
+        if current_source:
             return "active", "red", True, False, 10
         return "forecast", "yellow", False, True, 30
 
     if code in heavy_precip_codes:
-        if "METAR" in source_set:
+        if current_source:
             return "active", "yellow", False, True, 35
         return "forecast", "yellow", False, True, 40
 
     if category == "snow":
-        if "METAR" in source_set:
+        if current_source:
             return "active", "yellow", False, True, 35
         return "forecast", "yellow", False, True, 45
 
     if category == "fog":
         if code == "FZFG":
-            if "METAR" in source_set:
+            if current_source:
                 return "active", "red", True, False, 15
             return "forecast", "yellow", False, True, 30
 
-        if "METAR" in source_set:
+        if current_source:
             return "active", "yellow", False, True, 40
         return "forecast", "yellow", False, True, 50
 
     if category in info_categories:
-        if "METAR" in source_set:
+        if current_source:
             return "info", "blue", False, False, 60
         return "forecast_info", "blue", False, False, 70
 
-    if "METAR" in source_set:
+    if current_source:
         return "active", "yellow", False, True, 50
 
     return "forecast", "yellow", False, True, 60
-
 
 def alert_text_for(label, sources):
     source_set = set(sources)
@@ -1329,7 +1495,63 @@ def split_taf_groups_for_windows(taf):
     return groups
 
 
-def detect_weather_alerts(metar, taf):
+def atis_weather_alert_scan_text(atis_text):
+    """Return the operational ATIS portion for current hazard scanning."""
+    return atis_observation_scan_text(atis_text)
+
+def atis_plain_weather_present(source_text, code):
+    """Recognize common spoken/plain-English ATIS hazard phrases in addition to METAR codes."""
+    text = re.sub(r"\s+", " ", (source_text or "").upper()).strip()
+
+    phrase_map = {
+        "+TSRA": ["HEAVY THUNDERSTORM RAIN"],
+        "TSRA": ["THUNDERSTORM RAIN", "THUNDERSTORMS WITH RAIN"],
+        "-TSRA": ["LIGHT THUNDERSTORM RAIN"],
+        "VCTS": ["THUNDERSTORM VICINITY", "THUNDERSTORM IN THE VICINITY", "THUNDERSTORMS IN THE VICINITY", "TS IN THE VICINITY"],
+        "+FZRA": ["HEAVY FREEZING RAIN"],
+        "FZRA": ["FREEZING RAIN"],
+        "-FZRA": ["LIGHT FREEZING RAIN"],
+        "+FZDZ": ["HEAVY FREEZING DRIZZLE"],
+        "FZDZ": ["FREEZING DRIZZLE"],
+        "-FZDZ": ["LIGHT FREEZING DRIZZLE"],
+        "FZFG": ["FREEZING FOG"],
+        "PL": ["ICE PELLETS"],
+        "GR": ["HAIL"],
+        "GS": ["SMALL HAIL", "SNOW PELLETS"],
+        "+SN": ["HEAVY SNOW"],
+        "SN": ["SNOW"],
+        "-SN": ["LIGHT SNOW"],
+        "SG": ["SNOW GRAINS"],
+        "+RA": ["HEAVY RAIN"],
+        "RA": [" RAIN"],
+        "-RA": ["LIGHT RAIN"],
+        "+SHRA": ["HEAVY RAIN SHOWERS"],
+        "SHRA": ["RAIN SHOWERS", "SHOWERS"],
+        "-SHRA": ["LIGHT RAIN SHOWERS"],
+        "VCSH": ["SHOWERS VICINITY", "SHOWERS IN THE VICINITY"],
+        "+DZ": ["HEAVY DRIZZLE"],
+        "DZ": ["DRIZZLE"],
+        "-DZ": ["LIGHT DRIZZLE"],
+        "FU": ["SMOKE"],
+        "VA": ["VOLCANIC ASH"],
+        "HZ": ["HAZE"],
+        "FG": ["FOG"],
+        "BR": ["MIST"],
+        "SQ": ["SQUALL"],
+        "FC": ["FUNNEL", "TORNADO", "WATERSPOUT"],
+        "LLWS": ["LOW LEVEL WIND SHEAR", "LOW-LEVEL WIND SHEAR", "LLWS"]
+    }
+
+    for phrase in phrase_map.get(code, []):
+        if phrase.startswith(" "):
+            if phrase in f" {text}":
+                return True
+        elif phrase in text:
+            return True
+
+    return False
+
+def detect_weather_alerts(metar, taf, atis_text=""):
     checks = [
         {"code": "+TSRA", "label": "HEAVY THUNDERSTORM RAIN", "emoji": "⛈️", "category": "thunder"},
         {"code": "TSRA", "label": "THUNDERSTORM RAIN", "emoji": "⛈️", "category": "thunder"},
@@ -1376,36 +1598,51 @@ def detect_weather_alerts(metar, taf):
     ]
 
     alerts = []
-    metar_seen = set()
+    current_seen = set()
     taf_seen_by_group = set()
+    atis_scan_text = atis_weather_alert_scan_text(atis_text)
 
-    for check in checks:
+    def add_current_alert(check, source):
         code = check["code"]
-        if weather_code_present(metar or "", code) and code not in metar_seen:
-            metar_seen.add(code)
-            severity, display_tone, flash, pulse, priority = classify_alert(
-                code,
-                ["METAR"],
-                check["category"]
-            )
-            text = f"{check['label']} IN METAR"
-            alerts.append({
-                "code": code,
-                "label": check["label"],
-                "emoji": check["emoji"],
-                "category": check["category"],
-                "sources": ["METAR"],
-                "severity": severity,
-                "displayTone": display_tone,
-                "flash": flash,
-                "pulse": pulse,
-                "priority": priority,
-                "text": text,
-                "displayText": f"{check['emoji']} {text}".strip(),
-                "tafWindow": "",
-                "tafStartKey": -1,
-                "tafGroupType": ""
-            })
+        severity, display_tone, flash, pulse, priority = classify_alert(
+            code,
+            [source],
+            check["category"]
+        )
+        text = f"{check['label']} IN {source}"
+        alerts.append({
+            "code": code,
+            "label": check["label"],
+            "emoji": check["emoji"],
+            "category": check["category"],
+            "sources": [source],
+            "severity": severity,
+            "displayTone": display_tone,
+            "flash": flash,
+            "pulse": pulse,
+            "priority": priority,
+            "text": text,
+            "displayText": f"{check['emoji']} {text}".strip(),
+            "tafWindow": "",
+            "tafStartKey": -1,
+            "tafGroupType": ""
+        })
+
+    # ATIS and METAR are both current-condition sources. If the same hazard appears
+    # in both, keep both candidates and let tie-breaking favor ATIS.
+    for source, source_text in [("ATIS", atis_scan_text), ("METAR", metar or "")]:
+        for check in checks:
+            code = check["code"]
+            key = (source, code)
+            if key in current_seen:
+                continue
+            present = weather_code_present(source_text, code)
+            if source == "ATIS":
+                present = present or atis_plain_weather_present(source_text, code)
+
+            if present:
+                current_seen.add(key)
+                add_current_alert(check, source)
 
     taf_groups = split_taf_groups_for_windows(taf)
 
@@ -1449,21 +1686,27 @@ def detect_weather_alerts(metar, taf):
                 "tafGroupType": group.get("tafGroupType", "")
             })
 
-    # Do not show several TAF hazards at once. METAR current hazards win.
-    metar_alerts = [alert for alert in alerts if "METAR" in alert.get("sources", [])]
+    current_alerts = [
+        alert for alert in alerts
+        if set(alert.get("sources", [])).intersection({"ATIS", "METAR"})
+    ]
     taf_alerts = [alert for alert in alerts if "TAF" in alert.get("sources", [])]
 
-    metar_alerts.sort(key=lambda item: item.get("priority", 99))
+    def current_sort_key(alert):
+        sources = set(alert.get("sources", []))
+        source_tie = 0 if "ATIS" in sources else 1
+        return (alert.get("priority", 99), source_tie)
+
+    current_alerts.sort(key=current_sort_key)
     taf_alerts.sort(key=lambda item: (item.get("tafStartKey", 999999), item.get("priority", 99)))
 
-    if metar_alerts:
-        return metar_alerts[:1]
+    if current_alerts:
+        return current_alerts[:1]
 
     if taf_alerts:
         return taf_alerts[:1]
 
     return []
-
 
 def summarize_weather_alerts(alerts):
     if not alerts:
@@ -1508,27 +1751,29 @@ def normalize_lightning_direction(direction):
     text = text.replace("ALL QUADS", "ALQDS")
     text = text.replace("ALLQDS", "ALQDS")
     text = text.replace("ALLQUADS", "ALQDS")
+    text = text.replace(" QUADRANTS", " QUADS")
+    text = re.sub(r"\bAND\b", " ", text)
+    text = re.sub(r"[/,;]+", " ", text)
     text = re.sub(r"\s+", " ", text)
 
     if not text:
         return ""
 
+    if "ALQDS" in text or re.search(r"\bALL\b", text) and re.search(r"\b(QUADS|QUADRANTS)\b", text):
+        return "ALL QUADS"
+
     parts = []
     for token in text.split():
         token = token.strip(".,;:()[]{}")
-        if token in {"ALL", "QUADS", "QUADRANTS"}:
-            return "ALQDS"
-        if token in LIGHTNING_DIRECTIONS:
-            if token == "ALLQUADS":
-                return "ALQDS"
+        if token in {"ALL", "QUADS", "QUADRANTS", "ALLQUADS"}:
+            return "ALL QUADS"
+        if token in {"N", "NE", "E", "SE", "S", "SW", "W", "NW"} and token not in parts:
             parts.append(token)
 
     if not parts:
         return ""
 
-    # Keep the first reported direction for compact board display.
-    return parts[0]
-
+    return "/".join(parts)
 
 def extract_metar_ltg_dsnt_direction(metar):
     text = (metar or "").upper()
@@ -1685,86 +1930,109 @@ def find_taf_thunder_window(taf):
 
 
 def build_lightning_summary(metar, taf, atis_text):
-    # Priority: METAR current > ATIS current text > TAF forecast.
+    """Build current/near-current lightning status only.
+
+    LIGHTNING box rule:
+      - Use current ATIS/METAR only.
+      - TAF thunder never activates LIGHTNING.
+      - TAF thunder remains a WX ALERT / TAF TREND item with a time window.
+      - Highest severity wins; equal severity favors ATIS.
+    """
+    candidates = []
+
+    def add_candidate(rank, source, lightning, severity, tone, flash, pulse, log_text):
+        candidates.append({
+            "rank": rank,
+            "sourceTie": 0 if source == "ATIS" else 1,
+            "lightning": lightning,
+            "lightningSeverity": severity,
+            "lightningTone": tone,
+            "lightningFlash": flash,
+            "lightningPulse": pulse,
+            "lightningSource": source,
+            "lightningLogText": log_text
+        })
+
     if has_metar_field_thunder(metar):
-        return {
-            "lightning": "⛈️ TS OVER FIELD",
-            "lightningSeverity": "active_field",
-            "lightningTone": "red",
-            "lightningFlash": True,
-            "lightningPulse": False,
-            "lightningSource": "METAR",
-            "lightningLogText": "METAR thunderstorm over/near field."
-        }
+        add_candidate(
+            3,
+            "METAR",
+            "⛈️ TS OVER FIELD",
+            "active_field",
+            "red",
+            True,
+            False,
+            "METAR thunderstorm over/near field."
+        )
 
     if has_metar_vcts(metar):
-        return {
-            "lightning": "⚡ VCTS APPROX 5-10 NM",
-            "lightningSeverity": "vicinity",
-            "lightningTone": "yellow",
-            "lightningFlash": False,
-            "lightningPulse": True,
-            "lightningSource": "METAR",
-            "lightningLogText": "METAR VCTS. Approx 5-10 NM."
-        }
+        add_candidate(
+            2,
+            "METAR",
+            "⚡ VCTS 5-10 NM",
+            "vicinity",
+            "yellow",
+            False,
+            True,
+            "METAR VCTS. 5-10 NM."
+        )
 
     metar_dsnt_dir = extract_metar_ltg_dsnt_direction(metar)
     if metar_dsnt_dir:
-        return {
-            "lightning": f"⚡ DSNT {metar_dsnt_dir} APPROX 10-30 NM",
-            "lightningSeverity": "distant",
-            "lightningTone": "yellow",
-            "lightningFlash": False,
-            "lightningPulse": False,
-            "lightningSource": "METAR",
-            "lightningLogText": f"METAR LTG DSNT {metar_dsnt_dir}. Approx 10-30 NM."
-        }
+        add_candidate(
+            1,
+            "METAR",
+            f"⚡ DSNT {metar_dsnt_dir} 10-30 NM",
+            "distant",
+            "yellow",
+            False,
+            True,
+            f"METAR LTG DSNT {metar_dsnt_dir}. 10-30 NM."
+        )
 
     if has_atis_field_thunder(atis_text):
-        return {
-            "lightning": "⛈️ TS OVER FIELD",
-            "lightningSeverity": "active_field",
-            "lightningTone": "red",
-            "lightningFlash": True,
-            "lightningPulse": False,
-            "lightningSource": "ATIS",
-            "lightningLogText": "ATIS thunderstorm wording."
-        }
+        add_candidate(
+            3,
+            "ATIS",
+            "⛈️ TS OVER FIELD",
+            "active_field",
+            "red",
+            True,
+            False,
+            "ATIS thunderstorm wording."
+        )
 
     if has_atis_vicinity_thunder(atis_text):
-        return {
-            "lightning": "⚡ VCTS APPROX 5-10 NM",
-            "lightningSeverity": "vicinity",
-            "lightningTone": "yellow",
-            "lightningFlash": False,
-            "lightningPulse": True,
-            "lightningSource": "ATIS",
-            "lightningLogText": "ATIS vicinity thunderstorm wording."
-        }
+        add_candidate(
+            2,
+            "ATIS",
+            "⚡ VCTS 5-10 NM",
+            "vicinity",
+            "yellow",
+            False,
+            True,
+            "ATIS vicinity thunderstorm wording."
+        )
 
     atis_dsnt_dir = extract_atis_ltg_direction(atis_text)
     if atis_dsnt_dir:
-        return {
-            "lightning": f"⚡ DSNT {atis_dsnt_dir} APPROX 10-30 NM",
-            "lightningSeverity": "distant",
-            "lightningTone": "yellow",
-            "lightningFlash": False,
-            "lightningPulse": False,
-            "lightningSource": "ATIS",
-            "lightningLogText": f"ATIS distant lightning {atis_dsnt_dir}. Approx 10-30 NM."
-        }
+        add_candidate(
+            1,
+            "ATIS",
+            f"⚡ DSNT {atis_dsnt_dir} 10-30 NM",
+            "distant",
+            "yellow",
+            False,
+            True,
+            f"ATIS distant lightning {atis_dsnt_dir}. 10-30 NM."
+        )
 
-    taf_window = find_taf_thunder_window(taf)
-    if taf_window:
-        return {
-            "lightning": f"⛈️ TS POSSIBLE {taf_window}",
-            "lightningSeverity": "forecast",
-            "lightningTone": "yellow",
-            "lightningFlash": False,
-            "lightningPulse": True,
-            "lightningSource": "TAF",
-            "lightningLogText": f"TAF thunder possible {taf_window}."
-        }
+    if candidates:
+        candidates.sort(key=lambda item: (-item["rank"], item["sourceTie"]))
+        selected = candidates[0].copy()
+        selected.pop("rank", None)
+        selected.pop("sourceTie", None)
+        return selected
 
     return {
         "lightning": "NONE",
@@ -1773,9 +2041,8 @@ def build_lightning_summary(metar, taf, atis_text):
         "lightningFlash": False,
         "lightningPulse": False,
         "lightningSource": "NONE",
-        "lightningLogText": "No METAR/ATIS/TAF lightning or thunder cues."
+        "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND."
     }
-
 
 def get_xml_tag(xml_text, tag_name):
     pattern = rf"<{tag_name}>(.*?)</{tag_name}>"
@@ -2281,7 +2548,7 @@ def build_weather_json():
     trend_reference_timestamp = trend_reference_sample.get("timestampZ") if trend_reference_sample else "LAST_GOOD_FALLBACK"
     trend_reference_source = "3HR_HISTORY" if trend_reference_sample else "LAST_GOOD_FALLBACK"
 
-    wx_alerts = detect_weather_alerts(metar, taf)
+    wx_alerts = detect_weather_alerts(metar, taf, atis_text)
     wx_summary = summarize_weather_alerts(wx_alerts)
     lightning_summary = build_lightning_summary(metar, taf, atis_text)
 
