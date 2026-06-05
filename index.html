@@ -116,7 +116,7 @@ html,body{
   position:absolute;
   width:100%;
   top:100%;
-  animation:notamScrollUp 35s linear infinite;
+  animation:notamScrollUp 18s linear infinite;
 }
 
 .mil-notam-none .mil-notam-crawl{
@@ -1981,14 +1981,20 @@ function setMilNotamsDisplay(data){
   const fetchStatus=(data.milNotamFetchStatus||"").toUpperCase();
   const rawStatus=(data.milNotamRawStatus||"").toUpperCase();
 
-  let scrollText=data.milNotamScrollText||"";
+  /*
+    Build the crawl from the structured NOTAM array first.
+    This keeps each NOTAM separated and avoids the jumbled single-line pipe format.
+  */
+  let scrollText="";
 
-  if(!scrollText&&items.length>0){
+  if(items.length>0){
     scrollText=items.map(item=>{
       const number=item.number||item.id||"UNKNOWN";
       const text=item.displayText||item.text||"";
-      return (number+" "+text).trim();
-    }).filter(Boolean).join("  |  ");
+      return `${number}\n${text}`.trim();
+    }).filter(Boolean).join("\n\n");
+  }else{
+    scrollText=data.milNotamScrollText||"";
   }
 
   panel.classList.remove("mil-notam-active","mil-notam-none","mil-notam-placeholder");
