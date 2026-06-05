@@ -1973,12 +1973,46 @@ function setMilNotamsDisplay(data){
     return;
   }
 
-  panel.classList.remove("mil-notam-active","mil-notam-none");
-  panel.classList.add("mil-notam-placeholder");
+  const items=Array.isArray(data.milNotams)?data.milNotams:[];
+  const explicitCount=Number(data.milNotamCount);
+  const count=Number.isFinite(explicitCount)?explicitCount:items.length;
+  const source=data.milNotamSource||"FAA NMS";
+  const updated=data.milNotamUpdatedZ||data.allFeedsUpdatedZ||"--";
+  const fetchStatus=(data.milNotamFetchStatus||"").toUpperCase();
+  const rawStatus=(data.milNotamRawStatus||"").toUpperCase();
 
-  status.textContent="PLACEHOLDER";
-  crawl.textContent="FAA NMS API PENDING";
-  crawl.title="MIL NOTAM automation paused. Waiting for approved FAA NMS API access.";
+  let scrollText=data.milNotamScrollText||"";
+
+  if(!scrollText&&items.length>0){
+    scrollText=items.map(item=>{
+      const number=item.number||item.id||"UNKNOWN";
+      const text=item.displayText||item.text||"";
+      return (number+" "+text).trim();
+    }).filter(Boolean).join("  |  ");
+  }
+
+  panel.classList.remove("mil-notam-active","mil-notam-none","mil-notam-placeholder");
+
+  if(count>0&&scrollText){
+    panel.classList.add("mil-notam-active");
+    status.textContent=data.milNotamStatus||`${count} ACTIVE`;
+    crawl.textContent=scrollText;
+    crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"}`;
+    return;
+  }
+
+  panel.classList.add("mil-notam-none");
+
+  if(fetchStatus&&fetchStatus!=="OK"&&fetchStatus!=="NO_DATA"){
+    status.textContent="NMS STALE";
+    crawl.textContent=`MIL NOTAM FEED ${fetchStatus}. USING LAST AVAILABLE DATA IF PRESENT. UPDATED ${updated}`;
+    crawl.title=`${source} | ${fetchStatus} | ${rawStatus}`;
+    return;
+  }
+
+  status.textContent="NONE ACTIVE";
+  crawl.textContent=`NO ACTIVE KMEM MIL NOTAMS. UPDATED ${updated}`;
+  crawl.title=`${source} | ${fetchStatus||rawStatus||"OK"}`;
 }
 
 
