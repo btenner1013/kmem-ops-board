@@ -21,6 +21,7 @@ except Exception:
 
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 LOCAL_CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", REPO_DIR), "KMEMOpsBoard")
+REPO_LAST_GOOD_WEATHER_PATH = os.path.join(REPO_DIR, "weather_last_good.json")
 LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
 TREND_HISTORY_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_trend_history.json")
 TREND_LOOKBACK_HOURS = 3
@@ -170,6 +171,12 @@ def load_previous_weather():
         print(f"Loaded last-known-good cache: {LAST_GOOD_WEATHER_PATH}")
         return cached
 
+    repo_last_good = load_json_file(REPO_LAST_GOOD_WEATHER_PATH)
+
+    if repo_last_good:
+        print(f"Loaded repo last-known-good backup: {REPO_LAST_GOOD_WEATHER_PATH}")
+        return repo_last_good
+
     weather_path = os.path.join(REPO_DIR, "weather.json")
     repo_weather = load_json_file(weather_path)
 
@@ -189,6 +196,49 @@ def save_last_good_weather(data):
         print(f"Last-known-good cache saved: {LAST_GOOD_WEATHER_PATH}")
     except Exception as error:
         print("Unable to save last-known-good cache:", error)
+
+
+def save_repo_last_good_weather(data, reason=""):
+    """
+    Saves a repo-local last-good copy.
+
+    This file is intentionally separate from weather.json so a bad or partial update
+    does not erase the most recent known-good operational data. Keep it ignored by Git.
+    """
+    try:
+        if not isinstance(data, dict) or not data:
+            print("Repo last-good backup skipped: no valid data object.")
+            return False
+
+        if not should_save_last_good(data):
+            print("Repo last-good backup skipped: current data did not pass quality checks.")
+            return False
+
+        with open(REPO_LAST_GOOD_WEATHER_PATH, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+
+        suffix = f" ({reason})" if reason else ""
+        print(f"Repo last-good backup saved: {REPO_LAST_GOOD_WEATHER_PATH}{suffix}")
+        return True
+
+    except Exception as error:
+        print("Unable to save repo last-good backup:", error)
+        return False
+
+
+def snapshot_current_weather_before_overwrite(weather_path):
+    """
+    Before writing a new weather.json, copy the current valid weather.json to
+    weather_last_good.json. This protects against bad JSON writes, partial updates,
+    and source hiccups during the next update cycle.
+    """
+    current_data = load_json_file(weather_path)
+
+    if not current_data:
+        print("Repo last-good pre-write snapshot skipped: current weather.json missing or invalid.")
+        return False
+
+    return save_repo_last_good_weather(current_data, "pre-write snapshot")
 
 
 def parse_z_datetime(value):
@@ -2393,11 +2443,14 @@ def build_weather_json():
 
     weather_path = os.path.join(REPO_DIR, "weather.json")
 
+    snapshot_current_weather_before_overwrite(weather_path)
+
     with open(weather_path, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=2)
 
     if should_save_last_good(data):
         save_last_good_weather(data)
+        save_repo_last_good_weather(data, "post-write current good data")
     else:
         print("Last-known-good cache not updated because one or more primary feeds are not valid.")
 
