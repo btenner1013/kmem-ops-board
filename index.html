@@ -2841,6 +2841,72 @@ html,body{
   }
 }
 
+
+/* Phase 22 — full desktop/TV weather box readability bump
+   Makes the data box values between VFR and METAR easier to read on full displays.
+   Compact/split-window and phone media rules later in the CSS still override this when needed.
+*/
+
+/* Normal desktop / TV only */
+@media (hover:hover) and (pointer:fine) and (min-width:1200px) and (min-height:761px){
+  .detail-box,
+  .ops-box,
+  .trend-box{
+    min-height:48px !important;
+    padding:6px 8px !important;
+  }
+
+  .detail-label,
+  .ops-label,
+  .trend-label{
+    font-size:clamp(.82rem,.86vw,1.08rem) !important;
+    line-height:1.0 !important;
+  }
+
+  .detail-value,
+  .ops-value,
+  .trend-value{
+    font-size:clamp(1.18rem,1.24vw,1.62rem) !important;
+    line-height:1.08 !important;
+  }
+
+  .bwc-stamp{
+    font-size:.68em !important;
+    line-height:1.0 !important;
+  }
+
+  .summary-grid{
+    margin-bottom:8px !important;
+  }
+
+  .details-grid,
+  .ops-grid{
+    gap:5px !important;
+  }
+}
+
+/* Large TV / wide display gets a slightly stronger bump */
+@media (hover:hover) and (pointer:fine) and (min-width:1700px) and (min-height:850px){
+  .detail-box,
+  .ops-box,
+  .trend-box{
+    min-height:52px !important;
+    padding:7px 9px !important;
+  }
+
+  .detail-label,
+  .ops-label,
+  .trend-label{
+    font-size:clamp(.90rem,.92vw,1.16rem) !important;
+  }
+
+  .detail-value,
+  .ops-value,
+  .trend-value{
+    font-size:clamp(1.34rem,1.34vw,1.78rem) !important;
+  }
+}
+
 </style>
 </head>
 
