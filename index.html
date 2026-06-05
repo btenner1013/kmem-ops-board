@@ -1060,6 +1060,239 @@ html,body{
 .detail-value.cat-ifr{color:var(--ifr) !important}
 .detail-value.cat-lifr{color:var(--lifr) !important}
 
+
+/* Phase 13 — responsive layout cleanup for desktop, TV, laptop, and phones */
+
+/* Align top clock divider with WEATHER/RADAR divider on desktop/TV */
+@media (min-width:901px){
+  .top{
+    grid-template-columns:44% 56% !important;
+  }
+
+  .middle{
+    grid-template-columns:44% 56% !important;
+  }
+
+  .board{
+    grid-template-rows:
+      minmax(88px,14vh)
+      minmax(0,1fr)
+      minmax(76px,8.5vh)
+      minmax(46px,6vh) !important;
+  }
+
+  .mil-notam-panel{
+    min-height:76px !important;
+    padding:7px 12px !important;
+  }
+
+  .mil-notam-header{
+    justify-content:center !important;
+  }
+
+  .mil-notam-title{
+    line-height:1.05 !important;
+  }
+
+  .mil-notam-status{
+    line-height:1.05 !important;
+  }
+
+  .mil-notam-cao{
+    line-height:1.05 !important;
+  }
+
+  .mil-notam-crawl{
+    line-height:1.28 !important;
+  }
+
+  .footer{
+    min-height:46px !important;
+  }
+}
+
+/* Smaller desktop / split-screen: preserve alignment but reduce squeeze */
+@media (min-width:901px) and (max-width:1400px){
+  .board{
+    grid-template-rows:
+      minmax(78px,13vh)
+      minmax(0,1fr)
+      minmax(76px,9vh)
+      minmax(44px,6vh) !important;
+  }
+
+  .mil-notam-panel{
+    min-height:76px !important;
+  }
+
+  .mil-notam-title{
+    font-size:clamp(.95rem,1.05vw,1.35rem) !important;
+  }
+
+  .mil-notam-status,
+  .mil-notam-cao{
+    font-size:clamp(.78rem,.9vw,1.05rem) !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.78rem,.9vw,1.05rem) !important;
+  }
+}
+
+/* Phones and touch devices: make the board a readable scroll page instead of a squeezed wall display */
+@media (hover:none) and (pointer:coarse){
+  html,body{
+    height:auto !important;
+    min-height:100% !important;
+    overflow:auto !important;
+  }
+
+  .board{
+    height:auto !important;
+    min-height:100vh !important;
+    width:100vw !important;
+    display:grid !important;
+    grid-template-rows:auto auto auto auto !important;
+    gap:4px !important;
+    padding:4px !important;
+    overflow:visible !important;
+  }
+
+  .top{
+    grid-template-columns:1fr !important;
+    gap:4px !important;
+  }
+
+  .middle{
+    grid-template-columns:1fr !important;
+    gap:4px !important;
+  }
+
+  .panel{
+    overflow:visible !important;
+  }
+
+  .weather-panel{
+    min-height:auto !important;
+    height:auto !important;
+  }
+
+  .radar-panel{
+    min-height:auto !important;
+    height:auto !important;
+  }
+
+  .radarimg{
+    width:100% !important;
+    height:auto !important;
+    min-height:280px !important;
+    max-height:none !important;
+    object-fit:contain !important;
+  }
+
+  .mil-notam-panel{
+    grid-template-columns:1fr !important;
+    min-height:110px !important;
+    row-gap:6px !important;
+    padding:7px 8px !important;
+  }
+
+  .mil-notam-header{
+    border-right:0 !important;
+    border-bottom:1px solid rgba(230,230,230,.35) !important;
+    padding-right:0 !important;
+    padding-bottom:5px !important;
+  }
+
+  .mil-notam-window{
+    min-height:60px !important;
+  }
+
+  .mil-notam-active .mil-notam-crawl{
+    animation:notamScrollUp 18s linear infinite !important;
+  }
+
+  .raw{
+    max-height:none !important;
+    overflow:visible !important;
+    font-size:clamp(.78rem,2.7vw,1rem) !important;
+  }
+
+  .footer{
+    grid-template-columns:1fr !important;
+    row-gap:5px !important;
+    min-height:auto !important;
+    padding:7px 8px !important;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-right{
+    text-align:left !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+
+  .feed-health{
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+}
+
+/* Phone portrait: use a single-column details grid for max readability */
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  .details-grid,
+  .ops-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  .clock{
+    font-size:clamp(2.6rem,13vw,4.4rem) !important;
+  }
+
+  .flight-category{
+    font-size:clamp(2.1rem,12vw,3.6rem) !important;
+  }
+
+  .atis-letter{
+    text-align:left !important;
+    font-size:clamp(1.2rem,6vw,2rem) !important;
+  }
+
+  .radarimg{
+    min-height:360px !important;
+  }
+}
+
+/* Phone landscape: clocks can stay side-by-side, but stack WEATHER/RADAR and allow scrolling */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .top{
+    grid-template-columns:1fr 1fr !important;
+  }
+
+  .clock{
+    font-size:clamp(2.2rem,6vw,4.2rem) !important;
+  }
+
+  .middle{
+    grid-template-columns:1fr !important;
+  }
+
+  .details-grid{
+    grid-template-columns:repeat(4,1fr) !important;
+  }
+
+  .ops-grid{
+    grid-template-columns:repeat(3,1fr) !important;
+  }
+
+  .radarimg{
+    min-height:320px !important;
+  }
+}
+
 </style>
 </head>
 
