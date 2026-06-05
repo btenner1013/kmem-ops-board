@@ -1293,6 +1293,388 @@ html,body{
   }
 }
 
+
+/* Phase 14 — final responsive cleanup after desktop + phone screenshots */
+
+/* Desktop/TV: make radar use more of the available panel space */
+@media (min-width:901px){
+  .radar-panel{
+    overflow:hidden !important;
+  }
+
+  .radarimg{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center center !important;
+  }
+
+  .raw{
+    overflow:hidden !important;
+  }
+}
+
+/* Desktop/TV: keep NOTAMS row readable without wasting vertical space */
+@media (min-width:901px){
+  .mil-notam-panel{
+    grid-template-columns:minmax(155px,16.5%) 1fr !important;
+  }
+
+  .mil-notam-window{
+    min-height:58px !important;
+  }
+}
+
+/* Touch devices: no sideways board squeeze, no horizontal clipping */
+@media (hover:none) and (pointer:coarse){
+  html,body{
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  .board{
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:100vh !important;
+    overflow:visible !important;
+    padding:4px !important;
+  }
+
+  .top,
+  .middle,
+  .bottom,
+  .panel,
+  .weather-panel,
+  .radar-panel,
+  .mil-notam-panel,
+  .footer{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  .summary-grid,
+  .details-grid,
+  .ops-grid,
+  .status-grid{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  .atis-letter{
+    text-align:left !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  .raw{
+    white-space:pre-wrap !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  .radarimg{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    object-fit:contain !important;
+    object-position:center top !important;
+  }
+
+  /*
+    On phones/tablets, make NOTAMS readable as normal scrollable text.
+    The page itself scrolls, so the NOTAM text should not hide behind a tiny animated window.
+  */
+  .mil-notam-panel{
+    display:block !important;
+    min-height:auto !important;
+  }
+
+  .mil-notam-header{
+    border-right:0 !important;
+    border-bottom:1px solid rgba(230,230,230,.35) !important;
+    padding-right:0 !important;
+    padding-bottom:6px !important;
+    margin-bottom:6px !important;
+  }
+
+  .mil-notam-window{
+    height:auto !important;
+    min-height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    position:relative !important;
+  }
+
+  .mil-notam-active .mil-notam-crawl{
+    position:relative !important;
+    width:100% !important;
+    top:auto !important;
+    transform:none !important;
+    animation:none !important;
+  }
+
+  .mil-notam-crawl{
+    white-space:pre-wrap !important;
+    overflow-wrap:anywhere !important;
+    font-size:clamp(.76rem,2.4vw,1rem) !important;
+    line-height:1.28 !important;
+  }
+}
+
+/* Phone portrait: readable vertical single-column flow */
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  .top,
+  .middle{
+    grid-template-columns:1fr !important;
+  }
+
+  .summary-grid,
+  .details-grid,
+  .ops-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  .panel{
+    padding:6px !important;
+  }
+
+  .clock{
+    font-size:clamp(2.6rem,13vw,4.6rem) !important;
+  }
+
+  .date{
+    font-size:clamp(.95rem,3.4vw,1.15rem) !important;
+  }
+
+  .label,
+  .title{
+    font-size:clamp(1rem,4vw,1.35rem) !important;
+  }
+
+  .flight-category{
+    font-size:clamp(2.2rem,12vw,3.8rem) !important;
+  }
+
+  .detail-value,
+  .ops-value,
+  .trend-value{
+    font-size:clamp(.98rem,3.6vw,1.28rem) !important;
+  }
+
+  .detail-label,
+  .ops-label,
+  .trend-label{
+    font-size:clamp(.78rem,3vw,1rem) !important;
+  }
+
+  .radarimg{
+    min-height:0 !important;
+  }
+
+  .footer{
+    font-size:clamp(.9rem,3.2vw,1.2rem) !important;
+  }
+
+  .feed-health{
+    font-size:clamp(.72rem,2.7vw,1rem) !important;
+  }
+}
+
+/* Phone landscape: force vertical scroll instead of wide clipped wall-board */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .top,
+  .middle{
+    grid-template-columns:1fr !important;
+  }
+
+  .summary-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  .details-grid{
+    grid-template-columns:repeat(2,1fr) !important;
+  }
+
+  .ops-grid{
+    grid-template-columns:repeat(2,1fr) !important;
+  }
+
+  .clock{
+    font-size:clamp(2.4rem,9vw,4.2rem) !important;
+  }
+
+  .flight-category{
+    font-size:clamp(2.2rem,8vw,3.8rem) !important;
+  }
+
+  .radarimg{
+    min-height:0 !important;
+  }
+
+  .raw{
+    font-size:clamp(.82rem,2.2vw,1rem) !important;
+  }
+}
+
+
+/* Phase 15 — readability tuning: larger METAR/TAF + NOTAMS, shorter footer */
+
+/* Desktop / TV readability */
+@media (min-width:901px){
+  .board{
+    grid-template-rows:
+      minmax(84px,13.5vh)
+      minmax(0,1fr)
+      minmax(96px,10.5vh)
+      minmax(34px,4.6vh) !important;
+  }
+
+  .footer{
+    min-height:34px !important;
+    padding:4px 8px !important;
+    align-items:center !important;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-right{
+    line-height:1.05 !important;
+  }
+
+  .raw{
+    font-size:clamp(1.12rem,1.18vw,1.48rem) !important;
+    line-height:1.55 !important;
+    padding-top:10px !important;
+  }
+
+  .mil-notam-panel{
+    min-height:96px !important;
+    padding:8px 12px !important;
+  }
+
+  .mil-notam-window{
+    min-height:78px !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(1.0rem,1.12vw,1.38rem) !important;
+    line-height:1.38 !important;
+  }
+
+  .mil-notam-title{
+    font-size:clamp(1.08rem,1.20vw,1.60rem) !important;
+  }
+
+  .mil-notam-status{
+    font-size:clamp(.96rem,1.05vw,1.34rem) !important;
+  }
+
+  .mil-notam-cao{
+    font-size:clamp(.80rem,.90vw,1.12rem) !important;
+  }
+}
+
+/* Split-screen / laptop readability without wasting footer space */
+@media (min-width:901px) and (max-width:1400px){
+  .board{
+    grid-template-rows:
+      minmax(72px,12.5vh)
+      minmax(0,1fr)
+      minmax(88px,10vh)
+      minmax(32px,4.6vh) !important;
+  }
+
+  .footer{
+    min-height:32px !important;
+    padding:3px 7px !important;
+  }
+
+  .raw{
+    font-size:clamp(1.0rem,1.08vw,1.25rem) !important;
+    line-height:1.45 !important;
+  }
+
+  .mil-notam-panel{
+    min-height:88px !important;
+  }
+
+  .mil-notam-window{
+    min-height:70px !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.90rem,1.0vw,1.18rem) !important;
+    line-height:1.34 !important;
+  }
+}
+
+/* Phone readability: larger raw text and NOTAMS, compact footer */
+@media (hover:none) and (pointer:coarse){
+  .raw{
+    font-size:clamp(.90rem,3.1vw,1.12rem) !important;
+    line-height:1.45 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.88rem,3vw,1.12rem) !important;
+    line-height:1.38 !important;
+  }
+
+  .mil-notam-title{
+    font-size:clamp(.98rem,3.6vw,1.25rem) !important;
+  }
+
+  .mil-notam-status{
+    font-size:clamp(.92rem,3.4vw,1.18rem) !important;
+  }
+
+  .mil-notam-cao{
+    font-size:clamp(.82rem,3vw,1.05rem) !important;
+  }
+
+  .footer{
+    padding:5px 7px !important;
+    row-gap:3px !important;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-right{
+    line-height:1.15 !important;
+  }
+}
+
+/* Phone portrait: keep the feed compact, but readable */
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  .footer{
+    font-size:clamp(.88rem,3.1vw,1.12rem) !important;
+  }
+
+  .feed-health{
+    font-size:clamp(.70rem,2.55vw,.95rem) !important;
+  }
+}
+
+/* Phone landscape: avoid giant footer; emphasize content */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .footer{
+    font-size:clamp(.80rem,2.05vw,1rem) !important;
+  }
+
+  .feed-health{
+    font-size:clamp(.64rem,1.75vw,.88rem) !important;
+  }
+
+  .raw{
+    font-size:clamp(.88rem,2vw,1.05rem) !important;
+  }
+}
+
 </style>
 </head>
 
