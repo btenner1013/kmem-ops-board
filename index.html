@@ -2710,6 +2710,137 @@ html,body{
   }
 }
 
+
+/* Phase 21 — compact desktop polish
+   Fixes clipped clock dates and gives NOTAMS protected height in split/quadrant windows.
+   Phone and full desktop/TV behavior are intentionally left alone.
+*/
+
+/* Short desktop / snapped-window mode polish */
+@media (hover:hover) and (pointer:fine) and (min-width:901px) and (max-height:760px){
+  .board{
+    grid-template-rows:
+      minmax(70px,13vh)
+      minmax(0,1fr)
+      minmax(72px,11vh)
+      minmax(28px,4.2vh) !important;
+  }
+
+  .top > .panel{
+    min-height:70px !important;
+    overflow:hidden !important;
+  }
+
+  .clock{
+    font-size:clamp(1.95rem,4.05vw,4.05rem) !important;
+    line-height:.84 !important;
+  }
+
+  .date{
+    display:block !important;
+    font-size:clamp(.60rem,.80vw,.92rem) !important;
+    line-height:1.05 !important;
+    margin-top:5px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .middle{
+    min-height:0 !important;
+  }
+
+  .weather-panel,
+  .radar-panel{
+    min-height:0 !important;
+  }
+
+  .mil-notam-panel{
+    min-height:72px !important;
+    grid-template-columns:minmax(132px,15.5%) 1fr !important;
+  }
+
+  .mil-notam-window{
+    min-height:56px !important;
+    overflow:hidden !important;
+  }
+
+  .mil-notam-crawl{
+    line-height:1.30 !important;
+  }
+
+  .footer{
+    min-height:28px !important;
+  }
+}
+
+/* Extra short desktop / quadrant mode polish */
+@media (hover:hover) and (pointer:fine) and (min-width:901px) and (max-height:560px){
+  .board{
+    grid-template-rows:
+      minmax(58px,12vh)
+      minmax(0,1fr)
+      minmax(60px,11vh)
+      minmax(24px,4vh) !important;
+  }
+
+  .top > .panel{
+    min-height:58px !important;
+    overflow:hidden !important;
+  }
+
+  .clock{
+    font-size:clamp(1.55rem,3.20vw,3.05rem) !important;
+    line-height:.82 !important;
+  }
+
+  .date{
+    font-size:clamp(.50rem,.66vw,.78rem) !important;
+    line-height:1.05 !important;
+    margin-top:4px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .flight-category{
+    font-size:clamp(1.35rem,2.65vw,2.55rem) !important;
+  }
+
+  .atis-letter{
+    font-size:clamp(.78rem,1.32vw,1.50rem) !important;
+  }
+
+  .detail-box,
+  .ops-box,
+  .trend-box{
+    min-height:24px !important;
+  }
+
+  .raw{
+    line-height:1.20 !important;
+  }
+
+  .mil-notam-panel{
+    min-height:60px !important;
+    grid-template-columns:minmax(118px,14.5%) 1fr !important;
+  }
+
+  .mil-notam-window{
+    min-height:48px !important;
+    overflow:hidden !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.56rem,.66vw,.80rem) !important;
+    line-height:1.22 !important;
+  }
+
+  .footer{
+    min-height:24px !important;
+  }
+}
+
 </style>
 </head>
 
