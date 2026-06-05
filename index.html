@@ -1982,15 +1982,15 @@ function setMilNotamsDisplay(data){
   const rawStatus=(data.milNotamRawStatus||"").toUpperCase();
 
   /*
-    Build the crawl from the structured NOTAM array first.
-    This keeps each NOTAM separated and avoids the jumbled single-line pipe format.
+    Use the full NOTAM text first.
+    Do not use displayText first because that field may be shortened with "...".
   */
   let scrollText="";
 
   if(items.length>0){
     scrollText=items.map(item=>{
       const number=item.number||item.id||"UNKNOWN";
-      const text=item.displayText||item.text||"";
+      const text=item.text||item.displayText||"";
       return `${number}\n${text}`.trim();
     }).filter(Boolean).join("\n\n");
   }else{
