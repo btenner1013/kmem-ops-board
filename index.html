@@ -2288,6 +2288,183 @@ html,body{
   }
 }
 
+
+/* Phase 19 — mobile NOTAMS/footer overlap repair */
+
+/*
+  Mobile/touch devices:
+  Force the board to behave like a normal vertical document.
+  This prevents MIL NOTAM text from escaping over the footer.
+*/
+@media (hover:none) and (pointer:coarse){
+  html,
+  body{
+    height:auto !important;
+    min-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  .board{
+    display:flex !important;
+    flex-direction:column !important;
+    height:auto !important;
+    min-height:100vh !important;
+    width:100% !important;
+    max-width:100% !important;
+    overflow:visible !important;
+    gap:4px !important;
+    padding:4px !important;
+    padding-bottom:92px !important;
+  }
+
+  .top,
+  .middle,
+  .bottom{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:auto !important;
+    overflow:visible !important;
+    gap:4px !important;
+  }
+
+  .panel,
+  .weather-panel,
+  .radar-panel,
+  .mil-notam-panel,
+  .footer{
+    position:relative !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:auto !important;
+    overflow:visible !important;
+  }
+
+  .bottom{
+    position:relative !important;
+    z-index:1 !important;
+  }
+
+  .footer{
+    position:relative !important;
+    z-index:1 !important;
+  }
+
+  /*
+    Critical fix:
+    On phone, NOTAMS should be static text inside the panel.
+    No absolute positioning and no crawl animation.
+  */
+  .mil-notam-panel{
+    display:block !important;
+    padding:6px 7px !important;
+  }
+
+  .mil-notam-header{
+    display:block !important;
+    border-right:0 !important;
+    border-bottom:1px solid rgba(230,230,230,.35) !important;
+    padding-right:0 !important;
+    padding-bottom:7px !important;
+    margin-bottom:8px !important;
+  }
+
+  .mil-notam-window{
+    display:block !important;
+    position:relative !important;
+    height:auto !important;
+    min-height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .mil-notam-active .mil-notam-crawl,
+  .mil-notam-none .mil-notam-crawl,
+  .mil-notam-crawl{
+    display:block !important;
+    position:static !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:auto !important;
+    max-height:none !important;
+    top:auto !important;
+    transform:none !important;
+    animation:none !important;
+    overflow:visible !important;
+    white-space:pre-wrap !important;
+    overflow-wrap:anywhere !important;
+    padding:0 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.74rem,2.65vw,.98rem) !important;
+    line-height:1.34 !important;
+  }
+
+  .mil-notam-title{
+    font-size:clamp(.86rem,3.2vw,1.05rem) !important;
+  }
+
+  .mil-notam-status{
+    font-size:clamp(.82rem,3vw,1rem) !important;
+  }
+
+  .mil-notam-cao{
+    font-size:clamp(.76rem,2.75vw,.94rem) !important;
+    margin-top:6px !important;
+  }
+
+  .footer{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    row-gap:3px !important;
+    padding:6px 7px !important;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-right,
+  .feed-health{
+    text-align:left !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+}
+
+/* Phone portrait: keep NOTAMS readable but not huge */
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  .mil-notam-crawl{
+    font-size:clamp(.76rem,2.75vw,1rem) !important;
+    line-height:1.34 !important;
+  }
+}
+
+/* Phone landscape: compact static NOTAMS and compact footer */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .board{
+    padding-bottom:72px !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.68rem,1.85vw,.90rem) !important;
+    line-height:1.28 !important;
+  }
+
+  .footer{
+    font-size:clamp(.74rem,1.75vw,.94rem) !important;
+  }
+
+  .feed-health{
+    font-size:clamp(.60rem,1.45vw,.82rem) !important;
+  }
+}
+
 </style>
 </head>
 
