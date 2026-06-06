@@ -3061,6 +3061,23 @@ html,body{
   }
 }
 
+
+/* Phase 33C — conditional 15-second NEXRAD/GOES cycling */
+.radar-title-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.radar-mode{
+  color:var(--dim);
+  font-size:clamp(.72rem,.82vw,1.02rem);
+  font-weight:900;
+  letter-spacing:.5px;
+  white-space:nowrap;
+}
+
 </style>
 </head>
 
@@ -3186,7 +3203,7 @@ html,body{
     </div>
 
     <div class="panel radar-panel">
-      <div class="title">RADAR</div>
+      <div class="title radar-title-row"><span id="radarTitle">RADAR</span><span id="radarMode" class="radar-mode">NEXRAD</span></div>
       <img id="radar" class="radarimg" src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif">
     </div>
   </div>
@@ -4291,6 +4308,14 @@ async function loadWeatherJson(){
     updateStaleWarning(updatedZ);
     updateSourceHealth(data,updatedZ);
 
+    const previousRadarCycleState=shouldUseGoesCycle(latestWeatherDataForRadar);
+    latestWeatherDataForRadar=data;
+    const currentRadarCycleState=shouldUseGoesCycle(data);
+
+    if(previousRadarCycleState!==currentRadarCycleState){
+      restartRadarCycle();
+    }
+
     console.log("Ops board refresh:",new Date().toISOString(),updatedZ,data);
   }catch(e){
     document.getElementById("weather").innerHTML='<span class="warn">Unable to load weather.json</span>';
@@ -4346,13 +4371,134 @@ function updateRefreshCountdown(){
   }
 }
 
-function refreshRadar(){
-  document.getElementById("radar").src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif?t="+new Date().getTime();
+const NEXRAD_URL="https://radar.weather.gov/ridge/standard/KNQA_loop.gif";
+const RADAR_CYCLE_MS=15000;
+let latestWeatherDataForRadar=null;
+let radarCycleIndex=0;
+let radarCycleTimer=null;
+
+function textHasLightningCue(text){
+  const s=String(text||"").toUpperCase();
+
+  return /(TS|TSRA|VCTS|LTG|LIGHTNING|DSNT|CB|TSTM|THUNDER)/.test(s);
+}
+
+function shouldUseGoesCycle(data){
+  if(!data){
+    return false;
+  }
+
+  if(String(data.lightningSource||"").toUpperCase()!=="NONE"){
+    return true;
+  }
+
+  if(textHasLightningCue(data.lightning||"")){
+    return true;
+  }
+
+  if(textHasLightningCue(data.lightningLogText||"")){
+    return true;
+  }
+
+  if(textHasLightningCue(data.wxAlertText||"")){
+    return true;
+  }
+
+  if(Array.isArray(data.wxAlerts)){
+    for(const alert of data.wxAlerts){
+      if(textHasLightningCue(JSON.stringify(alert))){
+        return true;
+      }
+    }
+  }
+
+  return textHasLightningCue(data.metar||"")||
+         textHasLightningCue(data.taf||"")||
+         textHasLightningCue(data.atisText||"");
+}
+
+function setRadarTitle(name,mode){
+  const title=document.getElementById("radarTitle");
+  const modeEl=document.getElementById("radarMode");
+
+  if(title){
+    title.textContent=name||"RADAR";
+  }
+
+  if(modeEl){
+    modeEl.textContent=mode||"NEXRAD";
+  }
+}
+
+function cacheBustedUrl(url){
+  const sep=String(url).includes("?")?"&":"?";
+  return `${url}${sep}t=${Date.now()}`;
+}
+
+function radarSourcesForData(data){
+  const sources=[
+    {
+      title:"RADAR",
+      mode:"NEXRAD",
+      url:NEXRAD_URL
+    }
+  ];
+
+  if(shouldUseGoesCycle(data)){
+    if(data.goesGlmGifUrl){
+      sources.push({
+        title:"SAT/LTG",
+        mode:"GOES GLM",
+        url:data.goesGlmGifUrl
+      });
+    }
+
+    if(data.goesBand13GifUrl){
+      sources.push({
+        title:"SAT IR",
+        mode:"GOES B13",
+        url:data.goesBand13GifUrl
+      });
+    }
+  }
+
+  return sources;
+}
+
+function refreshRadar(forceFirst=false){
+  const radar=document.getElementById("radar");
+
+  if(!radar){
+    return;
+  }
+
+  const sources=radarSourcesForData(latestWeatherDataForRadar);
+
+  if(forceFirst||radarCycleIndex>=sources.length){
+    radarCycleIndex=0;
+  }
+
+  const item=sources[radarCycleIndex]||sources[0];
+
+  radar.src=cacheBustedUrl(item.url);
+  radar.alt=`${item.title} ${item.mode}`;
+  setRadarTitle(item.title,item.mode);
+
+  radarCycleIndex=(radarCycleIndex+1)%sources.length;
+}
+
+function restartRadarCycle(){
+  if(radarCycleTimer){
+    clearInterval(radarCycleTimer);
+  }
+
+  refreshRadar(true);
+  radarCycleTimer=setInterval(()=>refreshRadar(false),RADAR_CYCLE_MS);
 }
 
 function refreshActiveData(){
   loadWeatherJson();
-  refreshRadar();
+  refreshRadar(false);
 }
 
 updateClock();
@@ -4363,7 +4509,7 @@ setInterval(updateRefreshCountdown,1000);
 setInterval(updateClock,1000);
 setInterval(checkClockWatchdog,30000);
 setInterval(loadWeatherJson,300000);
-setInterval(refreshRadar,300000);
+restartRadarCycle();
 
 document.addEventListener("visibilitychange",()=>{
   if(!document.hidden){
