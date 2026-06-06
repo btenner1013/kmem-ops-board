@@ -147,6 +147,12 @@ def base_weather(now):
         "wxAlertPulse": False,
         "tafTrend": "VFR NEXT 24 HRS",
 
+        "goesSector": "GOES19 SMV",
+        "goesSectorPage": "https://www.star.nesdis.noaa.gov/goes/sector.php?sat=G19&sector=smv&src=nav",
+        "goesGlmGifUrl": "https://www.star.nesdis.noaa.gov/GOES19/GLM/SECTOR/smv/EXTENT3/20261562111-20261570106-GOES19-GLM-SMV-EXTENT3-600x600.gif",
+        "goesBand13GifUrl": "https://www.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/smv/13/20261562201-20261570156-GOES19-ABI-SMV-13-600x600.gif",
+        "goesFetchStatus": "SCENARIO",
+
         "bwc": "MODERATE",
         "bwcSource": "AHAS",
         "bwcUpdatedZ": ahas_dt.strftime("%Y-%m-%d %H:%M:%S.000"),
