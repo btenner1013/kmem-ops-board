@@ -4,100 +4,113 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>KMEM Ops Board Control</title>
+
 <style>
-*{box-sizing:border-box}
-body{
-  margin:0;
-  min-height:100vh;
-  background:#050505;
-  color:#e6e6e6;
-  font-family:Arial,sans-serif;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
+* {
+  box-sizing: border-box;
 }
-.card{
-  width:min(720px,96vw);
-  border:2px solid #00ff88;
-  background:#101010;
-  padding:22px;
-  box-shadow:0 0 30px rgba(0,255,136,.18);
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #050505;
+  color: #e6e6e6;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
-h1{
-  margin:0 0 8px;
-  color:#00ff88;
-  font-size:clamp(1.5rem,5vw,2.4rem);
+
+.card {
+  width: min(720px, 96vw);
+  border: 2px solid #00ff88;
+  background: #101010;
+  padding: 22px;
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.18);
 }
-.sub{
-  color:#aaa;
-  margin-bottom:22px;
-  line-height:1.35;
+
+h1 {
+  margin: 0 0 8px;
+  color: #00ff88;
+  font-size: clamp(1.5rem, 5vw, 2.4rem);
 }
-label{
-  display:block;
-  font-weight:900;
-  margin:12px 0 6px;
-  color:#fff;
+
+.sub {
+  color: #aaa;
+  margin-bottom: 22px;
+  line-height: 1.35;
 }
-input{
-  width:100%;
-  padding:14px;
-  border:1px solid #444;
-  background:#000;
-  color:#fff;
-  font-size:1.05rem;
-  border-radius:8px;
+
+label {
+  display: block;
+  font-weight: 900;
+  margin: 12px 0 6px;
+  color: #fff;
 }
-button{
-  width:100%;
-  margin-top:14px;
-  padding:18px 14px;
-  border:0;
-  border-radius:10px;
-  font-size:clamp(1rem,4vw,1.4rem);
-  font-weight:1000;
-  letter-spacing:.5px;
-  cursor:pointer;
+
+input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #444;
+  background: #000;
+  color: #fff;
+  font-size: 1.05rem;
+  border-radius: 8px;
 }
-.danger{
-  background:#ffefef;
-  color:#b00000;
-  border:3px solid #ff3333;
+
+button {
+  width: 100%;
+  margin-top: 14px;
+  padding: 18px 14px;
+  border: 0;
+  border-radius: 10px;
+  font-size: clamp(1rem, 4vw, 1.4rem);
+  font-weight: 1000;
+  letter-spacing: 0.5px;
+  cursor: pointer;
 }
-.clear{
-  background:#eaf7ff;
-  color:#003d66;
-  border:3px solid #35b7ff;
+
+.danger {
+  background: #ffefef;
+  color: #b00000;
+  border: 3px solid #ff3333;
 }
-.status{
-  margin-top:18px;
-  min-height:28px;
-  color:#ffcc00;
-  font-weight:900;
-  overflow-wrap:anywhere;
+
+.clear {
+  background: #eaf7ff;
+  color: #003d66;
+  border: 3px solid #35b7ff;
 }
-.small{
-  margin-top:18px;
-  color:#888;
-  font-size:.9rem;
-  line-height:1.35;
+
+.status {
+  margin-top: 18px;
+  min-height: 28px;
+  color: #ffcc00;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.small {
+  margin-top: 18px;
+  color: #888;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 </style>
 </head>
+
 <body>
 <div class="card">
   <h1>KMEM OPS BOARD CONTROL</h1>
+
   <div class="sub">
     Manual alert controls. Use only for active ops coordination.
     Alert stays active until cleared.
   </div>
 
-  <label for="workerUrl">Control Endpoint URL</label>
-  <input id="workerUrl" autocomplete="off" placeholder="https://your-worker.your-subdomain.workers.dev">
-
   <label for="username">Username</label>
-  <input id="username" autocomplete="username" placeholder="Username">
+  <input id="username" autocomplete="username" placeholder="Username" value="164am">
 
   <label for="pin">PIN</label>
   <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
@@ -113,70 +126,72 @@ button{
   <div id="status" class="status"></div>
 
   <div class="small">
-    The endpoint URL and username can be remembered on this device. The PIN is not saved.
+    This page sends the command to the KMEM Ops Board control worker.
+    The PIN is not saved on this device.
   </div>
 </div>
 
 <script>
-const endpointInput=document.getElementById("workerUrl");
-const usernameInput=document.getElementById("username");
+const CONTROL_ENDPOINT = "https://kmem-ops-control.btenner1013.workers.dev";
 
-endpointInput.value=localStorage.getItem("kmemControlEndpoint")||"";
-usernameInput.value=localStorage.getItem("kmemControlUsername")||"164am";
+const usernameInput = document.getElementById("username");
+usernameInput.value = localStorage.getItem("kmemControlUsername") || "164am";
 
-function setStatus(text,tone){
-  const el=document.getElementById("status");
-  el.textContent=text;
-  el.style.color=tone==="ok"?"#00ff88":tone==="bad"?"#ff4444":"#ffcc00";
+function setStatus(text, tone) {
+  const el = document.getElementById("status");
+  el.textContent = text;
+  el.style.color =
+    tone === "ok" ? "#00ff88" :
+    tone === "bad" ? "#ff4444" :
+    "#ffcc00";
 }
 
-async function sendAlert(action){
-  const endpoint=endpointInput.value.trim().replace(/\/+$/,"");
-  const username=usernameInput.value.trim();
-  const pin=document.getElementById("pin").value;
+async function sendAlert(action) {
+  const username = usernameInput.value.trim();
+  const pin = document.getElementById("pin").value;
 
-  if(!endpoint){
-    setStatus("Enter the Control Endpoint URL first.","bad");
+  if (!username) {
+    setStatus("Enter username.", "bad");
     return;
   }
 
-  if(!username){
-    setStatus("Enter username.","bad");
+  if (!pin) {
+    setStatus("Enter PIN.", "bad");
     return;
   }
 
-  if(!pin){
-    setStatus("Enter PIN.","bad");
-    return;
+  if (action === "lightning_5nm") {
+    const ok = confirm("Confirm: DISPLAY LIGHTNING WITHIN 5 NM / FLT LINE CLOSED?");
+    if (!ok) return;
   }
 
-  if(action==="lightning_5nm"){
-    const ok=confirm("Confirm: DISPLAY LIGHTNING WITHIN 5 NM / FLT LINE CLOSED?");
-    if(!ok)return;
-  }
+  localStorage.setItem("kmemControlUsername", username);
 
-  localStorage.setItem("kmemControlEndpoint",endpoint);
-  localStorage.setItem("kmemControlUsername",username);
+  setStatus("Sending...", "warn");
 
-  setStatus("Sending...","warn");
-
-  try{
-    const response=await fetch(endpoint,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({username,pin,action})
+  try {
+    const response = await fetch(CONTROL_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username: username,
+        pin: pin,
+        action: action
+      })
     });
 
-    const text=await response.text();
+    const text = await response.text();
 
-    if(!response.ok){
-      setStatus(`Failed: ${text}`,"bad");
+    if (!response.ok) {
+      setStatus(`Failed: ${text}`, "bad");
       return;
     }
 
-    setStatus(text||"Command sent.","ok");
-  }catch(error){
-    setStatus(`Failed: ${error.message}`,"bad");
+    setStatus(text || "Command sent.", "ok");
+  } catch (error) {
+    setStatus(`Failed: ${error.message}`, "bad");
   }
 }
 </script>
