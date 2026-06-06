@@ -3007,6 +3007,60 @@ html,body{
   }
 }
 
+
+/* Phase 32A — desktop/TV clock date clipping fix
+   Scope: non-touch desktop/TV/fullscreen only. Phone/touch layouts are intentionally unchanged.
+*/
+@media (hover:hover) and (pointer:fine) and (min-width:901px) and (min-height:760px){
+  .board{
+    grid-template-rows:
+      minmax(98px,14.8vh)
+      minmax(0,1fr)
+      minmax(96px,10.5vh)
+      minmax(34px,4.6vh) !important;
+  }
+
+  .clock-panel{
+    overflow:visible !important;
+    padding-top:7px !important;
+    padding-bottom:9px !important;
+  }
+
+  .clock{
+    font-size:clamp(2.35rem,4.45vw,5.65rem) !important;
+    line-height:.88 !important;
+    margin-top:0 !important;
+  }
+
+  .date{
+    display:block !important;
+    line-height:1.15 !important;
+    margin-top:7px !important;
+    padding-bottom:2px !important;
+    overflow:visible !important;
+    white-space:nowrap !important;
+  }
+}
+
+/* Large TV / very wide display: extra breathing room under the clock date */
+@media (hover:hover) and (pointer:fine) and (min-width:1500px) and (min-height:800px){
+  .board{
+    grid-template-rows:
+      minmax(104px,15.2vh)
+      minmax(0,1fr)
+      minmax(96px,10.5vh)
+      minmax(34px,4.6vh) !important;
+  }
+
+  .clock{
+    font-size:clamp(2.35rem,4.35vw,5.45rem) !important;
+  }
+
+  .date{
+    margin-top:8px !important;
+  }
+}
+
 </style>
 </head>
 
