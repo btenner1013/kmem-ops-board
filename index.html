@@ -2907,10 +2907,106 @@ html,body{
   }
 }
 
+
+/* Phase 26 — manual ops alert overlay */
+.manual-alert-overlay{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:4vh 4vw;
+  pointer-events:none;
+}
+
+.manual-alert-overlay.manual-alert-active{
+  display:flex;
+}
+
+.manual-alert-card{
+  width:min(92vw,1500px);
+  min-height:min(50vh,520px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  border:6px solid rgba(255,255,255,.95);
+  background:rgba(255,255,255,.78);
+  color:#b00000;
+  box-shadow:0 0 40px rgba(255,255,255,.65),0 0 80px rgba(255,0,0,.45);
+  font-family:Arial,sans-serif;
+  animation:manualAlertFlash 1.15s step-start infinite;
+}
+
+.manual-alert-line1{
+  font-size:clamp(2.5rem,7.8vw,9.5rem);
+  font-weight:1000;
+  letter-spacing:2px;
+  line-height:.95;
+  text-transform:uppercase;
+}
+
+.manual-alert-line2{
+  margin-top:2.5vh;
+  font-size:clamp(2.2rem,7.0vw,8.5rem);
+  font-weight:1000;
+  letter-spacing:2px;
+  line-height:.95;
+  text-transform:uppercase;
+}
+
+.manual-alert-cao{
+  margin-top:2.2vh;
+  color:#111;
+  font-size:clamp(1rem,2.4vw,2.4rem);
+  font-weight:900;
+  letter-spacing:1px;
+}
+
+@keyframes manualAlertFlash{
+  0%,52%{opacity:1}
+  53%,100%{opacity:.10}
+}
+
+@media (hover:none) and (pointer:coarse){
+  .manual-alert-overlay{
+    padding:3vh 3vw;
+  }
+
+  .manual-alert-card{
+    width:94vw;
+    min-height:42vh;
+    border-width:4px;
+  }
+
+  .manual-alert-line1{
+    font-size:clamp(2rem,13vw,5.8rem);
+  }
+
+  .manual-alert-line2{
+    font-size:clamp(1.8rem,12vw,5.4rem);
+  }
+
+  .manual-alert-cao{
+    font-size:clamp(.9rem,5vw,1.7rem);
+  }
+}
+
 </style>
 </head>
 
 <body>
+
+<div id="manualAlertOverlay" class="manual-alert-overlay" aria-live="assertive" aria-hidden="true">
+  <div class="manual-alert-card">
+    <div id="manualAlertLine1" class="manual-alert-line1">LIGHTNING WITHIN 5 NM</div>
+    <div id="manualAlertLine2" class="manual-alert-line2">FLT LINE CLOSED</div>
+    <div id="manualAlertCao" class="manual-alert-cao">CAO --</div>
+  </div>
+</div>
+
 <div class="board">
   <div class="top">
     <div class="panel">
@@ -4208,5 +4304,107 @@ window.addEventListener("focus",()=>{
   refreshActiveData();
 });
 </script>
+
+<script>
+/* Phase 26 — fast manual alert polling */
+(function(){
+  const MANUAL_ALERT_URL="manual_alert.json";
+  const MANUAL_ALERT_POLL_MS=3000;
+  let lastManualAlertSignature="";
+
+  function sanitizeManualAlertText(value,fallback){
+    const text=String(value||fallback||"").trim();
+    return text.slice(0,120);
+  }
+
+  function formatManualAlertCao(value){
+    if(!value){
+      return "CAO --";
+    }
+
+    const text=String(value).trim();
+    let match=text.match(/(?:T|\s)(\d{2}):(\d{2})(?::\d{2})?/);
+
+    if(match){
+      return `CAO ${match[1]}${match[2]}Z`;
+    }
+
+    match=text.match(/\b(\d{2})(\d{2})Z\b/);
+
+    if(match){
+      return `CAO ${match[1]}${match[2]}Z`;
+    }
+
+    try{
+      const parsed=new Date(text);
+
+      if(!isNaN(parsed.getTime())){
+        const hh=String(parsed.getUTCHours()).padStart(2,"0");
+        const mm=String(parsed.getUTCMinutes()).padStart(2,"0");
+        return `CAO ${hh}${mm}Z`;
+      }
+    }catch(error){}
+
+    return "CAO --";
+  }
+
+  function setManualAlertDisplay(alertData){
+    const overlay=document.getElementById("manualAlertOverlay");
+    const line1=document.getElementById("manualAlertLine1");
+    const line2=document.getElementById("manualAlertLine2");
+    const cao=document.getElementById("manualAlertCao");
+
+    if(!overlay||!line1||!line2||!cao){
+      return;
+    }
+
+    const active=!!(alertData&&alertData.active);
+    const signature=JSON.stringify(alertData||{});
+
+    if(signature===lastManualAlertSignature){
+      return;
+    }
+
+    lastManualAlertSignature=signature;
+
+    if(!active){
+      overlay.classList.remove("manual-alert-active");
+      overlay.setAttribute("aria-hidden","true");
+      return;
+    }
+
+    line1.textContent=sanitizeManualAlertText(alertData.line1,"LIGHTNING WITHIN 5 NM");
+    line2.textContent=sanitizeManualAlertText(alertData.line2,"FLT LINE CLOSED");
+    cao.textContent=formatManualAlertCao(alertData.updatedZ||alertData.caoZ||alertData.updated);
+
+    overlay.classList.add("manual-alert-active");
+    overlay.setAttribute("aria-hidden","false");
+  }
+
+  async function fetchManualAlert(){
+    try{
+      const response=await fetch(`${MANUAL_ALERT_URL}?t=${Date.now()}`,{
+        cache:"no-store",
+        headers:{"Cache-Control":"no-cache"}
+      });
+
+      if(!response.ok){
+        return;
+      }
+
+      const data=await response.json();
+      setManualAlertDisplay(data);
+    }catch(error){
+      /* Manual alert polling should never break the main board. */
+    }
+  }
+
+  window.kmemSetManualAlertDisplay=setManualAlertDisplay;
+
+  fetchManualAlert();
+  setInterval(fetchManualAlert,MANUAL_ALERT_POLL_MS);
+})();
+</script>
+
 </body>
 </html>
