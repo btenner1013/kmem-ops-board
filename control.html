@@ -96,8 +96,11 @@ button{
   <label for="workerUrl">Control Endpoint URL</label>
   <input id="workerUrl" autocomplete="off" placeholder="https://your-worker.your-subdomain.workers.dev">
 
-  <label for="password">Control Password</label>
-  <input id="password" type="password" autocomplete="current-password" placeholder="Password">
+  <label for="username">Username</label>
+  <input id="username" autocomplete="username" placeholder="Username">
+
+  <label for="pin">PIN</label>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
 
   <button class="danger" onclick="sendAlert('lightning_5nm')">
     LIGHTNING WITHIN 5 NM — FLT LINE CLOSED
@@ -110,15 +113,16 @@ button{
   <div id="status" class="status"></div>
 
   <div class="small">
-    This page does not store your GitHub token. The endpoint verifies the password server-side and updates manual_alert.json.
-    The main board checks manual_alert.json every few seconds.
+    The endpoint URL and username can be remembered on this device. The PIN is not saved.
   </div>
 </div>
 
 <script>
 const endpointInput=document.getElementById("workerUrl");
-const savedEndpoint=localStorage.getItem("kmemControlEndpoint")||"";
-endpointInput.value=savedEndpoint;
+const usernameInput=document.getElementById("username");
+
+endpointInput.value=localStorage.getItem("kmemControlEndpoint")||"";
+usernameInput.value=localStorage.getItem("kmemControlUsername")||"164am";
 
 function setStatus(text,tone){
   const el=document.getElementById("status");
@@ -128,15 +132,21 @@ function setStatus(text,tone){
 
 async function sendAlert(action){
   const endpoint=endpointInput.value.trim().replace(/\/+$/,"");
-  const password=document.getElementById("password").value;
+  const username=usernameInput.value.trim();
+  const pin=document.getElementById("pin").value;
 
   if(!endpoint){
     setStatus("Enter the Control Endpoint URL first.","bad");
     return;
   }
 
-  if(!password){
-    setStatus("Enter the control password first.","bad");
+  if(!username){
+    setStatus("Enter username.","bad");
+    return;
+  }
+
+  if(!pin){
+    setStatus("Enter PIN.","bad");
     return;
   }
 
@@ -146,13 +156,15 @@ async function sendAlert(action){
   }
 
   localStorage.setItem("kmemControlEndpoint",endpoint);
+  localStorage.setItem("kmemControlUsername",username);
+
   setStatus("Sending...","warn");
 
   try{
     const response=await fetch(endpoint,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({password,action})
+      body:JSON.stringify({username,pin,action})
     });
 
     const text=await response.text();
