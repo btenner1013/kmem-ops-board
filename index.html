@@ -3062,7 +3062,7 @@ html,body{
 }
 
 
-/* Phase 33C — conditional 15-second NEXRAD/GOES cycling */
+/* Phase 33G — robust radar slideshow */
 .radar-title-row{
   display:flex;
   align-items:center;
@@ -4372,15 +4372,16 @@ function updateRefreshCountdown(){
 }
 
 const NEXRAD_URL="https://radar.weather.gov/ridge/standard/KNQA_loop.gif";
-const RADAR_SLIDE_MS=15000;
+const RADAR_SLIDE_MS=10000;
 
-// Scenario/test fallbacks. Live mode should prefer current URLs from weather.json.
-const FALLBACK_GOES_GLM_URL="https://www.star.nesdis.noaa.gov/GOES19/GLM/SECTOR/smv/EXTENT3/20261562111-20261570106-GOES19-GLM-SMV-EXTENT3-600x600.gif";
-const FALLBACK_GOES_B13_URL="https://www.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/smv/13/20261562201-20261570156-GOES19-ABI-SMV-13-600x600.gif";
+// Scenario/test fallbacks. Live mode prefers current URLs from weather.json.
+const FALLBACK_GOES_GLM_URL="https://cdn.star.nesdis.noaa.gov/GOES19/GLM/SECTOR/smv/EXTENT3/20261562111-20261570106-GOES19-GLM-SMV-EXTENT3-600x600.gif";
+const FALLBACK_GOES_B13_URL="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/smv/13/20261562201-20261570156-GOES19-ABI-SMV-13-600x600.gif";
 
 let latestWeatherDataForRadar=null;
 let radarSlideIndex=0;
 let radarSlideshowTimer=null;
+let radarSlideBusy=false;
 
 function textHasLightningCue(text){
   const s=String(text||"").toUpperCase();
@@ -4427,9 +4428,31 @@ function setRadarTitle(titleText,modeText){
   }
 }
 
+function normalizeRadarProductUrl(url){
+  let text=String(url||"").trim();
+
+  if(!text){
+    return text;
+  }
+
+  if(text.startsWith("//")){
+    text="https:"+text;
+  }
+
+  if(text.startsWith("/GOES19/")){
+    text="https://cdn.star.nesdis.noaa.gov"+text;
+  }
+
+  text=text.replace("https://www.star.nesdis.noaa.gov/GOES19/","https://cdn.star.nesdis.noaa.gov/GOES19/");
+  text=text.replace("http://www.star.nesdis.noaa.gov/GOES19/","https://cdn.star.nesdis.noaa.gov/GOES19/");
+
+  return text;
+}
+
 function cacheBustedUrl(url){
-  const sep=String(url).includes("?")?"&":"?";
-  return `${url}${sep}slide=${Date.now()}`;
+  const normalized=normalizeRadarProductUrl(url);
+  const sep=String(normalized).includes("?")?"&":"?";
+  return `${normalized}${sep}slide=${Date.now()}`;
 }
 
 function getRadarSlides(){
@@ -4459,26 +4482,78 @@ function getRadarSlides(){
   return slides;
 }
 
-function showRadarSlide(reset=false){
+function loadRadarImage(url,timeoutMs=5000){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    const timer=setTimeout(()=>{
+      img.onload=null;
+      img.onerror=null;
+      reject(new Error("radar image timeout"));
+    },timeoutMs);
+
+    img.onload=()=>{
+      clearTimeout(timer);
+      resolve(img.src);
+    };
+
+    img.onerror=()=>{
+      clearTimeout(timer);
+      reject(new Error("radar image failed"));
+    };
+
+    img.src=cacheBustedUrl(url);
+  });
+}
+
+async function showRadarSlide(reset=false){
   const radar=document.getElementById("radar");
 
-  if(!radar){
+  if(!radar||radarSlideBusy){
     return;
   }
 
-  const slides=getRadarSlides();
+  radarSlideBusy=true;
 
-  if(reset||radarSlideIndex>=slides.length){
-    radarSlideIndex=0;
+  try{
+    const slides=getRadarSlides();
+
+    if(reset||radarSlideIndex>=slides.length){
+      radarSlideIndex=0;
+    }
+
+    let attempts=0;
+    let loaded=false;
+
+    while(attempts<slides.length&&!loaded){
+      const indexToTry=radarSlideIndex;
+      const slide=slides[indexToTry]||slides[0];
+
+      radarSlideIndex=(radarSlideIndex+1)%slides.length;
+      attempts+=1;
+
+      try{
+        const loadedSrc=await loadRadarImage(slide.url);
+
+        radar.src=loadedSrc;
+        radar.alt=`${slide.title} ${slide.mode}`;
+        setRadarTitle(slide.title,slide.mode);
+        loaded=true;
+      }catch(error){
+        console.warn("Radar slide failed, skipping:",slide.title,slide.mode,slide.url,error);
+      }
+    }
+
+    if(!loaded){
+      const fallback=slides[0];
+
+      radar.src=cacheBustedUrl(fallback.url);
+      radar.alt=`${fallback.title} ${fallback.mode}`;
+      setRadarTitle(fallback.title,fallback.mode);
+      radarSlideIndex=1%slides.length;
+    }
+  }finally{
+    radarSlideBusy=false;
   }
-
-  const slide=slides[radarSlideIndex]||slides[0];
-
-  radar.src=cacheBustedUrl(slide.url);
-  radar.alt=`${slide.title} ${slide.mode}`;
-  setRadarTitle(slide.title,slide.mode);
-
-  radarSlideIndex=(radarSlideIndex+1)%slides.length;
 }
 
 function startRadarSlideshow(){
