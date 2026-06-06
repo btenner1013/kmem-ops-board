@@ -2917,7 +2917,7 @@ html,body{
   align-items:center;
   justify-content:center;
   pointer-events:none;
-  padding:6px 10px;
+  padding:3px 8px;
 }
 
 .manual-alert-overlay.manual-alert-active{
@@ -2932,10 +2932,10 @@ html,body{
   align-items:center;
   justify-content:center;
   text-align:center;
-  border:4px solid rgba(255,255,255,.95);
-  background:rgba(255,255,255,.78);
+  border:3px solid rgba(255,255,255,.95);
+  background:#ffffff;
   color:#b00000;
-  box-shadow:0 0 28px rgba(255,255,255,.58),0 0 50px rgba(255,0,0,.42);
+  box-shadow:0 0 26px rgba(255,255,255,.85),0 0 48px rgba(255,0,0,.50);
   font-family:Arial,sans-serif;
   animation:manualAlertFlash 1.15s step-start infinite;
 }
@@ -2951,9 +2951,18 @@ html,body{
   white-space:nowrap;
 }
 
+
+.manual-alert-bolt{
+  color:#ffcc00;
+  font-size:clamp(1.35rem,2.55vw,4.0rem);
+  font-weight:1000;
+  line-height:.92;
+  filter:drop-shadow(0 0 4px rgba(0,0,0,.65));
+}
+
 .manual-alert-line1,
 .manual-alert-line2{
-  font-size:clamp(1.6rem,3.1vw,4.9rem);
+  font-size:clamp(1.35rem,2.55vw,4.0rem);
   font-weight:1000;
   letter-spacing:1.5px;
   line-height:.92;
@@ -2966,7 +2975,7 @@ html,body{
 
 .manual-alert-cao{
   color:#111;
-  font-size:clamp(.9rem,1.3vw,1.8rem);
+  font-size:clamp(.8rem,1.1vw,1.5rem);
   font-weight:1000;
   letter-spacing:1px;
   white-space:nowrap;
@@ -2992,6 +3001,10 @@ html,body{
   .manual-alert-cao{
     font-size:clamp(.82rem,3.4vw,1.3rem);
   }
+
+  .manual-alert-bolt{
+    font-size:clamp(1.2rem,7vw,3.0rem);
+  }
 }
 
 </style>
@@ -3002,8 +3015,10 @@ html,body{
 <div id="manualAlertOverlay" class="manual-alert-overlay" aria-live="assertive" aria-hidden="true">
   <div class="manual-alert-card">
     <div class="manual-alert-content">
+      <div class="manual-alert-bolt" aria-hidden="true">⚡</div>
       <div id="manualAlertLine1" class="manual-alert-line1">LIGHTNING WITHIN 5 NM</div>
       <div id="manualAlertLine2" class="manual-alert-line2">FLT LINE CLOSED</div>
+      <div class="manual-alert-bolt" aria-hidden="true">⚡</div>
       <div id="manualAlertCao" class="manual-alert-cao">CAO --</div>
     </div>
   </div>
@@ -4353,7 +4368,7 @@ window.addEventListener("focus",()=>{
 
   function positionManualAlertOverlay(){
     const overlay=document.getElementById("manualAlertOverlay");
-    const target=document.querySelector(".bottom")||document.querySelector(".mil-notam-panel");
+    const target=document.querySelector(".mil-notam-panel")||document.querySelector(".bottom");
 
     if(!overlay||!target||!overlay.classList.contains("manual-alert-active")){
       return;
@@ -4361,10 +4376,12 @@ window.addEventListener("focus",()=>{
 
     const rect=target.getBoundingClientRect();
 
-    overlay.style.left=`${Math.max(0,rect.left)}px`;
-    overlay.style.top=`${Math.max(0,rect.top)}px`;
-    overlay.style.width=`${Math.max(0,rect.width)}px`;
-    overlay.style.height=`${Math.max(0,rect.height)}px`;
+    const inset=4;
+
+    overlay.style.left=`${Math.max(0,rect.left+inset)}px`;
+    overlay.style.top=`${Math.max(0,rect.top+inset)}px`;
+    overlay.style.width=`${Math.max(0,rect.width-(inset*2))}px`;
+    overlay.style.height=`${Math.max(0,rect.height-(inset*2))}px`;
   }
 
   function setManualAlertDisplay(alertData){
