@@ -717,7 +717,6 @@ def parse_visibility_sm(metar):
     return None
 
 
-
 def parse_wind(metar):
     txt = metar or ""
 
@@ -1419,7 +1418,6 @@ def alert_text_for(label, sources):
         return f"{label} POSSIBLE IN TAF"
 
     return label
-
 
 
 def taf_window_display_from_token(window_token):
@@ -2168,170 +2166,11 @@ def fetch_ahas_bwc(now_z):
         return result
 
 
-
-def normalize_goes_url(url):
-    text = (url or "").strip()
-    if not text:
-        return ""
-
-    text = unescape(text)
-    text = urllib.parse.unquote(text)
-
-    if text.startswith("//"):
-        text = "https:" + text
-
-    if text.startswith("/GOES19/"):
-        text = "https://cdn.star.nesdis.noaa.gov" + text
-
-    text = re.sub(
-        r"^https?://www\.star\.nesdis\.noaa\.gov/GOES19/",
-        "https://cdn.star.nesdis.noaa.gov/GOES19/",
-        text,
-        flags=re.I
-    )
-
-    text = re.sub(
-        r"^https?://star\.nesdis\.noaa\.gov/GOES19/",
-        "https://cdn.star.nesdis.noaa.gov/GOES19/",
-        text,
-        flags=re.I
-    )
-
-    return text
-
-
-def extract_goes_gif_urls(html, product_marker):
-    if not html:
-        return []
-
-    candidates = []
-
-    # Direct absolute CDN/STAR links.
-    absolute_pattern = rf"https?://(?:cdn\.|www\.)?star\.nesdis\.noaa\.gov/GOES19/[^\"'<> ]*{re.escape(product_marker)}[^\"'<> ]*600x600\.gif"
-    candidates.extend(re.findall(absolute_pattern, html, flags=re.I))
-
-    # Relative links used by STAR pages.
-    relative_pattern = rf"/GOES19/[^\"'<> ]*{re.escape(product_marker)}[^\"'<> ]*600x600\.gif"
-    candidates.extend(re.findall(relative_pattern, html, flags=re.I))
-
-    cleaned = []
-    for url in candidates:
-        normalized = normalize_goes_url(url)
-        if normalized and normalized not in cleaned:
-            cleaned.append(normalized)
-
-    # Filenames start with yyyydddhhmm timestamp; sorted last is usually latest.
-    cleaned.sort()
-    return cleaned
-
-
-def fetch_goes_smv_images(previous_data=None):
-    previous_data = previous_data or {}
-
-    result = {
-        "goesSector": "GOES19 SMV",
-        "goesSectorPage": "https://www.star.nesdis.noaa.gov/goes/sector.php?sat=G19&sector=smv&src=nav",
-        "goesBand13Page": "https://www.star.nesdis.noaa.gov/goes/sector_band.php?band=13&length=12&sat=G19&sector=smv&src=nav",
-        "goesGlmGifUrl": previous_data.get("goesGlmGifUrl", ""),
-        "goesBand13GifUrl": previous_data.get("goesBand13GifUrl", ""),
-        "goesFetchStatus": "NOT_STARTED"
-    }
-
-    sector_html = fetch_url(result["goesSectorPage"])
-    band13_html = fetch_url(result["goesBand13Page"])
-
-    glm_urls = extract_goes_gif_urls(sector_html, "GOES19-GLM-SMV-EXTENT3")
-    b13_urls = extract_goes_gif_urls(sector_html + "\n" + band13_html, "GOES19-ABI-SMV-13")
-
-    if glm_urls:
-        result["goesGlmGifUrl"] = glm_urls[-1]
-
-    if b13_urls:
-        result["goesBand13GifUrl"] = b13_urls[-1]
-
-    if result["goesGlmGifUrl"] and result["goesBand13GifUrl"]:
-        result["goesFetchStatus"] = "OK"
-    elif result["goesGlmGifUrl"] or result["goesBand13GifUrl"]:
-        result["goesFetchStatus"] = "PARTIAL"
-    else:
-        result["goesFetchStatus"] = "FAILED_NO_GIF_URLS"
-
-    print("GOES SMV:", result["goesFetchStatus"])
-    print("GOES GLM:", result["goesGlmGifUrl"] or "--")
-    print("GOES B13:", result["goesBand13GifUrl"] or "--")
-
-    return result
-
-
-def cache_remote_binary(url, local_filename):
-    if not url:
-        return ""
-
-    try:
-        clean_url = normalize_goes_url(url)
-        request = urllib.request.Request(
-            clean_url,
-            headers={
-                "User-Agent": "Mozilla/5.0 KMEM-Ops-Board/1.0",
-                "Accept": "image/gif,image/*,*/*",
-            }
-        )
-
-        with urllib.request.urlopen(request, timeout=90) as response:
-            content = response.read()
-
-        if len(content) < 5000:
-            print(f"GOES cache skipped {local_filename}: file too small ({len(content)} bytes)")
-            return ""
-
-        temp_path = os.path.join(REPO_DIR, local_filename + ".tmp")
-        final_path = os.path.join(REPO_DIR, local_filename)
-
-        with open(temp_path, "wb") as file:
-            file.write(content)
-
-        os.replace(temp_path, final_path)
-
-        print(f"GOES cache saved {local_filename}: {len(content)} bytes")
-        return local_filename
-
-    except Exception as error:
-        print(f"GOES cache failed {local_filename}: {error}")
-        return ""
-
-
-def cache_goes_images(goes_data, previous_data=None):
-    previous_data = previous_data or {}
-
-    glm_local = previous_data.get("goesGlmLocalUrl", "")
-    b13_local = previous_data.get("goesBand13LocalUrl", "")
-
-    new_glm = cache_remote_binary(goes_data.get("goesGlmGifUrl", ""), "goes_glm.gif")
-    if new_glm:
-        glm_local = new_glm
-
-    new_b13 = cache_remote_binary(goes_data.get("goesBand13GifUrl", ""), "goes_b13.gif")
-    if new_b13:
-        b13_local = new_b13
-
-    goes_data["goesGlmLocalUrl"] = glm_local
-    goes_data["goesBand13LocalUrl"] = b13_local
-    goes_data["goesCacheStatus"] = "OK" if glm_local and b13_local else "PARTIAL_OR_FALLBACK"
-
-    return goes_data
-
-
-def fetch_and_cache_goes_smv_images(previous_data=None):
-    goes_data = fetch_goes_smv_images(previous_data)
-    return cache_goes_images(goes_data, previous_data)
-
-
 def sync_repo_before_update():
     print("Syncing local repo before update...")
 
     run_cmd(["git", "fetch", "origin"], allow_fail=True)
     run_cmd(["git", "reset", "--hard", "origin/main"])
-
 
 
 def text_is_bad(value):
@@ -2404,8 +2243,6 @@ def use_previous_field(previous_data, key, default=""):
         return default
 
     return value
-
-
 
 
 def summarize_mil_notams_for_scroll(items):
@@ -2734,7 +2571,6 @@ def build_weather_json():
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
 
     mil_notam_data = fetch_mil_notams(previous_data)
-    goes_data = fetch_and_cache_goes_smv_images(previous_data)
 
     data = {
         "metar": metar or "METAR unavailable",
@@ -2855,16 +2691,6 @@ def build_weather_json():
         "milNotamFetchStatus": mil_notam_data["milNotamFetchStatus"],
         "milNotamRawStatus": mil_notam_data["milNotamRawStatus"],
 
-        "goesSector": goes_data["goesSector"],
-        "goesSectorPage": goes_data["goesSectorPage"],
-        "goesBand13Page": goes_data["goesBand13Page"],
-        "goesGlmGifUrl": goes_data["goesGlmGifUrl"],
-        "goesBand13GifUrl": goes_data["goesBand13GifUrl"],
-        "goesGlmLocalUrl": goes_data["goesGlmLocalUrl"],
-        "goesBand13LocalUrl": goes_data["goesBand13LocalUrl"],
-        "goesFetchStatus": goes_data["goesFetchStatus"],
-        "goesCacheStatus": goes_data["goesCacheStatus"],
-
         "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
 
         "workflowMetadata": {
@@ -2929,7 +2755,7 @@ def build_weather_json():
 def git_commit_and_push():
     print("Committing and pushing weather.json...")
 
-    run_cmd(["git", "add", "weather.json", "goes_glm.gif", "goes_b13.gif"])
+    run_cmd(["git", "add", "weather.json"])
 
     diff_result = run_cmd(["git", "diff", "--cached", "--quiet"], allow_fail=True)
 

@@ -15,6 +15,42 @@ from urllib.parse import urlparse
 
 PORT = 8765
 
+def load_live_goes_fields():
+    """
+    For scenario tests, use the current GOES URLs that update_weather_local.py
+    already wrote into weather.json. This prevents stale hardcoded GOES links.
+    """
+    defaults = {
+        "goesSector": "GOES19 SMV",
+        "goesSectorPage": "https://www.star.nesdis.noaa.gov/goes/sector.php?sat=G19&sector=smv&src=nav",    }
+
+    try:
+        weather_path = Path(__file__).with_name("weather.json")
+
+        if not weather_path.exists():
+            return defaults
+
+        live = json.loads(weather_path.read_text(encoding="utf-8"))
+
+        glm = str(live.get("goesGlmGifUrl", "")).strip()
+        b13 = str(live.get("goesBand13GifUrl", "")).strip()
+
+        if glm.startswith("https://cdn.star.nesdis.noaa.gov/GOES19/") and glm.endswith(".gif"):
+            defaults["goesGlmGifUrl"] = glm
+
+        if b13.startswith("https://cdn.star.nesdis.noaa.gov/GOES19/") and b13.endswith(".gif"):
+            defaults["goesBand13GifUrl"] = b13
+
+        defaults["goesFetchStatus"] = "SCENARIO_FROM_WEATHER_JSON"
+        defaults["goesSector"] = live.get("goesSector", defaults["goesSector"])
+        defaults["goesSectorPage"] = live.get("goesSectorPage", defaults["goesSectorPage"])
+        return defaults
+
+    except Exception as error:
+        print("Scenario GOES load failed; using fallback GOES URLs:", error)
+        return defaults
+
+
 SCENARIOS = [
     "normal",
     "metar_atis_warn",
@@ -56,6 +92,7 @@ def base_weather(now):
     metar_dt = now - timedelta(minutes=18)
     atis_dt = now - timedelta(minutes=18)
     ahas_dt = now - timedelta(minutes=8)
+    live_goes = load_live_goes_fields()
     taf_issue = now - timedelta(minutes=30)
 
     return {
@@ -147,12 +184,8 @@ def base_weather(now):
         "wxAlertPulse": False,
         "tafTrend": "VFR NEXT 24 HRS",
 
-        "goesSector": "GOES19 SMV",
-        "goesSectorPage": "https://www.star.nesdis.noaa.gov/goes/sector.php?sat=G19&sector=smv&src=nav",
-        "goesGlmGifUrl": "https://www.star.nesdis.noaa.gov/GOES19/GLM/SECTOR/smv/EXTENT3/20261562111-20261570106-GOES19-GLM-SMV-EXTENT3-600x600.gif",
-        "goesBand13GifUrl": "https://www.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/smv/13/20261562201-20261570156-GOES19-ABI-SMV-13-600x600.gif",
-        "goesFetchStatus": "SCENARIO",
-
+        "goesSector": live_goes["goesSector"],
+        "goesSectorPage": live_goes["goesSectorPage"],
         "bwc": "MODERATE",
         "bwcSource": "AHAS",
         "bwcUpdatedZ": ahas_dt.strftime("%Y-%m-%d %H:%M:%S.000"),
