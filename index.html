@@ -3276,6 +3276,120 @@ html,body{
   font-weight:1000 !important;
 }
 
+
+/* Phase 55 — spaced wind value, clean wind title, flow arrow spacing */
+.wind-title-base{
+  color:#f2f2f2 !important;
+  font-weight:1000 !important;
+}
+
+.wind-trend-calm,
+.wind-trend-steady{
+  color:var(--ops-green) !important;
+  font-weight:1000 !important;
+}
+
+.wind-trend-increasing{
+  color:var(--closed) !important;
+  font-weight:1000 !important;
+}
+
+.wind-trend-decreasing{
+  color:var(--warning) !important;
+  font-weight:1000 !important;
+}
+
+.wind-label-trend{
+  color:#f2f2f2 !important;
+  font-weight:1000 !important;
+  letter-spacing:.02em !important;
+}
+
+.wind-compact-final{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:.10em !important;
+  width:100% !important;
+  max-width:100% !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  line-height:.96 !important;
+  font-size:clamp(1.08rem,1.18vw,1.48rem) !important;
+  letter-spacing:-0.015em !important;
+}
+
+.wind-base-final,
+.wind-at-final,
+.wind-speed-final,
+.wind-speed-normal-final{
+  color:var(--ops-green) !important;
+  font-weight:1000 !important;
+}
+
+.wind-at-final{
+  color:var(--ops-green) !important;
+  margin:0 .01em !important;
+}
+
+.wind-speed-high-final{
+  color:var(--closed) !important;
+  font-weight:1000 !important;
+}
+
+.wind-gust-final,
+.wind-gust-normal-final{
+  color:var(--warning) !important;
+  font-weight:1000 !important;
+  margin-left:.08em !important;
+}
+
+.wind-gust-high-final{
+  color:var(--closed) !important;
+  font-weight:1000 !important;
+  margin-left:.08em !important;
+}
+
+.wind-arrow-final,
+#wind .trend-arrow,
+#wind .wind-arrow,
+#wind [class*="arrow"]{
+  display:none !important;
+}
+
+#flow{
+  overflow:visible !important;
+  line-height:1.12 !important;
+  padding-bottom:.10em !important;
+}
+
+.flow-value-final{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:.22em !important;
+  width:100% !important;
+  max-width:100% !important;
+  line-height:1.12 !important;
+  padding-bottom:.10em !important;
+  overflow:visible !important;
+}
+
+.flow-arrow-final{
+  display:inline-block !important;
+  font-weight:1000 !important;
+  font-size:1.20em !important;
+  line-height:1 !important;
+  transform:translateY(-0.02em) !important;
+  padding-bottom:.10em !important;
+  text-shadow:0 0 2px currentColor,0 0 4px currentColor !important;
+}
+
+.taf-more-line{
+  color:var(--warning) !important;
+  font-weight:1000 !important;
+}
+
 </style>
 </head>
 
@@ -3672,13 +3786,14 @@ function formatRawWeatherText(metar,taf){
   const metarText=(metar||"METAR unavailable").toString().trim();
   const tafText=(taf||"TAF unavailable").toString().trim();
   const tafLines=tafText.split(/\n+/).map(line=>line.trim()).filter(Boolean);
-  const maxTafLines=window.innerHeight<850 ? 2 : 3;
+
+  const maxTafLines=2;
   let visibleTaf=tafLines;
 
   if(tafLines.length>maxTafLines){
     const more=tafLines.length-maxTafLines;
     visibleTaf=tafLines.slice(0,maxTafLines);
-    visibleTaf.push(`TAF CONTINUES +${more} LINE${more>1?"S":""}`);
+    visibleTaf.push(`... +${more} MORE LINE${more>1?"S":""}`);
   }
 
   return metarText+"\n\n"+visibleTaf.join("\n  ");
@@ -3720,40 +3835,40 @@ function formatWindDisplay(value){
   const text=(value||"--").toString().trim().toUpperCase();
 
   if(text==="--"||text==="")return "--";
-  if(text==="00000KT")return "CALM";
+  if(text==="00000KT"||text==="00000"||text==="CALM")return "CALM";
 
   let match=text.match(/^VRB(\d{2})(G(\d{2}))?KT$/);
   if(match){
-    const speed=parseInt(match[1],10);
-    const gust=match[3]?parseInt(match[3],10):null;
-    return gust===null ? `VRB@${speed}` : `VRB@${speed}G${gust}`;
+    const speed=String(parseInt(match[1],10)).padStart(2,"0");
+    const gust=match[3]?String(parseInt(match[3],10)).padStart(2,"0"):null;
+    return gust===null ? `VRB @ ${speed}` : `VRB @ ${speed} G${gust}`;
   }
 
   match=text.match(/^(\d{3})(\d{2})(G(\d{2}))?KT$/);
   if(match){
     const dir=match[1];
-    const speed=parseInt(match[2],10);
-    const gust=match[4]?parseInt(match[4],10):null;
-    return gust===null ? `${dir}@${speed}` : `${dir}@${speed}G${gust}`;
+    const speed=String(parseInt(match[2],10)).padStart(2,"0");
+    const gust=match[4]?String(parseInt(match[4],10)).padStart(2,"0"):null;
+    return gust===null ? `${dir} @ ${speed}` : `${dir} @ ${speed} G${gust}`;
   }
 
-  match=text.match(/^(\d{3})\s*@\s*(\d{1,2})KT(?:\s*G(\d{1,2}))?$/);
+  match=text.match(/^(\d{3})\s*@\s*(\d{1,2})(?:KT)?(?:\s*G\s*(\d{1,2}))?$/);
   if(match){
     const dir=match[1];
-    const speed=parseInt(match[2],10);
-    const gust=match[3]?parseInt(match[3],10):null;
-    return gust===null ? `${dir}@${speed}` : `${dir}@${speed}G${gust}`;
+    const speed=String(parseInt(match[2],10)).padStart(2,"0");
+    const gust=match[3]?String(parseInt(match[3],10)).padStart(2,"0"):null;
+    return gust===null ? `${dir} @ ${speed}` : `${dir} @ ${speed} G${gust}`;
   }
 
-  match=text.match(/^(\d{3})\/(\d{1,2})(G(\d{1,2}))?$/);
+  match=text.match(/^(\d{3})[@\/](\d{1,2})(?:G(\d{1,2}))?$/);
   if(match){
     const dir=match[1];
-    const speed=parseInt(match[2],10);
-    const gust=match[4]?parseInt(match[4],10):null;
-    return gust===null ? `${dir}@${speed}` : `${dir}@${speed}G${gust}`;
+    const speed=String(parseInt(match[2],10)).padStart(2,"0");
+    const gust=match[3]?String(parseInt(match[3],10)).padStart(2,"0"):null;
+    return gust===null ? `${dir} @ ${speed}` : `${dir} @ ${speed} G${gust}`;
   }
 
-  return text.replace(/\s*@\s*/,"@").replace(/\s*KT\b/,"").replace(/\s+/g,"");
+  return text.replace(/[↑↓←→↗↘↙↖]/g,"").replace(/\s*@\s*/," @ ").replace(/\s*KT\b/,"").replace(/\s+/g," ");
 }
 
 function formatTempDpDisplay(value){
@@ -3768,15 +3883,15 @@ function formatTempDpDisplay(value){
 }
 
 function formatFlowHtml(value){
-  const text=(value||"--").toString().trim();
-  const match=text.match(/^(.*?)([↑↓←→])$/);
+  const text=(value||"--").toString().replace(/\s+/g," ").trim();
+  const match=text.match(/^(.*?)([↑↓←→↗↘↙↖])$/);
 
   if(!match)return safeValue(text);
 
   const label=safeValue(match[1].trim());
   const arrow=match[2];
 
-  return `${label}<span class="flow-arrow">${arrow}</span>`;
+  return `<span class="flow-value-final"><span>${label}</span><span class="flow-arrow-final">${arrow}</span></span>`;
 }
 
 function windTrendClass(data){
@@ -3795,12 +3910,35 @@ function windTrendClass(data){
 
 function setWindDisplay(data){
   const el=document.getElementById("wind");
-
   if(!el)return;
 
   const rawDisplay=(data.windDisplay||data.windRaw||"--").toString().toUpperCase();
   const display=formatWindDisplay(rawDisplay);
-  const arrow=(data.windArrow||"").toString();
+  const trend=(data.windTrendText||data.windTrendClass||data.windTrend||"STEADY").toString().toUpperCase();
+
+  const cell=el.closest(".ops-box")||el.parentElement;
+  const label=cell?cell.querySelector(".ops-label"):null;
+
+  let trendText="STEADY";
+  let trendClass="wind-trend-steady";
+
+  if(display==="CALM"||trend.includes("CALM")){
+    trendText="CALM";
+    trendClass="wind-trend-calm";
+  }else if(trend.includes("INCREAS")||trend.includes("WORS")){
+    trendText="INCREASING";
+    trendClass="wind-trend-increasing";
+  }else if(trend.includes("DECREAS")||trend.includes("IMPROV")){
+    trendText="DECREASING";
+    trendClass="wind-trend-decreasing";
+  }
+
+  const labelText=`WIND ${trendText}`;
+
+  if(label){
+    label.className="ops-label wind-label-trend";
+    label.innerHTML=`<span class="wind-title-base">WIND</span> <span class="${trendClass}">${trendText}</span>`;
+  }
 
   el.className="ops-value wind-compact-final";
   el.textContent="";
@@ -3811,17 +3949,22 @@ function setWindDisplay(data){
   }
 
   if(display==="CALM"){
-    el.textContent="CALM";
-    el.title="Wind calm";
+    const calmSpan=document.createElement("span");
+    calmSpan.className="wind-base-final";
+    calmSpan.textContent="CALM";
+    el.appendChild(calmSpan);
+    el.title=labelText;
     return;
   }
 
-  const match=display.match(/^([A-Z0-9]{3})@(\d{1,2})(G\d+)?$/);
+  const match=display.match(/^([A-Z0-9]{3})\s@\s(\d{2})(?:\s(G\d{2}))?$/);
 
   if(match){
     const dir=match[1];
     const speed=match[2];
     const gust=match[3]||"";
+    const speedNum=parseInt(speed,10);
+    const gustNum=gust?parseInt(gust.replace("G",""),10):null;
 
     const dirSpan=document.createElement("span");
     dirSpan.className="wind-base-final";
@@ -3834,33 +3977,28 @@ function setWindDisplay(data){
     el.appendChild(atSpan);
 
     const speedSpan=document.createElement("span");
-    speedSpan.className="wind-speed-final";
+    speedSpan.className=(speedNum>=20)
+      ? "wind-speed-final wind-speed-high-final"
+      : "wind-speed-final wind-speed-normal-final";
     speedSpan.textContent=speed;
     el.appendChild(speedSpan);
 
     if(gust){
       const gustSpan=document.createElement("span");
-      gustSpan.className="wind-gust-final";
+      gustSpan.className=(gustNum>=25)
+        ? "wind-gust-final wind-gust-high-final"
+        : "wind-gust-final wind-gust-normal-final";
       gustSpan.textContent=gust;
       el.appendChild(gustSpan);
     }
   }else{
     const fallbackSpan=document.createElement("span");
     fallbackSpan.className="wind-base-final";
-    fallbackSpan.textContent=display;
+    fallbackSpan.textContent=display.replace(/[↑↓←→↗↘↙↖]/g,"");
     el.appendChild(fallbackSpan);
   }
 
-  if(arrow){
-    const arrowSpan=document.createElement("span");
-    arrowSpan.className="wind-arrow-final "+windTrendClass(data);
-    arrowSpan.textContent=arrow;
-    el.appendChild(arrowSpan);
-  }
-
-  const trend=data.windTrendText||"";
-  const meaning=data.windArrowMeaning||"Arrow shows where wind is blowing toward";
-  el.title=`Wind ${display} ${arrow} | ${meaning} | Trend: ${trend}`;
+  el.title=`${labelText}: ${display}`;
 }
 
 function setTempDpDisplay(data){
@@ -4588,8 +4726,8 @@ async function loadWeatherJson(){
 
     updateStaleWarning(updatedZ);
     updateSourceHealth(data,updatedZ);
-phase45PolishOpsText();
-    phase46BoldArrows();
+
+    
     console.log("Ops board refresh:",new Date().toISOString(),updatedZ,data);
   }catch(e){
     console.error("weather.json load/render failed",e);
@@ -4736,6 +4874,30 @@ window.addEventListener("resize",()=>setTimeout(phase46BoldArrows,100));
 setInterval(phase46BoldArrows,1000);
 setTimeout(phase46BoldArrows,150);
 setTimeout(phase46BoldArrows,750);
+
+
+/* Phase 55 helper — runway-based flow text if needed later */
+function inferFlowFromRunways(arrRunways,depRunways){
+  const combined=`${arrRunways||""} ${depRunways||""}`.toUpperCase();
+  const has09=/\b0?9[LRC]?\b/.test(combined);
+  const has27=/\b27[LRC]?\b/.test(combined);
+  const has18=/\b18[LRC]?\b/.test(combined);
+  const has36=/\b36[LRC]?\b/.test(combined);
+
+  if((has09||has27) && !(has18||has36)){
+    if(has09 && has27)return "E/W";
+    if(has09)return "EAST →";
+    if(has27)return "WEST ←";
+  }
+
+  if((has18||has36) && !(has09||has27)){
+    if(has18 && has36)return "N/S";
+    if(has18)return "SOUTH ↓";
+    if(has36)return "NORTH ↑";
+  }
+
+  return null;
+}
 
 </script>
 
