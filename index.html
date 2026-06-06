@@ -4308,12 +4308,12 @@ async function loadWeatherJson(){
     updateStaleWarning(updatedZ);
     updateSourceHealth(data,updatedZ);
 
-    const previousRadarCycleState=shouldUseGoesCycle(latestWeatherDataForRadar);
+    const previousSlides=getRadarSlides().length;
     latestWeatherDataForRadar=data;
-    const currentRadarCycleState=shouldUseGoesCycle(data);
+    const currentSlides=getRadarSlides().length;
 
-    if(previousRadarCycleState!==currentRadarCycleState){
-      restartRadarCycle();
+    if(previousSlides!==currentSlides){
+      startRadarSlideshow();
     }
 
     console.log("Ops board refresh:",new Date().toISOString(),updatedZ,data);
@@ -4372,14 +4372,18 @@ function updateRefreshCountdown(){
 }
 
 const NEXRAD_URL="https://radar.weather.gov/ridge/standard/KNQA_loop.gif";
-const RADAR_CYCLE_MS=15000;
+const RADAR_SLIDE_MS=15000;
+
+// Scenario/test fallbacks. Live mode should prefer current URLs from weather.json.
+const FALLBACK_GOES_GLM_URL="https://www.star.nesdis.noaa.gov/GOES19/GLM/SECTOR/smv/EXTENT3/20261562111-20261570106-GOES19-GLM-SMV-EXTENT3-600x600.gif";
+const FALLBACK_GOES_B13_URL="https://www.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/smv/13/20261562201-20261570156-GOES19-ABI-SMV-13-600x600.gif";
+
 let latestWeatherDataForRadar=null;
-let radarCycleIndex=0;
-let radarCycleTimer=null;
+let radarSlideIndex=0;
+let radarSlideshowTimer=null;
 
 function textHasLightningCue(text){
   const s=String(text||"").toUpperCase();
-
   return /(TS|TSRA|VCTS|LTG|LIGHTNING|DSNT|CB|TSTM|THUNDER)/.test(s);
 }
 
@@ -4392,17 +4396,12 @@ function shouldUseGoesCycle(data){
     return true;
   }
 
-  if(textHasLightningCue(data.lightning||"")){
-    return true;
-  }
-
-  if(textHasLightningCue(data.lightningLogText||"")){
-    return true;
-  }
-
-  if(textHasLightningCue(data.wxAlertText||"")){
-    return true;
-  }
+  if(textHasLightningCue(data.lightning)){return true;}
+  if(textHasLightningCue(data.lightningLogText)){return true;}
+  if(textHasLightningCue(data.wxAlertText)){return true;}
+  if(textHasLightningCue(data.metar)){return true;}
+  if(textHasLightningCue(data.taf)){return true;}
+  if(textHasLightningCue(data.atisText)){return true;}
 
   if(Array.isArray(data.wxAlerts)){
     for(const alert of data.wxAlerts){
@@ -4412,31 +4411,30 @@ function shouldUseGoesCycle(data){
     }
   }
 
-  return textHasLightningCue(data.metar||"")||
-         textHasLightningCue(data.taf||"")||
-         textHasLightningCue(data.atisText||"");
+  return false;
 }
 
-function setRadarTitle(name,mode){
+function setRadarTitle(titleText,modeText){
   const title=document.getElementById("radarTitle");
-  const modeEl=document.getElementById("radarMode");
+  const mode=document.getElementById("radarMode");
 
   if(title){
-    title.textContent=name||"RADAR";
+    title.textContent=titleText||"RADAR";
   }
 
-  if(modeEl){
-    modeEl.textContent=mode||"NEXRAD";
+  if(mode){
+    mode.textContent=modeText||"NEXRAD";
   }
 }
 
 function cacheBustedUrl(url){
   const sep=String(url).includes("?")?"&":"?";
-  return `${url}${sep}t=${Date.now()}`;
+  return `${url}${sep}slide=${Date.now()}`;
 }
 
-function radarSourcesForData(data){
-  const sources=[
+function getRadarSlides(){
+  const data=latestWeatherDataForRadar||{};
+  const slides=[
     {
       title:"RADAR",
       mode:"NEXRAD",
@@ -4445,60 +4443,55 @@ function radarSourcesForData(data){
   ];
 
   if(shouldUseGoesCycle(data)){
-    if(data.goesGlmGifUrl){
-      sources.push({
-        title:"SAT/LTG",
-        mode:"GOES GLM",
-        url:data.goesGlmGifUrl
-      });
-    }
+    slides.push({
+      title:"SAT/LTG",
+      mode:"GOES GLM",
+      url:data.goesGlmGifUrl||FALLBACK_GOES_GLM_URL
+    });
 
-    if(data.goesBand13GifUrl){
-      sources.push({
-        title:"SAT IR",
-        mode:"GOES B13",
-        url:data.goesBand13GifUrl
-      });
-    }
+    slides.push({
+      title:"SAT IR",
+      mode:"GOES B13",
+      url:data.goesBand13GifUrl||FALLBACK_GOES_B13_URL
+    });
   }
 
-  return sources;
+  return slides;
 }
 
-function refreshRadar(forceFirst=false){
+function showRadarSlide(reset=false){
   const radar=document.getElementById("radar");
 
   if(!radar){
     return;
   }
 
-  const sources=radarSourcesForData(latestWeatherDataForRadar);
+  const slides=getRadarSlides();
 
-  if(forceFirst||radarCycleIndex>=sources.length){
-    radarCycleIndex=0;
+  if(reset||radarSlideIndex>=slides.length){
+    radarSlideIndex=0;
   }
 
-  const item=sources[radarCycleIndex]||sources[0];
+  const slide=slides[radarSlideIndex]||slides[0];
 
-  radar.src=cacheBustedUrl(item.url);
-  radar.alt=`${item.title} ${item.mode}`;
-  setRadarTitle(item.title,item.mode);
+  radar.src=cacheBustedUrl(slide.url);
+  radar.alt=`${slide.title} ${slide.mode}`;
+  setRadarTitle(slide.title,slide.mode);
 
-  radarCycleIndex=(radarCycleIndex+1)%sources.length;
+  radarSlideIndex=(radarSlideIndex+1)%slides.length;
 }
 
-function restartRadarCycle(){
-  if(radarCycleTimer){
-    clearInterval(radarCycleTimer);
+function startRadarSlideshow(){
+  if(radarSlideshowTimer){
+    clearInterval(radarSlideshowTimer);
   }
 
-  refreshRadar(true);
-  radarCycleTimer=setInterval(()=>refreshRadar(false),RADAR_CYCLE_MS);
+  showRadarSlide(true);
+  radarSlideshowTimer=setInterval(()=>showRadarSlide(false),RADAR_SLIDE_MS);
 }
 
 function refreshActiveData(){
   loadWeatherJson();
-  refreshRadar(false);
 }
 
 updateClock();
@@ -4509,7 +4502,7 @@ setInterval(updateRefreshCountdown,1000);
 setInterval(updateClock,1000);
 setInterval(checkClockWatchdog,30000);
 setInterval(loadWeatherJson,300000);
-restartRadarCycle();
+startRadarSlideshow();
 
 document.addEventListener("visibilitychange",()=>{
   if(!document.hidden){
