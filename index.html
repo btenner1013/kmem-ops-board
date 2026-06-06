@@ -3078,6 +3078,204 @@ html,body{
   white-space:nowrap;
 }
 
+
+/* Clean pass — compact wind/lightning/wx alert at the real render functions */
+.wind-compact{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:0 !important;
+  width:100% !important;
+  max-width:100% !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  line-height:.95 !important;
+  font-size:clamp(.78rem,.92vw,1.08rem) !important;
+  letter-spacing:-.045em !important;
+}
+
+.wind-base{
+  color:var(--ops-green) !important;
+  font-weight:900 !important;
+}
+
+.wind-gust{
+  color:var(--warning) !important;
+  font-weight:900 !important;
+  margin-left:.08em !important;
+}
+
+.wind-compact .wind-arrow{
+  font-size:1.05em !important;
+  margin-left:.12em !important;
+  vertical-align:baseline !important;
+}
+
+.lightning-compact{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  text-align:center !important;
+  font-size:clamp(.76rem,.92vw,1.05rem) !important;
+  line-height:.98 !important;
+}
+
+.wx-alert-compact{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  text-align:center !important;
+  font-size:clamp(.90rem,1.08vw,1.28rem) !important;
+  line-height:1 !important;
+}
+
+@media (max-height:900px){
+  .raw{
+    font-size:clamp(.86rem,.98vw,1.12rem) !important;
+    line-height:1.38 !important;
+  }
+}
+
+
+/* Phase 43 — readable compact wind: 180@12G22 */
+.wind-compact-final{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:0 !important;
+  width:100% !important;
+  max-width:100% !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  line-height:.95 !important;
+  font-size:clamp(0.98rem,1.10vw,1.38rem) !important;
+  letter-spacing:-0.035em !important;
+}
+
+.wind-base-final{
+  color:var(--ops-green) !important;
+  font-weight:900 !important;
+}
+
+.wind-at-final{
+  color:var(--ops-green) !important;
+  font-weight:900 !important;
+  margin:0 .03em !important;
+}
+
+.wind-speed-final{
+  color:var(--ops-green) !important;
+  font-weight:900 !important;
+}
+
+.wind-gust-final{
+  color:var(--warning) !important;
+  font-weight:900 !important;
+  margin-left:.08em !important;
+}
+
+.wind-arrow-final{
+  font-size:1.08em !important;
+  margin-left:.18em !important;
+  font-weight:900 !important;
+  display:inline-block !important;
+}
+
+
+/* Phase 44 — larger lightning compact text */
+.lightning-compact-final,
+.lightning-compact,
+.wx-lightning-compact{
+  font-size:clamp(0.95rem,1.18vw,1.45rem) !important;
+  letter-spacing:-0.02em !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  line-height:.95 !important;
+}
+
+
+/* Phase 45 — final readable ops wording/colors */
+.wind-at-final{
+  color:var(--ops-green) !important;
+  font-weight:900 !important;
+}
+
+.wind-arrow-final,
+.flow-arrow,
+#flow .arrow,
+#flowArrow,
+#wind .arrow{
+  font-weight:1000 !important;
+  font-size:1.18em !important;
+  text-shadow:0 0 2px currentColor !important;
+}
+
+.lightning-compact-final,
+.lightning-compact,
+.wx-lightning-compact{
+  font-size:clamp(0.82rem,1.02vw,1.20rem) !important;
+  letter-spacing:-0.035em !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  line-height:.95 !important;
+}
+
+
+/* Phase 46 — bump wind/lightning legibility and heavier arrows */
+.wind-compact-final{
+  font-size:clamp(1.08rem,1.24vw,1.55rem) !important;
+  letter-spacing:-0.035em !important;
+}
+
+.wind-at-final{
+  color:var(--ops-green) !important;
+  font-weight:1000 !important;
+}
+
+.wind-gust-final{
+  color:var(--warning) !important;
+  font-weight:1000 !important;
+}
+
+.wind-arrow-final,
+.flow-arrow,
+#flow .arrow,
+#flowArrow,
+#wind .arrow{
+  font-weight:1000 !important;
+  font-size:1.36em !important;
+  line-height:.8 !important;
+  margin-left:.18em !important;
+  display:inline-block !important;
+  text-shadow:
+    0 0 2px currentColor,
+    0 0 4px currentColor !important;
+}
+
+.lightning-compact-final,
+.lightning-compact,
+.wx-lightning-compact{
+  font-size:clamp(0.96rem,1.18vw,1.42rem) !important;
+  letter-spacing:-0.025em !important;
+  font-weight:1000 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  line-height:.95 !important;
+}
+
+/* Make WX alert readable too, but not huge. */
+#wxAlert,
+#wxAlertText,
+.weather-alert,
+.wx-alert{
+  font-weight:1000 !important;
+}
+
 </style>
 </head>
 
@@ -3448,6 +3646,44 @@ function safeValue(value,fallback="--"){
   return value;
 }
 
+
+function compactLightningDisplay(value){
+  let text=safeValue(value,"NONE").toString();
+
+  text=text.replace(/TS\s+OVER\s+FIELD/ig,"TS OVR FIELD");
+  text=text.replace(/THUNDERSTORM\s+OVER\s+FIELD/ig,"TS OVR FIELD");
+  text=text.replace(/TSRA\s+ACTIVE\s+NOW/ig,"TSRA ACTIVE");
+  text=text.replace(/\s+/g," ").trim();
+
+  return text;
+}
+
+function compactWxAlertDisplay(value){
+  let text=safeValue(value,"NONE").toString();
+
+  text=text.replace(/TSRA\s+ACTIVE\s+NOW/ig,"TSRA ACTIVE");
+  text=text.replace(/LIGHTNING\s+WITHIN\s+5\s+NM/ig,"LTG WITHIN 5NM");
+  text=text.replace(/\s+/g," ").trim();
+
+  return text;
+}
+
+function formatRawWeatherText(metar,taf){
+  const metarText=(metar||"METAR unavailable").toString().trim();
+  const tafText=(taf||"TAF unavailable").toString().trim();
+  const tafLines=tafText.split(/\n+/).map(line=>line.trim()).filter(Boolean);
+  const maxTafLines=window.innerHeight<850 ? 2 : 3;
+  let visibleTaf=tafLines;
+
+  if(tafLines.length>maxTafLines){
+    const more=tafLines.length-maxTafLines;
+    visibleTaf=tafLines.slice(0,maxTafLines);
+    visibleTaf.push(`TAF CONTINUES +${more} LINE${more>1?"S":""}`);
+  }
+
+  return metarText+"\n\n"+visibleTaf.join("\n  ");
+}
+
 function formatTrendArrow(trend,trendText){
   const raw=(trendText||trend||"").toString().toUpperCase();
 
@@ -3490,7 +3726,7 @@ function formatWindDisplay(value){
   if(match){
     const speed=parseInt(match[1],10);
     const gust=match[3]?parseInt(match[3],10):null;
-    return gust===null ? `VRB @ ${speed}KT` : `VRB @ ${speed}KT G${gust}`;
+    return gust===null ? `VRB@${speed}` : `VRB@${speed}G${gust}`;
   }
 
   match=text.match(/^(\d{3})(\d{2})(G(\d{2}))?KT$/);
@@ -3498,10 +3734,26 @@ function formatWindDisplay(value){
     const dir=match[1];
     const speed=parseInt(match[2],10);
     const gust=match[4]?parseInt(match[4],10):null;
-    return gust===null ? `${dir} @ ${speed}KT` : `${dir} @ ${speed}KT G${gust}`;
+    return gust===null ? `${dir}@${speed}` : `${dir}@${speed}G${gust}`;
   }
 
-  return text;
+  match=text.match(/^(\d{3})\s*@\s*(\d{1,2})KT(?:\s*G(\d{1,2}))?$/);
+  if(match){
+    const dir=match[1];
+    const speed=parseInt(match[2],10);
+    const gust=match[3]?parseInt(match[3],10):null;
+    return gust===null ? `${dir}@${speed}` : `${dir}@${speed}G${gust}`;
+  }
+
+  match=text.match(/^(\d{3})\/(\d{1,2})(G(\d{1,2}))?$/);
+  if(match){
+    const dir=match[1];
+    const speed=parseInt(match[2],10);
+    const gust=match[4]?parseInt(match[4],10):null;
+    return gust===null ? `${dir}@${speed}` : `${dir}@${speed}G${gust}`;
+  }
+
+  return text.replace(/\s*@\s*/,"@").replace(/\s*KT\b/,"").replace(/\s+/g,"");
 }
 
 function formatTempDpDisplay(value){
@@ -3546,11 +3798,11 @@ function setWindDisplay(data){
 
   if(!el)return;
 
-  const rawDisplay=(data.windDisplay||"--").toString().toUpperCase();
+  const rawDisplay=(data.windDisplay||data.windRaw||"--").toString().toUpperCase();
   const display=formatWindDisplay(rawDisplay);
   const arrow=(data.windArrow||"").toString();
 
-  el.className="ops-value";
+  el.className="ops-value wind-compact-final";
   el.textContent="";
 
   if(display==="--"||display===""){
@@ -3558,24 +3810,52 @@ function setWindDisplay(data){
     return;
   }
 
-  const gustMatch=display.match(/^(.*?)(\sG\d+)$/);
+  if(display==="CALM"){
+    el.textContent="CALM";
+    el.title="Wind calm";
+    return;
+  }
 
-  if(gustMatch){
-    el.appendChild(document.createTextNode(gustMatch[1]));
+  const match=display.match(/^([A-Z0-9]{3})@(\d{1,2})(G\d+)?$/);
 
-    const gustSpan=document.createElement("span");
-    gustSpan.className="wind-gust";
-    gustSpan.textContent=gustMatch[2].trim();
-    el.appendChild(gustSpan);
+  if(match){
+    const dir=match[1];
+    const speed=match[2];
+    const gust=match[3]||"";
+
+    const dirSpan=document.createElement("span");
+    dirSpan.className="wind-base-final";
+    dirSpan.textContent=dir;
+    el.appendChild(dirSpan);
+
+    const atSpan=document.createElement("span");
+    atSpan.className="wind-at-final";
+    atSpan.textContent="@";
+    el.appendChild(atSpan);
+
+    const speedSpan=document.createElement("span");
+    speedSpan.className="wind-speed-final";
+    speedSpan.textContent=speed;
+    el.appendChild(speedSpan);
+
+    if(gust){
+      const gustSpan=document.createElement("span");
+      gustSpan.className="wind-gust-final";
+      gustSpan.textContent=gust;
+      el.appendChild(gustSpan);
+    }
   }else{
-    el.appendChild(document.createTextNode(display));
+    const fallbackSpan=document.createElement("span");
+    fallbackSpan.className="wind-base-final";
+    fallbackSpan.textContent=display;
+    el.appendChild(fallbackSpan);
   }
 
   if(arrow){
-    const span=document.createElement("span");
-    span.className="wind-arrow "+windTrendClass(data);
-    span.textContent=arrow;
-    el.appendChild(span);
+    const arrowSpan=document.createElement("span");
+    arrowSpan.className="wind-arrow-final "+windTrendClass(data);
+    arrowSpan.textContent=arrow;
+    el.appendChild(arrowSpan);
   }
 
   const trend=data.windTrendText||"";
@@ -3679,7 +3959,7 @@ function setBwcDisplay(value,data){
 
 function setLightningDisplay(value,data={}){
   const el=document.getElementById("lightning");
-  let display=safeValue(value,"NONE");
+  let display=compactLightningDisplay(value);
   let lightning=String(display).toUpperCase();
   let tone=String(data.lightningTone||"").toLowerCase();
 
@@ -3698,7 +3978,7 @@ function setLightningDisplay(value,data={}){
     });
   }
 
-  el.className="ops-value";
+  el.className="ops-value lightning-compact";
 
   if(tone==="red")el.classList.add("lightning-red");
   else if(tone==="yellow")el.classList.add("lightning-yellow");
@@ -3764,7 +4044,7 @@ function setTafTrend(data){
   const cat=tafFlightCategory(taf);
 
   box.className="trend-box";
-  trend.className="trend-value";
+  trend.className="trend-value wx-alert-compact";
 
   if(data.wxAlertVisible===true && data.wxAlertText && data.wxAlertText!=="NONE"){
     const tone=(data.wxAlertTone||"yellow").toLowerCase();
@@ -3782,7 +4062,8 @@ function setTafTrend(data){
     if(data.wxAlertFlash===true)trend.classList.add("alert-flash");
     if(data.wxAlertPulse===true)trend.classList.add("alert-pulse");
 
-    trend.textContent=data.wxAlertText;
+    const alertDisplay=compactWxAlertDisplay(data.wxAlertText);
+    trend.textContent=alertDisplay;
     trend.title=data.wxAlertLogText||data.wxAlertText;
     return;
   }
@@ -4298,7 +4579,7 @@ async function loadWeatherJson(){
     const taf=data.taf||"TAF unavailable";
     const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";
 
-    document.getElementById("weather").textContent=metar+"\n\n"+taf;
+    document.getElementById("weather").textContent=formatRawWeatherText(metar,taf);
 
     setCategoryDisplay(determineFlightCategoryFromData(data,metar));
     updateDetails(data);
@@ -4307,17 +4588,11 @@ async function loadWeatherJson(){
 
     updateStaleWarning(updatedZ);
     updateSourceHealth(data,updatedZ);
-
-    const previousSlides=getRadarSlides().length;
-    latestWeatherDataForRadar=data;
-    const currentSlides=getRadarSlides().length;
-
-    if(previousSlides!==currentSlides){
-      startRadarSlideshow();
-    }
-
+phase45PolishOpsText();
+    phase46BoldArrows();
     console.log("Ops board refresh:",new Date().toISOString(),updatedZ,data);
   }catch(e){
+    console.error("weather.json load/render failed",e);
     document.getElementById("weather").innerHTML='<span class="warn">Unable to load weather.json</span>';
     document.getElementById("category").textContent="--";
     document.getElementById("atisLetter").textContent="ATIS: --";
@@ -4372,200 +4647,24 @@ function updateRefreshCountdown(){
 }
 
 const NEXRAD_URL="https://radar.weather.gov/ridge/standard/KNQA_loop.gif";
-const RADAR_SLIDE_MS=10000;
 
-// Scenario/test fallbacks. Live mode prefers current URLs from weather.json.
-const FALLBACK_GOES_GLM_URL="https://cdn.star.nesdis.noaa.gov/GOES19/GLM/SECTOR/smv/EXTENT3/20261562111-20261570106-GOES19-GLM-SMV-EXTENT3-600x600.gif";
-const FALLBACK_GOES_B13_URL="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/smv/13/20261562201-20261570156-GOES19-ABI-SMV-13-600x600.gif";
-
-let latestWeatherDataForRadar=null;
-let radarSlideIndex=0;
-let radarSlideshowTimer=null;
-let radarSlideBusy=false;
-
-function textHasLightningCue(text){
-  const s=String(text||"").toUpperCase();
-  return /(TS|TSRA|VCTS|LTG|LIGHTNING|DSNT|CB|TSTM|THUNDER)/.test(s);
-}
-
-function shouldUseGoesCycle(data){
-  if(!data){
-    return false;
-  }
-
-  if(String(data.lightningSource||"").toUpperCase()!=="NONE"){
-    return true;
-  }
-
-  if(textHasLightningCue(data.lightning)){return true;}
-  if(textHasLightningCue(data.lightningLogText)){return true;}
-  if(textHasLightningCue(data.wxAlertText)){return true;}
-  if(textHasLightningCue(data.metar)){return true;}
-  if(textHasLightningCue(data.taf)){return true;}
-  if(textHasLightningCue(data.atisText)){return true;}
-
-  if(Array.isArray(data.wxAlerts)){
-    for(const alert of data.wxAlerts){
-      if(textHasLightningCue(JSON.stringify(alert))){
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-function setRadarTitle(titleText,modeText){
+function setRadarNexradOnly(){
+  const radar=document.getElementById("radar");
   const title=document.getElementById("radarTitle");
   const mode=document.getElementById("radarMode");
 
-  if(title){
-    title.textContent=titleText||"RADAR";
+  if(radar){
+    const sep=NEXRAD_URL.includes("?")?"&":"?";
+    radar.src=NEXRAD_URL+sep+"t="+Date.now();
+    radar.alt="NWS NEXRAD";
   }
 
-  if(mode){
-    mode.textContent=modeText||"NEXRAD";
-  }
-}
-
-function normalizeRadarProductUrl(url){
-  let text=String(url||"").trim();
-
-  if(!text){
-    return text;
-  }
-
-  if(text.startsWith("//")){
-    text="https:"+text;
-  }
-
-  if(text.startsWith("/GOES19/")){
-    text="https://cdn.star.nesdis.noaa.gov"+text;
-  }
-
-  text=text.replace("https://www.star.nesdis.noaa.gov/GOES19/","https://cdn.star.nesdis.noaa.gov/GOES19/");
-  text=text.replace("http://www.star.nesdis.noaa.gov/GOES19/","https://cdn.star.nesdis.noaa.gov/GOES19/");
-
-  return text;
-}
-
-function cacheBustedUrl(url){
-  const normalized=normalizeRadarProductUrl(url);
-  const sep=String(normalized).includes("?")?"&":"?";
-  return `${normalized}${sep}slide=${Date.now()}`;
-}
-
-function getRadarSlides(){
-  const data=latestWeatherDataForRadar||{};
-  const slides=[
-    {
-      title:"RADAR",
-      mode:"NEXRAD",
-      url:NEXRAD_URL
-    }
-  ];
-
-  if(shouldUseGoesCycle(data)){
-    slides.push({
-      title:"SAT/LTG",
-      mode:"GOES GLM",
-      url:data.goesGlmGifUrl||FALLBACK_GOES_GLM_URL
-    });
-
-    slides.push({
-      title:"SAT IR",
-      mode:"GOES B13",
-      url:data.goesBand13GifUrl||FALLBACK_GOES_B13_URL
-    });
-  }
-
-  return slides;
-}
-
-function loadRadarImage(url,timeoutMs=5000){
-  return new Promise((resolve,reject)=>{
-    const img=new Image();
-    const timer=setTimeout(()=>{
-      img.onload=null;
-      img.onerror=null;
-      reject(new Error("radar image timeout"));
-    },timeoutMs);
-
-    img.onload=()=>{
-      clearTimeout(timer);
-      resolve(img.src);
-    };
-
-    img.onerror=()=>{
-      clearTimeout(timer);
-      reject(new Error("radar image failed"));
-    };
-
-    img.src=cacheBustedUrl(url);
-  });
-}
-
-async function showRadarSlide(reset=false){
-  const radar=document.getElementById("radar");
-
-  if(!radar||radarSlideBusy){
-    return;
-  }
-
-  radarSlideBusy=true;
-
-  try{
-    const slides=getRadarSlides();
-
-    if(reset||radarSlideIndex>=slides.length){
-      radarSlideIndex=0;
-    }
-
-    let attempts=0;
-    let loaded=false;
-
-    while(attempts<slides.length&&!loaded){
-      const indexToTry=radarSlideIndex;
-      const slide=slides[indexToTry]||slides[0];
-
-      radarSlideIndex=(radarSlideIndex+1)%slides.length;
-      attempts+=1;
-
-      try{
-        const loadedSrc=await loadRadarImage(slide.url);
-
-        radar.src=loadedSrc;
-        radar.alt=`${slide.title} ${slide.mode}`;
-        setRadarTitle(slide.title,slide.mode);
-        loaded=true;
-      }catch(error){
-        console.warn("Radar slide failed, skipping:",slide.title,slide.mode,slide.url,error);
-      }
-    }
-
-    if(!loaded){
-      const fallback=slides[0];
-
-      radar.src=cacheBustedUrl(fallback.url);
-      radar.alt=`${fallback.title} ${fallback.mode}`;
-      setRadarTitle(fallback.title,fallback.mode);
-      radarSlideIndex=1%slides.length;
-    }
-  }finally{
-    radarSlideBusy=false;
-  }
-}
-
-function startRadarSlideshow(){
-  if(radarSlideshowTimer){
-    clearInterval(radarSlideshowTimer);
-  }
-
-  showRadarSlide(true);
-  radarSlideshowTimer=setInterval(()=>showRadarSlide(false),RADAR_SLIDE_MS);
+  if(title)title.textContent="RADAR";
+  if(mode)mode.textContent="NEXRAD";
 }
 
 function refreshActiveData(){
+  setRadarNexradOnly();
   loadWeatherJson();
 }
 
@@ -4577,8 +4676,6 @@ setInterval(updateRefreshCountdown,1000);
 setInterval(updateClock,1000);
 setInterval(checkClockWatchdog,30000);
 setInterval(loadWeatherJson,300000);
-startRadarSlideshow();
-
 document.addEventListener("visibilitychange",()=>{
   if(!document.hidden){
     refreshActiveData();
@@ -4588,6 +4685,58 @@ document.addEventListener("visibilitychange",()=>{
 window.addEventListener("focus",()=>{
   refreshActiveData();
 });
+
+
+/* Phase 45 — keep preferred lightning wording and bold arrows */
+function phase45PolishOpsText(){
+  const leaves=Array.from(document.querySelectorAll("body *")).filter(el=>{
+    if(el.children && el.children.length>0) return false;
+    const t=(el.textContent||"").replace(/\s+/g," ").trim().toUpperCase();
+    return t.includes("TS OVER FIELD") || t.includes("TS FIELD") || t.includes("TS OVR FIELD");
+  });
+
+  for(const el of leaves){
+    if(el.closest(".raw,.rawwx,.raw-weather,.metar-taf,#wxRaw,#rawWeather,pre")) continue;
+
+    const current=(el.textContent||"").replace(/\s+/g," ").trim();
+    if(/TS\s+OVER\s+FIELD/i.test(current) || /TS\s+FIELD/i.test(current)){
+      el.textContent=current
+        .replace(/TS\s+OVER\s+FIELD/i,"TS OVR FIELD")
+        .replace(/TS\s+FIELD/i,"TS OVR FIELD");
+    }
+
+    if(/TS\s+OVR\s+FIELD/i.test(el.textContent||"")){
+      el.classList.add("lightning-compact-final");
+      el.title="Thunderstorm over field";
+    }
+  }
+
+  // Bold flow arrow even when it is plain text inside the flow value.
+  const flow=document.getElementById("flow");
+  if(flow && !flow.querySelector(".flow-arrow")){
+    flow.innerHTML=flow.textContent.replace(/([↑↓←→↗↘↙↖])/g,'<span class="flow-arrow">$1</span>');
+  }
+}
+
+window.addEventListener("resize",()=>setTimeout(phase45PolishOpsText,100));
+setInterval(phase45PolishOpsText,1000);
+setTimeout(phase45PolishOpsText,150);
+setTimeout(phase45PolishOpsText,750);
+
+
+/* Phase 46 — wrap flow arrow if render function leaves it as plain text */
+function phase46BoldArrows(){
+  const flow=document.getElementById("flow");
+  if(flow && !flow.querySelector(".flow-arrow")){
+    flow.innerHTML=(flow.textContent||"").replace(/([↑↓←→↗↘↙↖])/g,'<span class="flow-arrow">$1</span>');
+  }
+}
+
+window.addEventListener("resize",()=>setTimeout(phase46BoldArrows,100));
+setInterval(phase46BoldArrows,1000);
+setTimeout(phase46BoldArrows,150);
+setTimeout(phase46BoldArrows,750);
+
 </script>
 
 
