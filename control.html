@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>KMEM Ops Board Control</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  background:#050505;
+  color:#e6e6e6;
+  font-family:Arial,sans-serif;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.card{
+  width:min(720px,96vw);
+  border:2px solid #00ff88;
+  background:#101010;
+  padding:22px;
+  box-shadow:0 0 30px rgba(0,255,136,.18);
+}
+h1{
+  margin:0 0 8px;
+  color:#00ff88;
+  font-size:clamp(1.5rem,5vw,2.4rem);
+}
+.sub{
+  color:#aaa;
+  margin-bottom:22px;
+  line-height:1.35;
+}
+label{
+  display:block;
+  font-weight:900;
+  margin:12px 0 6px;
+  color:#fff;
+}
+input{
+  width:100%;
+  padding:14px;
+  border:1px solid #444;
+  background:#000;
+  color:#fff;
+  font-size:1.05rem;
+  border-radius:8px;
+}
+button{
+  width:100%;
+  margin-top:14px;
+  padding:18px 14px;
+  border:0;
+  border-radius:10px;
+  font-size:clamp(1rem,4vw,1.4rem);
+  font-weight:1000;
+  letter-spacing:.5px;
+  cursor:pointer;
+}
+.danger{
+  background:#ffefef;
+  color:#b00000;
+  border:3px solid #ff3333;
+}
+.clear{
+  background:#eaf7ff;
+  color:#003d66;
+  border:3px solid #35b7ff;
+}
+.status{
+  margin-top:18px;
+  min-height:28px;
+  color:#ffcc00;
+  font-weight:900;
+  overflow-wrap:anywhere;
+}
+.small{
+  margin-top:18px;
+  color:#888;
+  font-size:.9rem;
+  line-height:1.35;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>KMEM OPS BOARD CONTROL</h1>
+  <div class="sub">
+    Manual alert controls. Use only for active ops coordination.
+    Alert stays active until cleared.
+  </div>
+
+  <label for="workerUrl">Control Endpoint URL</label>
+  <input id="workerUrl" autocomplete="off" placeholder="https://your-worker.your-subdomain.workers.dev">
+
+  <label for="password">Control Password</label>
+  <input id="password" type="password" autocomplete="current-password" placeholder="Password">
+
+  <button class="danger" onclick="sendAlert('lightning_5nm')">
+    LIGHTNING WITHIN 5 NM — FLT LINE CLOSED
+  </button>
+
+  <button class="clear" onclick="sendAlert('clear')">
+    CLEAR MANUAL ALERT
+  </button>
+
+  <div id="status" class="status"></div>
+
+  <div class="small">
+    This page does not store your GitHub token. The endpoint verifies the password server-side and updates manual_alert.json.
+    The main board checks manual_alert.json every few seconds.
+  </div>
+</div>
+
+<script>
+const endpointInput=document.getElementById("workerUrl");
+const savedEndpoint=localStorage.getItem("kmemControlEndpoint")||"";
+endpointInput.value=savedEndpoint;
+
+function setStatus(text,tone){
+  const el=document.getElementById("status");
+  el.textContent=text;
+  el.style.color=tone==="ok"?"#00ff88":tone==="bad"?"#ff4444":"#ffcc00";
+}
+
+async function sendAlert(action){
+  const endpoint=endpointInput.value.trim().replace(/\/+$/,"");
+  const password=document.getElementById("password").value;
+
+  if(!endpoint){
+    setStatus("Enter the Control Endpoint URL first.","bad");
+    return;
+  }
+
+  if(!password){
+    setStatus("Enter the control password first.","bad");
+    return;
+  }
+
+  if(action==="lightning_5nm"){
+    const ok=confirm("Confirm: DISPLAY LIGHTNING WITHIN 5 NM / FLT LINE CLOSED?");
+    if(!ok)return;
+  }
+
+  localStorage.setItem("kmemControlEndpoint",endpoint);
+  setStatus("Sending...","warn");
+
+  try{
+    const response=await fetch(endpoint,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({password,action})
+    });
+
+    const text=await response.text();
+
+    if(!response.ok){
+      setStatus(`Failed: ${text}`,"bad");
+      return;
+    }
+
+    setStatus(text||"Command sent.","ok");
+  }catch(error){
+    setStatus(`Failed: ${error.message}`,"bad");
+  }
+}
+</script>
+</body>
+</html>
