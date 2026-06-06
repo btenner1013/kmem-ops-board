@@ -2908,16 +2908,16 @@ html,body{
 }
 
 
-/* Phase 26 — manual ops alert overlay */
+
+/* Phase 29 — manual lightning alert in NOTAMS band */
 .manual-alert-overlay{
   position:fixed;
-  inset:0;
   z-index:99999;
   display:none;
   align-items:center;
   justify-content:center;
-  padding:4vh 4vw;
   pointer-events:none;
+  padding:6px 10px;
 }
 
 .manual-alert-overlay.manual-alert-active{
@@ -2925,44 +2925,51 @@ html,body{
 }
 
 .manual-alert-card{
-  width:min(92vw,1500px);
-  min-height:min(50vh,520px);
+  width:100%;
+  height:100%;
+  min-height:0;
   display:flex;
-  flex-direction:column;
   align-items:center;
   justify-content:center;
   text-align:center;
-  border:6px solid rgba(255,255,255,.95);
+  border:4px solid rgba(255,255,255,.95);
   background:rgba(255,255,255,.78);
   color:#b00000;
-  box-shadow:0 0 40px rgba(255,255,255,.65),0 0 80px rgba(255,0,0,.45);
+  box-shadow:0 0 28px rgba(255,255,255,.58),0 0 50px rgba(255,0,0,.42);
   font-family:Arial,sans-serif;
   animation:manualAlertFlash 1.15s step-start infinite;
 }
 
-.manual-alert-line1{
-  font-size:clamp(2.5rem,7.8vw,9.5rem);
+.manual-alert-content{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(12px,2vw,32px);
+  width:100%;
+  padding:0 10px;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.manual-alert-line1,
+.manual-alert-line2{
+  font-size:clamp(1.6rem,3.1vw,4.9rem);
   font-weight:1000;
-  letter-spacing:2px;
-  line-height:.95;
+  letter-spacing:1.5px;
+  line-height:.92;
   text-transform:uppercase;
 }
 
 .manual-alert-line2{
-  margin-top:2.5vh;
-  font-size:clamp(2.2rem,7.0vw,8.5rem);
-  font-weight:1000;
-  letter-spacing:2px;
-  line-height:.95;
-  text-transform:uppercase;
+  margin-top:0;
 }
 
 .manual-alert-cao{
-  margin-top:2.2vh;
   color:#111;
-  font-size:clamp(1rem,2.4vw,2.4rem);
-  font-weight:900;
+  font-size:clamp(.9rem,1.3vw,1.8rem);
+  font-weight:1000;
   letter-spacing:1px;
+  white-space:nowrap;
 }
 
 @keyframes manualAlertFlash{
@@ -2970,27 +2977,20 @@ html,body{
   53%,100%{opacity:.10}
 }
 
-@media (hover:none) and (pointer:coarse){
-  .manual-alert-overlay{
-    padding:3vh 3vw;
+@media (max-width:900px){
+  .manual-alert-content{
+    flex-direction:column;
+    gap:4px;
+    white-space:normal;
   }
 
-  .manual-alert-card{
-    width:94vw;
-    min-height:42vh;
-    border-width:4px;
-  }
-
-  .manual-alert-line1{
-    font-size:clamp(2rem,13vw,5.8rem);
-  }
-
+  .manual-alert-line1,
   .manual-alert-line2{
-    font-size:clamp(1.8rem,12vw,5.4rem);
+    font-size:clamp(1.4rem,7vw,3.2rem);
   }
 
   .manual-alert-cao{
-    font-size:clamp(.9rem,5vw,1.7rem);
+    font-size:clamp(.82rem,3.4vw,1.3rem);
   }
 }
 
@@ -3001,9 +3001,11 @@ html,body{
 
 <div id="manualAlertOverlay" class="manual-alert-overlay" aria-live="assertive" aria-hidden="true">
   <div class="manual-alert-card">
-    <div id="manualAlertLine1" class="manual-alert-line1">LIGHTNING WITHIN 5 NM</div>
-    <div id="manualAlertLine2" class="manual-alert-line2">FLT LINE CLOSED</div>
-    <div id="manualAlertCao" class="manual-alert-cao">CAO --</div>
+    <div class="manual-alert-content">
+      <div id="manualAlertLine1" class="manual-alert-line1">LIGHTNING WITHIN 5 NM</div>
+      <div id="manualAlertLine2" class="manual-alert-line2">FLT LINE CLOSED</div>
+      <div id="manualAlertCao" class="manual-alert-cao">CAO --</div>
+    </div>
   </div>
 </div>
 
@@ -4305,8 +4307,9 @@ window.addEventListener("focus",()=>{
 });
 </script>
 
+
 <script>
-/* Phase 26 — fast manual alert polling */
+/* Phase 29 — fast manual alert polling, displayed over NOTAMS band */
 (function(){
   const MANUAL_ALERT_URL="manual_alert.json";
   const MANUAL_ALERT_POLL_MS=3000;
@@ -4348,6 +4351,22 @@ window.addEventListener("focus",()=>{
     return "CAO --";
   }
 
+  function positionManualAlertOverlay(){
+    const overlay=document.getElementById("manualAlertOverlay");
+    const target=document.querySelector(".bottom")||document.querySelector(".mil-notam-panel");
+
+    if(!overlay||!target||!overlay.classList.contains("manual-alert-active")){
+      return;
+    }
+
+    const rect=target.getBoundingClientRect();
+
+    overlay.style.left=`${Math.max(0,rect.left)}px`;
+    overlay.style.top=`${Math.max(0,rect.top)}px`;
+    overlay.style.width=`${Math.max(0,rect.width)}px`;
+    overlay.style.height=`${Math.max(0,rect.height)}px`;
+  }
+
   function setManualAlertDisplay(alertData){
     const overlay=document.getElementById("manualAlertOverlay");
     const line1=document.getElementById("manualAlertLine1");
@@ -4362,6 +4381,9 @@ window.addEventListener("focus",()=>{
     const signature=JSON.stringify(alertData||{});
 
     if(signature===lastManualAlertSignature){
+      if(active){
+        positionManualAlertOverlay();
+      }
       return;
     }
 
@@ -4370,6 +4392,7 @@ window.addEventListener("focus",()=>{
     if(!active){
       overlay.classList.remove("manual-alert-active");
       overlay.setAttribute("aria-hidden","true");
+      overlay.removeAttribute("style");
       return;
     }
 
@@ -4379,6 +4402,7 @@ window.addEventListener("focus",()=>{
 
     overlay.classList.add("manual-alert-active");
     overlay.setAttribute("aria-hidden","false");
+    positionManualAlertOverlay();
   }
 
   async function fetchManualAlert(){
@@ -4400,6 +4424,8 @@ window.addEventListener("focus",()=>{
   }
 
   window.kmemSetManualAlertDisplay=setManualAlertDisplay;
+  window.addEventListener("resize",positionManualAlertOverlay);
+  window.addEventListener("scroll",positionManualAlertOverlay,{passive:true});
 
   fetchManualAlert();
   setInterval(fetchManualAlert,MANUAL_ALERT_POLL_MS);
