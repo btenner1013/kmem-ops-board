@@ -666,6 +666,105 @@ def parse_rcr_rcc(atis_text):
     return result
 
 
+
+def default_rcr_rcc(source="NOTAM_FICON"):
+    return {
+        "rcrText": "DRY",
+        "rcrCode": "DRY",
+        "rcrSeverity": "good",
+        "rcrSource": source,
+        "rcrVisible": True,
+        "rcrRaw": "--"
+    }
+
+
+def parse_rcr_rcc_from_ficon_notams(ficon_notams):
+    """
+    Primary RCR/RCC source for the board.
+
+    Uses FAA/NMS FICON NOTAM text, not ATIS, because ATIS wording varies.
+    Board rule:
+      - no runway FICON found: DRY
+      - all runway codes are 6/6/6: DRY
+      - otherwise show the worst runway code found
+    """
+    records = []
+
+    for item in ficon_notams or []:
+        if isinstance(item, dict):
+            text = " ".join([
+                str(item.get("number") or ""),
+                str(item.get("text") or ""),
+                str(item.get("displayText") or "")
+            ])
+        else:
+            text = str(item)
+
+        compact = re.sub(r"\s+", " ", text.upper()).strip()
+
+        for match in re.finditer(r"\bRWY\s+(\d{1,2}[LCR]?)\s+FICON\s+([0-6])\s*/\s*([0-6])\s*/\s*([0-6])\b([^.]*)", compact):
+            runway = match.group(1)
+            code = f"{match.group(2)}/{match.group(3)}/{match.group(4)}"
+            values = [int(match.group(2)), int(match.group(3)), int(match.group(4))]
+            lowest = min(values)
+
+            tail = match.group(5) or ""
+            condition = ""
+
+            condition_keywords = [
+                "WET SNOW", "DRY SNOW", "COMPACTED SNOW", "STANDING WATER",
+                "SLUSH", "ICE", "WET", "DRY"
+            ]
+
+            for keyword in condition_keywords:
+                if re.search(rf"\b{re.escape(keyword)}\b", tail):
+                    condition = keyword
+                    break
+
+            records.append({
+                "runway": runway,
+                "code": code,
+                "values": values,
+                "lowest": lowest,
+                "condition": condition,
+                "raw": compact
+            })
+
+    if not records:
+        return default_rcr_rcc("NOTAM_FICON_NONE")
+
+    # If every runway is clean 6/6/6, keep the board simple.
+    if all(record["code"] == "6/6/6" for record in records):
+        return default_rcr_rcc("NOTAM_FICON_666")
+
+    # Worst = lowest individual code first, then lowest total code.
+    worst = sorted(records, key=lambda r: (r["lowest"], sum(r["values"])))[0]
+
+    code = worst["code"]
+    lowest = worst["lowest"]
+    condition = worst["condition"]
+
+    if lowest >= 5:
+        severity = "good"
+    elif lowest == 4:
+        severity = "caution"
+    else:
+        severity = "poor"
+
+    text = f"RCC {code}"
+    if condition and condition != "DRY":
+        text += f" {condition}"
+
+    return {
+        "rcrText": text,
+        "rcrCode": code,
+        "rcrSeverity": severity,
+        "rcrSource": "NOTAM_FICON",
+        "rcrVisible": True,
+        "rcrRaw": worst["raw"]
+    }
+
+
 def determine_flow(arr, dep):
     combined = (arr + " " + dep).upper()
 
@@ -1778,11 +1877,13 @@ def extract_metar_ltg_dsnt_direction(metar):
     tokens = [token.strip(".,;:()[]{}=") for token in text.split()]
 
     for idx, token in enumerate(tokens):
-        if token == "LTG" and idx + 1 < len(tokens) and tokens[idx + 1] == "DSNT":
+        # METAR remarks commonly use LTG, LTGIC, LTGCG, LTGCC, etc.
+        # Treat any LTG* token followed by DSNT as distant lightning.
+        if token.startswith("LTG") and idx + 1 < len(tokens) and tokens[idx + 1] == "DSNT":
             collected = []
 
-            for follow in tokens[idx + 2:idx + 6]:
-                if follow in LIGHTNING_DIRECTIONS or follow in {"ALL", "QUADS", "QUADRANTS", "ALLQUADS"}:
+            for follow in tokens[idx + 2:idx + 8]:
+                if follow in LIGHTNING_DIRECTIONS or follow in {"ALL", "QUADS", "QUADRANTS", "ALLQUADS", "AND"}:
                     collected.append(follow)
                 else:
                     break
@@ -2325,7 +2426,9 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         "milNotamScrollText": scroll_text,
         "milNotams": normalized_items,
         "milNotamFetchStatus": fetch_status,
-        "milNotamRawStatus": raw.get("status") or "UNKNOWN"
+        "milNotamRawStatus": raw.get("status") or "UNKNOWN",
+        "ficonNotams": raw.get("ficonNotams") or [],
+        "ficonNotamCount": raw.get("ficonNotamCount") or len(raw.get("ficonNotams") or [])
     }
 
 
@@ -2341,7 +2444,9 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
             "milNotamScrollText": use_previous_field(previous_data, "milNotamScrollText", ""),
             "milNotams": use_previous_field(previous_data, "milNotams", []),
             "milNotamFetchStatus": fetch_status,
-            "milNotamRawStatus": use_previous_field(previous_data, "milNotamRawStatus", "LAST_GOOD")
+            "milNotamRawStatus": use_previous_field(previous_data, "milNotamRawStatus", "LAST_GOOD"),
+            "ficonNotams": use_previous_field(previous_data, "ficonNotams", []),
+            "ficonNotamCount": use_previous_field(previous_data, "ficonNotamCount", 0)
         }
 
     return {
@@ -2352,7 +2457,9 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
         "milNotamScrollText": "",
         "milNotams": [],
         "milNotamFetchStatus": fetch_status,
-        "milNotamRawStatus": "NO_PREVIOUS_DATA"
+        "milNotamRawStatus": "NO_PREVIOUS_DATA",
+        "ficonNotams": [],
+        "ficonNotamCount": 0
     }
 
 
@@ -2506,7 +2613,7 @@ def build_weather_json():
     dep_runways = parse_dep_runways(atis_text)
     closed_runways = parse_closed_runways(atis_text)
     flow = determine_flow(arr_runways, dep_runways)
-    rcr_data = parse_rcr_rcc(atis_text)
+    rcr_data = default_rcr_rcc("NOTAM_FICON_PENDING")
 
     best_obs = parse_best_observation_values(metar, atis_text, atis_fetch_status)
 
@@ -2571,6 +2678,8 @@ def build_weather_json():
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
 
     mil_notam_data = fetch_mil_notams(previous_data)
+    rcr_data = parse_rcr_rcc_from_ficon_notams(mil_notam_data.get("ficonNotams", []))
+    print("RCR/RCC:", rcr_data["rcrText"], "SOURCE:", rcr_data["rcrSource"], "SEVERITY:", rcr_data["rcrSeverity"])
 
     data = {
         "metar": metar or "METAR unavailable",
@@ -2690,6 +2799,8 @@ def build_weather_json():
         "milNotams": mil_notam_data["milNotams"],
         "milNotamFetchStatus": mil_notam_data["milNotamFetchStatus"],
         "milNotamRawStatus": mil_notam_data["milNotamRawStatus"],
+        "ficonNotams": mil_notam_data.get("ficonNotams", []),
+        "ficonNotamCount": mil_notam_data.get("ficonNotamCount", 0),
 
         "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
 

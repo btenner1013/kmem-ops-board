@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KMEM MIL NOTAM NMS test pull.
+KMEM MIL NOTAM/FICON NMS pull.
 
 Reads credentials from:
   NMS_CLIENT_ID
@@ -235,17 +235,60 @@ def main():
     checklist_resp = nms_get_json("/notams/checklist", token, query={"location": LOCATION})
     checklist = checklist_resp.get("data", {}).get("checklist", [])
 
-    mil = [
-        x for x in checklist
-        if str(x.get("classification", "")).upper() == "MILITARY"
-    ]
+    def is_mil_candidate(item):
+        return str(item.get("classification", "")).upper() == "MILITARY"
+
+    def is_ficon_candidate(item):
+        blob = " ".join(str(item.get(k, "")) for k in item.keys()).upper()
+        return (
+            "FICON" in blob
+            or "SNOW" in blob
+            or str(item.get("classification", "")).upper() in ("SNOW", "FICON")
+        )
+
+    # Phase 59: do NOT brute-force every checklist detail record.
+    # NMS checklist metadata can hide FICON wording, but active runway FICON NOTAMs are
+    # normally recent local NOTAMs (for example 06/141-06/146). Pull MIL records plus
+    # the newest local MEM records, then classify by full text. This keeps the update
+    # usable for a 15-minute board cycle.
+
+    MAX_RECENT_LOCAL_DETAIL_SCAN = 24
+
+    def local_number_key(item):
+        num = str(item.get("number", ""))
+        match = re.match(r"^(\d{1,2})/(\d{3})$", num)
+        if not match:
+            return (-1, -1)
+        return (int(match.group(1)), int(match.group(2)))
+
+    mil_candidates = [item for item in checklist if is_mil_candidate(item) or str(item.get("number", "")).upper().startswith("M")]
+
+    explicit_ficon_candidates = [item for item in checklist if is_ficon_candidate(item)]
+
+    recent_local_candidates = sorted(
+        [item for item in checklist if re.match(r"^\d{1,2}/\d{3}$", str(item.get("number", "")))],
+        key=local_number_key,
+        reverse=True
+    )[:MAX_RECENT_LOCAL_DETAIL_SCAN]
+
+    candidates_by_number = {}
+    for item in mil_candidates + explicit_ficon_candidates + recent_local_candidates:
+        num = str(item.get("number", ""))
+        if num:
+            candidates_by_number[num] = item
+
+    candidates = list(candidates_by_number.values())
 
     print(f"Checklist records returned: {len(checklist)}")
-    print(f"MILITARY records found: {len(mil)}")
+    print(f"MIL candidates: {len(mil_candidates)}")
+    print(f"Explicit FICON metadata candidates: {len(explicit_ficon_candidates)}")
+    print(f"Recent local records scanned for hidden FICON: {len(recent_local_candidates)}")
+    print(f"Detail records to scan for MIL/FICON: {len(candidates)}")
 
     notams = []
+    ficon_notams = []
 
-    for item in sorted(mil, key=lambda x: x.get("number", "")):
+    for item in sorted(candidates, key=local_number_key, reverse=True):
         time.sleep(REQUEST_DELAY_SECONDS)
 
         num = item.get("number")
@@ -281,7 +324,15 @@ def main():
             "source": "FAA_NMS_STAGING",
         }
 
-        notams.append(record)
+        txt_upper = txt.upper()
+
+        # Keep runway/taxiway/apron FICON in the separate FICON list for RCR/RCC parsing.
+        # Do not put FICON into the MIL NOTAM crawl.
+        if "FICON" in txt_upper:
+            ficon_notams.append(record)
+
+        if str(record.get("classification", "")).upper() in ("MIL", "MILITARY") or record["number"].upper().startswith("M"):
+            notams.append(record)
 
     result = {
         "status": "Success",
@@ -294,6 +345,10 @@ def main():
             f"{n['number']} {n['displayText']}" for n in notams
         ),
         "milNotams": notams,
+        "ficonNotams": ficon_notams,
+        "ficonNotamCount": len(ficon_notams),
+        "detailScanMode": "PHASE59_RECENT_LOCAL_PLUS_MIL",
+        "detailRecordsScanned": len(candidates),
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
@@ -302,11 +357,15 @@ def main():
     print()
     print("KMEM MIL NOTAM pull complete.")
     print(f"Status: {result['milNotamStatus']}")
+    print(f"FICON: {result['ficonNotamCount']} records")
     print(f"Wrote:  {OUTPUT_FILE}")
     print()
 
     for n in notams:
         print(f"{n['severity'].upper():5} {n['number']}: {n['displayText']}")
+
+    for n in ficon_notams:
+        print(f"FICON {n['number']}: {n['displayText']}")
 
 
 if __name__ == "__main__":
