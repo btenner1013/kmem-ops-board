@@ -4015,6 +4015,89 @@ html,body{
   }
 }
 
+
+/* Phase 81 — runway closure NOTAM display-only support */
+.mil-notam-crawl{
+  white-space:pre-wrap !important;
+}
+
+
+/* Phase 82 — wrap long LIGHTNING text */
+#lightning{
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  overflow-wrap:anywhere !important;
+  word-break:normal !important;
+  line-height:1.04 !important;
+  padding:0 3px !important;
+}
+
+/* Give the lightning box permission to grow slightly when needed. */
+#lightning.closest-not-supported{
+  min-height:auto !important;
+}
+
+.ops-box:has(#lightning){
+  min-height:0 !important;
+  height:auto !important;
+}
+
+/* Desktop/TV: keep it readable, but let two lines happen for LTG DSNT text. */
+@media (min-width:901px){
+  #lightning{
+    font-size:clamp(.95rem,1.05vw,1.32rem) !important;
+  }
+}
+
+/* Phone: wrap LTG DSNT directions instead of cutting off at the edge. */
+@media (max-width:900px), (hover:none) and (pointer:coarse){
+  #lightning{
+    font-size:clamp(1.05rem,4.1vw,1.35rem) !important;
+    line-height:1.06 !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  .ops-box:has(#lightning){
+    height:auto !important;
+    min-height:66px !important;
+  }
+}
+
+
+/* Phase 83 — corrected WX Alert PSBL wording and color emoji */
+.wx-alert-emoji{
+  font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif !important;
+  color:initial !important;
+  -webkit-text-fill-color:initial !important;
+  text-shadow:none !important;
+  filter:none !important;
+  margin-right:.12em !important;
+}
+
+#tafTrend.wx-alert-compact,
+.wx-alert-compact{
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  text-align:center !important;
+  font-weight:1000 !important;
+  letter-spacing:.01em !important;
+  line-height:1.05 !important;
+}
+
+@media (max-width:900px), (hover:none) and (pointer:coarse){
+  #tafTrend.wx-alert-compact,
+  .wx-alert-compact{
+    white-space:nowrap !important;
+    overflow:visible !important;
+    font-size:clamp(1.00rem,4.0vw,1.28rem) !important;
+    line-height:1.06 !important;
+  }
+}
+
 </style>
 </head>
 
@@ -4411,12 +4494,44 @@ function compactWxAlertDisplay(value){
   const timeMatch=upper.match(/\b(\d{2}(?:-\d{2})?Z)\b/);
   const time=timeMatch ? " "+timeMatch[1] : "";
 
-  // Active/current thunderstorm/rain.
-  if(/\bTSRA\b/.test(upper) || upper.includes("THUNDERSTORM RAIN")){
-    if(upper.includes("POSSIBLE") || time){
-      return "⛈ TSRA"+time;
+  const isForecastLike=
+    upper.includes("POSSIBLE") ||
+    upper.includes("PSBL") ||
+    upper.includes("TAF") ||
+    upper.includes("PROB") ||
+    upper.includes("TEMPO") ||
+    Boolean(time);
+
+  function wxCode(code, emoji, activeWord){
+    return isForecastLike ? `${emoji} ${code} PSBL${time}` : `${emoji} ${code} ${activeWord||"ACTIVE"}`;
+  }
+
+  // Distant lightning. Keep as current/distant information, not PSBL.
+  if(upper.includes("LTG") && upper.includes("DSNT")){
+    let dir="";
+    if(upper.includes("NE AND NW") || upper.includes("NE/NW"))dir=" NE/NW";
+    else{
+      const dirMatch=upper.match(/\b(NW|NE|SW|SE|N|S|E|W)\b/);
+      if(dirMatch)dir=" "+dirMatch[1];
     }
-    return "⛈ TSRA ACTIVE";
+    return "⚡ LTG DSNT"+dir;
+  }
+
+  if(upper.includes("LIGHTNING WITHIN 5 NM")){
+    return "⚡ LTG WITHIN 5NM";
+  }
+
+  // Thunderstorm rain. Preserve intensity when the source says -TSRA.
+  if(/\b-TSRA\b/.test(upper) || upper.includes("LIGHT THUNDERSTORM RAIN")){
+    return wxCode("-TSRA","⛈️");
+  }
+
+  if(/\b\+TSRA\b/.test(upper) || upper.includes("HEAVY THUNDERSTORM RAIN")){
+    return wxCode("+TSRA","⛈️");
+  }
+
+  if(/\bTSRA\b/.test(upper) || upper.includes("THUNDERSTORM RAIN")){
+    return wxCode("TSRA","⛈️");
   }
 
   // Vicinity thunderstorms.
@@ -4425,7 +4540,7 @@ function compactWxAlertDisplay(value){
      upper.includes("VICINITY THUNDER") ||
      upper.includes("THUNDERSTORM VICINITY") ||
      upper.includes("THUNDERSTORMS VICINITY")){
-    return time ? "⛈ VCTS"+time : "⛈ VCTS ACTIVE";
+    return isForecastLike ? `⛈️ VCTS PSBL${time}` : "⛈️ VCTS ACTIVE";
   }
 
   // Vicinity showers.
@@ -4434,59 +4549,75 @@ function compactWxAlertDisplay(value){
      upper.includes("VICINITY SHOWERS") ||
      upper.includes("SHOWERS VICINITY") ||
      upper.includes("SHOWER VICINITY")){
-    return time ? "🌧 VCSH"+time : "🌧 VCSH";
-  }
-
-  // Distant lightning.
-  if(upper.includes("LTG") && upper.includes("DSNT")){
-    let dir="";
-    const dirMatch=upper.match(/\b(NE\/NW|NW\/NE|NE|NW|SE|SW|N|S|E|W)(?:\b|$)/);
-    if(upper.includes("NE AND NW") || upper.includes("NE/NW"))dir=" NE/NW";
-    else if(dirMatch)dir=" "+dirMatch[1].replace("NW/NE","NE/NW");
-    return "⚡ LTG DSNT"+dir;
+    return isForecastLike ? `🌧️ VCSH PSBL${time}` : "🌧️ VCSH";
   }
 
   // Rain/showers without thunder.
-  if(/\b[-+]?SHRA\b/.test(upper)){
-    return "🌧 SHRA"+time;
+  if(/\b-SHRA\b/.test(upper) || upper.includes("LIGHT RAIN SHOWER")){
+    return isForecastLike ? `🌧️ -SHRA PSBL${time}` : "🌧️ -SHRA";
   }
 
-  if(/\b[-+]?RA\b/.test(upper) || upper.includes("LIGHT RAIN")){
-    const intensity=upper.includes("-RA") || upper.includes("LIGHT") ? "-RA" : (upper.includes("+RA") || upper.includes("HEAVY") ? "+RA" : "RA");
-    if(upper.includes("ATIS"))return "🌧 "+intensity+" ATIS";
-    if(upper.includes("METAR"))return "🌧 "+intensity+" METAR";
-    return "🌧 "+intensity;
+  if(/\bSHRA\b/.test(upper)){
+    return isForecastLike ? `🌧️ SHRA PSBL${time}` : "🌧️ SHRA";
+  }
+
+  if(/\b-RA\b/.test(upper) || upper.includes("LIGHT RAIN")){
+    if(isForecastLike)return `🌧️ -RA PSBL${time}`;
+    if(upper.includes("ATIS"))return "🌧️ -RA ATIS";
+    if(upper.includes("METAR"))return "🌧️ -RA METAR";
+    return "🌧️ -RA";
+  }
+
+  if(/\b\+RA\b/.test(upper) || upper.includes("HEAVY RAIN")){
+    if(isForecastLike)return `🌧️ +RA PSBL${time}`;
+    if(upper.includes("ATIS"))return "🌧️ +RA ATIS";
+    if(upper.includes("METAR"))return "🌧️ +RA METAR";
+    return "🌧️ +RA";
+  }
+
+  if(/\bRA\b/.test(upper)){
+    if(isForecastLike)return `🌧️ RA PSBL${time}`;
+    if(upper.includes("ATIS"))return "🌧️ RA ATIS";
+    if(upper.includes("METAR"))return "🌧️ RA METAR";
+    return "🌧️ RA";
   }
 
   // Smoke / freezing rain / volcanic ash.
   if(/\bFU\b/.test(upper) || upper.includes("SMOKE")){
-    return upper.includes("POSS") ? "🌫 FU POSS" : "🌫 FU ACTIVE";
+    return isForecastLike ? `🌫️ FU PSBL${time}` : "🌫️ FU ACTIVE";
   }
 
   if(/\bFZRA\b/.test(upper) || upper.includes("FREEZING RAIN")){
-    return upper.includes("POSS") ? "🧊 FZRA POSS" : "🧊 FZRA ACTIVE";
+    return isForecastLike ? `🧊 FZRA PSBL${time}` : "🧊 FZRA ACTIVE";
   }
 
   if(/\bVA\b/.test(upper) || upper.includes("VOLCANIC ASH")){
-    return upper.includes("POSS") ? "🌋 VA POSS" : "🌋 VA ACTIVE";
+    return isForecastLike ? `🌋 VA PSBL${time}` : "🌋 VA ACTIVE";
   }
 
-  if(upper.includes("LIGHTNING WITHIN 5 NM")){
-    return "⚡ LTG WITHIN 5NM";
-  }
-
-  // Last-resort cleanup for any unexpected backend text.
-  text=text.replace(/THUNDERSTORM\s+VICINITY\s+POSSIBLE/ig,"⛈ VCTS");
-  text=text.replace(/THUNDERSTORMS\s+VICINITY\s+POSSIBLE/ig,"⛈ VCTS");
-  text=text.replace(/VICINITY\s+THUNDERSTORMS\s+POSSIBLE/ig,"⛈ VCTS");
-  text=text.replace(/VCTY\s+TSTMS\s+POSSIBLE/ig,"⛈ VCTS");
-  text=text.replace(/VCTY\s+SHOWERS\s+POSSIBLE/ig,"🌧 VCSH");
-  text=text.replace(/SHOWERS\s+VICINITY\s+POSSIBLE/ig,"🌧 VCSH");
-  text=text.replace(/VICINITY\s+SHOWERS\s+POSSIBLE/ig,"🌧 VCSH");
-  text=text.replace(/LIGHTNING\s+WITHIN\s+5\s+NM/ig,"⚡ LTG WITHIN 5NM");
+  // Last-resort cleanup for unexpected backend text.
+  text=text.replace(/LIGHT\s+THUNDERSTORM\s+RAIN\s+POSSIBLE/ig,"⛈️ -TSRA PSBL");
+  text=text.replace(/THUNDERSTORM\s+RAIN\s+POSSIBLE/ig,"⛈️ TSRA PSBL");
+  text=text.replace(/THUNDERSTORM\s+VICINITY\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
+  text=text.replace(/THUNDERSTORMS\s+VICINITY\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
+  text=text.replace(/VICINITY\s+THUNDERSTORMS\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
+  text=text.replace(/VCTY\s+TSTMS\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
+  text=text.replace(/VCTY\s+SHOWERS\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
+  text=text.replace(/SHOWERS\s+VICINITY\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
+  text=text.replace(/VICINITY\s+SHOWERS\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
   text=text.replace(/\s+/g," ").trim();
 
   return text || "NONE";
+}
+
+function wxAlertDisplayHtml(value){
+  const display=compactWxAlertDisplay(value);
+  const escaped=String(display)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
+
+  return escaped.replace(/^(\p{Extended_Pictographic}(?:\uFE0F)?)/u,'<span class="wx-alert-emoji">$1</span>');
 }
 
 function formatRawWeatherText(metar,taf){
@@ -4901,8 +5032,7 @@ function setTafTrend(data){
     if(data.wxAlertFlash===true)trend.classList.add("alert-flash");
     if(data.wxAlertPulse===true)trend.classList.add("alert-pulse");
 
-    const alertDisplay=compactWxAlertDisplay(data.wxAlertText);
-    trend.textContent=alertDisplay;
+    trend.innerHTML=wxAlertDisplayHtml(data.wxAlertText);
     trend.title=data.wxAlertLogText||data.wxAlertText;
     return;
   }
@@ -5236,6 +5366,207 @@ function setCaoStatusDisplay(cao,value,fetchStatus,rawStatus){
   }
 }
 
+
+/* Phase 81 — display runway closure NOTAMs with effective times.
+   Display-only: does NOT change runway closure data behavior or RWY CLSD box logic. */
+function normalizeNotamTimeText(value){
+  if(value===undefined||value===null||value==="")return "";
+
+  let text=String(value).trim();
+
+  // ISO-ish dates: 2026-06-08T13:00:00Z -> 08 JUN 1300Z
+  const iso=Date.parse(text);
+  if(!isNaN(iso) && /\d{4}-\d{2}-\d{2}/.test(text)){
+    const d=new Date(iso);
+    const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+    return `${String(d.getUTCDate()).padStart(2,"0")} ${months[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`;
+  }
+
+  // DAIP text style: 08 JUN 13:00 2026 -> 08 JUN 1300Z
+  text=text.replace(/\b(\d{1,2})\s+([A-Z]{3})\s+(\d{2}):(\d{2})\s+(\d{4})\b/ig,(m,dd,mon,hh,mm,yyyy)=>{
+    return `${String(dd).padStart(2,"0")} ${mon.toUpperCase()} ${hh}${mm}Z`;
+  });
+
+  // Compact FAA style: 2606081300 -> 08 JUN 1300Z when possible
+  text=text.replace(/\b(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\b/g,(m,yy,mo,dd,hh,mm)=>{
+    const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+    const month=months[Math.max(0,Math.min(11,Number(mo)-1))]||mo;
+    return `${dd} ${month} ${hh}${mm}Z`;
+  });
+
+  return text.toUpperCase();
+}
+
+function extractEffectiveRangeFromNotam(item,text){
+  const fields=[
+    ["effectiveStart","effectiveEnd"],
+    ["startTime","endTime"],
+    ["start","end"],
+    ["begin","end"],
+    ["validFrom","validTo"],
+    ["effectiveFrom","effectiveTo"],
+    ["notamBegin","notamEnd"],
+    ["startDate","endDate"],
+    ["startDateTime","endDateTime"]
+  ];
+
+  for(const [a,b] of fields){
+    if(item && (item[a]||item[b])){
+      const start=normalizeNotamTimeText(item[a]||"");
+      const end=normalizeNotamTimeText(item[b]||"");
+      if(start||end)return `EFF ${start||"UNK"}-${end||"UFN"}`;
+    }
+  }
+
+  const raw=(text||"").toUpperCase();
+
+  // DAIP style: 08 JUN 13:00 2026 UNTIL 08 JUN 22:00 2026
+  let m=raw.match(/\b(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4})\s+UNTIL\s+(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE)\b/i);
+  if(m){
+    return `EFF ${normalizeNotamTimeText(m[1])}-${normalizeNotamTimeText(m[2])}`;
+  }
+
+  // Compact FAA style: 2606081300-2606082200
+  m=raw.match(/\b(\d{10})-(\d{10}|UFN)\b/);
+  if(m){
+    return `EFF ${normalizeNotamTimeText(m[1])}-${normalizeNotamTimeText(m[2])}`;
+  }
+
+  // UNTIL only fallback.
+  m=raw.match(/\bUNTIL\s+(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE)\b/i);
+  if(m){
+    return `UNTIL ${normalizeNotamTimeText(m[1])}`;
+  }
+
+  return "";
+}
+
+function compactRunwayClosureText(text){
+  let raw=(text||"").toString().replace(/\s+/g," ").trim();
+
+  raw=raw.replace(/\s*CREATED:.*$/i,"").trim();
+
+  const upper=raw.toUpperCase();
+
+  // Prefer the sentence/segment that actually contains RWY and CLSD.
+  const segments=raw.split(/\.\s+|;\s+/).map(s=>s.trim()).filter(Boolean);
+  const match=segments.find(s=>/\bRWY\b/i.test(s)&&/\bCLSD\b/i.test(s));
+  if(match)return match.replace(/\s+/g," ").trim();
+
+  // Fallback: shorten around the closure keywords.
+  const idx=Math.max(0,upper.indexOf("RWY"));
+  if(idx>=0){
+    return raw.slice(idx,idx+150).trim();
+  }
+
+  return raw.slice(0,150).trim();
+}
+
+function notamTextFromItem(item){
+  if(!item)return "";
+  if(typeof item==="string")return item;
+
+  return String(
+    item.text||
+    item.fullText||
+    item.notamText||
+    item.displayText||
+    item.message||
+    item.body||
+    item.description||
+    item.rawText||
+    ""
+  );
+}
+
+function notamNumberFromItem(item){
+  if(!item||typeof item==="string")return "";
+  return String(item.number||item.id||item.notamNumber||item.accountId||item.notamId||"").trim();
+}
+
+function collectPotentialNotamItems(data){
+  const keys=[
+    "runwayClosureNotams",
+    "rwyClosureNotams",
+    "closureNotams",
+    "domesticNotams",
+    "civilNotams",
+    "faaNotams",
+    "airportNotams",
+    "allNotams",
+    "notams",
+    "nmsNotams",
+    "notamRecords",
+    "daipNotams"
+  ];
+
+  const found=[];
+
+  keys.forEach(key=>{
+    const value=data?data[key]:null;
+    if(Array.isArray(value))found.push(...value);
+  });
+
+  // Some backends nest domestic NOTAMs under objects. Keep this shallow to avoid weird duplicate scraping.
+  ["notamData","faa","nms","daip"].forEach(parentKey=>{
+    const parent=data?data[parentKey]:null;
+    if(parent&&typeof parent==="object"){
+      keys.forEach(key=>{
+        if(Array.isArray(parent[key]))found.push(...parent[key]);
+      });
+    }
+  });
+
+  return found;
+}
+
+function extractRunwayClosureNotams(data){
+  const items=collectPotentialNotamItems(data);
+  const out=[];
+  const seen=new Set();
+
+  items.forEach(item=>{
+    const text=notamTextFromItem(item);
+    const upper=text.toUpperCase();
+
+    if(!text)return;
+
+    // Runway closure only. Do not include TWY-only closure NOTAMs here.
+    const isRwyClosure=(/\bRWY\s+[0-9]{1,2}[LRC]?(?:\/[0-9]{1,2}[LRC]?)?\b.*\bCLSD\b/i.test(upper) ||
+                        /\bCLSD\b.*\bRWY\s+[0-9]{1,2}[LRC]?(?:\/[0-9]{1,2}[LRC]?)?\b/i.test(upper));
+
+    if(!isRwyClosure)return;
+
+    const number=notamNumberFromItem(item);
+    const compact=compactRunwayClosureText(text);
+    const eff=extractEffectiveRangeFromNotam(item,text);
+    const key=(number+"|"+compact+"|"+eff).toUpperCase();
+
+    if(seen.has(key))return;
+    seen.add(key);
+
+    out.push({
+      number,
+      text:compact,
+      effective:eff
+    });
+  });
+
+  return out;
+}
+
+function formatRunwayClosureDisplay(items){
+  if(!items.length)return "";
+
+  const lines=items.map(item=>{
+    const number=item.number?`${item.number}  `:"";
+    const eff=item.effective?`\n${item.effective}`:"";
+    return `${number}${item.text}${eff}`.trim();
+  });
+
+  return `RWY CLOSURE NOTAMS\n${lines.join("\n\n")}`;
+}
+
 function setMilNotamsDisplay(data){
   const panel=document.getElementById("milNotamPanel");
   const status=document.getElementById("milNotamStatus");
@@ -5247,6 +5578,8 @@ function setMilNotamsDisplay(data){
   }
 
   const items=Array.isArray(data.milNotams)?data.milNotams:[];
+  const rwyClosureItems=extractRunwayClosureNotams(data);
+
   const explicitCount=Number(data.milNotamCount);
   const count=Number.isFinite(explicitCount)?explicitCount:items.length;
   const source=data.milNotamSource||"FAA NMS";
@@ -5260,26 +5593,44 @@ function setMilNotamsDisplay(data){
   /*
     Use the full NOTAM text first.
     Do not use displayText first because that field may be shortened with "...".
+    Phase 81 adds runway closure NOTAM display only; it does not change RWY CLSD box logic.
   */
-  let scrollText="";
+  let scrollParts=[];
 
   if(items.length>0){
-    scrollText=items.map(item=>{
+    const milText=items.map(item=>{
       const number=item.number||item.id||"UNKNOWN";
       const text=item.text||item.displayText||"";
       return `${number}\n${text}`.trim();
     }).filter(Boolean).join("\n\n");
-  }else{
-    scrollText=data.milNotamScrollText||"";
+
+    if(milText)scrollParts.push(milText);
+  }else if(data.milNotamScrollText){
+    scrollParts.push(data.milNotamScrollText);
   }
+
+  const rwyClosureText=formatRunwayClosureDisplay(rwyClosureItems);
+  if(rwyClosureText){
+    scrollParts.push(rwyClosureText);
+  }
+
+  const scrollText=scrollParts.filter(Boolean).join("\n\n");
 
   panel.classList.remove("mil-notam-active","mil-notam-none","mil-notam-placeholder");
 
-  if(count>0&&scrollText){
+  if((count>0||rwyClosureItems.length>0)&&scrollText){
     panel.classList.add("mil-notam-active");
-    status.textContent=data.milNotamStatus||`${count} ACTIVE`;
+
+    if(count>0&&rwyClosureItems.length>0){
+      status.textContent=`${count} MIL / ${rwyClosureItems.length} RWY CLSD`;
+    }else if(rwyClosureItems.length>0){
+      status.textContent=`${rwyClosureItems.length} RWY CLSD`;
+    }else{
+      status.textContent=data.milNotamStatus||`${count} ACTIVE`;
+    }
+
     crawl.textContent=scrollText;
-    crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"}`;
+    crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"} | RWY closures display-only`;
     return;
   }
 
