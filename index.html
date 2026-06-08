@@ -3910,12 +3910,18 @@ html,body{
 
 
 
-/* Phase 70 — force NOTAM crawl speed from control panel */
+
+/* Phase 74 — final NOTAM scroll speed enforcement */
 :root{
   --notam-scroll-seconds:55s;
 }
 
-/* Keep this low-level CSS variable available, but JS below also forces inline animation. */
+#milNotamCrawl,
+.mil-notam-crawl{
+  animation-duration:var(--notam-scroll-seconds) !important;
+}
+
+.mil-notam-active #milNotamCrawl,
 .mil-notam-active .mil-notam-crawl{
   animation-name:notamScrollUp !important;
   animation-duration:var(--notam-scroll-seconds) !important;
@@ -3923,54 +3929,11 @@ html,body{
   animation-iteration-count:infinite !important;
 }
 
-
-/* Phase 72 — reliable NOTAM scroll speed control */
-:root{
-  --notam-scroll-seconds:55s;
-}
-
-.mil-notam-active .mil-notam-crawl{
-  animation-name:notamScrollUp !important;
-  animation-duration:var(--notam-scroll-seconds) !important;
-  animation-timing-function:linear !important;
-  animation-iteration-count:infinite !important;
-}
-
+.mil-notam-none #milNotamCrawl,
+.mil-notam-placeholder #milNotamCrawl,
 .mil-notam-none .mil-notam-crawl,
 .mil-notam-placeholder .mil-notam-crawl{
   animation:none !important;
-}
-
-
-/* Phase 73 — red FOR REFERENCE ONLY label in weather title */
-.weather-title-row{
-  display:flex !important;
-  align-items:center !important;
-  justify-content:space-between !important;
-  gap:12px !important;
-  width:100% !important;
-}
-
-.reference-only-label{
-  color:var(--closed) !important;
-  font-size:inherit !important;
-  font-weight:1000 !important;
-  letter-spacing:1px !important;
-  text-align:right !important;
-  white-space:nowrap !important;
-  text-shadow:0 0 6px rgba(255,68,68,.45) !important;
-}
-
-/* Keep it visible but not obnoxious on phones */
-@media (max-width:700px), (hover:none) and (pointer:coarse){
-  .weather-title-row{
-    gap:6px !important;
-  }
-
-  .reference-only-label{
-    font-size:.78em !important;
-    letter-spacing:.4px !important;
-  }
 }
 
 </style>
@@ -5927,83 +5890,92 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
 
 
+
+
+
 <script>
-/* Phase 72 — reliable NOTAM scroll speed control.
-   Applies animation speed directly to #milNotamCrawl and restarts only when the setting changes.
-   This avoids older animation shorthand / media-query rules overriding the control panel. */
+/* Phase 74 — final NOTAM scroll speed enforcement.
+   Reads notamScrollSec from display_control.html and forces it onto the live crawl element.
+*/
 (function(){
   const STORAGE_KEY="kmemOpsDisplaySettingsV1";
   const DEFAULT_SCROLL=55;
-  let lastApplied="";
+  let lastSeconds=null;
+  let lastActive=null;
 
-  function getScrollSeconds(){
+  function readSeconds(){
     try{
-      const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
-      const n=Number(saved.notamScrollSec);
+      const s=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
+      const n=Number(s.notamScrollSec);
       if(Number.isFinite(n))return Math.max(10,Math.min(180,n));
     }catch(e){}
     return DEFAULT_SCROLL;
   }
 
-  function crawlHasUsefulText(crawl){
+  function crawlIsActive(panel,crawl){
+    if(panel && panel.classList.contains("mil-notam-active"))return true;
     const text=(crawl?.textContent||"").replace(/\s+/g," ").trim().toUpperCase();
     if(!text)return false;
-    if(text.includes("FAA NMS API PENDING"))return false;
+    if(text.includes("NO ACTIVE KMEM MIL NOTAMS"))return false;
     if(text.includes("NO ACTIVE MIL NOTAMS"))return false;
+    if(text.includes("FAA NMS API PENDING"))return false;
     return true;
   }
 
-  function applyNotamScrollSpeed(forceRestart=false){
-    const seconds=getScrollSeconds();
-    document.documentElement.style.setProperty("--notam-scroll-seconds",seconds+"s");
-
+  function applyNotamScrollSpeed(force=false){
+    const seconds=readSeconds();
     const panel=document.getElementById("milNotamPanel") || document.querySelector(".mil-notam-panel");
     const crawl=document.getElementById("milNotamCrawl") || document.querySelector(".mil-notam-crawl");
+    document.documentElement.style.setProperty("--notam-scroll-seconds",seconds+"s");
 
     if(!crawl)return false;
 
-    const active=(panel && panel.classList.contains("mil-notam-active")) || crawlHasUsefulText(crawl);
-    const desired=active ? `notamScrollUp ${seconds}s linear infinite` : "none";
+    const active=crawlIsActive(panel,crawl);
+    const changed=force || seconds!==lastSeconds || active!==lastActive;
 
-    crawl.style.animationDuration=seconds+"s";
+    lastSeconds=seconds;
+    lastActive=active;
 
-    if(desired!==lastApplied || forceRestart){
-      lastApplied=desired;
-      crawl.style.animation="none";
-      void crawl.offsetHeight;
-      crawl.style.animation=desired;
+    if(active){
+      const anim=`notamScrollUp ${seconds}s linear infinite`;
+
+      if(changed){
+        crawl.style.animation="none";
+        void crawl.offsetHeight;
+      }
+
+      crawl.style.animation=anim;
+      crawl.style.animationName="notamScrollUp";
       crawl.style.animationDuration=seconds+"s";
+      crawl.style.animationTimingFunction="linear";
+      crawl.style.animationIterationCount="infinite";
     }else{
-      crawl.style.animation=desired;
+      crawl.style.animation="none";
       crawl.style.animationDuration=seconds+"s";
     }
 
-    if(panel){
-      panel.dataset.notamScrollSeconds=String(seconds);
-    }
     crawl.dataset.notamScrollSeconds=String(seconds);
+    if(panel)panel.dataset.notamScrollSeconds=String(seconds);
     return true;
   }
 
-  window.applyNotamScrollSpeed=function(){
-    return applyNotamScrollSpeed(true);
-  };
+  window.applyNotamScrollSpeed=()=>applyNotamScrollSpeed(true);
 
-  window.addEventListener("storage",function(e){
+  window.addEventListener("storage",e=>{
     if(e.key===STORAGE_KEY)applyNotamScrollSpeed(true);
   });
 
   try{
     const channel=new BroadcastChannel("kmemDisplaySettings");
-    channel.onmessage=function(event){
-      if(event && event.data && event.data.type==="settings-updated"){
+    channel.onmessage=e=>{
+      if(e && e.data && e.data.type==="settings-updated"){
         applyNotamScrollSpeed(true);
       }
     };
   }catch(e){}
 
   document.addEventListener("DOMContentLoaded",()=>applyNotamScrollSpeed(true));
-  setInterval(()=>applyNotamScrollSpeed(false),1000);
+  setInterval(()=>applyNotamScrollSpeed(false),750);
 })();
 </script>
 

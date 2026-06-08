@@ -204,12 +204,88 @@ input[type=range]{
   max-width:430px;
 }
 
+
+/* Phase 72 — save confirmation and defaults UI */
+.save-toast{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  z-index:9999;
+  padding:12px 16px;
+  border:2px solid var(--green);
+  background:rgba(0,0,0,.92);
+  color:var(--green);
+  font-weight:1000;
+  box-shadow:0 0 16px rgba(0,255,136,.35);
+  border-radius:6px;
+  opacity:0;
+  transform:translateY(12px);
+  pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;
+}
+.save-toast.show{
+  opacity:1;
+  transform:translateY(0);
+}
+.save-toast.bad{
+  border-color:var(--red);
+  color:var(--red);
+  box-shadow:0 0 16px rgba(255,68,68,.35);
+}
+
+
+/* Phase 74 — visible save/default controls */
+.phase74-actions{
+  border-color:var(--yellow) !important;
+}
+.phase74-actions h2{
+  color:var(--yellow) !important;
+}
+.save-toast{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  z-index:99999;
+  padding:12px 16px;
+  border:2px solid var(--green);
+  background:rgba(0,0,0,.95);
+  color:var(--green);
+  font-weight:1000;
+  box-shadow:0 0 16px rgba(0,255,136,.40);
+  border-radius:6px;
+  opacity:0;
+  transform:translateY(12px);
+  pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;
+}
+.save-toast.show{
+  opacity:1;
+  transform:translateY(0);
+}
+.save-toast.bad{
+  border-color:var(--red);
+  color:var(--red);
+  box-shadow:0 0 16px rgba(255,68,68,.40);
+}
+
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>KMEM OPS BOARD DISPLAY CONTROL</h1>
-  <div class="sub">Adjust display font sizes live. Open the board in another tab/window on the same site, then move sliders here.</div>
+  <div class="sub">Adjust display font sizes live. Open the board in another tab/window on the same site, then move sliders here. <b style="color:#ffcc00">Phase 74</b></div>
+
+  <div class="card phase74-actions">
+    <h2>Quick Actions</h2>
+    <div class="presets">
+      <button class="primary" onclick="save()">Save / Broadcast to Board</button>
+      <button class="warn" onclick="saveDefaults()">Save Current as Defaults</button>
+      <button onclick="resetDefaults()">Reset Defaults</button>
+      <button onclick="openBoard()">Open Board</button>
+    </div>
+    <p class="help">Save shows a green confirmation only after browser storage verifies. Save Current as Defaults makes Reset Defaults return to your tuned setup.</p>
+  </div>
+
 
   <div class="card">
     <h2>Display Presets</h2>
@@ -359,6 +435,7 @@ TAF KMEM 072327Z 0800/0906 17007KT P6SM VCSH BKN080
   <div class="card">
     <h2>Apply</h2>
     <button class="primary" onclick="save()">Save / Broadcast to Board</button>
+    <button onclick="saveDefaults()">Save Current as Defaults</button>
     <button onclick="openBoard()">Open Board</button>
     <p class="help">The board reads these settings from browser localStorage. This is for local display tuning and does not change weather.json.</p>
   </div>
@@ -366,6 +443,7 @@ TAF KMEM 072327Z 0800/0906 17007KT P6SM VCSH BKN080
 
 <script>
 const KEY="kmemOpsDisplaySettingsV1";
+const DEFAULT_KEY="kmemOpsDisplayDefaultsV1";
 
 const defaults={
   preset:"Desktop",
@@ -390,18 +468,25 @@ const defaults={
   phoneNotamLine:1.36,
   strongPulse:true
 };
+const factoryDefaults=Object.assign({},defaults);
+
 
 const presets={
-  "TV 100":{blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,phoneBlockValuePx:21,phoneRcrPx:25,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36,strongPulse:true},
-  "TV 90":{blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:60,phoneBlockValuePx:21,phoneRcrPx:25,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36,strongPulse:true},
-  "Desktop":{blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,phoneBlockValuePx:21,phoneRcrPx:25,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36,strongPulse:true},
-  "Getac":{blockValuePx:22,rcrPx:25,rawWxPx:18,wxAlertPx:22,notamPx:18,labelPx:13,footerPx:16,rawLine:1.38,notamLine:1.32,notamScrollSec:65,phoneBlockValuePx:19,phoneRcrPx:23,phoneRawWxPx:16,phoneWxAlertPx:20,phoneNotamPx:16,phoneLabelPx:12,phoneFooterPx:14,phoneRawLine:1.38,phoneNotamLine:1.32,strongPulse:true},
-  "Phone":{blockValuePx:20,rcrPx:24,rawWxPx:17,wxAlertPx:21,notamPx:17,labelPx:13,footerPx:15,rawLine:1.42,notamLine:1.36,notamScrollSec:70,phoneBlockValuePx:20,phoneRcrPx:24,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36,strongPulse:true}
+  "TV 100":{blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
+  "TV 90":{blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:60,strongPulse:true},
+  "Desktop":{blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
+  "Getac":{blockValuePx:22,rcrPx:25,rawWxPx:18,wxAlertPx:22,notamPx:18,labelPx:13,footerPx:16,rawLine:1.38,notamLine:1.32,notamScrollSec:65,strongPulse:true},
+  "Phone":{phoneBlockValuePx:20,phoneRcrPx:24,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36}
 };
 
 function load(){
-  try{return Object.assign({},defaults,JSON.parse(localStorage.getItem(KEY)||"{}"))}
-  catch(e){return Object.assign({},defaults)}
+  try{
+    const savedDefaults=JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}");
+    const saved=JSON.parse(localStorage.getItem(KEY)||"{}");
+    return Object.assign({},defaults,savedDefaults||{},saved||{});
+  }catch(e){
+    return Object.assign({},defaults);
+  }
 }
 
 function setInputs(s){
@@ -426,53 +511,108 @@ function collect(){
   return Object.assign(load(),s);
 }
 
+function showToast(message,ok=true){
+  const toast=document.getElementById("saveToast");
+  if(!toast)return;
+  toast.textContent=message;
+  toast.classList.toggle("bad",!ok);
+  toast.classList.add("show");
+  clearTimeout(window.__saveToastTimer);
+  window.__saveToastTimer=setTimeout(()=>toast.classList.remove("show"),2200);
+}
+
+function broadcastSettings(settings){
+  try{
+    new BroadcastChannel("kmemDisplaySettings").postMessage({type:"settings-updated",settings});
+  }catch(e){}
+}
+
 function save(){
   const s=collect();
-  localStorage.setItem(KEY,JSON.stringify(s));
+
   try{
-    new BroadcastChannel("kmemDisplaySettings").postMessage({type:"settings-updated",settings:s});
-  }catch(e){}
-  updatePreview();
+    localStorage.setItem(KEY,JSON.stringify(s));
+    const check=JSON.parse(localStorage.getItem(KEY)||"{}");
+
+    if(String(check.notamScrollSec)!==String(s.notamScrollSec)){
+      throw new Error("Saved value verification failed.");
+    }
+
+    broadcastSettings(s);
+    updatePreview();
+    showToast("Saved successfully",true);
+    return true;
+  }catch(e){
+    showToast("Save failed: "+(e.message||e),false);
+    return false;
+  }
 }
 
 function setPreset(name){
   const current=load();
+  const p=presets[name]||{};
 
-  /*
-    Phase 71:
-    Phone preset only changes phone/narrow-screen controls.
-    It will NOT overwrite desktop / TV / Getac font controls.
-  */
+  const boardKeys=[
+    "preset","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx",
+    "labelPx","footerPx","rawLine","notamLine","notamScrollSec","strongPulse"
+  ];
+
+  const phoneKeys=[
+    "preset","phoneBlockValuePx","phoneRcrPx","phoneRawWxPx","phoneWxAlertPx",
+    "phoneNotamPx","phoneLabelPx","phoneFooterPx","phoneRawLine","phoneNotamLine"
+  ];
+
+  const s=Object.assign({},current);
+
   if(name==="Phone"){
-    const phoneOnly={
-      preset:name,
-      phoneBlockValuePx:20,
-      phoneRcrPx:24,
-      phoneRawWxPx:17,
-      phoneWxAlertPx:21,
-      phoneNotamPx:17,
-      phoneLabelPx:13,
-      phoneFooterPx:15,
-      phoneRawLine:1.42,
-      phoneNotamLine:1.36
-    };
-    const s=Object.assign({},current,phoneOnly);
-    localStorage.setItem(KEY,JSON.stringify(s));
-    setInputs(s);
-    save();
-    return;
+    phoneKeys.forEach(k=>{
+      if(k==="preset")return;
+      if(Object.prototype.hasOwnProperty.call(p,k))s[k]=p[k];
+    });
+    s.preset=name;
+  }else{
+    boardKeys.forEach(k=>{
+      if(k==="preset")return;
+      if(Object.prototype.hasOwnProperty.call(p,k))s[k]=p[k];
+    });
+    s.preset=name;
   }
 
-  const s=Object.assign({},current,presets[name],{preset:name});
   localStorage.setItem(KEY,JSON.stringify(s));
   setInputs(s);
   save();
 }
 
 function resetDefaults(){
-  localStorage.setItem(KEY,JSON.stringify(defaults));
-  setInputs(defaults);
+  let d=Object.assign({},defaults);
+  try{
+    d=Object.assign({},defaults,JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}"));
+  }catch(e){}
+  localStorage.setItem(KEY,JSON.stringify(d));
+  setInputs(d);
   save();
+}
+
+function saveDefaults(){
+  const s=collect();
+
+  try{
+    localStorage.setItem(DEFAULT_KEY,JSON.stringify(s));
+    const check=JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}");
+
+    if(String(check.rawWxPx)!==String(s.rawWxPx) || String(check.notamScrollSec)!==String(s.notamScrollSec)){
+      throw new Error("Default verification failed.");
+    }
+
+    localStorage.setItem(KEY,JSON.stringify(s));
+    broadcastSettings(s);
+    updatePreview();
+    showToast("Defaults saved successfully",true);
+    return true;
+  }catch(e){
+    showToast("Save defaults failed: "+(e.message||e),false);
+    return false;
+  }
 }
 
 function updateLabels(){
@@ -518,5 +658,6 @@ document.querySelectorAll("input").forEach(el=>{
 
 setInputs(load());
 </script>
+<div id="saveToast" class="save-toast" role="status" aria-live="polite"></div>
 </body>
 </html>
