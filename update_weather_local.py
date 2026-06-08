@@ -2268,10 +2268,24 @@ def fetch_ahas_bwc(now_z):
 
 
 def sync_repo_before_update():
-    print("Syncing local repo before update...")
+    """
+    Production safety guard.
 
-    run_cmd(["git", "fetch", "origin"], allow_fail=True)
-    run_cmd(["git", "reset", "--hard", "origin/main"])
+    Scheduled weather updates should NOT reset the entire repository because that can
+    erase uncommitted local code/display-control work if the Windows scheduled task
+    runs while you are editing files.
+
+    Code updates should be pulled manually with:
+        git pull --rebase origin main
+
+    This function intentionally does not run:
+        git fetch origin
+        git reset --hard origin/main
+
+    The updater will still write, commit, and push weather.json only.
+    """
+    print("Production safety: skipping automatic git reset/pull before weather update.")
+    print("Manual code updates: run 'git pull --rebase origin main' when you are ready.")
 
 
 def text_is_bad(value):
