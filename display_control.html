@@ -221,7 +221,7 @@ input[type=range]{
       <button onclick="setPreset('Phone')">Phone</button>
       <button class="warn" onclick="resetDefaults()">Reset Defaults</button>
     </div>
-    <p class="help">Presets are just starting points. After selecting one, fine-tune the sliders below.</p>
+    <p class="help">Presets are just starting points. TV/Desktop/Getac adjust board fonts. Phone only adjusts the separate Phone Font Controls.</p>
   </div>
 
   <div class="card">
@@ -277,7 +277,7 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>NOTAM scroll speed</label><span class="value" id="notamScrollSecVal"></span></div>
         <input id="notamScrollSec" type="range" min="10" max="180" step="5">
-        <div class="help">Higher number = slower crawl. Suggested TV range: 45–75 sec.</div>
+        <div class="help">Higher number = slower crawl. Suggested TV range: 45–75 sec. Change should show on board within 1–2 seconds.</div>
       </div>
     </div>
 
@@ -290,7 +290,7 @@ input[type=range]{
 
   <div class="card phone-card">
     <h2>Phone Font Controls</h2>
-    <p class="section-note">These only affect phone / narrow-screen views. Desktop, TV, and Getac sliders above stay separate.</p>
+    <p class="section-note">These only affect phone / narrow-screen views. The Phone preset button does not change the desktop/TV/Getac font sliders.</p>
     <div class="grid">
       <div class="control">
         <div class="row"><label>Phone data block values</label><span class="value" id="phoneBlockValuePxVal"></span></div>
@@ -436,7 +436,34 @@ function save(){
 }
 
 function setPreset(name){
-  const s=Object.assign({},load(),presets[name],{preset:name});
+  const current=load();
+
+  /*
+    Phase 71:
+    Phone preset only changes phone/narrow-screen controls.
+    It will NOT overwrite desktop / TV / Getac font controls.
+  */
+  if(name==="Phone"){
+    const phoneOnly={
+      preset:name,
+      phoneBlockValuePx:20,
+      phoneRcrPx:24,
+      phoneRawWxPx:17,
+      phoneWxAlertPx:21,
+      phoneNotamPx:17,
+      phoneLabelPx:13,
+      phoneFooterPx:15,
+      phoneRawLine:1.42,
+      phoneNotamLine:1.36
+    };
+    const s=Object.assign({},current,phoneOnly);
+    localStorage.setItem(KEY,JSON.stringify(s));
+    setInputs(s);
+    save();
+    return;
+  }
+
+  const s=Object.assign({},current,presets[name],{preset:name});
   localStorage.setItem(KEY,JSON.stringify(s));
   setInputs(s);
   save();
