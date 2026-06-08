@@ -1,12 +1,30 @@
-# Local Windows updater files
-update_weather_local.py
+# Local logs / runtime output
 local_update_log.txt
+logs/
+*.log
 
-# Local debug / probe scripts
+# Local debug / probe scripts and scratch outputs
 debug_*.py
 debug_*.txt
 *_debug.txt
 *_output.txt
+
+# NMS local output / cache files
+nms_kmem_mil_notams_output.json
+/nms_kmem_mil_notams_output.json
+
+# Local fallback/weather cache files
+weather_last_good.json
+/weather_last_good.json
+
+# Local credentials / secrets
+nms_credentials_local.bat
+.env
+*.env
+*_credentials*.bat
+*_credentials*.json
+*_secret*.txt
+*_secrets*.txt
 
 # Python cache
 __pycache__/
@@ -14,10 +32,4 @@ __pycache__/
 
 # Windows clutter
 Thumbs.db
-Desktop.ininms_kmem_mil_notams_output.json
-scenario_server.py
-/nms_kmem_mil_notams_output.json
-/weather_last_good.json
-/weather_last_good.json
-/logs/
-nms_credentials_local.bat
+Desktop.ini
