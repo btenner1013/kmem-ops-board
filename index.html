@@ -4108,6 +4108,27 @@ html,body{
 /* Phase 88 — strict runway closure display and effective time cleanup */
 
 /* Phase 89 — spaced NOTAM effective-time separator */
+
+/* Phase 97 — move ALTIMETER / CEILING / VIS trend arrows to title labels */
+.metric-label{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.35em;
+  white-space:nowrap;
+}
+
+.metric-label .trend-arrow{
+  margin-left:.35em !important;
+  font-size:1.08em !important;
+  line-height:1 !important;
+  vertical-align:baseline !important;
+}
+
+.detail-value{
+  text-align:center;
+}
+
 </style>
 </head>
 
@@ -4154,17 +4175,17 @@ html,body{
 
       <div class="details-grid">
         <div class="detail-box">
-          <div class="detail-label">ALTIMETER</div>
+          <div id="altimeterLabel" class="detail-label metric-label">ALTIMETER</div>
           <div id="altimeter" class="detail-value">--</div>
         </div>
 
         <div class="detail-box">
-          <div class="detail-label">CEILING</div>
+          <div id="ceilingLabel" class="detail-label metric-label">CEILING</div>
           <div id="ceiling" class="detail-value">--</div>
         </div>
 
         <div class="detail-box">
-          <div class="detail-label">VIS</div>
+          <div id="visibilityLabel" class="detail-label metric-label">VIS</div>
           <div id="visibility" class="detail-value">--</div>
         </div>
 
@@ -4665,6 +4686,21 @@ function valueWithTrend(value,trend,trendText){
   if(arrow==="")return clean;
 
   return clean+" "+arrow;
+}
+
+
+function setMetricLabelTrend(labelId,labelText,trend,trendText){
+  const el=document.getElementById(labelId);
+  if(!el)return;
+
+  const arrow=formatTrendArrow(trend,trendText);
+
+  if(!arrow){
+    el.textContent=labelText;
+    return;
+  }
+
+  el.innerHTML=`<span>${labelText}</span>${arrow}`;
 }
 
 
@@ -5785,9 +5821,13 @@ function updateDetails(data){
   const ceilingDisplay=data.ceilingDisplay||(fallbackCeiling===null?"UNL":fallbackCeiling+" FT");
   const visibilityDisplay=data.visibilityDisplay||(fallbackVis===null?"--":fallbackVis+" SM");
 
-  setDetailValue("altimeter",valueWithTrend(altimeterDisplay,data.altimeterTrend,data.altimeterTrendText),"cat-vfr");
-  setDetailValue("ceiling",valueWithTrend(ceilingDisplay,data.ceilingTrend,data.ceilingTrendText),ceilingConditionClass(data,fallbackCeiling));
-  setDetailValue("visibility",valueWithTrend(visibilityDisplay,data.visibilityTrend,data.visibilityTrendText),visibilityConditionClass(data,fallbackVis));
+  setMetricLabelTrend("altimeterLabel","ALTIMETER",data.altimeterTrend,data.altimeterTrendText);
+  setMetricLabelTrend("ceilingLabel","CEILING",data.ceilingTrend,data.ceilingTrendText);
+  setMetricLabelTrend("visibilityLabel","VIS",data.visibilityTrend,data.visibilityTrendText);
+
+  setDetailValue("altimeter",safeValue(altimeterDisplay),"cat-vfr");
+  setDetailValue("ceiling",safeValue(ceilingDisplay),ceilingConditionClass(data,fallbackCeiling));
+  setDetailValue("visibility",safeValue(visibilityDisplay),visibilityConditionClass(data,fallbackVis));
 
   setMetarAge(metar);
 
