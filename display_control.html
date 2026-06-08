@@ -433,10 +433,9 @@ input[type=range]{
       <button onclick="setPreset('TV 90')">TV 90%</button>
       <button onclick="setPreset('Desktop')">Desktop</button>
       <button onclick="setPreset('Getac')">Getac / Small</button>
-      <button onclick="setPreset('Phone')">Phone</button>
       <button class="warn" onclick="resetDefaults()">Reset Defaults</button>
     </div>
-    <p class="help">Presets are just starting points. TV/Desktop/Getac adjust board fonts. Phone only adjusts the separate Phone Font Controls.</p>
+    <p class="help">Presets are just starting points. TV/Desktop/Getac adjust board fonts. Phone uses fixed legacy sizing and is not affected by these presets.</p>
   </div>
 
   <div class="card">
@@ -521,96 +520,8 @@ TAF KMEM 072327Z 0800/0906 17007KT P6SM VCSH BKN080
 
 
   <div class="card phone-card">
-    <h2>Phone Font Controls</h2>
-    <p class="section-note">These only affect phone / narrow-screen views. The Phone preset button does not change the desktop/TV/Getac font sliders.</p>
-    <div class="grid">
-      <div class="control">
-        <div class="row"><label>Phone data block values</label><span class="value" id="phoneBlockValuePxVal"></span></div>
-        <input id="phoneBlockValuePx" type="range" min="12" max="38" step="1">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Phone RCR/RCC value</label><span class="value" id="phoneRcrPxVal"></span></div>
-        <input id="phoneRcrPx" type="range" min="12" max="38" step="1">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Phone METAR / TAF text</label><span class="value" id="phoneRawWxPxVal"></span></div>
-        <input id="phoneRawWxPx" type="range" min="10" max="30" step="1">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Phone MIL NOTAM text</label><span class="value" id="phoneNotamPxVal"></span></div>
-        <input id="phoneNotamPx" type="range" min="10" max="30" step="1">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Phone WX Alert text</label><span class="value" id="phoneWxAlertPxVal"></span></div>
-        <input id="phoneWxAlertPx" type="range" min="12" max="34" step="1">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Phone box labels</label><span class="value" id="phoneLabelPxVal"></span></div>
-        <input id="phoneLabelPx" type="range" min="8" max="22" step="1">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Phone footer text</label><span class="value" id="phoneFooterPxVal"></span></div>
-        <input id="phoneFooterPx" type="range" min="9" max="24" step="1">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Phone raw line spacing</label><span class="value" id="phoneRawLineVal"></span></div>
-        <input id="phoneRawLine" type="range" min="1.10" max="1.80" step="0.05">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Phone NOTAM line spacing</label><span class="value" id="phoneNotamLineVal"></span></div>
-        <input id="phoneNotamLine" type="range" min="1.10" max="1.80" step="0.05">
-      </div>
-    </div>
-  </div>
-
-
-  <div class="card phone-card phone-preview-card">
-    <h2>Phone Preview</h2>
-    <p class="section-note">This preview uses the Phone Font Controls only. It is for quick sizing checks before opening the board on the actual phone.</p>
-
-    <div class="phone-preview-frame">
-      <div class="phone-preview-screen">
-        <div class="phone-preview-title">
-          <span>WEATHER</span>
-          <span class="phone-preview-ref">FOR REFERENCE ONLY</span>
-        </div>
-
-        <div class="phone-preview-category">
-          <div class="phone-preview-vfr">VFR</div>
-          <div class="phone-preview-atis">ATIS: VICTOR</div>
-        </div>
-
-        <div class="phone-preview-grid">
-          <div class="phone-preview-box">
-            <div class="phone-preview-label">WIND STEADY</div>
-            <div class="phone-preview-value" id="phonePreviewBlock">130↘ @ 07</div>
-          </div>
-          <div class="phone-preview-box">
-            <div class="phone-preview-label">RCR/RCC</div>
-            <div class="phone-preview-value phone-preview-rcr" id="phonePreviewRcr">5/5/5 WET</div>
-          </div>
-        </div>
-
-        <div class="phone-preview-wx" id="phonePreviewWx">VCTY SHOWERS POSSIBLE 00-06Z</div>
-
-        <div class="phone-preview-raw" id="phonePreviewRaw">METAR KMEM 072254Z 13007KT 7SM BKN055 OVC110 26/24 A2990 RMK AO2 SLP120 T02610239 $
-
-TAF KMEM 072327Z 0800/0906 17007KT P6SM VCSH BKN080
-  TEMPO 0800/0801 5SM -SHRA SCT025 BKN045
-  FM080300 17009KT P6SM SCT020 OVC040
-  FM080900 18010KT P6SM BKN009 OVC025</div>
-
-        <div class="phone-preview-notam" id="phonePreviewNotam">M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN</div>
-      </div>
-    </div>
+    <h2>Phone Layout</h2>
+    <p class="section-note">Phone view is now fixed back to the legacy sizing. The sliders above only tune desktop / TV / Getac views.</p>
   </div>
 
   <div class="card">

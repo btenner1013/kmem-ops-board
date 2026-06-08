@@ -3936,6 +3936,37 @@ html,body{
   animation:none !important;
 }
 
+
+/* Phase 75 — robust FOR REFERENCE ONLY weather label */
+.weather-title-row{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:12px !important;
+  width:100% !important;
+}
+
+.reference-only-label{
+  color:var(--closed) !important;
+  font-size:inherit !important;
+  font-weight:1000 !important;
+  letter-spacing:1px !important;
+  text-align:right !important;
+  white-space:nowrap !important;
+  text-shadow:0 0 6px rgba(255,68,68,.45) !important;
+}
+
+@media (max-width:700px), (hover:none) and (pointer:coarse){
+  .weather-title-row{
+    gap:6px !important;
+  }
+
+  .reference-only-label{
+    font-size:.78em !important;
+    letter-spacing:.4px !important;
+  }
+}
+
 </style>
 </head>
 
@@ -5826,65 +5857,7 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
 
 
-<script>
-/* Phase 69 — separate desktop/phone settings bridge */
-(function(){
-  const KEY="kmemOpsDisplaySettingsV1";
-  const PHONE_DEFAULTS={
-    phoneBlockValuePx:20,
-    phoneRcrPx:24,
-    phoneRawWxPx:17,
-    phoneWxAlertPx:21,
-    phoneNotamPx:17,
-    phoneLabelPx:13,
-    phoneFooterPx:15,
-    phoneRawLine:1.42,
-    phoneNotamLine:1.36
-  };
 
-  function readSettings(){
-    try{return Object.assign({},PHONE_DEFAULTS,JSON.parse(localStorage.getItem(KEY)||"{}"))}
-    catch(e){return Object.assign({},PHONE_DEFAULTS)}
-  }
-
-  function clamp(n,min,max,fallback){
-    n=Number(n);
-    if(!Number.isFinite(n))return fallback;
-    return Math.max(min,Math.min(max,n));
-  }
-
-  function applyPhoneSettings(){
-    const s=readSettings();
-    const root=document.documentElement;
-    root.classList.add("phase69-phone-tuned");
-    root.style.setProperty("--phone-block-value-px",clamp(s.phoneBlockValuePx,12,38,20)+"px");
-    root.style.setProperty("--phone-rcr-px",clamp(s.phoneRcrPx,12,38,24)+"px");
-    root.style.setProperty("--phone-raw-wx-px",clamp(s.phoneRawWxPx,10,30,17)+"px");
-    root.style.setProperty("--phone-wx-alert-px",clamp(s.phoneWxAlertPx,12,34,21)+"px");
-    root.style.setProperty("--phone-notam-px",clamp(s.phoneNotamPx,10,30,17)+"px");
-    root.style.setProperty("--phone-label-px",clamp(s.phoneLabelPx,8,22,13)+"px");
-    root.style.setProperty("--phone-footer-px",clamp(s.phoneFooterPx,9,24,15)+"px");
-    root.style.setProperty("--phone-raw-line",clamp(s.phoneRawLine,1.10,1.80,1.42));
-    root.style.setProperty("--phone-notam-line",clamp(s.phoneNotamLine,1.10,1.80,1.36));
-  }
-
-  window.addEventListener("storage",function(e){
-    if(e.key===KEY)applyPhoneSettings();
-  });
-
-  try{
-    const channel=new BroadcastChannel("kmemDisplaySettings");
-    channel.onmessage=function(event){
-      if(event && event.data && event.data.type==="settings-updated"){
-        applyPhoneSettings();
-      }
-    };
-  }catch(e){}
-
-  document.addEventListener("DOMContentLoaded",applyPhoneSettings);
-  setInterval(applyPhoneSettings,1500);
-})();
-</script>
 
 
 
@@ -5976,6 +5949,245 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
   document.addEventListener("DOMContentLoaded",()=>applyNotamScrollSpeed(true));
   setInterval(()=>applyNotamScrollSpeed(false),750);
+})();
+</script>
+
+
+<script>
+/* Phase 75 — robust FOR REFERENCE ONLY weather label.
+   Adds/restores the label even if an older index copy had the plain WEATHER title. */
+(function(){
+  function ensureReferenceOnlyLabel(){
+    const weatherPanel=document.querySelector(".weather-panel");
+    if(!weatherPanel)return;
+
+    let title=weatherPanel.querySelector(".title");
+    if(!title)return;
+
+    if(!title.classList.contains("weather-title-row")){
+      const text=(title.textContent||"WEATHER").replace(/FOR REFERENCE ONLY/ig,"").trim() || "WEATHER";
+      title.textContent="";
+      title.classList.add("weather-title-row");
+
+      const left=document.createElement("span");
+      left.textContent=text;
+
+      const right=document.createElement("span");
+      right.className="reference-only-label";
+      right.textContent="FOR REFERENCE ONLY";
+
+      title.appendChild(left);
+      title.appendChild(right);
+      return;
+    }
+
+    if(!title.querySelector(".reference-only-label")){
+      const right=document.createElement("span");
+      right.className="reference-only-label";
+      right.textContent="FOR REFERENCE ONLY";
+      title.appendChild(right);
+    }
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",ensureReferenceOnlyLabel);
+  }else{
+    ensureReferenceOnlyLabel();
+  }
+
+  setInterval(ensureReferenceOnlyLabel,3000);
+})();
+</script>
+
+
+<script>
+/* Phase 78 — fixed legacy phone layout.
+   Phone/narrow-screen sizing is intentionally hard-coded again so desktop/TV sliders
+   cannot blow up the phone view. */
+(function(){
+  function ensureLegacyPhoneStyle(){
+    document.documentElement.classList.add("phase78-phone-fixed");
+
+    let style=document.getElementById("phase78PhoneFixedStyle");
+    const css=`
+@media (max-width:900px), (hover:none) and (pointer:coarse){
+  html.phase78-phone-fixed,
+  html.phase78-phone-fixed body{
+    height:auto !important;
+    min-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  html.phase78-phone-fixed .board{
+    height:auto !important;
+    min-height:100vh !important;
+    overflow:visible !important;
+  }
+
+  html.phase78-phone-fixed .top,
+  html.phase78-phone-fixed .middle,
+  html.phase78-phone-fixed .bottom,
+  html.phase78-phone-fixed .weather-panel,
+  html.phase78-phone-fixed .panel{
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  html.phase78-phone-fixed .title{
+    font-size:1.10rem !important;
+    line-height:1.05 !important;
+  }
+
+  html.phase78-phone-fixed .weather-title-row{
+    display:flex !important;
+    justify-content:space-between !important;
+    align-items:center !important;
+    gap:6px !important;
+  }
+
+  html.phase78-phone-fixed .reference-only-label{
+    color:#ff4444 !important;
+    font-size:.72em !important;
+    letter-spacing:.3px !important;
+    text-shadow:0 0 6px rgba(255,68,68,.65) !important;
+  }
+
+  html.phase78-phone-fixed .flight-category{
+    font-size:3.15rem !important;
+    line-height:.95 !important;
+  }
+
+  html.phase78-phone-fixed .atis-letter{
+    font-size:1.55rem !important;
+    line-height:1 !important;
+  }
+
+  html.phase78-phone-fixed .detail-label,
+  html.phase78-phone-fixed .ops-label,
+  html.phase78-phone-fixed .trend-label{
+    font-size:.86rem !important;
+    line-height:1.05 !important;
+  }
+
+  html.phase78-phone-fixed .detail-value,
+  html.phase78-phone-fixed .ops-value{
+    font-size:1.45rem !important;
+    line-height:1.12 !important;
+  }
+
+  html.phase78-phone-fixed #flow{
+    font-size:1.70rem !important;
+  }
+
+  html.phase78-phone-fixed #wind{
+    font-size:1.30rem !important;
+  }
+
+  html.phase78-phone-fixed #rcr{
+    font-size:1.55rem !important;
+    line-height:1.05 !important;
+  }
+
+  html.phase78-phone-fixed #tafTrend.wx-alert-compact,
+  html.phase78-phone-fixed .wx-alert-compact{
+    font-size:1.32rem !important;
+    line-height:1.08 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:clip !important;
+  }
+
+  html.phase78-phone-fixed .raw{
+    font-size:1.02rem !important;
+    line-height:1.36 !important;
+    white-space:pre-wrap !important;
+    overflow-wrap:anywhere !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  html.phase78-phone-fixed .mil-notam-title{
+    font-size:1.02rem !important;
+  }
+
+  html.phase78-phone-fixed .mil-notam-status,
+  html.phase78-phone-fixed .mil-notam-cao{
+    font-size:.82rem !important;
+  }
+
+  html.phase78-phone-fixed .mil-notam-crawl{
+    font-size:.92rem !important;
+    line-height:1.28 !important;
+  }
+
+  html.phase78-phone-fixed .footer{
+    font-size:.86rem !important;
+  }
+
+  html.phase78-phone-fixed .board-qr-phase66,
+  html.phase78-phone-fixed .board-qr-label-phase66{
+    display:none !important;
+  }
+}
+
+@media (max-width:430px){
+  html.phase78-phone-fixed .flight-category{
+    font-size:2.85rem !important;
+  }
+
+  html.phase78-phone-fixed .atis-letter{
+    font-size:1.35rem !important;
+  }
+
+  html.phase78-phone-fixed .detail-value,
+  html.phase78-phone-fixed .ops-value{
+    font-size:1.28rem !important;
+  }
+
+  html.phase78-phone-fixed #flow{
+    font-size:1.55rem !important;
+  }
+
+  html.phase78-phone-fixed #wind{
+    font-size:1.18rem !important;
+  }
+
+  html.phase78-phone-fixed #rcr{
+    font-size:1.40rem !important;
+  }
+
+  html.phase78-phone-fixed .wx-alert-compact{
+    font-size:1.16rem !important;
+  }
+
+  html.phase78-phone-fixed .raw{
+    font-size:.96rem !important;
+    line-height:1.34 !important;
+  }
+}
+`;
+
+    if(!style){
+      style=document.createElement("style");
+      style.id="phase78PhoneFixedStyle";
+      document.head.appendChild(style);
+    }
+
+    if(style.textContent!==css){
+      style.textContent=css;
+    }
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",ensureLegacyPhoneStyle);
+  }else{
+    ensureLegacyPhoneStyle();
+  }
+
+  setInterval(ensureLegacyPhoneStyle,1500);
 })();
 </script>
 
