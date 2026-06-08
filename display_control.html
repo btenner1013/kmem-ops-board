@@ -442,6 +442,12 @@ input[type=range]{
     <h2>Font Controls</h2>
     <div class="grid">
       <div class="control">
+        <div class="row"><label>Clock text</label><span class="value" id="clockPxVal"></span></div>
+        <input id="clockPx" type="range" min="42" max="128" step="2">
+        <div class="help">Memphis local time and Zulu/UTC clock size. Phone view stays fixed legacy size.</div>
+      </div>
+
+      <div class="control">
         <div class="row"><label>Data block values</label><span class="value" id="blockValuePxVal"></span></div>
         <input id="blockValuePx" type="range" min="14" max="42" step="1">
         <div class="help">Altimeter, ceiling, visibility, runways, flow, wind, BWC, temp/dewpoint.</div>
@@ -504,6 +510,11 @@ input[type=range]{
   <div class="card desktop-preview-card">
     <h2>Preview</h2>
     <div class="preview">
+      <div style="border:1px solid #333; padding:8px; margin-bottom:10px;">
+        <div style="color:#aaa;font-weight:900;">CLOCK PREVIEW</div>
+        <div id="previewClock" style="color:var(--green);font-weight:1000;line-height:.95;">01:35:47z</div>
+      </div>
+
       <div class="sample-grid">
         <div class="box"><div class="lbl">WIND STEADY</div><div class="val" id="previewBlock">130↘ @ 07</div></div>
         <div class="box rcr"><div class="lbl">RCR/RCC</div><div class="val" id="previewRcr">5/5/5 WET</div></div>
@@ -539,6 +550,7 @@ const DEFAULT_KEY="kmemOpsDisplayDefaultsV1";
 
 const defaults={
   preset:"Desktop",
+  clockPx:72,
   blockValuePx:24,
   rcrPx:24,
   rawWxPx:20,
@@ -564,10 +576,10 @@ const factoryDefaults=Object.assign({},defaults);
 
 
 const presets={
-  "TV 100":{blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
-  "TV 90":{blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:60,strongPulse:true},
-  "Desktop":{blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
-  "Getac":{blockValuePx:22,rcrPx:25,rawWxPx:18,wxAlertPx:22,notamPx:18,labelPx:13,footerPx:16,rawLine:1.38,notamLine:1.32,notamScrollSec:65,strongPulse:true},
+  "TV 100":{clockPx:72,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
+  "TV 90":{clockPx:76,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:60,strongPulse:true},
+  "Desktop":{clockPx:72,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
+  "Getac":{clockPx:62,blockValuePx:22,rcrPx:25,rawWxPx:18,wxAlertPx:22,notamPx:18,labelPx:13,footerPx:16,rawLine:1.38,notamLine:1.32,notamScrollSec:65,strongPulse:true},
   "Phone":{phoneBlockValuePx:20,phoneRcrPx:24,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36}
 };
 
@@ -645,7 +657,7 @@ function setPreset(name){
   const p=presets[name]||{};
 
   const boardKeys=[
-    "preset","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx",
+    "preset","clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx",
     "labelPx","footerPx","rawLine","notamLine","notamScrollSec","strongPulse"
   ];
 
@@ -708,7 +720,7 @@ function saveDefaults(){
 }
 
 function updateLabels(){
-  ["blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","labelPx","footerPx","phoneBlockValuePx","phoneRcrPx","phoneRawWxPx","phoneWxAlertPx","phoneNotamPx","phoneLabelPx","phoneFooterPx"].forEach(id=>{
+  ["clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","labelPx","footerPx","phoneBlockValuePx","phoneRcrPx","phoneRawWxPx","phoneWxAlertPx","phoneNotamPx","phoneLabelPx","phoneFooterPx"].forEach(id=>{
     const el=document.getElementById(id);
     const v=document.getElementById(id+"Val");
     if(el&&v)v.textContent=el.value+" px";
@@ -725,6 +737,8 @@ function updateLabels(){
 
 function updatePreview(){
   const s=collect();
+  const previewClock=document.getElementById("previewClock");
+  if(previewClock)previewClock.style.fontSize=(s.clockPx||72)+"px";
   document.getElementById("previewBlock").style.fontSize=s.blockValuePx+"px";
   document.getElementById("previewRcr").style.fontSize=s.rcrPx+"px";
   document.getElementById("previewBwc").style.fontSize=s.blockValuePx+"px";

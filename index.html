@@ -3967,6 +3967,25 @@ html,body{
   }
 }
 
+
+/* Phase 79 — clock font size display control */
+:root{
+  --clock-font-px:72px;
+}
+
+@media (min-width:901px){
+  .clock{
+    font-size:var(--clock-font-px) !important;
+  }
+}
+
+/* Phone remains fixed legacy sizing and ignores clock slider */
+@media (max-width:900px), (hover:none) and (pointer:coarse){
+  .clock{
+    font-size:clamp(2.7rem,12vw,4.2rem) !important;
+  }
+}
+
 </style>
 </head>
 
@@ -6188,6 +6207,59 @@ function inferFlowFromRunways(arrRunways,depRunways){
   }
 
   setInterval(ensureLegacyPhoneStyle,1500);
+})();
+</script>
+
+
+<script>
+/* Phase 79 — clock font size display control */
+(function(){
+  const STORAGE_KEY="kmemOpsDisplaySettingsV1";
+  const DEFAULT_CLOCK=72;
+
+  function readClockPx(){
+    try{
+      const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
+      const n=Number(saved.clockPx);
+      if(Number.isFinite(n))return Math.max(42,Math.min(128,n));
+    }catch(e){}
+    return DEFAULT_CLOCK;
+  }
+
+  function applyClockSize(){
+    const px=readClockPx();
+    document.documentElement.style.setProperty("--clock-font-px",px+"px");
+
+    /* Explicitly set desktop/app windows. Mobile CSS above still overrides this. */
+    if(window.matchMedia("(min-width:901px)").matches){
+      document.querySelectorAll(".clock").forEach(el=>{
+        el.style.fontSize=px+"px";
+      });
+    }else{
+      document.querySelectorAll(".clock").forEach(el=>{
+        el.style.fontSize="";
+      });
+    }
+  }
+
+  window.applyClockSize=applyClockSize;
+
+  window.addEventListener("storage",e=>{
+    if(e.key===STORAGE_KEY)applyClockSize();
+  });
+
+  try{
+    const channel=new BroadcastChannel("kmemDisplaySettings");
+    channel.onmessage=e=>{
+      if(e && e.data && e.data.type==="settings-updated"){
+        applyClockSize();
+      }
+    };
+  }catch(e){}
+
+  document.addEventListener("DOMContentLoaded",applyClockSize);
+  window.addEventListener("resize",applyClockSize);
+  setInterval(applyClockSize,1500);
 })();
 </script>
 
