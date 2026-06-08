@@ -268,6 +268,145 @@ input[type=range]{
   box-shadow:0 0 16px rgba(255,68,68,.40);
 }
 
+
+/* Phase 75 — phone preview styling */
+.phone-preview-frame{
+  width:min(390px,100%);
+  margin:12px auto 0;
+  border:3px solid #35b7ff;
+  border-radius:18px;
+  background:#000;
+  padding:10px;
+  box-shadow:0 0 18px rgba(53,183,255,.25);
+}
+
+.phone-preview-screen{
+  border:1px solid #26332d;
+  border-radius:12px;
+  padding:10px;
+  background:#080808;
+  overflow:hidden;
+}
+
+.phone-preview-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  color:white;
+  font-weight:1000;
+  letter-spacing:.04em;
+  margin-bottom:8px;
+}
+
+.phone-preview-ref{
+  color:var(--red);
+  font-weight:1000;
+  font-size:.78em;
+  white-space:nowrap;
+}
+
+.phone-preview-category{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+}
+
+.phone-preview-vfr{
+  color:var(--green);
+  font-weight:1000;
+  font-size:2.0rem;
+}
+
+.phone-preview-atis{
+  color:white;
+  font-weight:1000;
+  font-size:1.05rem;
+}
+
+.phone-preview-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  margin-bottom:8px;
+}
+
+.phone-preview-box{
+  border:1px solid #333;
+  padding:6px;
+  background:#111;
+}
+
+.phone-preview-label{
+  color:#aaa;
+  font-weight:900;
+  font-size:13px;
+}
+
+.phone-preview-value{
+  color:var(--green);
+  font-weight:1000;
+  font-size:20px;
+  text-align:center;
+}
+
+.phone-preview-rcr{
+  color:var(--yellow);
+}
+
+.phone-preview-wx{
+  color:var(--yellow);
+  font-weight:1000;
+  text-align:center;
+  border:1px solid #333;
+  padding:7px;
+  margin-bottom:8px;
+  background:#111;
+  font-size:21px;
+}
+
+.phone-preview-raw{
+  color:#e8e8e8;
+  font-family:Consolas,monospace;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  border-top:1px solid #333;
+  padding-top:8px;
+  font-size:17px;
+  line-height:1.42;
+}
+
+.phone-preview-notam{
+  color:#c7d0dc;
+  font-family:Consolas,monospace;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  border-top:1px solid #333;
+  margin-top:8px;
+  padding-top:8px;
+  font-size:17px;
+  line-height:1.36;
+}
+
+
+/* Phase 76 — previews placed under matching controls */
+.desktop-preview-card{
+  border-color:var(--green) !important;
+}
+
+.desktop-preview-card h2{
+  color:var(--green) !important;
+}
+
+.phone-preview-card{
+  border-color:#35b7ff !important;
+}
+
+.phone-preview-card h2{
+  color:#35b7ff !important;
+}
+
 </style>
 </head>
 <body>
@@ -363,6 +502,23 @@ input[type=range]{
     </label>
   </div>
 
+  <div class="card desktop-preview-card">
+    <h2>Preview</h2>
+    <div class="preview">
+      <div class="sample-grid">
+        <div class="box"><div class="lbl">WIND STEADY</div><div class="val" id="previewBlock">130↘ @ 07</div></div>
+        <div class="box rcr"><div class="lbl">RCR/RCC</div><div class="val" id="previewRcr">5/5/5 WET</div></div>
+        <div class="box"><div class="lbl">BWC</div><div class="val" id="previewBwc">LOW</div></div>
+      </div>
+      <div class="raw" id="previewRaw">METAR KMEM 072254Z 13007KT 7SM BKN055 OVC110 26/24 A2990 RMK AO2 SLP120 T02610239 $
+
+TAF KMEM 072327Z 0800/0906 17007KT P6SM VCSH BKN080
+  TEMPO 0800/0801 5SM -SHRA SCT025 BKN045
+  FM080300 17009KT P6SM SCT020 OVC040</div>
+      <div class="notam"><span class="notam-inner-preview" id="previewNotam">M0019/26 &nbsp; MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UNTIL FURTHER NOTICE</span></div>
+    </div>
+  </div>
+
 
   <div class="card phone-card">
     <h2>Phone Font Controls</h2>
@@ -415,20 +571,45 @@ input[type=range]{
     </div>
   </div>
 
-  <div class="card">
-    <h2>Preview</h2>
-    <div class="preview">
-      <div class="sample-grid">
-        <div class="box"><div class="lbl">WIND STEADY</div><div class="val" id="previewBlock">130↘ @ 07</div></div>
-        <div class="box rcr"><div class="lbl">RCR/RCC</div><div class="val" id="previewRcr">5/5/5 WET</div></div>
-        <div class="box"><div class="lbl">BWC</div><div class="val" id="previewBwc">LOW</div></div>
-      </div>
-      <div class="raw" id="previewRaw">METAR KMEM 072254Z 13007KT 7SM BKN055 OVC110 26/24 A2990 RMK AO2 SLP120 T02610239 $
+
+  <div class="card phone-card phone-preview-card">
+    <h2>Phone Preview</h2>
+    <p class="section-note">This preview uses the Phone Font Controls only. It is for quick sizing checks before opening the board on the actual phone.</p>
+
+    <div class="phone-preview-frame">
+      <div class="phone-preview-screen">
+        <div class="phone-preview-title">
+          <span>WEATHER</span>
+          <span class="phone-preview-ref">FOR REFERENCE ONLY</span>
+        </div>
+
+        <div class="phone-preview-category">
+          <div class="phone-preview-vfr">VFR</div>
+          <div class="phone-preview-atis">ATIS: VICTOR</div>
+        </div>
+
+        <div class="phone-preview-grid">
+          <div class="phone-preview-box">
+            <div class="phone-preview-label">WIND STEADY</div>
+            <div class="phone-preview-value" id="phonePreviewBlock">130↘ @ 07</div>
+          </div>
+          <div class="phone-preview-box">
+            <div class="phone-preview-label">RCR/RCC</div>
+            <div class="phone-preview-value phone-preview-rcr" id="phonePreviewRcr">5/5/5 WET</div>
+          </div>
+        </div>
+
+        <div class="phone-preview-wx" id="phonePreviewWx">VCTY SHOWERS POSSIBLE 00-06Z</div>
+
+        <div class="phone-preview-raw" id="phonePreviewRaw">METAR KMEM 072254Z 13007KT 7SM BKN055 OVC110 26/24 A2990 RMK AO2 SLP120 T02610239 $
 
 TAF KMEM 072327Z 0800/0906 17007KT P6SM VCSH BKN080
   TEMPO 0800/0801 5SM -SHRA SCT025 BKN045
-  FM080300 17009KT P6SM SCT020 OVC040</div>
-      <div class="notam"><span class="notam-inner-preview" id="previewNotam">M0019/26 &nbsp; MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UNTIL FURTHER NOTICE</span></div>
+  FM080300 17009KT P6SM SCT020 OVC040
+  FM080900 18010KT P6SM BKN009 OVC025</div>
+
+        <div class="phone-preview-notam" id="phonePreviewNotam">M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN</div>
+      </div>
     </div>
   </div>
 
@@ -641,6 +822,25 @@ function updatePreview(){
   document.getElementById("previewNotam").style.fontSize=s.notamPx+"px";
   document.getElementById("previewNotam").style.lineHeight=s.notamLine;
   document.documentElement.style.setProperty("--preview-notam-scroll-seconds", (s.notamScrollSec||55)+"s");
+
+  const phoneBlock=document.getElementById("phonePreviewBlock");
+  const phoneRcr=document.getElementById("phonePreviewRcr");
+  const phoneWx=document.getElementById("phonePreviewWx");
+  const phoneRaw=document.getElementById("phonePreviewRaw");
+  const phoneNotam=document.getElementById("phonePreviewNotam");
+
+  if(phoneBlock)phoneBlock.style.fontSize=(s.phoneBlockValuePx||20)+"px";
+  if(phoneRcr)phoneRcr.style.fontSize=(s.phoneRcrPx||24)+"px";
+  if(phoneWx)phoneWx.style.fontSize=(s.phoneWxAlertPx||21)+"px";
+  if(phoneRaw){
+    phoneRaw.style.fontSize=(s.phoneRawWxPx||17)+"px";
+    phoneRaw.style.lineHeight=s.phoneRawLine||1.42;
+  }
+  if(phoneNotam){
+    phoneNotam.style.fontSize=(s.phoneNotamPx||17)+"px";
+    phoneNotam.style.lineHeight=s.phoneNotamLine||1.36;
+  }
+
   updateLabels();
 }
 
