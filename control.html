@@ -3,43 +3,66 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>KMEM Ops Board Control</title>
+<title>KMEM Ops Board Manual Alert Control</title>
 
 <style>
 * {
   box-sizing: border-box;
 }
 
+:root {
+  --ops-green: #00ff88;
+  --ops-blue: #35b7ff;
+  --ops-yellow: #ffcc00;
+  --ops-red: #ff4444;
+  --bg: #050505;
+  --panel: #101010;
+  --text: #e6e6e6;
+  --muted: #aaa;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  background: #050505;
-  color: #e6e6e6;
+  background: var(--bg);
+  color: var(--text);
   font-family: Arial, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: max(18px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
 }
 
 .card {
-  width: min(720px, 96vw);
-  border: 2px solid #00ff88;
-  background: #101010;
-  padding: 22px;
+  width: min(760px, 96vw);
+  border: 2px solid var(--ops-green);
+  background: var(--panel);
+  padding: clamp(18px, 4vw, 26px);
   box-shadow: 0 0 30px rgba(0, 255, 136, 0.18);
 }
 
 h1 {
   margin: 0 0 8px;
-  color: #00ff88;
-  font-size: clamp(1.5rem, 5vw, 2.4rem);
+  color: var(--ops-green);
+  font-size: clamp(1.45rem, 5vw, 2.25rem);
+  line-height: 1.05;
+  letter-spacing: .03em;
+}
+
+.notice {
+  margin: 12px 0 18px;
+  padding: 12px;
+  border: 1px solid var(--ops-yellow);
+  background: rgba(255, 204, 0, 0.08);
+  color: var(--ops-yellow);
+  font-weight: 900;
+  line-height: 1.35;
 }
 
 .sub {
-  color: #aaa;
-  margin-bottom: 22px;
-  line-height: 1.35;
+  color: var(--muted);
+  margin-bottom: 18px;
+  line-height: 1.4;
 }
 
 label {
@@ -59,16 +82,30 @@ input {
   border-radius: 8px;
 }
 
+input:focus {
+  outline: 2px solid var(--ops-green);
+  outline-offset: 2px;
+}
+
+.button-row {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
 button {
   width: 100%;
-  margin-top: 14px;
   padding: 18px 14px;
-  border: 0;
   border-radius: 10px;
-  font-size: clamp(1rem, 4vw, 1.4rem);
+  font-size: clamp(1rem, 4vw, 1.32rem);
   font-weight: 1000;
   letter-spacing: 0.5px;
   cursor: pointer;
+}
+
+button:disabled {
+  opacity: .55;
+  cursor: wait;
 }
 
 .danger {
@@ -80,33 +117,53 @@ button {
 .clear {
   background: #eaf7ff;
   color: #003d66;
-  border: 3px solid #35b7ff;
+  border: 3px solid var(--ops-blue);
 }
 
 .status {
   margin-top: 18px;
-  min-height: 28px;
-  color: #ffcc00;
+  min-height: 32px;
+  color: var(--ops-yellow);
   font-weight: 900;
   overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 .small {
   margin-top: 18px;
   color: #888;
   font-size: 0.9rem;
-  line-height: 1.35;
+  line-height: 1.4;
+}
+
+.endpoint {
+  margin-top: 10px;
+  color: #666;
+  font-size: .82rem;
+  overflow-wrap: anywhere;
+}
+
+kbd {
+  border: 1px solid #555;
+  background: #000;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 5px;
 }
 </style>
 </head>
 
 <body>
 <div class="card">
-  <h1>KMEM OPS BOARD CONTROL</h1>
+  <h1>KMEM OPS BOARD MANUAL ALERT CONTROL</h1>
+
+  <div class="notice">
+    FOR REFERENCE ONLY. This manual control is a supplemental display aid and does not replace official/approved operational notification procedures.
+  </div>
 
   <div class="sub">
-    Manual alert controls. Use only for active ops coordination.
-    Alert stays active until cleared.
+    Use this page only for active ops coordination when the display needs a manual banner.
+    Manual alerts remain active until cleared.
   </div>
 
   <label for="username">Username</label>
@@ -115,48 +172,73 @@ button {
   <label for="pin">PIN</label>
   <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
 
-  <button class="danger" onclick="sendAlert('lightning_5nm')">
-    LIGHTNING WITHIN 5 NM — FLT LINE CLOSED
-  </button>
+  <div class="button-row">
+    <button id="lightningBtn" class="danger" type="button" onclick="sendAlert('lightning_5nm')">
+      ⚡ LIGHTNING WITHIN 5 NM — FLT LINE CLOSED
+    </button>
 
-  <button class="clear" onclick="sendAlert('clear')">
-    CLEAR MANUAL ALERT
-  </button>
+    <button id="clearBtn" class="clear" type="button" onclick="sendAlert('clear')">
+      CLEAR MANUAL ALERT
+    </button>
+  </div>
 
-  <div id="status" class="status"></div>
+  <div id="status" class="status" role="status" aria-live="polite"></div>
 
   <div class="small">
-    This page sends the command to the KMEM Ops Board control worker.
-    The PIN is not saved on this device.
+    The PIN is not saved on this device. A success message only means the control worker accepted the command.
+    Confirm the board display updated after sending.
   </div>
+
+  <div class="endpoint" id="endpointText"></div>
 </div>
 
 <script>
 const CONTROL_ENDPOINT = "https://kmem-ops-control.btenner1013.workers.dev";
+const REQUEST_TIMEOUT_MS = 15000;
 
 const usernameInput = document.getElementById("username");
+const pinInput = document.getElementById("pin");
+const statusEl = document.getElementById("status");
+const lightningBtn = document.getElementById("lightningBtn");
+const clearBtn = document.getElementById("clearBtn");
+
 usernameInput.value = localStorage.getItem("kmemControlUsername") || "164am";
+document.getElementById("endpointText").textContent = `Endpoint: ${CONTROL_ENDPOINT}`;
 
 function setStatus(text, tone) {
-  const el = document.getElementById("status");
-  el.textContent = text;
-  el.style.color =
+  statusEl.textContent = text;
+  statusEl.style.color =
     tone === "ok" ? "#00ff88" :
     tone === "bad" ? "#ff4444" :
     "#ffcc00";
 }
 
+function setBusy(isBusy) {
+  lightningBtn.disabled = isBusy;
+  clearBtn.disabled = isBusy;
+  usernameInput.disabled = isBusy;
+  pinInput.disabled = isBusy;
+}
+
+function actionLabel(action) {
+  if (action === "lightning_5nm") return "LIGHTNING WITHIN 5 NM / FLT LINE CLOSED";
+  if (action === "clear") return "CLEAR MANUAL ALERT";
+  return action;
+}
+
 async function sendAlert(action) {
   const username = usernameInput.value.trim();
-  const pin = document.getElementById("pin").value;
+  const pin = pinInput.value;
 
   if (!username) {
     setStatus("Enter username.", "bad");
+    usernameInput.focus();
     return;
   }
 
   if (!pin) {
     setStatus("Enter PIN.", "bad");
+    pinInput.focus();
     return;
   }
 
@@ -165,33 +247,53 @@ async function sendAlert(action) {
     if (!ok) return;
   }
 
-  localStorage.setItem("kmemControlUsername", username);
+  if (action === "clear") {
+    const ok = confirm("Confirm: CLEAR the manual alert from the board?");
+    if (!ok) return;
+  }
 
-  setStatus("Sending...", "warn");
+  localStorage.setItem("kmemControlUsername", username);
+  setBusy(true);
+  setStatus(`Sending ${actionLabel(action)}...`, "warn");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(CONTROL_ENDPOINT, {
       method: "POST",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         username: username,
         pin: pin,
-        action: action
-      })
+        action: action,
+        source: "control.html",
+        sentAt: new Date().toISOString()
+      }),
+      signal: controller.signal
     });
 
     const text = await response.text();
 
     if (!response.ok) {
-      setStatus(`Failed: ${text}`, "bad");
+      setStatus(`Failed: ${text || response.status + " " + response.statusText}`, "bad");
       return;
     }
 
-    setStatus(text || "Command sent.", "ok");
+    pinInput.value = "";
+    setStatus(text || `Command accepted: ${actionLabel(action)}. Verify board display.`, "ok");
   } catch (error) {
-    setStatus(`Failed: ${error.message}`, "bad");
+    const message = error.name === "AbortError"
+      ? "Request timed out. Verify network/worker status and check the board before retrying."
+      : error.message;
+
+    setStatus(`Failed: ${message}`, "bad");
+  } finally {
+    clearTimeout(timeout);
+    setBusy(false);
   }
 }
 </script>
