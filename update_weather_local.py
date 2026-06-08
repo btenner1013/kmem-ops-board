@@ -2372,35 +2372,52 @@ def summarize_mil_notams_for_scroll(items):
 
 def normalize_notam_time_for_export(value):
     """
-    Keep NMS effective times in a consistent string that the board can format.
-    Accepts values like 202604221406, 2026-04-22T14:06:00Z, etc.
+    Keep NMS effective times in a consistent compact string.
+    Returns 12-digit YYYYMMDDHHMM when possible so the board can display:
+      202606081300 -> 08 JUN 1300Z
     """
     if value is None:
         return ""
 
-    text = str(value).strip()
+    text = str(value).strip().upper()
 
     if not text:
         return ""
 
+    if text in ("UFN", "FURTHER NOTICE", "UNTIL FURTHER NOTICE"):
+        return "UFN"
+
     # Already compact FAA/NMS style.
-    if re.match(r"^\d{10}$", text):
+    if re.match(r"^\d{12}$", text):
         return text
+
+    # YYMMDDHHMM -> YYYYMMDDHHMM. Assume 20xx for current NOTAMs.
+    if re.match(r"^\d{10}$", text):
+        return "20" + text
+
+    # DAIP/PDF style: 08 JUN 13:00 2026
+    month_map = {
+        "JAN": "01", "FEB": "02", "MAR": "03", "APR": "04",
+        "MAY": "05", "JUN": "06", "JUL": "07", "AUG": "08",
+        "SEP": "09", "OCT": "10", "NOV": "11", "DEC": "12"
+    }
+    m = re.search(r"\b(\d{1,2})\s+([A-Z]{3})\s+(\d{2}):(\d{2})\s+(\d{4})\b", text)
+    if m and m.group(2) in month_map:
+        return f"{m.group(5)}{month_map[m.group(2)]}{int(m.group(1)):02d}{m.group(3)}{m.group(4)}"
 
     parsed = parse_z_datetime(text)
 
     if parsed:
-        return parsed.strftime("%Y%m%d%H%M")[2:]
+        return parsed.strftime("%Y%m%d%H%M")
 
     # ISO without Z or with milliseconds.
     try:
         parsed = datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(timezone.utc)
-        return parsed.strftime("%Y%m%d%H%M")[2:]
+        return parsed.strftime("%Y%m%d%H%M")
     except Exception:
         pass
 
     return text
-
 
 def notam_text_blob(item):
     if not isinstance(item, dict):
@@ -2416,37 +2433,64 @@ def notam_text_blob(item):
 
 
 def is_runway_closure_notam_text(text):
+    """
+    True runway closure only.
+
+    Excludes taxiway closures that merely mention a runway as a boundary, e.g.
+    "TWY V BTN TWY V3 AND TWY S, TWY C BTN TWY V AND RWY 09/27 CLSD".
+    """
     compact = re.sub(r"\s+", " ", str(text or "").upper()).strip()
 
     if not compact:
         return False
 
-    # Runway closure only; keep taxiway-only closures out of this display list.
-    return bool(
-        re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\b.*\b(?:CLSD|CLOSED)\b", compact)
-        or re.search(r"\b(?:CLSD|CLOSED)\b.*\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\b", compact)
-    )
+    segments = [s.strip() for s in re.split(r"\.\s+|;\s+", compact) if s.strip()]
 
+    for segment in segments:
+        if "CLSD" not in segment and "CLOSED" not in segment:
+            continue
+
+        first_twy = segment.find("TWY")
+        first_rwy = segment.find("RWY")
+
+        # Taxiway closure segment first = not a runway closure display item.
+        if first_twy != -1 and (first_rwy == -1 or first_twy < first_rwy):
+            continue
+
+        if re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\s+(?:CLSD|CLOSED)\b", segment):
+            return True
+
+    return False
 
 def compact_runway_closure_text_for_export(text):
     raw = re.sub(r"\s+", " ", str(text or "")).strip()
     raw = re.sub(r"\s*CREATED:\s*.*$", "", raw, flags=re.I).strip()
 
-    # Prefer just the operational closure sentence/segment.
     segments = [s.strip() for s in re.split(r"\.\s+|;\s+", raw) if s.strip()]
 
     for segment in segments:
-        if re.search(r"\bRWY\b", segment, flags=re.I) and re.search(r"\b(?:CLSD|CLOSED)\b", segment, flags=re.I):
-            return re.sub(r"\s+", " ", segment).strip()
+        upper = segment.upper()
 
-    upper = raw.upper()
-    idx = upper.find("RWY")
+        if "CLSD" not in upper and "CLOSED" not in upper:
+            continue
 
-    if idx >= 0:
-        return raw[idx:idx + 160].strip()
+        first_twy = upper.find("TWY")
+        first_rwy = upper.find("RWY")
 
-    return raw[:160].strip()
+        # Exclude taxiway closures that mention a runway boundary.
+        if first_twy != -1 and (first_rwy == -1 or first_twy < first_rwy):
+            continue
 
+        match = re.search(
+            r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\s+(?:CLSD|CLOSED)\b",
+            segment,
+            flags=re.I
+        )
+
+        if match:
+            return re.sub(r"\s+", " ", match.group(0)).strip()
+
+    return ""
 
 def normalize_runway_closure_notams(raw, previous_data=None):
     """
@@ -2485,6 +2529,9 @@ def normalize_runway_closure_notams(raw, previous_data=None):
             number = str(item.get("number") or item.get("id") or item.get("notamNumber") or "UNKNOWN").strip()
             raw_text = str(item.get("rawText") or item.get("text") or item.get("displayText") or text_blob).strip()
             text = compact_runway_closure_text_for_export(raw_text)
+
+            if not text:
+                continue
 
             effective_start = normalize_notam_time_for_export(
                 item.get("effectiveStart")

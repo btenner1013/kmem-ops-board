@@ -219,22 +219,53 @@ def display_text(text):
 
 
 def is_runway_closure_text(text):
+    """
+    True runway closure only.
+
+    Excludes taxiway-closure NOTAMs that merely mention a runway as a boundary, e.g.
+    "TWY V BTN TWY V3 AND TWY S, TWY C BTN TWY V AND RWY 09/27 CLSD".
+    """
     compact = re.sub(r"\s+", " ", str(text or "").upper()).strip()
 
     if not compact:
         return False
 
-    return bool(
-        re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\b.*\b(?:CLSD|CLOSED)\b", compact)
-        or re.search(r"\b(?:CLSD|CLOSED)\b.*\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\b", compact)
-    )
+    # Check each sentence/segment independently.
+    segments = [s.strip() for s in re.split(r"\.\s+|;\s+", compact) if s.strip()]
+
+    for segment in segments:
+        if "CLSD" not in segment and "CLOSED" not in segment:
+            continue
+
+        # If this segment is explicitly a taxiway closure, do not treat it as runway
+        # closure just because it says "AND RWY 09/27".
+        first_twy = segment.find("TWY")
+        first_rwy = segment.find("RWY")
+
+        if first_twy != -1 and (first_rwy == -1 or first_twy < first_rwy):
+            continue
+
+        # Require the closure object to be a runway/rwy expression.
+        if re.search(r"^\s*RWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\s+(?:CLSD|CLOSED)\b", segment):
+            return True
+
+        if re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\s+(?:CLSD|CLOSED)\b", segment):
+            # Accept if there is no taxiway before the runway expression.
+            rwy_match = re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\s+(?:CLSD|CLOSED)\b", segment)
+            if rwy_match and ("TWY" not in segment[:rwy_match.start()]):
+                return True
+
+    return False
 
 
 def is_runway_closure_candidate(item):
     blob = " ".join(str(item.get(k, "")) for k in item.keys()).upper()
+    compact = re.sub(r"\s+", " ", blob).strip()
 
+    # Candidate only if metadata/text likely starts with a runway closure.
+    # This intentionally avoids TWY closures that mention a runway as a boundary.
     return (
-        ("RWY" in blob and ("CLSD" in blob or "CLOSED" in blob))
+        bool(re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\s+(?:CLSD|CLOSED)\b", compact))
         or str(item.get("type", "")).upper() in ("RUNWAY", "RWY")
     )
 
@@ -248,16 +279,113 @@ def compact_runway_closure_display(text):
     segments = [s.strip() for s in re.split(r"\.\s+|;\s+", raw) if s.strip()]
 
     for segment in segments:
-        if re.search(r"\bRWY\b", segment, flags=re.I) and re.search(r"\b(?:CLSD|CLOSED)\b", segment, flags=re.I):
-            return re.sub(r"\s+", " ", segment).strip()
+        segment_upper = segment.upper()
 
-    upper = raw.upper()
-    idx = upper.find("RWY")
+        if "CLSD" not in segment_upper and "CLOSED" not in segment_upper:
+            continue
 
-    if idx >= 0:
-        return raw[idx:idx + 160].strip()
+        first_twy = segment_upper.find("TWY")
+        first_rwy = segment_upper.find("RWY")
 
-    return raw[:160].strip()
+        # Exclude taxiway closures that mention a runway as a boundary.
+        if first_twy != -1 and (first_rwy == -1 or first_twy < first_rwy):
+            continue
+
+        match = re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\s+(?:CLSD|CLOSED)\b", segment, flags=re.I)
+        if match:
+            return re.sub(r"\s+", " ", match.group(0)).strip()
+
+    return ""
+
+
+def normalize_notam_effective_compact(value):
+    """
+    Keep backend effective fields compact but consistent for display.
+    Accepts:
+      202604221406
+      2604221406
+      08 JUN 13:00 2026
+      UFN / UNTIL FURTHER NOTICE
+    Returns a compact string that index.html can render nicely.
+    """
+    if value is None:
+        return ""
+
+    text = str(value).strip().upper()
+
+    if not text:
+        return ""
+
+    if text in ("UFN", "FURTHER NOTICE", "UNTIL FURTHER NOTICE"):
+        return "UFN"
+
+    # 08 JUN 13:00 2026 -> 08 JUN 1300Z
+    m = re.search(r"\b(\d{1,2})\s+([A-Z]{3})\s+(\d{2}):(\d{2})\s+(\d{4})\b", text)
+    if m:
+        return f"{int(m.group(1)):02d} {m.group(2)} {m.group(3)}{m.group(4)}Z"
+
+    # Already close enough: 08 JUN 1300Z
+    m = re.search(r"\b(\d{1,2})\s+([A-Z]{3})\s+(\d{4})Z?\b", text)
+    if m:
+        return f"{int(m.group(1)):02d} {m.group(2)} {m.group(3)}Z"
+
+    # 202604221406 or 2604221406; keep numeric for index display parser.
+    m = re.search(r"\b(\d{12}|\d{10})\b", text)
+    if m:
+        return m.group(1)
+
+    return text
+
+
+def effective_range_from_text(text):
+    """
+    Extract effective start/end from full DAIP/NMS text when effectiveStart/effectiveEnd
+    XML fields are missing.
+    """
+    raw = re.sub(r"\s+", " ", str(text or "")).strip().upper()
+
+    if not raw:
+        return "", ""
+
+    # DAIP/PDF style: 08 JUN 13:00 2026 UNTIL 08 JUN 22:00 2026
+    m = re.search(
+        r"\b(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4})\s+UNTIL\s+"
+        r"(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE|UNTIL FURTHER NOTICE)\b",
+        raw
+    )
+    if m:
+        return normalize_notam_effective_compact(m.group(1)), normalize_notam_effective_compact(m.group(2))
+
+    # NMS compact style: 2606081300-2606082200 or 202606081300-202606082200
+    m = re.search(r"\b(\d{10}|\d{12})\s*-\s*(\d{10}|\d{12}|UFN)\b", raw)
+    if m:
+        return normalize_notam_effective_compact(m.group(1)), normalize_notam_effective_compact(m.group(2))
+
+    # UNTIL only fallback; leave start blank.
+    m = re.search(
+        r"\bUNTIL\s+(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE|UNTIL FURTHER NOTICE)\b",
+        raw
+    )
+    if m:
+        return "", normalize_notam_effective_compact(m.group(1))
+
+    return "", ""
+
+
+def apply_effective_fallback(record, txt):
+    """
+    Fill missing effectiveStart/effectiveEnd from NOTAM text. Keeps existing XML values
+    when they are already provided.
+    """
+    start, end = effective_range_from_text(txt)
+
+    if not record.get("effectiveStart") and start:
+        record["effectiveStart"] = start
+
+    if not record.get("effectiveEnd") and end:
+        record["effectiveEnd"] = end
+
+    return record
 
 
 def main():
@@ -372,6 +500,8 @@ def main():
             "source": "FAA_NMS_STAGING",
         }
 
+        record = apply_effective_fallback(record, txt)
+
         txt_upper = txt.upper()
 
         # Keep runway/taxiway/apron FICON in the separate FICON list for RCR/RCC parsing.
@@ -382,13 +512,16 @@ def main():
         # Phase 85: export runway closure NOTAMs for display only.
         # This does not change ATIS-driven runway data block behavior.
         if is_runway_closure_text(txt):
-            runway_record = dict(record)
-            runway_record["classification"] = "RWY_CLOSURE"
-            runway_record["severity"] = "red"
-            runway_record["text"] = compact_runway_closure_display(txt)
-            runway_record["displayText"] = compact_runway_closure_display(txt)
-            runway_record["rawText"] = txt
-            runway_closure_notams.append(runway_record)
+            closure_display = compact_runway_closure_display(txt)
+
+            if closure_display:
+                runway_record = dict(record)
+                runway_record["classification"] = "RWY_CLOSURE"
+                runway_record["severity"] = "red"
+                runway_record["text"] = closure_display
+                runway_record["displayText"] = closure_display
+                runway_record["rawText"] = txt
+                runway_closure_notams.append(runway_record)
 
         if str(record.get("classification", "")).upper() in ("MIL", "MILITARY") or record["number"].upper().startswith("M"):
             notams.append(record)
@@ -408,7 +541,7 @@ def main():
         "ficonNotamCount": len(ficon_notams),
         "runwayClosureNotams": runway_closure_notams,
         "runwayClosureNotamCount": len(runway_closure_notams),
-        "detailScanMode": "PHASE85_RECENT_LOCAL_PLUS_MIL_FICON_RWY_CLOSURE",
+        "detailScanMode": "PHASE88_STRICT_RWY_CLOSURE_ONLY",
         "detailRecordsScanned": len(candidates),
     }
 
@@ -430,7 +563,9 @@ def main():
         print(f"FICON {n['number']}: {n['displayText']}")
 
     for n in runway_closure_notams:
-        print(f"RWYCL {n['number']}: {n['displayText']}")
+        eff_start = n.get("effectiveStart") or "UNK"
+        eff_end = n.get("effectiveEnd") or "UFN"
+        print(f"RWYCL {n['number']}: {n['displayText']} EFF {eff_start}-{eff_end}")
 
 
 if __name__ == "__main__":

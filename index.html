@@ -4104,6 +4104,8 @@ html,body{
   white-space:pre-wrap !important;
 }
 
+
+/* Phase 88 — strict runway closure display and effective time cleanup */
 </style>
 </head>
 
@@ -5378,13 +5380,34 @@ function setCaoStatusDisplay(cao,value,fetchStatus,rawStatus){
 function normalizeNotamTimeText(value){
   if(value===undefined||value===null||value==="")return "";
 
-  let text=String(value).trim();
+  let text=String(value).trim().toUpperCase();
+
+  if(!text)return "";
+
+  if(text==="UFN"||text==="FURTHER NOTICE"||text==="UNTIL FURTHER NOTICE"){
+    return "UFN";
+  }
+
+  const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+  // 202606081300 -> 08 JUN 1300Z
+  let compact=text.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if(compact){
+    const month=months[Math.max(0,Math.min(11,Number(compact[2])-1))]||compact[2];
+    return `${compact[3]} ${month} ${compact[4]}${compact[5]}Z`;
+  }
+
+  // 2606081300 -> 08 JUN 1300Z
+  compact=text.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if(compact){
+    const month=months[Math.max(0,Math.min(11,Number(compact[2])-1))]||compact[2];
+    return `${compact[3]} ${month} ${compact[4]}${compact[5]}Z`;
+  }
 
   // ISO-ish dates: 2026-06-08T13:00:00Z -> 08 JUN 1300Z
   const iso=Date.parse(text);
   if(!isNaN(iso) && /\d{4}-\d{2}-\d{2}/.test(text)){
     const d=new Date(iso);
-    const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
     return `${String(d.getUTCDate()).padStart(2,"0")} ${months[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`;
   }
 
@@ -5393,11 +5416,9 @@ function normalizeNotamTimeText(value){
     return `${String(dd).padStart(2,"0")} ${mon.toUpperCase()} ${hh}${mm}Z`;
   });
 
-  // Compact FAA style: 2606081300 -> 08 JUN 1300Z when possible
-  text=text.replace(/\b(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\b/g,(m,yy,mo,dd,hh,mm)=>{
-    const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-    const month=months[Math.max(0,Math.min(11,Number(mo)-1))]||mo;
-    return `${dd} ${month} ${hh}${mm}Z`;
+  // Already-close style: 08 JUN 1300Z
+  text=text.replace(/\b(\d{1,2})\s+([A-Z]{3})\s+(\d{4})Z?\b/ig,(m,dd,mon,hhmm)=>{
+    return `${String(dd).padStart(2,"0")} ${mon.toUpperCase()} ${hhmm}Z`;
   });
 
   return text.toUpperCase();
@@ -5542,6 +5563,13 @@ function extractRunwayClosureNotams(data){
                         /\bCLSD\b.*\bRWY\s+[0-9]{1,2}[LRC]?(?:\/[0-9]{1,2}[LRC]?)?\b/i.test(upper));
 
     if(!isRwyClosure)return;
+
+    // Phase 88: display-side guard. Exclude taxiway closures that only mention
+    // a runway as a boundary.
+    const compactText=text.replace(/\s+/g," ").trim().toUpperCase();
+    const firstTwy=compactText.indexOf("TWY");
+    const firstRwy=compactText.indexOf("RWY");
+    if(firstTwy!==-1 && (firstRwy===-1 || firstTwy<firstRwy))return;
 
     const number=notamNumberFromItem(item);
     const compact=compactRunwayClosureText(text);
@@ -6734,6 +6762,50 @@ function inferFlowFromRunways(arrRunways,depRunways){
   document.addEventListener("DOMContentLoaded",applyClockSize);
   window.addEventListener("resize",applyClockSize);
   setInterval(applyClockSize,1500);
+})();
+</script>
+
+
+<script>
+/* Phase 86 — display 10/12 digit NOTAM effective times cleanly */
+(function(){
+  const MONTHS=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+  function compactToDisplay(value){
+    const text=String(value||"").trim().toUpperCase();
+    if(!text)return "";
+    if(text==="UFN"||text==="FURTHER NOTICE"||text==="UNTIL FURTHER NOTICE")return "UFN";
+
+    let m=text.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    if(m){
+      const month=MONTHS[Math.max(0,Math.min(11,Number(m[2])-1))]||m[2];
+      return `${m[3]} ${month} ${m[4]}${m[5]}Z`;
+    }
+
+    m=text.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    if(m){
+      const month=MONTHS[Math.max(0,Math.min(11,Number(m[2])-1))]||m[2];
+      return `${m[3]} ${month} ${m[4]}${m[5]}Z`;
+    }
+
+    return "";
+  }
+
+  const previousNormalize=window.normalizeNotamTimeText;
+
+  window.normalizeNotamTimeText=function(value){
+    if(value===undefined||value===null||value==="")return "";
+
+    const text=String(value).trim();
+    const compact=compactToDisplay(text);
+    if(compact)return compact;
+
+    if(typeof previousNormalize==="function"){
+      return previousNormalize(value);
+    }
+
+    return text.toUpperCase();
+  };
 })();
 </script>
 
