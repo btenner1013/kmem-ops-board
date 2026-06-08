@@ -4106,6 +4106,8 @@ html,body{
 
 
 /* Phase 88 — strict runway closure display and effective time cleanup */
+
+/* Phase 89 — spaced NOTAM effective-time separator */
 </style>
 </head>
 
@@ -5441,7 +5443,7 @@ function extractEffectiveRangeFromNotam(item,text){
     if(item && (item[a]||item[b])){
       const start=normalizeNotamTimeText(item[a]||"");
       const end=normalizeNotamTimeText(item[b]||"");
-      if(start||end)return `EFF ${start||"UNK"}-${end||"UFN"}`;
+      if(start||end)return `EFF ${start||"UNK"} - ${end||"UFN"}`;
     }
   }
 
@@ -5450,13 +5452,13 @@ function extractEffectiveRangeFromNotam(item,text){
   // DAIP style: 08 JUN 13:00 2026 UNTIL 08 JUN 22:00 2026
   let m=raw.match(/\b(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4})\s+UNTIL\s+(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE)\b/i);
   if(m){
-    return `EFF ${normalizeNotamTimeText(m[1])}-${normalizeNotamTimeText(m[2])}`;
+    return `EFF ${normalizeNotamTimeText(m[1])} - ${normalizeNotamTimeText(m[2])}`;
   }
 
-  // Compact FAA style: 2606081300-2606082200
-  m=raw.match(/\b(\d{10})-(\d{10}|UFN)\b/);
+  // Compact FAA/NMS style: 202606081300-202606082200 or 2606081300-2606082200
+  m=raw.match(/\b(\d{10}|\d{12})-(\d{10}|\d{12}|UFN)\b/);
   if(m){
-    return `EFF ${normalizeNotamTimeText(m[1])}-${normalizeNotamTimeText(m[2])}`;
+    return `EFF ${normalizeNotamTimeText(m[1])} - ${normalizeNotamTimeText(m[2])}`;
   }
 
   // UNTIL only fallback.
