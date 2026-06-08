@@ -6,6 +6,9 @@ Reads credentials from:
   NMS_CLIENT_ID
   NMS_CLIENT_SECRET
 
+Optional local-only testing override:
+  NMS_ALLOW_INSECURE_SSL_FALLBACK=1
+
 Run:
   set NMS_CLIENT_ID=YOUR_KEY_HERE
   set NMS_CLIENT_SECRET=YOUR_SECRET_HERE
@@ -35,8 +38,13 @@ BASE_URL = "https://api-staging.cgifederal-aim.com/nmsapi/v1"
 LOCATION = "KMEM"
 OUTPUT_FILE = "nms_kmem_mil_notams_output.json"
 
-# Temporary for testing if Windows/Python cert trust acts up.
-ALLOW_INSECURE_SSL_FALLBACK = True
+# Production default: do not silently bypass TLS verification.
+# If a trusted/local Windows certificate issue blocks NMS staging during testing,
+# set NMS_ALLOW_INSECURE_SSL_FALLBACK=1 in nms_credentials_local.bat.
+ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
+    "NMS_ALLOW_INSECURE_SSL_FALLBACK",
+    "0"
+).strip().lower() in {"1", "true", "yes", "on"}
 
 # NMS staging showed a rate limit around 1 request/sec.
 REQUEST_DELAY_SECONDS = 1.25

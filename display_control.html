@@ -407,12 +407,29 @@ input[type=range]{
   color:#35b7ff !important;
 }
 
+
+/* Phase 93 — production display-control wording */
+.production-notice{
+  border-color:var(--blue) !important;
+}
+.production-notice h2{
+  color:var(--blue) !important;
+}
+
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>KMEM OPS BOARD DISPLAY CONTROL</h1>
-  <div class="sub">Adjust display font sizes live. Open the board in another tab/window on the same site, then move sliders here. <b style="color:#ffcc00">Phase 74</b></div>
+  <div class="sub">Adjust display font sizes live. Open the board in another tab/window on the same site, then move sliders here.</div>
+
+  <div class="card production-notice">
+    <h2>Production Note</h2>
+    <p class="help">
+      FOR REFERENCE ONLY. These controls tune local/browser display sizing and scrolling.
+      They do not change weather data, NOTAM data, ATIS parsing, or operational source behavior.
+    </p>
+  </div>
 
   <div class="card phase74-actions">
     <h2>Quick Actions</h2>
