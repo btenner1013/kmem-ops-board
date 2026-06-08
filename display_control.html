@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KMEM Ops Board Display Control</title>
+<style>
+:root{
+  --green:#00ff88;
+  --yellow:#ffcc00;
+  --red:#ff4444;
+  --blue:#35b7ff;
+  --panel:#101010;
+  --line:#26332d;
+  --text:#e8e8e8;
+  --dim:#aeb6bd;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:#050505;
+  color:var(--text);
+  font-family:Arial,sans-serif;
+}
+.wrap{
+  max-width:980px;
+  margin:0 auto;
+  padding:18px;
+}
+h1{
+  margin:0 0 4px;
+  color:white;
+  font-size:1.45rem;
+  letter-spacing:.04em;
+}
+.sub{
+  color:var(--dim);
+  margin-bottom:14px;
+}
+.card{
+  background:var(--panel);
+  border:2px solid var(--green);
+  padding:14px;
+  margin:12px 0;
+}
+.card h2{
+  margin:0 0 10px;
+  font-size:1.05rem;
+  color:var(--green);
+}
+.presets{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+button{
+  background:#151515;
+  color:white;
+  border:1px solid #3c4a42;
+  padding:9px 12px;
+  font-weight:800;
+  cursor:pointer;
+}
+button:hover{border-color:var(--green)}
+button.primary{
+  color:#000;
+  background:var(--green);
+  border-color:var(--green);
+}
+button.warn{
+  color:#000;
+  background:var(--yellow);
+  border-color:var(--yellow);
+}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.control{
+  border:1px solid var(--line);
+  padding:10px;
+}
+.row{
+  display:grid;
+  grid-template-columns:1fr 90px;
+  gap:10px;
+  align-items:center;
+  margin-bottom:8px;
+}
+label{
+  font-weight:900;
+  color:white;
+}
+.value{
+  color:var(--yellow);
+  font-family:Consolas,monospace;
+  text-align:right;
+  font-weight:900;
+}
+input[type=range]{
+  width:100%;
+  accent-color:var(--green);
+}
+.help{
+  color:var(--dim);
+  font-size:.9rem;
+  line-height:1.35;
+}
+.preview{
+  background:#000;
+  border:1px solid #333;
+  padding:12px;
+  margin-top:10px;
+}
+.sample-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+}
+.box{
+  border:1px solid #333;
+  min-height:58px;
+  padding:6px;
+  background:#111;
+}
+.box .lbl{
+  color:#b8b8b8;
+  font-weight:900;
+  font-size:14px;
+}
+.box .val{
+  color:var(--green);
+  font-weight:1000;
+  text-align:center;
+  font-size:24px;
+}
+.box.rcr .val{color:var(--yellow)}
+.raw{
+  color:white;
+  font-family:Consolas,monospace;
+  white-space:pre-wrap;
+  margin-top:12px;
+  font-size:20px;
+  line-height:1.45;
+}
+.notam{
+  color:#c7d0dc;
+  font-family:Consolas,monospace;
+  white-space:pre-wrap;
+  margin-top:12px;
+  font-size:20px;
+  line-height:1.38;
+}
+.toggle{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:8px;
+  font-weight:900;
+}
+@media(max-width:720px){
+  .grid{grid-template-columns:1fr}
+  .sample-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>KMEM OPS BOARD DISPLAY CONTROL</h1>
+  <div class="sub">Adjust display font sizes live. Open the board in another tab/window on the same site, then move sliders here.</div>
+
+  <div class="card">
+    <h2>Display Presets</h2>
+    <div class="presets">
+      <button onclick="setPreset('TV 100')">TV 100%</button>
+      <button onclick="setPreset('TV 90')">TV 90%</button>
+      <button onclick="setPreset('Desktop')">Desktop</button>
+      <button onclick="setPreset('Getac')">Getac / Small</button>
+      <button onclick="setPreset('Phone')">Phone</button>
+      <button class="warn" onclick="resetDefaults()">Reset Defaults</button>
+    </div>
+    <p class="help">Presets are just starting points. After selecting one, fine-tune the sliders below.</p>
+  </div>
+
+  <div class="card">
+    <h2>Font Controls</h2>
+    <div class="grid">
+      <div class="control">
+        <div class="row"><label>Data block values</label><span class="value" id="blockValuePxVal"></span></div>
+        <input id="blockValuePx" type="range" min="14" max="42" step="1">
+        <div class="help">Altimeter, ceiling, visibility, runways, flow, wind, BWC, temp/dewpoint.</div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label>RCR/RCC value</label><span class="value" id="rcrPxVal"></span></div>
+        <input id="rcrPx" type="range" min="14" max="42" step="1">
+        <div class="help">Use this for making 5/5/5 WET easier to read without enlarging every block.</div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label>METAR / TAF text</label><span class="value" id="rawWxPxVal"></span></div>
+        <input id="rawWxPx" type="range" min="10" max="34" step="1">
+      </div>
+
+      <div class="control">
+        <div class="row"><label>MIL NOTAM text</label><span class="value" id="notamPxVal"></span></div>
+        <input id="notamPx" type="range" min="10" max="34" step="1">
+      </div>
+
+      <div class="control">
+        <div class="row"><label>WX Alert text</label><span class="value" id="wxAlertPxVal"></span></div>
+        <input id="wxAlertPx" type="range" min="12" max="38" step="1">
+      </div>
+
+      <div class="control">
+        <div class="row"><label>Box labels</label><span class="value" id="labelPxVal"></span></div>
+        <input id="labelPx" type="range" min="9" max="24" step="1">
+      </div>
+
+      <div class="control">
+        <div class="row"><label>Footer text</label><span class="value" id="footerPxVal"></span></div>
+        <input id="footerPx" type="range" min="10" max="28" step="1">
+      </div>
+
+      <div class="control">
+        <div class="row"><label>Raw line spacing</label><span class="value" id="rawLineVal"></span></div>
+        <input id="rawLine" type="range" min="1.10" max="1.80" step="0.05">
+      </div>
+
+      <div class="control">
+        <div class="row"><label>NOTAM line spacing</label><span class="value" id="notamLineVal"></span></div>
+        <input id="notamLine" type="range" min="1.10" max="1.80" step="0.05">
+      </div>
+    </div>
+
+    <label class="toggle">
+      <input id="strongPulse" type="checkbox">
+      Strong WX/lightning pulse
+    </label>
+  </div>
+
+  <div class="card">
+    <h2>Preview</h2>
+    <div class="preview">
+      <div class="sample-grid">
+        <div class="box"><div class="lbl">WIND STEADY</div><div class="val" id="previewBlock">130↘ @ 07</div></div>
+        <div class="box rcr"><div class="lbl">RCR/RCC</div><div class="val" id="previewRcr">5/5/5 WET</div></div>
+        <div class="box"><div class="lbl">BWC</div><div class="val" id="previewBwc">LOW</div></div>
+      </div>
+      <div class="raw" id="previewRaw">METAR KMEM 072254Z 13007KT 7SM BKN055 OVC110 26/24 A2990 RMK AO2 SLP120 T02610239 $
+
+TAF KMEM 072327Z 0800/0906 17007KT P6SM VCSH BKN080
+  TEMPO 0800/0801 5SM -SHRA SCT025 BKN045
+  FM080300 17009KT P6SM SCT020 OVC040</div>
+      <div class="notam" id="previewNotam">M0019/26
+MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UNTIL FURTHER NOTICE</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Apply</h2>
+    <button class="primary" onclick="save()">Save / Broadcast to Board</button>
+    <button onclick="openBoard()">Open Board</button>
+    <p class="help">The board reads these settings from browser localStorage. This is for local display tuning and does not change weather.json.</p>
+  </div>
+</div>
+
+<script>
+const KEY="kmemOpsDisplaySettingsV1";
+
+const defaults={
+  preset:"Desktop",
+  blockValuePx:24,
+  rcrPx:24,
+  rawWxPx:20,
+  wxAlertPx:22,
+  notamPx:20,
+  labelPx:14,
+  footerPx:18,
+  rawLine:1.45,
+  notamLine:1.38,
+  strongPulse:true
+};
+
+const presets={
+  "TV 100":{blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,strongPulse:true},
+  "TV 90":{blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,strongPulse:true},
+  "Desktop":{blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,strongPulse:true},
+  "Getac":{blockValuePx:22,rcrPx:25,rawWxPx:18,wxAlertPx:22,notamPx:18,labelPx:13,footerPx:16,rawLine:1.38,notamLine:1.32,strongPulse:true},
+  "Phone":{blockValuePx:20,rcrPx:24,rawWxPx:17,wxAlertPx:21,notamPx:17,labelPx:13,footerPx:15,rawLine:1.42,notamLine:1.36,strongPulse:true}
+};
+
+function load(){
+  try{return Object.assign({},defaults,JSON.parse(localStorage.getItem(KEY)||"{}"))}
+  catch(e){return Object.assign({},defaults)}
+}
+
+function setInputs(s){
+  Object.keys(defaults).forEach(k=>{
+    const el=document.getElementById(k);
+    if(!el)return;
+    if(el.type==="checkbox")el.checked=!!s[k];
+    else el.value=s[k];
+  });
+  updateLabels();
+  updatePreview();
+}
+
+function collect(){
+  const s={};
+  Object.keys(defaults).forEach(k=>{
+    const el=document.getElementById(k);
+    if(!el)return;
+    if(el.type==="checkbox")s[k]=el.checked;
+    else s[k]=Number(el.value);
+  });
+  return Object.assign(load(),s);
+}
+
+function save(){
+  const s=collect();
+  localStorage.setItem(KEY,JSON.stringify(s));
+  try{
+    new BroadcastChannel("kmemDisplaySettings").postMessage({type:"settings-updated",settings:s});
+  }catch(e){}
+  updatePreview();
+}
+
+function setPreset(name){
+  const s=Object.assign({},load(),presets[name],{preset:name});
+  localStorage.setItem(KEY,JSON.stringify(s));
+  setInputs(s);
+  save();
+}
+
+function resetDefaults(){
+  localStorage.setItem(KEY,JSON.stringify(defaults));
+  setInputs(defaults);
+  save();
+}
+
+function updateLabels(){
+  ["blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","labelPx","footerPx"].forEach(id=>{
+    const el=document.getElementById(id);
+    const v=document.getElementById(id+"Val");
+    if(el&&v)v.textContent=el.value+" px";
+  });
+  ["rawLine","notamLine"].forEach(id=>{
+    const el=document.getElementById(id);
+    const v=document.getElementById(id+"Val");
+    if(el&&v)v.textContent=Number(el.value).toFixed(2);
+  });
+}
+
+function updatePreview(){
+  const s=collect();
+  document.getElementById("previewBlock").style.fontSize=s.blockValuePx+"px";
+  document.getElementById("previewRcr").style.fontSize=s.rcrPx+"px";
+  document.getElementById("previewBwc").style.fontSize=s.blockValuePx+"px";
+  document.getElementById("previewRaw").style.fontSize=s.rawWxPx+"px";
+  document.getElementById("previewRaw").style.lineHeight=s.rawLine;
+  document.getElementById("previewNotam").style.fontSize=s.notamPx+"px";
+  document.getElementById("previewNotam").style.lineHeight=s.notamLine;
+  updateLabels();
+}
+
+function openBoard(){
+  window.open("./index.html?displayTune=1","_blank");
+}
+
+document.querySelectorAll("input").forEach(el=>{
+  el.addEventListener("input",()=>{
+    updateLabels();
+    updatePreview();
+    save();
+  });
+});
+
+setInputs(load());
+</script>
+</body>
+</html>

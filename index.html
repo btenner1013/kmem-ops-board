@@ -3390,6 +3390,524 @@ html,body{
   font-weight:1000 !important;
 }
 
+
+/* Phase 57 — full TAF, forced wind spacing, compact RCR */
+/* Phase 60 keeps full METAR/TAF and adds larger WX ALERT + RCC code colors. */
+@media (min-width:901px){
+  .raw{
+    font-size:clamp(.76rem,.88vw,1.08rem) !important;
+    line-height:1.30 !important;
+    padding-top:5px !important;
+  }
+}
+
+@media (min-width:901px) and (max-height:900px){
+  .raw{
+    font-size:clamp(.68rem,.78vw,.98rem) !important;
+    line-height:1.22 !important;
+    padding-top:4px !important;
+  }
+}
+
+.wind-spaced-final{
+  display:block !important;
+  text-align:center !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  letter-spacing:0 !important;
+  word-spacing:0 !important;
+  font-size:clamp(1.00rem,1.12vw,1.42rem) !important;
+  line-height:.98 !important;
+}
+
+.wind-spaced-final .wind-at-final,
+.wind-spaced-final .wind-gap-final{
+  display:inline !important;
+  margin:0 !important;
+  padding:0 !important;
+  letter-spacing:0 !important;
+}
+
+.wind-spaced-final .wind-gust-final{
+  margin-left:0 !important;
+}
+
+#rcr{
+  font-size:clamp(.92rem,1.02vw,1.28rem) !important;
+  line-height:1.05 !important;
+  white-space:normal !important;
+}
+
+
+/* Phase 60 — larger WX alert, RCC color by actual code, tighter raw METAR/TAF */
+#wxTrendBox .trend-value,
+#tafTrend.wx-alert-compact,
+#tafTrend.alert-yellow,
+#tafTrend.alert-red,
+#tafTrend.alert-blue{
+  font-size:clamp(1.02rem,1.24vw,1.56rem) !important;
+  line-height:1.02 !important;
+  font-weight:1000 !important;
+  letter-spacing:.005em !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+}
+
+#rcr.rcr-good{
+  color:var(--ops-green) !important;
+  animation:none !important;
+}
+
+#rcr.rcr-caution{
+  color:var(--warning) !important;
+  animation:none !important;
+}
+
+#rcr.rcr-poor{
+  color:var(--closed) !important;
+  animation:blink 1s step-start infinite !important;
+}
+
+@media (min-width:901px){
+  .raw{
+    font-size:clamp(.72rem,.84vw,1.03rem) !important;
+    line-height:1.25 !important;
+  }
+}
+
+@media (min-width:901px) and (max-height:900px){
+  .raw{
+    font-size:clamp(.66rem,.76vw,.94rem) !important;
+    line-height:1.18 !important;
+  }
+}
+
+
+
+/* Phase 61 — larger raw text, stronger WX pulse, full mobile raw text, 8-point wind direction arrows */
+@keyframes pulseStrong{
+  0%{opacity:1;transform:scale(1);text-shadow:0 0 0 currentColor}
+  50%{opacity:.72;transform:scale(1.05);text-shadow:0 0 10px currentColor,0 0 22px currentColor}
+  100%{opacity:1;transform:scale(1);text-shadow:0 0 0 currentColor}
+}
+
+.alert-pulse{
+  animation:pulseStrong .82s ease-in-out infinite !important;
+}
+
+.lightning-pulse{
+  animation:pulseStrong .95s ease-in-out infinite !important;
+}
+
+.wx-alert-compact{
+  font-size:clamp(1.02rem,1.18vw,1.40rem) !important;
+  line-height:1.02 !important;
+  font-weight:1000 !important;
+}
+
+.raw{
+  font-size:clamp(1.00rem,1.10vw,1.34rem) !important;
+  line-height:1.42 !important;
+}
+
+@media (min-width:901px){
+  .raw{
+    font-size:clamp(1.12rem,1.22vw,1.48rem) !important;
+    line-height:1.46 !important;
+  }
+}
+
+@media (hover:none) and (pointer:coarse){
+  .weather-panel,
+  .raw{
+    overflow:visible !important;
+    max-height:none !important;
+  }
+
+  .raw{
+    flex:0 0 auto !important;
+    font-size:clamp(.84rem,2.95vw,1.06rem) !important;
+    line-height:1.42 !important;
+    white-space:pre-wrap !important;
+  }
+
+  .wx-alert-compact{
+    font-size:clamp(.96rem,3.25vw,1.18rem) !important;
+    line-height:1.06 !important;
+  }
+}
+
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .raw{
+    font-size:clamp(.80rem,1.90vw,1.00rem) !important;
+    line-height:1.36 !important;
+  }
+}
+
+.wind-dir-mark{
+  display:inline-block !important;
+  color:#f2f2f2 !important;
+  font-weight:1000 !important;
+  font-size:1.02em !important;
+  line-height:1 !important;
+  margin:0 .10em 0 .06em !important;
+  text-shadow:0 0 4px currentColor !important;
+}
+
+
+/* Phase 62 — bump METAR/TAF and NOTAM readability */
+.raw{
+  font-size:clamp(1.06rem,1.16vw,1.42rem) !important;
+  line-height:1.48 !important;
+}
+
+.mil-notam-crawl{
+  font-size:clamp(1.02rem,1.14vw,1.42rem) !important;
+  line-height:1.42 !important;
+}
+
+.mil-notam-title{
+  font-size:clamp(1.06rem,1.18vw,1.54rem) !important;
+}
+
+.mil-notam-status{
+  font-size:clamp(.94rem,1.04vw,1.30rem) !important;
+}
+
+.mil-notam-cao{
+  font-size:clamp(.82rem,.92vw,1.12rem) !important;
+}
+
+/* TV / normal desktop */
+@media (min-width:901px){
+  .raw{
+    font-size:clamp(1.18rem,1.28vw,1.58rem) !important;
+    line-height:1.50 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(1.12rem,1.24vw,1.54rem) !important;
+    line-height:1.44 !important;
+  }
+}
+
+/* Split-screen / shorter desktop windows: still larger, but not so big it clips badly */
+@media (hover:hover) and (pointer:fine) and (min-width:901px) and (max-height:760px){
+  .raw{
+    font-size:clamp(.92rem,1.02vw,1.18rem) !important;
+    line-height:1.38 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.88rem,.98vw,1.14rem) !important;
+    line-height:1.32 !important;
+  }
+}
+
+/* Phone / touch devices: full METAR and full TAF remain visible; just a hair larger */
+@media (hover:none) and (pointer:coarse){
+  .raw{
+    font-size:clamp(.88rem,3.10vw,1.12rem) !important;
+    line-height:1.45 !important;
+    overflow:visible !important;
+    max-height:none !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.84rem,2.95vw,1.08rem) !important;
+    line-height:1.38 !important;
+  }
+
+  .mil-notam-title{
+    font-size:clamp(.92rem,3.35vw,1.16rem) !important;
+  }
+
+  .mil-notam-status{
+    font-size:clamp(.86rem,3.15vw,1.08rem) !important;
+  }
+
+  .mil-notam-cao{
+    font-size:clamp(.78rem,2.85vw,.98rem) !important;
+  }
+}
+
+/* Phone landscape: avoid overgrowing while keeping full text readable */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .raw{
+    font-size:clamp(.82rem,2.0vw,1.04rem) !important;
+    line-height:1.38 !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.76rem,1.95vw,.98rem) !important;
+    line-height:1.32 !important;
+  }
+}
+
+
+/* Phase 63 — phone full TAF, VCTY showers wording, clean RCC display */
+@media (hover:none) and (pointer:coarse){
+  html,
+  body{
+    height:auto !important;
+    min-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  .board{
+    height:auto !important;
+    min-height:100vh !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+
+  .top,
+  .middle,
+  .bottom{
+    display:flex !important;
+    flex-direction:column !important;
+    height:auto !important;
+    min-height:0 !important;
+  }
+
+  .weather-panel{
+    height:auto !important;
+    min-height:0 !important;
+    overflow:visible !important;
+  }
+
+  .raw{
+    display:block !important;
+    flex:0 0 auto !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+    white-space:pre-wrap !important;
+    overflow-wrap:anywhere !important;
+  }
+}
+
+
+/* Phase 64 — control-panel-driven display tuning */
+.control-size-target{
+  transition:font-size .12s ease, line-height .12s ease;
+}
+
+
+
+/* Phase 66 — in-board quick links, NOTAM-strip QR, clean RCC display */
+.zulu-panel,
+.clock-panel,
+.panel{
+  position:relative;
+}
+
+.board-quick-links-phase66{
+  position:absolute;
+  top:8px;
+  right:10px;
+  z-index:60;
+  display:flex;
+  gap:7px;
+  align-items:center;
+}
+
+.board-quick-link-phase66{
+  width:34px;
+  height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:2px solid var(--border);
+  background:rgba(0,0,0,.72);
+  color:white;
+  text-decoration:none;
+  border-radius:6px;
+  font-size:19px;
+  line-height:1;
+  box-shadow:0 0 10px rgba(0,255,136,.35);
+}
+
+.board-quick-link-phase66:hover{
+  background:rgba(0,255,136,.18);
+  transform:scale(1.04);
+}
+
+.mil-notams,
+.mil-notam-panel,
+.bottom-panel{
+  position:relative !important;
+}
+
+.board-qr-phase66{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:50;
+  width:68px;
+  height:68px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:2px solid var(--border);
+  background:#fff;
+  padding:3px;
+  border-radius:4px;
+  box-shadow:0 0 10px rgba(0,255,136,.35);
+}
+
+.board-qr-phase66 img{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+.board-qr-phase66-fallback{
+  color:#000;
+  font-weight:1000;
+  font-family:Arial,sans-serif;
+  font-size:.85rem;
+}
+
+.board-qr-label-phase66{
+  position:absolute;
+  right:10px;
+  top:calc(50% - 48px);
+  z-index:51;
+  color:var(--ops-green);
+  background:rgba(0,0,0,.78);
+  border:1px solid rgba(0,255,136,.45);
+  font-size:clamp(.52rem,.58vw,.70rem);
+  line-height:1;
+  padding:3px 5px;
+  font-weight:1000;
+  letter-spacing:.04em;
+  white-space:nowrap;
+}
+
+@media (min-width:901px){
+  .mil-notam-crawl{
+    padding-right:92px !important;
+  }
+}
+
+@media (max-width:900px), (hover:none) and (pointer:coarse){
+  .board-quick-links-phase66{
+    top:6px;
+    right:6px;
+    gap:5px;
+  }
+
+  .board-quick-link-phase66{
+    width:30px;
+    height:30px;
+    font-size:17px;
+  }
+
+  .board-qr-phase66,
+  .board-qr-label-phase66{
+    display:none !important;
+  }
+}
+
+
+/* Phase 67 — larger QR and phone full TAF fix */
+.board-qr-phase66{
+  width:92px !important;
+  height:92px !important;
+  right:12px !important;
+}
+
+.board-qr-label-phase66{
+  right:12px !important;
+  top:calc(50% - 60px) !important;
+  font-size:clamp(.58rem,.64vw,.78rem) !important;
+}
+
+@media (min-width:901px){
+  .mil-notam-crawl{
+    padding-right:120px !important;
+  }
+}
+
+/* Phone / narrow screen: let weather text expand instead of being trapped in the TV layout */
+@media (max-width:900px){
+  html,
+  body{
+    height:auto !important;
+    min-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  .board{
+    height:auto !important;
+    min-height:100vh !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:visible !important;
+  }
+
+  .top,
+  .middle,
+  .bottom,
+  .weather-panel,
+  .panel{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .middle{
+    display:flex !important;
+    flex-direction:column !important;
+  }
+
+  .weather-panel{
+    order:1 !important;
+  }
+
+  .radar-panel{
+    order:2 !important;
+  }
+
+  .raw{
+    display:block !important;
+    flex:0 0 auto !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+    white-space:pre-wrap !important;
+    overflow-wrap:anywhere !important;
+    word-break:normal !important;
+    font-size:clamp(.84rem,3.00vw,1.08rem) !important;
+    line-height:1.42 !important;
+  }
+
+  .board-qr-phase66,
+  .board-qr-label-phase66{
+    display:none !important;
+  }
+}
+
+/* Very narrow phone portrait: keep full TAF, slightly tighter so it remains readable */
+@media (max-width:520px){
+  .raw{
+    font-size:clamp(.78rem,3.25vw,1.00rem) !important;
+    line-height:1.36 !important;
+  }
+
+  .wx-alert-compact{
+    font-size:clamp(.92rem,3.7vw,1.15rem) !important;
+  }
+}
+
 </style>
 </head>
 
@@ -3776,6 +4294,14 @@ function compactWxAlertDisplay(value){
   let text=safeValue(value,"NONE").toString();
 
   text=text.replace(/TSRA\s+ACTIVE\s+NOW/ig,"TSRA ACTIVE");
+  text=text.replace(/THUNDERSTORM\s+VICINITY\s+POSSIBLE/ig,"VCTY TSTMS POSSIBLE");
+  text=text.replace(/THUNDERSTORMS\s+VICINITY\s+POSSIBLE/ig,"VCTY TSTMS POSSIBLE");
+  text=text.replace(/VICINITY\s+THUNDERSTORMS\s+POSSIBLE/ig,"VCTY TSTMS POSSIBLE");
+  text=text.replace(/VCTS\s+POSSIBLE/ig,"VCTY TSTMS POSSIBLE");
+  text=text.replace(/SHOWERS\s+VICINITY\s+POSSIBLE/ig,"VCTY SHOWERS POSSIBLE");
+  text=text.replace(/SHOWER\s+VICINITY\s+POSSIBLE/ig,"VCTY SHOWERS POSSIBLE");
+  text=text.replace(/VICINITY\s+SHOWERS\s+POSSIBLE/ig,"VCTY SHOWERS POSSIBLE");
+  text=text.replace(/VCSH\s+POSSIBLE/ig,"VCTY SHOWERS POSSIBLE");
   text=text.replace(/LIGHTNING\s+WITHIN\s+5\s+NM/ig,"LTG WITHIN 5NM");
   text=text.replace(/\s+/g," ").trim();
 
@@ -3785,18 +4311,7 @@ function compactWxAlertDisplay(value){
 function formatRawWeatherText(metar,taf){
   const metarText=(metar||"METAR unavailable").toString().trim();
   const tafText=(taf||"TAF unavailable").toString().trim();
-  const tafLines=tafText.split(/\n+/).map(line=>line.trim()).filter(Boolean);
-
-  const maxTafLines=2;
-  let visibleTaf=tafLines;
-
-  if(tafLines.length>maxTafLines){
-    const more=tafLines.length-maxTafLines;
-    visibleTaf=tafLines.slice(0,maxTafLines);
-    visibleTaf.push(`... +${more} MORE LINE${more>1?"S":""}`);
-  }
-
-  return metarText+"\n\n"+visibleTaf.join("\n  ");
+  return metarText+"\n\n"+tafText;
 }
 
 function formatTrendArrow(trend,trendText){
@@ -3908,12 +4423,23 @@ function windTrendClass(data){
   return "wind-steady";
 }
 
+
+function windDirArrowFromDegrees(dirText){
+  const text=(dirText||"").toString().trim().toUpperCase();
+  if(!/^\d{3}$/.test(text))return "";
+  const deg=parseInt(text,10)%360;
+  const dirs=["↑","↗","→","↘","↓","↙","←","↖"];
+  const idx=Math.round(deg/45)%8;
+  return dirs[idx]||"";
+}
+
 function setWindDisplay(data){
   const el=document.getElementById("wind");
   if(!el)return;
 
   const rawDisplay=(data.windDisplay||data.windRaw||"--").toString().toUpperCase();
-  const display=formatWindDisplay(rawDisplay);
+  const display=formatWindDisplay(rawDisplay).replace(/[↑↓←→↗↘↙↖]/g,"").trim();
+  const dirArrow=(display.match(/^([A-Z0-9]{3})\s@/) ? windDirArrowFromDegrees(display.match(/^([A-Z0-9]{3})\s@/)[1]) : "");
   const trend=(data.windTrendText||data.windTrendClass||data.windTrend||"STEADY").toString().toUpperCase();
 
   const cell=el.closest(".ops-box")||el.parentElement;
@@ -3933,14 +4459,12 @@ function setWindDisplay(data){
     trendClass="wind-trend-decreasing";
   }
 
-  const labelText=`WIND ${trendText}`;
-
   if(label){
     label.className="ops-label wind-label-trend";
     label.innerHTML=`<span class="wind-title-base">WIND</span> <span class="${trendClass}">${trendText}</span>`;
   }
 
-  el.className="ops-value wind-compact-final";
+  el.className="ops-value wind-compact-final wind-spaced-final";
   el.textContent="";
 
   if(display==="--"||display===""){
@@ -3949,15 +4473,12 @@ function setWindDisplay(data){
   }
 
   if(display==="CALM"){
-    const calmSpan=document.createElement("span");
-    calmSpan.className="wind-base-final";
-    calmSpan.textContent="CALM";
-    el.appendChild(calmSpan);
-    el.title=labelText;
+    el.innerHTML='<span class="wind-base-final">CALM</span>';
+    el.title=`WIND ${trendText}: CALM`;
     return;
   }
 
-  const match=display.match(/^([A-Z0-9]{3})\s@\s(\d{2})(?:\s(G\d{2}))?$/);
+  const match=display.match(/^([A-Z0-9]{3})\s*@\s(\d{2})(?:\s(G\d{2}))?$/);
 
   if(match){
     const dir=match[1];
@@ -3965,40 +4486,20 @@ function setWindDisplay(data){
     const gust=match[3]||"";
     const speedNum=parseInt(speed,10);
     const gustNum=gust?parseInt(gust.replace("G",""),10):null;
+    const speedClass=(speedNum>=20) ? "wind-speed-final wind-speed-high-final" : "wind-speed-final wind-speed-normal-final";
+    const gustClass=(gust && gustNum>=25) ? "wind-gust-final wind-gust-high-final" : "wind-gust-final wind-gust-normal-final";
 
-    const dirSpan=document.createElement("span");
-    dirSpan.className="wind-base-final";
-    dirSpan.textContent=dir;
-    el.appendChild(dirSpan);
-
-    const atSpan=document.createElement("span");
-    atSpan.className="wind-at-final";
-    atSpan.textContent="@";
-    el.appendChild(atSpan);
-
-    const speedSpan=document.createElement("span");
-    speedSpan.className=(speedNum>=20)
-      ? "wind-speed-final wind-speed-high-final"
-      : "wind-speed-final wind-speed-normal-final";
-    speedSpan.textContent=speed;
-    el.appendChild(speedSpan);
-
-    if(gust){
-      const gustSpan=document.createElement("span");
-      gustSpan.className=(gustNum>=25)
-        ? "wind-gust-final wind-gust-high-final"
-        : "wind-gust-final wind-gust-normal-final";
-      gustSpan.textContent=gust;
-      el.appendChild(gustSpan);
-    }
+    el.innerHTML =
+      `<span class="wind-base-final">${dir}</span>` +
+      (dirArrow ? `<span class="wind-dir-mark">${dirArrow}</span>` : "") +
+      `<span class="wind-at-final">&nbsp;@&nbsp;</span>` +
+      `<span class="${speedClass}">${speed}</span>` +
+      (gust ? `<span class="wind-gap-final">&nbsp;</span><span class="${gustClass}">${gust}</span>` : "");
   }else{
-    const fallbackSpan=document.createElement("span");
-    fallbackSpan.className="wind-base-final";
-    fallbackSpan.textContent=display.replace(/[↑↓←→↗↘↙↖]/g,"");
-    el.appendChild(fallbackSpan);
+    el.innerHTML=`<span class="wind-base-final">${safeValue(display)}</span>`;
   }
 
-  el.title=`${labelText}: ${display}`;
+  el.title=`WIND ${trendText}: ${display}`;
 }
 
 function setTempDpDisplay(data){
@@ -4132,23 +4633,42 @@ function setLightningDisplay(value,data={}){
   el.title=data.lightningLogText||`Lightning source: ${data.lightningSource||"--"}`;
 }
 
+function rcrClassFromValue(value,code,severity){
+  const text=`${value||""} ${code||""}`.toUpperCase();
+  const m=text.match(/\b([0-6])\/([0-6])\/([0-6])\b/);
+
+  if(m){
+    const nums=[parseInt(m[1],10),parseInt(m[2],10),parseInt(m[3],10)];
+    const worst=Math.min(...nums);
+
+    // Board color convention:
+    // DRY / 6-6-6 = green. 5/5/5 wet or 4s = yellow. 3 or below = red.
+    if(worst>=6)return "rcr-good";
+    if(worst>=4)return "rcr-caution";
+    return "rcr-poor";
+  }
+
+  if(text.includes("DRY"))return "rcr-good";
+
+  const sev=(severity||"good").toLowerCase();
+  if(sev==="poor"||sev==="red")return "rcr-poor";
+  if(sev==="caution"||sev==="yellow"||sev==="fair")return "rcr-caution";
+  return "rcr-good";
+}
+
 function setRcrDisplay(data){
   const el=document.getElementById("rcr");
-  const value=data.rcrText||"DRY / NONE RPTD";
+  const value=data.rcrText||"DRY";
+  const displayValue=String(value).replace(/^RCC\s+/i,"").trim();
   const severity=(data.rcrSeverity||"good").toLowerCase();
-
-  el.className="ops-value";
-
-  if(severity==="poor")el.classList.add("rcr-poor");
-  else if(severity==="caution")el.classList.add("rcr-caution");
-  else el.classList.add("rcr-good");
-
-  el.textContent=value;
-
   const source=data.rcrSource||"";
   const raw=data.rcrRaw||"";
   const code=data.rcrCode||"--";
-  el.title=`RCR/RCC: ${value} | Code: ${code} | Source: ${source} | Raw: ${raw}`;
+
+  el.className="ops-value";
+  el.classList.add(rcrClassFromValue(value,code,severity));
+  el.textContent=displayValue;
+  el.title=`RCR/RCC: ${value} | Display: ${displayValue} | Code: ${code} | Source: ${source} | Raw: ${raw}`;
 }
 
 function tafFlightCategory(taf){
@@ -5025,6 +5545,249 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
   fetchManualAlert();
   setInterval(fetchManualAlert,MANUAL_ALERT_POLL_MS);
+})();
+</script>
+
+
+<script>
+/* Phase 64 — display tuning bridge.
+   Reads localStorage from display-control.html and applies it live. */
+(function(){
+  const STORAGE_KEY="kmemOpsDisplaySettingsV1";
+
+  const DEFAULTS={
+    preset:"Desktop",
+    blockValuePx:24,
+    rcrPx:24,
+    rawWxPx:20,
+    wxAlertPx:22,
+    notamPx:20,
+    labelPx:14,
+    footerPx:18,
+    rawLine:1.45,
+    notamLine:1.38,
+    strongPulse:true
+  };
+
+  function readSettings(){
+    try{
+      const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
+      return Object.assign({},DEFAULTS,saved||{});
+    }catch(e){
+      return Object.assign({},DEFAULTS);
+    }
+  }
+
+  function px(value,min,max,fallback){
+    const n=Number(value);
+    if(!Number.isFinite(n))return fallback;
+    return Math.max(min,Math.min(max,n));
+  }
+
+  function applyDisplaySettings(){
+    const s=readSettings();
+
+    const blockValue=px(s.blockValuePx,14,42,DEFAULTS.blockValuePx);
+    const rcr=px(s.rcrPx,14,42,DEFAULTS.rcrPx);
+    const raw=px(s.rawWxPx,10,34,DEFAULTS.rawWxPx);
+    const wx=px(s.wxAlertPx,12,38,DEFAULTS.wxAlertPx);
+    const notam=px(s.notamPx,10,34,DEFAULTS.notamPx);
+    const label=px(s.labelPx,9,24,DEFAULTS.labelPx);
+    const footer=px(s.footerPx,10,28,DEFAULTS.footerPx);
+    const rawLine=Math.max(1.10,Math.min(1.80,Number(s.rawLine)||DEFAULTS.rawLine));
+    const notamLine=Math.max(1.10,Math.min(1.80,Number(s.notamLine)||DEFAULTS.notamLine));
+    const pulse=s.strongPulse!==false;
+
+    const css=`
+      .detail-value,
+      .ops-value{
+        font-size:${blockValue}px !important;
+      }
+
+      .detail-label,
+      .ops-label,
+      .trend-label{
+        font-size:${label}px !important;
+      }
+
+      #rcr{
+        font-size:${rcr}px !important;
+        line-height:1.05 !important;
+      }
+
+      #tafTrend.wx-alert-compact,
+      .wx-alert-compact{
+        font-size:${wx}px !important;
+        line-height:1.05 !important;
+      }
+
+      .raw{
+        font-size:${raw}px !important;
+        line-height:${rawLine} !important;
+      }
+
+      .mil-notam-crawl{
+        font-size:${notam}px !important;
+        line-height:${notamLine} !important;
+      }
+
+      .footer{
+        font-size:${footer}px !important;
+      }
+
+      ${pulse ? `
+      .alert-pulse{
+        animation:pulseStrong .78s ease-in-out infinite !important;
+      }
+      .lightning-pulse{
+        animation:pulseStrong .88s ease-in-out infinite !important;
+      }` : `
+      .alert-pulse,
+      .lightning-pulse{
+        animation:none !important;
+      }`}
+    `;
+
+    let style=document.getElementById("displayTuningStyle");
+    if(!style){
+      style=document.createElement("style");
+      style.id="displayTuningStyle";
+      document.head.appendChild(style);
+    }
+    if(style.textContent!==css)style.textContent=css;
+  }
+
+  window.applyDisplaySettings=applyDisplaySettings;
+  window.addEventListener("storage",function(e){
+    if(e.key===STORAGE_KEY)applyDisplaySettings();
+  });
+
+  try{
+    const channel=new BroadcastChannel("kmemDisplaySettings");
+    channel.onmessage=function(event){
+      if(event && event.data && event.data.type==="settings-updated"){
+        applyDisplaySettings();
+      }
+    };
+  }catch(e){}
+
+  document.addEventListener("DOMContentLoaded",applyDisplaySettings);
+  setInterval(applyDisplaySettings,1500);
+})();
+</script>
+
+
+
+
+
+<script>
+/* Phase 66 — add in-board quick links and NOTAM-strip QR */
+(function(){
+  const DISPLAY_CONTROL_URL="./display_control.html";
+  const HAZARD_CONTROL_URL="./control.html";
+  const BOARD_URL="https://btenner1013.github.io/kmem-ops-board/";
+  const QR_DATA_URI="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJQAAACUCAIAAAD6XpeDAAADs0lEQVR4nO2dQa7bMAwFm6L3v/LvVl0QIEtS8SQzS8eRBT8QD5RI+fXz8/NLmPx+9wTk/1E8MIoHRvHAKB4YxQOjeGD+RD+8Xq/xh3VyynM+U+NERONn5nDzvRl5YBQPjOKBCT3vZNtjMvdn5lD973k9+m/kcxn/235vRh4YxQOjeGBSnnfSyZMy40S+UvWe6viZuXVyzan3dmLkgVE8MIoHpux5N6l6WOZ6dX2y6sE3MfLAKB4YxQPzCM+rrhl29sxu7sNtY+SBUTwwigem7HnbOU1n/HetqU7NrYqRB0bxwCgemJTn3cyBqrUhnb23zr5ghu33ZuSBUTwwigcm9Lybe1Sd2sgqnRqWaJzM9Q2MPDCKB0bxwKT686bynnOcTm1I1ZM6fQWdHoYq1m1+EYoHRvHAtGpYtmtPpvrHq8/q1HxGVH0x8ywjD4zigVE8MK9q3cfN3OsJZ8F08rmpPsIIIw+M4oFRPDBjnpd62EI/+0YdSqdvb8q/9bwPR/HAKB6Ylf28qg/dvH7SqWGZuqfjzUYeGMUDo3hgUnleaqBi31tnfW/K527mcxvvwcgDo3hgFA9M6HnvWq+L6JyfubF+u53Dubb54SgeGMUD09rP21hvjJ57spEjZu7ZPvPMXoUvQvHAKB6YVJ538q4c6KbXZnhC3mnkgVE8MIoHZv37eZne8+p/p65nnpWZ28m2F54YeWAUD4zigSnneRmm1gMzY07VsEz5UPSsaEz7874UxQOjeGBW9vMy45xsnFH5Lv/b8PgIIw+M4oFRPDCp/ryIKb+sPjczh6make1zajrnjhp5YBQPjOKBKfcqTOVqU/tqVbb7LrZ7BE+MPDCKB0bxwDyuP297/bPTM9551lSNzImRB0bxwCgemNZ3FTI8uQ8vM4ftsz07GHlgFA+M4oEpe17HS6bWSDPes/1Ng5Pq2ZsZn3Zt88NRPDCKB6b8nfSqH3Q87CadfHE7j4ww8sAoHhjFA9Oq26wS5WGZ+0+meiemzo/OzC1D9b9GHhjFA6N4YFo1LKkHXOyB2zhHbWqcjbM6jTwwigdG8cC09vMiNtY/M975rjNCt8+ejjDywCgeGMUDs163mSHjVRvnYVZrXjJsnOUWYeSBUTwwigfmEZ5XpVP3OLVXV73H/jz5B8UDo3hgyp431Rs+daZXZ/zo/o39wmrdZgYjD4zigVE8MCnP21iXu3k+9cZ5YBm2v/Nn5IFRPDCKByb1XQV5JkYeGMUDo3hgFA+M4oFRPDCKB+YvUpQHTuOdJukAAAAASUVORK5CYII=";
+
+  function findZPanel(){
+    const candidates=[...document.querySelectorAll(".panel,.clock-panel,.top > *")];
+    for(const el of candidates){
+      const txt=(el.textContent||"").toUpperCase();
+      if(txt.includes("ZULU") || txt.includes("UTC DATE"))return el;
+    }
+    return document.body;
+  }
+
+  function addQuickLinks(){
+    if(document.getElementById("boardQuickLinksPhase66"))return;
+
+    const target=findZPanel();
+    target.classList.add("zulu-panel");
+
+    const wrap=document.createElement("div");
+    wrap.id="boardQuickLinksPhase66";
+    wrap.className="board-quick-links-phase66";
+
+    const display=document.createElement("a");
+    display.className="board-quick-link-phase66";
+    display.href=DISPLAY_CONTROL_URL;
+    display.target="_blank";
+    display.title="Display control panel";
+    display.setAttribute("aria-label","Display control panel");
+    display.textContent="⚙️";
+
+    const hazard=document.createElement("a");
+    hazard.className="board-quick-link-phase66";
+    hazard.href=HAZARD_CONTROL_URL;
+    hazard.target="_blank";
+    hazard.title="Hazard / lightning control panel";
+    hazard.setAttribute("aria-label","Hazard and lightning control panel");
+    hazard.textContent="⚡";
+
+    wrap.appendChild(display);
+    wrap.appendChild(hazard);
+    target.appendChild(wrap);
+  }
+
+  function findNotamPanel(){
+    const candidates=[
+      ...document.querySelectorAll(".mil-notam-panel,.mil-notams,.bottom-panel,.bottom > *")
+    ];
+    for(const el of candidates){
+      const txt=(el.textContent||"").toUpperCase();
+      if(txt.includes("KMEM MIL NOTAMS") || txt.includes("MIL NOTAMS"))return el;
+    }
+    return null;
+  }
+
+  function addBoardQr(){
+    const panel=findNotamPanel();
+    if(!panel || document.getElementById("boardQrPhase66"))return;
+
+    const label=document.createElement("div");
+    label.className="board-qr-label-phase66";
+    label.textContent="BOARD QR";
+
+    const link=document.createElement("a");
+    link.id="boardQrPhase66";
+    link.className="board-qr-phase66";
+    link.href=BOARD_URL;
+    link.target="_blank";
+    link.title="Open public KMEM Ops Board";
+
+    if(QR_DATA_URI){
+      const img=document.createElement("img");
+      img.alt="QR code for KMEM Ops Board";
+      img.src=QR_DATA_URI;
+      link.appendChild(img);
+    }else{
+      const fallback=document.createElement("span");
+      fallback.className="board-qr-phase66-fallback";
+      fallback.textContent="QR";
+      link.appendChild(fallback);
+    }
+
+    panel.appendChild(label);
+    panel.appendChild(link);
+  }
+
+  function cleanRccText(){
+    const el=document.getElementById("rcr");
+    if(!el)return;
+    el.textContent=(el.textContent||"").replace(/^RCC\s+/i,"").trim();
+  }
+
+  function initPhase66(){
+    addQuickLinks();
+    addBoardQr();
+    cleanRccText();
+    setInterval(cleanRccText,1500);
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",initPhase66);
+  }else{
+    initPhase66();
+  }
 })();
 </script>
 
