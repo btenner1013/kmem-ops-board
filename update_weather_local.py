@@ -1843,6 +1843,12 @@ LIGHTNING_DIRECTIONS = {
 
 
 def normalize_lightning_direction(direction):
+    """
+    Normalize lightning direction text from METAR/ATIS.
+
+    Supports normal quadrants plus ATIS/METAR hyphenated ranges:
+      NE-SW, SW-W, NE-SW, N-E, etc.
+    """
     text = (direction or "").upper().strip()
     text = text.replace("ALL QUADRANTS", "ALQDS")
     text = text.replace("ALL QUADS", "ALQDS")
@@ -1850,21 +1856,37 @@ def normalize_lightning_direction(direction):
     text = text.replace("ALLQUADS", "ALQDS")
     text = text.replace(" QUADRANTS", " QUADS")
     text = re.sub(r"\bAND\b", " ", text)
-    text = re.sub(r"[/,;]+", " ", text)
-    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"[,;]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
 
     if not text:
         return ""
 
-    if "ALQDS" in text or re.search(r"\bALL\b", text) and re.search(r"\b(QUADS|QUADRANTS)\b", text):
+    if "ALQDS" in text or (re.search(r"\bALL\b", text) and re.search(r"\b(QUADS|QUADRANTS)\b", text)):
         return "ALL QUADS"
+
+    valid = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
+
+    # Preserve hyphenated direction ranges as displayed by ATIS/METAR.
+    # Examples: NE-SW, SW-W, N-E.
+    ranges = []
+    for match in re.finditer(r"\b(N|NE|E|SE|S|SW|W|NW)\s*-\s*(N|NE|E|SE|S|SW|W|NW)\b", text):
+        item = f"{match.group(1)}-{match.group(2)}"
+        if item not in ranges:
+            ranges.append(item)
+
+    if ranges:
+        return "/".join(ranges)
+
+    # Treat slashes as separators only after preserving hyphenated ranges.
+    text = re.sub(r"[/]+", " ", text)
 
     parts = []
     for token in text.split():
         token = token.strip(".,;:()[]{}")
         if token in {"ALL", "QUADS", "QUADRANTS", "ALLQUADS"}:
             return "ALL QUADS"
-        if token in {"N", "NE", "E", "SE", "S", "SW", "W", "NW"} and token not in parts:
+        if token in valid and token not in parts:
             parts.append(token)
 
     if not parts:
@@ -1874,6 +1896,21 @@ def normalize_lightning_direction(direction):
 
 def extract_metar_ltg_dsnt_direction(metar):
     text = (metar or "").upper()
+
+    # Direct regex catches METAR remarks like:
+    #   LTGIC DSNT NE-SW
+    #   LTG DSNT SW-W
+    #   LTGCG DSNT N
+    match = re.search(
+        r"\bLTG[A-Z]*\s+DSNT\s+((?:N|NE|E|SE|S|SW|W|NW)(?:\s*-\s*(?:N|NE|E|SE|S|SW|W|NW))?(?:\s+(?:AND\s+)?(?:N|NE|E|SE|S|SW|W|NW)(?:\s*-\s*(?:N|NE|E|SE|S|SW|W|NW))?)*)\b",
+        text
+    )
+
+    if match:
+        direction = normalize_lightning_direction(match.group(1))
+        if direction:
+            return direction
+
     tokens = [token.strip(".,;:()[]{}=") for token in text.split()]
 
     for idx, token in enumerate(tokens):
@@ -1883,8 +1920,14 @@ def extract_metar_ltg_dsnt_direction(metar):
             collected = []
 
             for follow in tokens[idx + 2:idx + 8]:
-                if follow in LIGHTNING_DIRECTIONS or follow in {"ALL", "QUADS", "QUADRANTS", "ALLQUADS", "AND"}:
-                    collected.append(follow)
+                clean = follow.strip(".,;:()[]{}=")
+
+                if re.match(r"^(N|NE|E|SE|S|SW|W|NW)-(N|NE|E|SE|S|SW|W|NW)$", clean):
+                    collected.append(clean)
+                    continue
+
+                if clean in LIGHTNING_DIRECTIONS or clean in {"ALL", "QUADS", "QUADRANTS", "ALLQUADS", "AND"}:
+                    collected.append(clean)
                 else:
                     break
 
@@ -1892,7 +1935,6 @@ def extract_metar_ltg_dsnt_direction(metar):
             return direction or ""
 
     return ""
-
 
 def has_metar_field_thunder(metar):
     text = (metar or "").upper()
@@ -1914,11 +1956,14 @@ def has_metar_vcts(metar):
 def extract_atis_ltg_direction(atis_text):
     text = (atis_text or "").upper()
 
-    # Common spoken/text variants.
+    # Common ATIS/METAR variants:
+    #   OCNL LTGIC DSNT SW-W
+    #   LTG DSNT NE-SW
+    #   LIGHTNING DISTANT SW
     patterns = [
-        r"\bLTG\s+DSNT\s+([A-Z ]{1,18})",
-        r"\bLIGHTNING\s+DISTANT\s+([A-Z ]{1,18})",
-        r"\bDISTANT\s+LIGHTNING\s+([A-Z ]{1,18})"
+        r"\bLTG[A-Z]*\s+DSNT\s+((?:N|NE|E|SE|S|SW|W|NW)(?:\s*-\s*(?:N|NE|E|SE|S|SW|W|NW))?(?:\s+(?:AND\s+)?(?:N|NE|E|SE|S|SW|W|NW)(?:\s*-\s*(?:N|NE|E|SE|S|SW|W|NW))?)*)\b",
+        r"\bLIGHTNING\s+DISTANT\s+((?:N|NE|E|SE|S|SW|W|NW)(?:\s*-\s*(?:N|NE|E|SE|S|SW|W|NW))?)\b",
+        r"\bDISTANT\s+LIGHTNING\s+((?:N|NE|E|SE|S|SW|W|NW)(?:\s*-\s*(?:N|NE|E|SE|S|SW|W|NW))?)\b"
     ]
 
     for pattern in patterns:
@@ -1928,11 +1973,14 @@ def extract_atis_ltg_direction(atis_text):
             if direction:
                 return direction
 
-    if "LIGHTNING DISTANT" in text or "DISTANT LIGHTNING" in text or "LTG DSNT" in text:
+    if (
+        "LIGHTNING DISTANT" in text
+        or "DISTANT LIGHTNING" in text
+        or re.search(r"\bLTG[A-Z]*\s+DSNT\b", text)
+    ):
         return ""
 
     return ""
-
 
 def has_atis_vicinity_thunder(atis_text):
     text = (atis_text or "").upper()
@@ -2269,24 +2317,12 @@ def fetch_ahas_bwc(now_z):
 
 def sync_repo_before_update():
     """
-    Production safety guard.
-
-    Scheduled weather updates should NOT reset the entire repository because that can
-    erase uncommitted local code/display-control work if the Windows scheduled task
-    runs while you are editing files.
-
-    Code updates should be pulled manually with:
-        git pull --rebase origin main
-
-    This function intentionally does not run:
-        git fetch origin
-        git reset --hard origin/main
-
-    The updater will still write, commit, and push weather.json only.
+    Production safety:
+      Scheduled updater must not run "git reset --hard origin/main".
+      Code updates should be pulled manually so local uncommitted work is not erased.
     """
-    print("Production safety: skipping automatic git reset/pull before weather update.")
-    print("Manual code updates: run 'git pull --rebase origin main' when you are ready.")
-
+    print("Scheduled update: repo auto-reset disabled. Code updates are manual.")
+    return
 
 def text_is_bad(value):
     text = (value or "").upper().strip()
