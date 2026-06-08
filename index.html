@@ -4098,6 +4098,12 @@ html,body{
   }
 }
 
+
+/* Phase 84 — NOTAM effective-time display polish */
+.mil-notam-crawl{
+  white-space:pre-wrap !important;
+}
+
 </style>
 </head>
 
@@ -5567,6 +5573,41 @@ function formatRunwayClosureDisplay(items){
   return `RWY CLOSURE NOTAMS\n${lines.join("\n\n")}`;
 }
 
+
+/* Phase 84 — show NOTAM effective times in display crawl only.
+   Display-only: does not change RWY CLSD logic, MIL NOTAM count logic, or any weather behavior. */
+function stripCreatedTime(text){
+  return String(text||"")
+    .replace(/\s*CREATED:\s*.*$/i,"")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function compactMilNotamText(text){
+  let raw=stripCreatedTime(text);
+
+  // If the DAIP/full text repeats effective-time metadata after the operational sentence,
+  // keep the operational sentence first.
+  const m=raw.match(/^(.*?UNTIL\s+FURTHER\s+NOTICE)\b/i);
+  if(m)return m[1].trim();
+
+  return raw;
+}
+
+function formatNotamWithEffectiveTime(item,options){
+  const opts=options||{};
+  const number=notamNumberFromItem(item);
+  const raw=notamTextFromItem(item);
+  const body=opts.rwyClosure ? compactRunwayClosureText(raw) : compactMilNotamText(raw);
+  const eff=extractEffectiveRangeFromNotam(item,raw);
+
+  const lines=[];
+  if(number)lines.push(number);
+  if(body)lines.push(body);
+  if(eff)lines.push(eff);
+
+  return lines.join("\n").trim();
+}
 function setMilNotamsDisplay(data){
   const panel=document.getElementById("milNotamPanel");
   const status=document.getElementById("milNotamStatus");
@@ -5591,17 +5632,16 @@ function setMilNotamsDisplay(data){
   setCaoStatusDisplay(cao,updated,fetchStatus,rawStatus);
 
   /*
-    Use the full NOTAM text first.
-    Do not use displayText first because that field may be shortened with "...".
-    Phase 81 adds runway closure NOTAM display only; it does not change RWY CLSD box logic.
+    Phase 84:
+    - MIL NOTAMs display number, operational text, and EFF start-end when available.
+    - RWY closure NOTAMs display number, closure text, and EFF start-end when available.
+    - Display-only. Does not change RWY CLSD box behavior.
   */
   let scrollParts=[];
 
   if(items.length>0){
     const milText=items.map(item=>{
-      const number=item.number||item.id||"UNKNOWN";
-      const text=item.text||item.displayText||"";
-      return `${number}\n${text}`.trim();
+      return formatNotamWithEffectiveTime(item,{rwyClosure:false});
     }).filter(Boolean).join("\n\n");
 
     if(milText)scrollParts.push(milText);
@@ -5609,9 +5649,15 @@ function setMilNotamsDisplay(data){
     scrollParts.push(data.milNotamScrollText);
   }
 
-  const rwyClosureText=formatRunwayClosureDisplay(rwyClosureItems);
-  if(rwyClosureText){
-    scrollParts.push(rwyClosureText);
+  if(rwyClosureItems.length>0){
+    const rwyText=rwyClosureItems.map(item=>{
+      return formatNotamWithEffectiveTime({
+        number:item.number,
+        text:`${item.text} ${item.effective||""}`.trim()
+      },{rwyClosure:true});
+    }).filter(Boolean).join("\n\n");
+
+    if(rwyText)scrollParts.push(`RWY CLOSURE NOTAMS\n${rwyText}`);
   }
 
   const scrollText=scrollParts.filter(Boolean).join("\n\n");
@@ -5630,7 +5676,7 @@ function setMilNotamsDisplay(data){
     }
 
     crawl.textContent=scrollText;
-    crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"} | RWY closures display-only`;
+    crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"} | effective times display-only`;
     return;
   }
 
