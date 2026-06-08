@@ -5651,10 +5651,11 @@ function setMilNotamsDisplay(data){
 
   if(rwyClosureItems.length>0){
     const rwyText=rwyClosureItems.map(item=>{
-      return formatNotamWithEffectiveTime({
-        number:item.number,
-        text:`${item.text} ${item.effective||""}`.trim()
-      },{rwyClosure:true});
+      const lines=[];
+      if(item.number)lines.push(item.number);
+      if(item.text)lines.push(item.text);
+      if(item.effective)lines.push(item.effective);
+      return lines.join("\n").trim();
     }).filter(Boolean).join("\n\n");
 
     if(rwyText)scrollParts.push(`RWY CLOSURE NOTAMS\n${rwyText}`);

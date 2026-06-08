@@ -2368,6 +2368,174 @@ def summarize_mil_notams_for_scroll(items):
     return "  |  ".join(parts)
 
 
+
+
+def normalize_notam_time_for_export(value):
+    """
+    Keep NMS effective times in a consistent string that the board can format.
+    Accepts values like 202604221406, 2026-04-22T14:06:00Z, etc.
+    """
+    if value is None:
+        return ""
+
+    text = str(value).strip()
+
+    if not text:
+        return ""
+
+    # Already compact FAA/NMS style.
+    if re.match(r"^\d{10}$", text):
+        return text
+
+    parsed = parse_z_datetime(text)
+
+    if parsed:
+        return parsed.strftime("%Y%m%d%H%M")[2:]
+
+    # ISO without Z or with milliseconds.
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return parsed.strftime("%Y%m%d%H%M")[2:]
+    except Exception:
+        pass
+
+    return text
+
+
+def notam_text_blob(item):
+    if not isinstance(item, dict):
+        return str(item or "")
+
+    return " ".join([
+        str(item.get("text") or ""),
+        str(item.get("displayText") or ""),
+        str(item.get("rawText") or ""),
+        str(item.get("plainLanguage") or ""),
+        str(item.get("description") or "")
+    ]).strip()
+
+
+def is_runway_closure_notam_text(text):
+    compact = re.sub(r"\s+", " ", str(text or "").upper()).strip()
+
+    if not compact:
+        return False
+
+    # Runway closure only; keep taxiway-only closures out of this display list.
+    return bool(
+        re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\b.*\b(?:CLSD|CLOSED)\b", compact)
+        or re.search(r"\b(?:CLSD|CLOSED)\b.*\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\b", compact)
+    )
+
+
+def compact_runway_closure_text_for_export(text):
+    raw = re.sub(r"\s+", " ", str(text or "")).strip()
+    raw = re.sub(r"\s*CREATED:\s*.*$", "", raw, flags=re.I).strip()
+
+    # Prefer just the operational closure sentence/segment.
+    segments = [s.strip() for s in re.split(r"\.\s+|;\s+", raw) if s.strip()]
+
+    for segment in segments:
+        if re.search(r"\bRWY\b", segment, flags=re.I) and re.search(r"\b(?:CLSD|CLOSED)\b", segment, flags=re.I):
+            return re.sub(r"\s+", " ", segment).strip()
+
+    upper = raw.upper()
+    idx = upper.find("RWY")
+
+    if idx >= 0:
+        return raw[idx:idx + 160].strip()
+
+    return raw[:160].strip()
+
+
+def normalize_runway_closure_notams(raw, previous_data=None):
+    """
+    Normalizes runway-closure NOTAMs exported by the NMS script.
+
+    Display-only export. This does not affect ATIS-driven runway/flow data blocks.
+    """
+    raw = raw or {}
+
+    candidate_lists = [
+        raw.get("runwayClosureNotams"),
+        raw.get("rwyClosureNotams"),
+        raw.get("closureNotams"),
+        raw.get("airportNotams"),
+        raw.get("allNotams"),
+        raw.get("notams"),
+        raw.get("items")
+    ]
+
+    normalized = []
+    seen = set()
+
+    for items in candidate_lists:
+        if not isinstance(items, list):
+            continue
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
+            text_blob = notam_text_blob(item)
+
+            if not is_runway_closure_notam_text(text_blob):
+                continue
+
+            number = str(item.get("number") or item.get("id") or item.get("notamNumber") or "UNKNOWN").strip()
+            raw_text = str(item.get("rawText") or item.get("text") or item.get("displayText") or text_blob).strip()
+            text = compact_runway_closure_text_for_export(raw_text)
+
+            effective_start = normalize_notam_time_for_export(
+                item.get("effectiveStart")
+                or item.get("start")
+                or item.get("startTime")
+                or item.get("validFrom")
+                or item.get("effectiveFrom")
+                or item.get("begin")
+            )
+
+            effective_end = normalize_notam_time_for_export(
+                item.get("effectiveEnd")
+                or item.get("end")
+                or item.get("endTime")
+                or item.get("validTo")
+                or item.get("effectiveTo")
+            )
+
+            key = (number, text, effective_start, effective_end)
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            normalized.append({
+                "number": number,
+                "classification": item.get("classification") or "RWY_CLOSURE",
+                "severity": item.get("severity") or "red",
+                "text": text,
+                "displayText": text,
+                "effectiveStart": effective_start,
+                "effectiveEnd": effective_end,
+                "lastUpdated": item.get("lastUpdated") or item.get("updated") or "",
+                "source": item.get("source") or raw.get("source") or "FAA_NMS_STAGING",
+                "rawText": raw_text
+            })
+
+    if normalized:
+        return normalized
+
+    previous_data = previous_data or {}
+
+    previous = previous_data.get("runwayClosureNotams")
+
+    if isinstance(previous, list):
+        return previous
+
+    return []
+
+
 def normalize_mil_notams_output(raw, fetch_status="OK"):
     raw = raw or {}
     items = raw.get("milNotams") or raw.get("items") or []
@@ -2428,7 +2596,9 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         "milNotamFetchStatus": fetch_status,
         "milNotamRawStatus": raw.get("status") or "UNKNOWN",
         "ficonNotams": raw.get("ficonNotams") or [],
-        "ficonNotamCount": raw.get("ficonNotamCount") or len(raw.get("ficonNotams") or [])
+        "ficonNotamCount": raw.get("ficonNotamCount") or len(raw.get("ficonNotams") or []),
+        "runwayClosureNotams": normalize_runway_closure_notams(raw),
+        "runwayClosureNotamCount": len(normalize_runway_closure_notams(raw))
     }
 
 
@@ -2446,7 +2616,9 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
             "milNotamFetchStatus": fetch_status,
             "milNotamRawStatus": use_previous_field(previous_data, "milNotamRawStatus", "LAST_GOOD"),
             "ficonNotams": use_previous_field(previous_data, "ficonNotams", []),
-            "ficonNotamCount": use_previous_field(previous_data, "ficonNotamCount", 0)
+            "ficonNotamCount": use_previous_field(previous_data, "ficonNotamCount", 0),
+            "runwayClosureNotams": use_previous_field(previous_data, "runwayClosureNotams", []),
+            "runwayClosureNotamCount": use_previous_field(previous_data, "runwayClosureNotamCount", 0)
         }
 
     return {
@@ -2459,7 +2631,9 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
         "milNotamFetchStatus": fetch_status,
         "milNotamRawStatus": "NO_PREVIOUS_DATA",
         "ficonNotams": [],
-        "ficonNotamCount": 0
+        "ficonNotamCount": 0,
+        "runwayClosureNotams": [],
+        "runwayClosureNotamCount": 0
     }
 
 
@@ -2801,6 +2975,8 @@ def build_weather_json():
         "milNotamRawStatus": mil_notam_data["milNotamRawStatus"],
         "ficonNotams": mil_notam_data.get("ficonNotams", []),
         "ficonNotamCount": mil_notam_data.get("ficonNotamCount", 0),
+        "runwayClosureNotams": mil_notam_data.get("runwayClosureNotams", []),
+        "runwayClosureNotamCount": mil_notam_data.get("runwayClosureNotamCount", 0),
 
         "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
 
@@ -2857,6 +3033,7 @@ def build_weather_json():
     )
     print("WX ALERTS:", data["wxAlertLogText"])
     print("MIL NOTAMS:", data["milNotamStatus"], "STATUS:", data["milNotamFetchStatus"], "UPDATED:", data["milNotamUpdatedZ"])
+    print("RWY CLOSURE NOTAMS:", data.get("runwayClosureNotamCount", 0))
     print("LIGHTNING:", data["lightning"], "SOURCE:", data["lightningSource"], "TONE:", data["lightningTone"])
     print("METAR:", data["metar"])
     print("FETCH STATUS:", "METAR", data["metarFetchStatus"], "TAF", data["tafFetchStatus"], "ATIS", data["atisFetchStatus"], "LKG", data["lastKnownGoodUsed"])

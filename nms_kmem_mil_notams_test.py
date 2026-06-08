@@ -216,6 +216,50 @@ def display_text(text):
     return t if len(t) <= 150 else t[:147].rstrip() + "..."
 
 
+
+
+def is_runway_closure_text(text):
+    compact = re.sub(r"\s+", " ", str(text or "").upper()).strip()
+
+    if not compact:
+        return False
+
+    return bool(
+        re.search(r"\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\b.*\b(?:CLSD|CLOSED)\b", compact)
+        or re.search(r"\b(?:CLSD|CLOSED)\b.*\bRWY\s+\d{1,2}[LCR]?(?:\s*/\s*\d{1,2}[LCR]?|\s*,\s*\d{1,2}[LCR]?)*\b", compact)
+    )
+
+
+def is_runway_closure_candidate(item):
+    blob = " ".join(str(item.get(k, "")) for k in item.keys()).upper()
+
+    return (
+        ("RWY" in blob and ("CLSD" in blob or "CLOSED" in blob))
+        or str(item.get("type", "")).upper() in ("RUNWAY", "RWY")
+    )
+
+
+def clean_created_text(text):
+    return re.sub(r"\s*CREATED:\s*.*$", "", str(text or ""), flags=re.I).strip()
+
+
+def compact_runway_closure_display(text):
+    raw = re.sub(r"\s+", " ", clean_created_text(text)).strip()
+    segments = [s.strip() for s in re.split(r"\.\s+|;\s+", raw) if s.strip()]
+
+    for segment in segments:
+        if re.search(r"\bRWY\b", segment, flags=re.I) and re.search(r"\b(?:CLSD|CLOSED)\b", segment, flags=re.I):
+            return re.sub(r"\s+", " ", segment).strip()
+
+    upper = raw.upper()
+    idx = upper.find("RWY")
+
+    if idx >= 0:
+        return raw[idx:idx + 160].strip()
+
+    return raw[:160].strip()
+
+
 def main():
     client_id = os.environ.get("NMS_CLIENT_ID")
     client_secret = os.environ.get("NMS_CLIENT_SECRET")
@@ -252,7 +296,7 @@ def main():
     # the newest local MEM records, then classify by full text. This keeps the update
     # usable for a 15-minute board cycle.
 
-    MAX_RECENT_LOCAL_DETAIL_SCAN = 24
+    MAX_RECENT_LOCAL_DETAIL_SCAN = 50
 
     def local_number_key(item):
         num = str(item.get("number", ""))
@@ -265,6 +309,8 @@ def main():
 
     explicit_ficon_candidates = [item for item in checklist if is_ficon_candidate(item)]
 
+    explicit_runway_closure_candidates = [item for item in checklist if is_runway_closure_candidate(item)]
+
     recent_local_candidates = sorted(
         [item for item in checklist if re.match(r"^\d{1,2}/\d{3}$", str(item.get("number", "")))],
         key=local_number_key,
@@ -272,7 +318,7 @@ def main():
     )[:MAX_RECENT_LOCAL_DETAIL_SCAN]
 
     candidates_by_number = {}
-    for item in mil_candidates + explicit_ficon_candidates + recent_local_candidates:
+    for item in mil_candidates + explicit_ficon_candidates + explicit_runway_closure_candidates + recent_local_candidates:
         num = str(item.get("number", ""))
         if num:
             candidates_by_number[num] = item
@@ -282,11 +328,13 @@ def main():
     print(f"Checklist records returned: {len(checklist)}")
     print(f"MIL candidates: {len(mil_candidates)}")
     print(f"Explicit FICON metadata candidates: {len(explicit_ficon_candidates)}")
-    print(f"Recent local records scanned for hidden FICON: {len(recent_local_candidates)}")
-    print(f"Detail records to scan for MIL/FICON: {len(candidates)}")
+    print(f"Explicit RWY closure metadata candidates: {len(explicit_runway_closure_candidates)}")
+    print(f"Recent local records scanned for hidden FICON/RWY closures: {len(recent_local_candidates)}")
+    print(f"Detail records to scan for MIL/FICON/RWY closures: {len(candidates)}")
 
     notams = []
     ficon_notams = []
+    runway_closure_notams = []
 
     for item in sorted(candidates, key=local_number_key, reverse=True):
         time.sleep(REQUEST_DELAY_SECONDS)
@@ -331,6 +379,17 @@ def main():
         if "FICON" in txt_upper:
             ficon_notams.append(record)
 
+        # Phase 85: export runway closure NOTAMs for display only.
+        # This does not change ATIS-driven runway data block behavior.
+        if is_runway_closure_text(txt):
+            runway_record = dict(record)
+            runway_record["classification"] = "RWY_CLOSURE"
+            runway_record["severity"] = "red"
+            runway_record["text"] = compact_runway_closure_display(txt)
+            runway_record["displayText"] = compact_runway_closure_display(txt)
+            runway_record["rawText"] = txt
+            runway_closure_notams.append(runway_record)
+
         if str(record.get("classification", "")).upper() in ("MIL", "MILITARY") or record["number"].upper().startswith("M"):
             notams.append(record)
 
@@ -347,7 +406,9 @@ def main():
         "milNotams": notams,
         "ficonNotams": ficon_notams,
         "ficonNotamCount": len(ficon_notams),
-        "detailScanMode": "PHASE59_RECENT_LOCAL_PLUS_MIL",
+        "runwayClosureNotams": runway_closure_notams,
+        "runwayClosureNotamCount": len(runway_closure_notams),
+        "detailScanMode": "PHASE85_RECENT_LOCAL_PLUS_MIL_FICON_RWY_CLOSURE",
         "detailRecordsScanned": len(candidates),
     }
 
@@ -358,6 +419,7 @@ def main():
     print("KMEM MIL NOTAM pull complete.")
     print(f"Status: {result['milNotamStatus']}")
     print(f"FICON: {result['ficonNotamCount']} records")
+    print(f"RWY closures: {result['runwayClosureNotamCount']} records")
     print(f"Wrote:  {OUTPUT_FILE}")
     print()
 
@@ -366,6 +428,9 @@ def main():
 
     for n in ficon_notams:
         print(f"FICON {n['number']}: {n['displayText']}")
+
+    for n in runway_closure_notams:
+        print(f"RWYCL {n['number']}: {n['displayText']}")
 
 
 if __name__ == "__main__":
