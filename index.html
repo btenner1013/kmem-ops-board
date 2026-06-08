@@ -3986,6 +3986,35 @@ html,body{
   }
 }
 
+
+/* Phase 80 — compact WX Alert wording for TV / desktop / phone */
+#tafTrend.wx-alert-compact,
+.wx-alert-compact{
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  text-align:center !important;
+  font-weight:1000 !important;
+  letter-spacing:.01em !important;
+  font-size:clamp(1.05rem,1.18vw,1.48rem) !important;
+  line-height:1.05 !important;
+}
+
+#tafTrend.alert-none{
+  color:var(--ops-green) !important;
+  animation:none !important;
+}
+
+@media (max-width:900px), (hover:none) and (pointer:coarse){
+  #tafTrend.wx-alert-compact,
+  .wx-alert-compact{
+    font-size:clamp(1.00rem,4.1vw,1.30rem) !important;
+    line-height:1.08 !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
+  }
+}
+
 </style>
 </head>
 
@@ -4372,21 +4401,92 @@ function compactLightningDisplay(value){
 }
 
 function compactWxAlertDisplay(value){
-  let text=safeValue(value,"NONE").toString();
+  let text=safeValue(value,"NONE").toString().replace(/\s+/g," ").trim();
+  const upper=text.toUpperCase();
 
-  text=text.replace(/TSRA\s+ACTIVE\s+NOW/ig,"TSRA ACTIVE");
-  text=text.replace(/THUNDERSTORM\s+VICINITY\s+POSSIBLE/ig,"VCTY TSTMS POSSIBLE");
-  text=text.replace(/THUNDERSTORMS\s+VICINITY\s+POSSIBLE/ig,"VCTY TSTMS POSSIBLE");
-  text=text.replace(/VICINITY\s+THUNDERSTORMS\s+POSSIBLE/ig,"VCTY TSTMS POSSIBLE");
-  text=text.replace(/VCTS\s+POSSIBLE/ig,"VCTY TSTMS POSSIBLE");
-  text=text.replace(/SHOWERS\s+VICINITY\s+POSSIBLE/ig,"VCTY SHOWERS POSSIBLE");
-  text=text.replace(/SHOWER\s+VICINITY\s+POSSIBLE/ig,"VCTY SHOWERS POSSIBLE");
-  text=text.replace(/VICINITY\s+SHOWERS\s+POSSIBLE/ig,"VCTY SHOWERS POSSIBLE");
-  text=text.replace(/VCSH\s+POSSIBLE/ig,"VCTY SHOWERS POSSIBLE");
-  text=text.replace(/LIGHTNING\s+WITHIN\s+5\s+NM/ig,"LTG WITHIN 5NM");
+  if(!upper || upper==="--" || upper==="NONE" || upper==="N/A"){
+    return "NONE";
+  }
+
+  const timeMatch=upper.match(/\b(\d{2}(?:-\d{2})?Z)\b/);
+  const time=timeMatch ? " "+timeMatch[1] : "";
+
+  // Active/current thunderstorm/rain.
+  if(/\bTSRA\b/.test(upper) || upper.includes("THUNDERSTORM RAIN")){
+    if(upper.includes("POSSIBLE") || time){
+      return "⛈ TSRA"+time;
+    }
+    return "⛈ TSRA ACTIVE";
+  }
+
+  // Vicinity thunderstorms.
+  if(/\bVCTS\b/.test(upper) ||
+     upper.includes("VCTY TSTMS") ||
+     upper.includes("VICINITY THUNDER") ||
+     upper.includes("THUNDERSTORM VICINITY") ||
+     upper.includes("THUNDERSTORMS VICINITY")){
+    return time ? "⛈ VCTS"+time : "⛈ VCTS ACTIVE";
+  }
+
+  // Vicinity showers.
+  if(/\bVCSH\b/.test(upper) ||
+     upper.includes("VCTY SHOWERS") ||
+     upper.includes("VICINITY SHOWERS") ||
+     upper.includes("SHOWERS VICINITY") ||
+     upper.includes("SHOWER VICINITY")){
+    return time ? "🌧 VCSH"+time : "🌧 VCSH";
+  }
+
+  // Distant lightning.
+  if(upper.includes("LTG") && upper.includes("DSNT")){
+    let dir="";
+    const dirMatch=upper.match(/\b(NE\/NW|NW\/NE|NE|NW|SE|SW|N|S|E|W)(?:\b|$)/);
+    if(upper.includes("NE AND NW") || upper.includes("NE/NW"))dir=" NE/NW";
+    else if(dirMatch)dir=" "+dirMatch[1].replace("NW/NE","NE/NW");
+    return "⚡ LTG DSNT"+dir;
+  }
+
+  // Rain/showers without thunder.
+  if(/\b[-+]?SHRA\b/.test(upper)){
+    return "🌧 SHRA"+time;
+  }
+
+  if(/\b[-+]?RA\b/.test(upper) || upper.includes("LIGHT RAIN")){
+    const intensity=upper.includes("-RA") || upper.includes("LIGHT") ? "-RA" : (upper.includes("+RA") || upper.includes("HEAVY") ? "+RA" : "RA");
+    if(upper.includes("ATIS"))return "🌧 "+intensity+" ATIS";
+    if(upper.includes("METAR"))return "🌧 "+intensity+" METAR";
+    return "🌧 "+intensity;
+  }
+
+  // Smoke / freezing rain / volcanic ash.
+  if(/\bFU\b/.test(upper) || upper.includes("SMOKE")){
+    return upper.includes("POSS") ? "🌫 FU POSS" : "🌫 FU ACTIVE";
+  }
+
+  if(/\bFZRA\b/.test(upper) || upper.includes("FREEZING RAIN")){
+    return upper.includes("POSS") ? "🧊 FZRA POSS" : "🧊 FZRA ACTIVE";
+  }
+
+  if(/\bVA\b/.test(upper) || upper.includes("VOLCANIC ASH")){
+    return upper.includes("POSS") ? "🌋 VA POSS" : "🌋 VA ACTIVE";
+  }
+
+  if(upper.includes("LIGHTNING WITHIN 5 NM")){
+    return "⚡ LTG WITHIN 5NM";
+  }
+
+  // Last-resort cleanup for any unexpected backend text.
+  text=text.replace(/THUNDERSTORM\s+VICINITY\s+POSSIBLE/ig,"⛈ VCTS");
+  text=text.replace(/THUNDERSTORMS\s+VICINITY\s+POSSIBLE/ig,"⛈ VCTS");
+  text=text.replace(/VICINITY\s+THUNDERSTORMS\s+POSSIBLE/ig,"⛈ VCTS");
+  text=text.replace(/VCTY\s+TSTMS\s+POSSIBLE/ig,"⛈ VCTS");
+  text=text.replace(/VCTY\s+SHOWERS\s+POSSIBLE/ig,"🌧 VCSH");
+  text=text.replace(/SHOWERS\s+VICINITY\s+POSSIBLE/ig,"🌧 VCSH");
+  text=text.replace(/VICINITY\s+SHOWERS\s+POSSIBLE/ig,"🌧 VCSH");
+  text=text.replace(/LIGHTNING\s+WITHIN\s+5\s+NM/ig,"⚡ LTG WITHIN 5NM");
   text=text.replace(/\s+/g," ").trim();
 
-  return text;
+  return text || "NONE";
 }
 
 function formatRawWeatherText(metar,taf){
@@ -4779,17 +4879,17 @@ function setTafTrend(data){
   const box=document.getElementById("wxTrendBox");
   const label=document.getElementById("tafTrendLabel");
   const trend=document.getElementById("tafTrend");
-  const taf=data.taf||"";
-  const cat=tafFlightCategory(taf);
+
+  if(!box||!label||!trend)return;
 
   box.className="trend-box";
   trend.className="trend-value wx-alert-compact";
+  label.textContent="WX ALERT";
 
-  if(data.wxAlertVisible===true && data.wxAlertText && data.wxAlertText!=="NONE"){
-    const tone=(data.wxAlertTone||"yellow").toLowerCase();
+  const hasAlert=(data.wxAlertVisible===true && data.wxAlertText && data.wxAlertText!=="NONE");
+  const tone=(data.wxAlertTone||"yellow").toLowerCase();
 
-    label.textContent="WX ALERT";
-
+  if(hasAlert){
     if(tone==="red"){
       trend.classList.add("alert-red");
     }else if(tone==="blue"){
@@ -4807,33 +4907,9 @@ function setTafTrend(data){
     return;
   }
 
-  label.textContent="TAF TREND";
-
-  const backendTrend=data.tafTrend||"";
-
-  if(backendTrend&&backendTrend!=="NONE"){
-    if(cat==="VFR")trend.classList.add("cat-vfr");
-    else if(cat==="MVFR")trend.classList.add("cat-mvfr");
-    else if(cat==="IFR")trend.classList.add("cat-ifr");
-    else if(cat==="LIFR")trend.classList.add("cat-lifr");
-
-    trend.textContent=backendTrend;
-    return;
-  }
-
-  if(cat==="VFR"){
-    trend.classList.add("cat-vfr");
-    trend.textContent="VFR NEXT 24 HRS";
-  }else if(cat==="MVFR"){
-    trend.classList.add("cat-mvfr");
-    trend.textContent="MVFR EXPECTED";
-  }else if(cat==="IFR"){
-    trend.classList.add("cat-ifr");
-    trend.textContent="IFR EXPECTED";
-  }else if(cat==="LIFR"){
-    trend.classList.add("cat-lifr");
-    trend.textContent="LIFR EXPECTED";
-  }
+  trend.classList.add("alert-none");
+  trend.textContent="NONE";
+  trend.title="No current WX alert";
 }
 
 function parseUpdatedZ(updatedZ){
