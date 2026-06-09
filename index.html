@@ -4138,6 +4138,206 @@ html,body{
   text-align:center;
 }
 
+
+
+/* Phase 21 — Getac / Windows touch landscape fix
+   Some Getac-style Windows tablets report hover:none + pointer:coarse, so the phone CSS
+   was forcing the board into a stacked mobile layout. This override restores the normal
+   wall-board layout on touch devices that are wide enough for desktop mode.
+*/
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (min-width:901px){
+  html,
+  body{
+    width:100% !important;
+    height:100% !important;
+    min-height:100% !important;
+    overflow:hidden !important;
+  }
+
+  .board{
+    display:grid !important;
+    flex-direction:initial !important;
+    width:100vw !important;
+    height:100vh !important;
+    min-height:0 !important;
+    max-width:none !important;
+    overflow:hidden !important;
+    padding:5px !important;
+    padding-bottom:5px !important;
+    gap:4px !important;
+    grid-template-rows:
+      minmax(72px,12.5vh)
+      minmax(0,1fr)
+      minmax(88px,10vh)
+      minmax(32px,4.6vh) !important;
+  }
+
+  .top,
+  .middle,
+  .bottom{
+    display:grid !important;
+    width:100% !important;
+    max-width:none !important;
+    height:auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+    gap:4px !important;
+  }
+
+  .top,
+  .middle{
+    grid-template-columns:44% 56% !important;
+  }
+
+  .bottom{
+    grid-template-columns:1fr !important;
+  }
+
+  .panel,
+  .weather-panel,
+  .radar-panel,
+  .mil-notam-panel,
+  .footer{
+    position:relative !important;
+    width:100% !important;
+    max-width:none !important;
+    height:auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  .weather-panel,
+  .radar-panel{
+    display:flex !important;
+    flex-direction:column !important;
+  }
+
+  .summary-grid{
+    grid-template-columns:1fr 1fr !important;
+  }
+
+  .details-grid{
+    grid-template-columns:repeat(4,1fr) !important;
+  }
+
+  .ops-grid{
+    grid-template-columns:repeat(3,1fr) !important;
+  }
+
+  .status-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  .raw{
+    flex:1 !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:auto !important;
+    white-space:pre-wrap !important;
+    font-size:clamp(.86rem,.96vw,1.12rem) !important;
+    line-height:1.34 !important;
+  }
+
+  .radarimg{
+    display:block !important;
+    width:100% !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    object-fit:contain !important;
+    object-position:center center !important;
+  }
+
+  .mil-notam-panel{
+    display:grid !important;
+    grid-template-columns:minmax(150px,16.5%) 1fr !important;
+    align-items:center !important;
+    column-gap:10px !important;
+    min-height:0 !important;
+    padding:7px 10px !important;
+  }
+
+  .mil-notam-header{
+    display:flex !important;
+    flex-direction:column !important;
+    justify-content:center !important;
+    border-right:2px solid rgba(230,230,230,.45) !important;
+    border-bottom:0 !important;
+    padding-right:10px !important;
+    padding-bottom:0 !important;
+    margin-bottom:0 !important;
+    height:100% !important;
+  }
+
+  .mil-notam-window{
+    display:block !important;
+    position:relative !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:hidden !important;
+  }
+
+  .mil-notam-active .mil-notam-crawl{
+    position:absolute !important;
+    width:100% !important;
+    top:100% !important;
+    transform:none !important;
+    animation:notamScrollUp 18s linear infinite !important;
+    overflow-wrap:break-word !important;
+  }
+
+  .mil-notam-none .mil-notam-crawl{
+    position:relative !important;
+    top:auto !important;
+    transform:none !important;
+    animation:none !important;
+    display:flex !important;
+    align-items:center !important;
+    height:100% !important;
+  }
+
+  .mil-notam-crawl{
+    font-size:clamp(.78rem,.90vw,1.05rem) !important;
+    line-height:1.28 !important;
+    white-space:pre-wrap !important;
+    overflow-wrap:break-word !important;
+    padding:2px 4px !important;
+  }
+
+  .footer{
+    display:grid !important;
+    grid-template-columns:.95fr 1.9fr .95fr !important;
+    align-items:center !important;
+    column-gap:10px !important;
+    row-gap:0 !important;
+    min-height:0 !important;
+    padding:3px 7px !important;
+    font-size:clamp(.76rem,.88vw,1.05rem) !important;
+  }
+
+  .footer-left{
+    text-align:left !important;
+  }
+
+  .footer-center{
+    text-align:center !important;
+  }
+
+  .footer-right{
+    text-align:right !important;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-right,
+  .feed-health{
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+}
+
 </style>
 </head>
 
@@ -5520,25 +5720,27 @@ function extractEffectiveRangeFromNotam(item,text){
   return "";
 }
 
+function stripNotamDisplayMetadata(text){
+  let raw=String(text||"").replace(/\s+/g," ").trim();
+
+  // Remove CREATED metadata; it is admin/debug info and is not part of the condition.
+  raw=raw.replace(/\s*CREATED:\s*.*$/i,"").trim();
+
+  // Remove trailing FAA/NMS effective-time suffix when it is already displayed separately.
+  // Example: "09 JUN 12:21 2026 UNTIL 06 SEP 23:59 2026"
+  raw=raw.replace(/\s+\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}\s+UNTIL\s+(?:\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE)\s*$/i,"").trim();
+
+  // Remove trailing compact effective range when present.
+  // Example: "202606091300-202606092200"
+  raw=raw.replace(/\s+\d{10,12}-(?:\d{10,12}|UFN|EST)\s*$/i,"").trim();
+
+  return raw;
+}
+
 function compactRunwayClosureText(text){
-  let raw=(text||"").toString().replace(/\s+/g," ").trim();
-
-  raw=raw.replace(/\s*CREATED:.*$/i,"").trim();
-
-  const upper=raw.toUpperCase();
-
-  // Prefer the sentence/segment that actually contains RWY and CLSD.
-  const segments=raw.split(/\.\s+|;\s+/).map(s=>s.trim()).filter(Boolean);
-  const match=segments.find(s=>/\bRWY\b/i.test(s)&&/\bCLSD\b/i.test(s));
-  if(match)return match.replace(/\s+/g," ").trim();
-
-  // Fallback: shorten around the closure keywords.
-  const idx=Math.max(0,upper.indexOf("RWY"));
-  if(idx>=0){
-    return raw.slice(idx,idx+150).trim();
-  }
-
-  return raw.slice(0,150).trim();
+  // Keep the full runway-closure condition instead of clipping to a short phrase.
+  // Effectivity is still displayed on the following EFF line.
+  return stripNotamDisplayMetadata(text);
 }
 
 function notamTextFromItem(item){
@@ -5664,14 +5866,10 @@ function stripCreatedTime(text){
 }
 
 function compactMilNotamText(text){
-  let raw=stripCreatedTime(text);
-
-  // If the DAIP/full text repeats effective-time metadata after the operational sentence,
-  // keep the operational sentence first.
-  const m=raw.match(/^(.*?UNTIL\s+FURTHER\s+NOTICE)\b/i);
-  if(m)return m[1].trim();
-
-  return raw;
+  // Keep the full operational condition. Do not stop at "UNTIL FURTHER NOTICE"
+  // because some NOTAMs include additional instructions after that phrase.
+  // Effectivity is still displayed on the following EFF line.
+  return stripNotamDisplayMetadata(text);
 }
 
 function formatNotamWithEffectiveTime(item,options){
