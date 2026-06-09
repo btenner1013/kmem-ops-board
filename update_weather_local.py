@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import ssl
 import subprocess
 import sys
 import urllib.error
@@ -2808,6 +2809,23 @@ def format_afw_time_z(value):
     return dt.strftime("%H%MZ")
 
 
+def afw_insecure_ssl_fallback_enabled():
+    """
+    Local-only emergency compatibility switch for AFW/BIFROST.
+
+    Some government/CAC Windows builds trust the AFW certificate chain in the browser,
+    but Python's urllib certificate store may reject it as a self-signed chain. The
+    normal verified request is always tried first. This fallback is used only when
+    explicitly enabled by local environment variable:
+
+        AFW_ALLOW_INSECURE_SSL_FALLBACK=1
+
+    Keep this scoped to AFW/BIFROST reads only.
+    """
+    value = str(os.environ.get("AFW_ALLOW_INSECURE_SSL_FALLBACK", "")).strip().lower()
+    return value in ("1", "true", "yes", "on")
+
+
 def afw_http_get_json(url):
     request = urllib.request.Request(
         url,
@@ -2818,9 +2836,29 @@ def afw_http_get_json(url):
         }
     )
 
-    with urllib.request.urlopen(request, timeout=AFW_WWA_TIMEOUT_SECONDS) as response:
-        raw = response.read().decode("utf-8", errors="replace")
-        return json.loads(raw)
+    try:
+        with urllib.request.urlopen(request, timeout=AFW_WWA_TIMEOUT_SECONDS) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+            return json.loads(raw)
+
+    except urllib.error.URLError as error:
+        # AFW/BIFROST often works in Edge/Chrome through the gov trust chain but fails
+        # in Python with CERTIFICATE_VERIFY_FAILED. Do not disable SSL by default.
+        message = str(error)
+        is_cert_failure = (
+            "CERTIFICATE_VERIFY_FAILED" in message
+            or "self-signed certificate" in message.lower()
+            or isinstance(getattr(error, "reason", None), ssl.SSLError)
+        )
+
+        if is_cert_failure and afw_insecure_ssl_fallback_enabled():
+            print("AFW WWA: Python SSL verify failed; retrying AFW/BIFROST with local insecure SSL fallback.")
+            context = ssl._create_unverified_context()
+            with urllib.request.urlopen(request, timeout=AFW_WWA_TIMEOUT_SECONDS, context=context) as response:
+                raw = response.read().decode("utf-8", errors="replace")
+                return json.loads(raw)
+
+        raise
 
 
 def afw_wwa_is_lightning(item):
