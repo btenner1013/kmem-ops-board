@@ -2951,6 +2951,10 @@ def build_weather_json():
         else:
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
 
+    mil_notam_data = fetch_mil_notams(previous_data)
+    rcr_data = parse_rcr_rcc_from_ficon_notams(mil_notam_data.get("ficonNotams", []))
+    print("RCR/RCC:", rcr_data["rcrText"], "SOURCE:", rcr_data["rcrSource"], "SEVERITY:", rcr_data["rcrSeverity"])
+
     data = {
         "metar": metar or "METAR unavailable",
         "taf": taf or "TAF unavailable",
