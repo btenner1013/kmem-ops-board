@@ -81,6 +81,18 @@ weather_last_good.json             Repo-local last-good safety copy
 
 ---
 
+
+## Manual-only lightning control
+
+The control page is manual-only. It provides these actions:
+
+```text
+LIGHTNING WITHIN 5 NM - FLT LINE CLOSED
+CLEAR MANUAL ALERT
+```
+
+There is no external weather-warning pull, no external lightning verification, and no automatic lightning closure logic in this package. The manual alert remains active until an authorized user clears it through the PIN-protected Cloudflare Worker. Do not commit PINs, tokens, cookies, GitHub tokens, NMS credentials, or local credential files.
+
 ## Normal scheduled update flow
 
 Windows Task Scheduler runs:
