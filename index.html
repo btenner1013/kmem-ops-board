@@ -328,14 +328,23 @@ html,body{
 .bwc-severe{color:var(--closed);animation:blink 1s step-start infinite}
 
 .bwc-stamp{
-  display:block;
-  font-size:0.72em;
-  font-weight:700;
-  opacity:0.92;
-  white-space:normal;
-  overflow-wrap:anywhere;
-  line-height:1.05;
-  margin-top:2px;
+  display:inline-block;
+  font-size:1em;
+  font-weight:900;
+  opacity:0.98;
+  white-space:nowrap;
+  line-height:1;
+  margin-left:6px;
+}
+
+.bwc-stamp-none{color:var(--ops-green)}
+.bwc-stamp-pending{color:var(--warning)}
+.bwc-stamp-low{color:var(--vfr)}
+.bwc-stamp-moderate{color:var(--warning)}
+.bwc-stamp-severe{color:var(--closed)}
+
+#bwc{
+  margin-top:4px;
 }
 
 .lightning-none{color:var(--vfr)}
@@ -610,7 +619,7 @@ html,body{
 }
 
 .bwc-stamp{
-  font-size:0.76em;
+  font-size:1em;
   line-height:1.05;
 }
 
@@ -1012,7 +1021,7 @@ html,body{
   }
 
   .bwc-stamp{
-    font-size:.80em !important;
+    font-size:1em !important;
   }
 
   .wind-arrow{
@@ -2068,7 +2077,7 @@ html,body{
   }
 
   .bwc-stamp{
-    font-size:.68em !important;
+    font-size:1em !important;
   }
 
   .raw{
@@ -2540,7 +2549,7 @@ html,body{
   }
 
   .bwc-stamp{
-    font-size:.64em !important;
+    font-size:1em !important;
     line-height:1.0 !important;
   }
 
@@ -2871,7 +2880,7 @@ html,body{
   }
 
   .bwc-stamp{
-    font-size:.68em !important;
+    font-size:1em !important;
     line-height:1.0 !important;
   }
 
@@ -4024,7 +4033,7 @@ html,body{
 
 /* Phase 82 — wrap long LIGHTNING text */
 #lightning{
-  white-space:normal !important;
+  white-space:pre-line !important;
   overflow:visible !important;
   text-overflow:clip !important;
   overflow-wrap:anywhere !important;
@@ -4236,7 +4245,7 @@ html,body{
         </div>
 
         <div class="ops-box">
-          <div class="ops-label">BWC</div>
+          <div id="bwcLabel" class="ops-label">BWC</div>
           <div id="bwc" class="ops-value bwc-pending">PENDING</div>
         </div>
 
@@ -4651,10 +4660,24 @@ function wxAlertDisplayHtml(value){
   return escaped.replace(/^(\p{Extended_Pictographic}(?:\uFE0F)?)/u,'<span class="wx-alert-emoji">$1</span>');
 }
 
-function formatRawWeatherText(metar,taf){
+function formatWwaRawBlock(data){
+  const lines=Array.isArray(data?.afwWwaDisplayLines)
+    ? data.afwWwaDisplayLines.filter(Boolean)
+    : [];
+
+  if(!lines.length){
+    return "";
+  }
+
+  return "WWA\n"+lines.join("\n");
+}
+
+function formatRawWeatherText(metar,taf,data={}){
   const metarText=(metar||"METAR unavailable").toString().trim();
   const tafText=(taf||"TAF unavailable").toString().trim();
-  return metarText+"\n\n"+tafText;
+  const wwaText=formatWwaRawBlock(data);
+
+  return [metarText,tafText,wwaText].filter(Boolean).join("\n\n");
 }
 
 function formatTrendArrow(trend,trendText){
@@ -4921,28 +4944,41 @@ function formatAhasBwcDateTime(value){
 }
 
 function setBwcDisplay(value,data){
+  const labelEl=document.getElementById("bwcLabel");
   const el=document.getElementById("bwc");
   const bwc=(value||"PENDING").toUpperCase();
   const ahasDateTime=formatAhasBwcDateTime(data?.bwcUpdatedZ||"");
 
   el.className="ops-value";
 
-  if(bwc==="NONE")el.classList.add("bwc-none");
-  else if(bwc==="LOW")el.classList.add("bwc-low");
-  else if(bwc==="MODERATE")el.classList.add("bwc-moderate");
-  else if(bwc==="SEVERE")el.classList.add("bwc-severe");
-  else el.classList.add("bwc-pending");
+  let bwcClass="bwc-pending";
+  let stampClass="bwc-stamp-pending";
 
-  el.textContent="";
+  if(bwc==="NONE"){
+    bwcClass="bwc-none";
+    stampClass="bwc-stamp-none";
+  }else if(bwc==="LOW"){
+    bwcClass="bwc-low";
+    stampClass="bwc-stamp-low";
+  }else if(bwc==="MODERATE"){
+    bwcClass="bwc-moderate";
+    stampClass="bwc-stamp-moderate";
+  }else if(bwc==="SEVERE"){
+    bwcClass="bwc-severe";
+    stampClass="bwc-stamp-severe";
+  }
 
-  const mainText=document.createTextNode(bwc);
-  el.appendChild(mainText);
+  el.classList.add(bwcClass);
+  el.textContent=bwc;
 
-  if(ahasDateTime){
-    const stamp=document.createElement("span");
-    stamp.className="bwc-stamp";
-    stamp.textContent=`(AHAS ${ahasDateTime})`;
-    el.appendChild(stamp);
+  if(labelEl){
+    labelEl.textContent="BWC";
+    if(ahasDateTime){
+      const stamp=document.createElement("span");
+      stamp.className=`bwc-stamp ${stampClass}`;
+      stamp.textContent=`(AHAS ${ahasDateTime})`;
+      labelEl.appendChild(stamp);
+    }
   }
 
   const source=data?.bwcSource||"";
@@ -4954,9 +4990,27 @@ function setBwcDisplay(value,data){
   el.title=`BWC ${bwc} | AHAS as of: ${ahasDateTime || updated || "--"} | Source: ${source} | Based on: ${basedOn} | NEXRAD: ${nexrad} | AHAS: ${ahas}`;
 }
 
+
 function setLightningDisplay(value,data={}){
   const el=document.getElementById("lightning");
-  let display=compactLightningDisplay(value);
+  const rawDisplay=safeValue(value,"NONE").toString();
+  const looksLikeAfwStrike=/\bNM\b/i.test(rawDisplay)&&/\bMIN\s+AGO\b/i.test(rawDisplay);
+  let display=looksLikeAfwStrike
+    ? rawDisplay
+        .replace(/[⚡🟡🔴]/g,"")
+        .replace(/\s*\/\s*/g,"\n")
+        .replace(/\bNM\b/gi,"NM")
+        .replace(/\bMIN\s+AGO\b/gi,"MIN AGO")
+        .trim()
+    : compactLightningDisplay(rawDisplay).replace(/^[🟡🔴]\s*/,"");
+  if(looksLikeAfwStrike && display && display.toUpperCase()!=="NONE"){
+    const parts=display.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    if(parts.length>=2){
+      display=`⚡ ${parts[0]}\n${parts.slice(1).join(" ")}`;
+    }else{
+      display=`⚡ ${display}`;
+    }
+  }
   let lightning=String(display).toUpperCase();
   let tone=String(data.lightningTone||"").toLowerCase();
 
@@ -5862,7 +5916,12 @@ async function loadWeatherJson(){
     const taf=data.taf||"TAF unavailable";
     const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";
 
-    document.getElementById("weather").textContent=formatRawWeatherText(metar,taf);
+    document.getElementById("weather").textContent=formatRawWeatherText(metar,taf,data);
+
+    window.kmemWeatherData=data;
+    if(window.kmemRenderLightningClosureOverlay){
+      window.kmemRenderLightningClosureOverlay();
+    }
 
     setCategoryDisplay(determineFlightCategoryFromData(data,metar));
     updateDetails(data);
@@ -6108,7 +6167,44 @@ function inferFlowFromRunways(arrRunways,depRunways){
     overlay.style.height=`${Math.max(0,rect.height-(inset*2))}px`;
   }
 
-  function setManualAlertDisplay(alertData){
+  function autoLightningEnabledFromManualAlert(){
+    const data=window.kmemManualAlertData||{};
+
+    if(data.autoLightningEnabled===false)return false;
+    if(String(data.lightningClosureMode||"").toUpperCase()==="MANUAL_ONLY")return false;
+    if(String(data.autoLightningMode||"").toUpperCase()==="MANUAL_ONLY")return false;
+
+    return true;
+  }
+
+  function currentLightningClosureAlert(){
+    const manual=window.kmemManualAlertData||{};
+    const weather=window.kmemWeatherData||{};
+
+    if(manual && manual.active){
+      return {
+        active:true,
+        line1:sanitizeManualAlertText(manual.line1,"LIGHTNING WITHIN 5 NM"),
+        line2:sanitizeManualAlertText(manual.line2,"FLT LINE CLOSED"),
+        cao:formatManualAlertCao(manual.updatedZ||manual.caoZ||manual.updated),
+        signature:"MANUAL|"+JSON.stringify(manual||{})
+      };
+    }
+
+    if(autoLightningEnabledFromManualAlert() && weather && weather.autoLightningClosureActive===true){
+      return {
+        active:true,
+        line1:"LIGHTNING WITHIN 5 NM",
+        line2:"FLT LINE CLOSED",
+        cao:formatManualAlertCao(weather.autoLightningClosureUpdatedZ||weather.afwWwaUpdatedZ||weather.allFeedsUpdatedZ),
+        signature:"AUTO|"+(weather.autoLightningClosureUpdatedZ||weather.afwWwaUpdatedZ||"")+"|"+(weather.autoLightningClosureReason||"")
+      };
+    }
+
+    return {active:false,signature:"NONE"};
+  }
+
+  function renderLightningClosureOverlay(){
     const overlay=document.getElementById("manualAlertOverlay");
     const line1=document.getElementById("manualAlertLine1");
     const line2=document.getElementById("manualAlertLine2");
@@ -6118,11 +6214,11 @@ function inferFlowFromRunways(arrRunways,depRunways){
       return;
     }
 
-    const active=!!(alertData&&alertData.active);
-    const signature=JSON.stringify(alertData||{});
+    const alertData=currentLightningClosureAlert();
+    const signature=alertData.signature||JSON.stringify(alertData||{});
 
     if(signature===lastManualAlertSignature){
-      if(active){
+      if(alertData.active){
         positionManualAlertOverlay();
       }
       return;
@@ -6130,21 +6226,28 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
     lastManualAlertSignature=signature;
 
-    if(!active){
+    if(!alertData.active){
       overlay.classList.remove("manual-alert-active");
       overlay.setAttribute("aria-hidden","true");
       overlay.removeAttribute("style");
       return;
     }
 
-    line1.textContent=sanitizeManualAlertText(alertData.line1,"LIGHTNING WITHIN 5 NM");
-    line2.textContent=sanitizeManualAlertText(alertData.line2,"FLT LINE CLOSED");
-    cao.textContent=formatManualAlertCao(alertData.updatedZ||alertData.caoZ||alertData.updated);
+    line1.textContent=alertData.line1||"LIGHTNING WITHIN 5 NM";
+    line2.textContent=alertData.line2||"FLT LINE CLOSED";
+    cao.textContent=alertData.cao||"CAO --";
 
     overlay.classList.add("manual-alert-active");
     overlay.setAttribute("aria-hidden","false");
     positionManualAlertOverlay();
   }
+
+  function setManualAlertDisplay(alertData){
+    window.kmemManualAlertData=alertData||{};
+    renderLightningClosureOverlay();
+  }
+
+  window.kmemRenderLightningClosureOverlay=renderLightningClosureOverlay;
 
   async function fetchManualAlert(){
     try{
