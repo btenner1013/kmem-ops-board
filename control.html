@@ -207,23 +207,6 @@ kbd {
     </button>
   </div>
 
-  <div class="control-section">
-    <div class="section-title">⚡ Automatic Lightning Closure Mode</div>
-    <div class="sub">
-      AUTO allows verified AFW/BIFROST lightning-within-5 to display the closure banner automatically.
-      MANUAL ONLY disables automatic closure and keeps the manual buttons available.
-    </div>
-    <div class="button-row">
-      <button id="autoBtn" class="auto" type="button" onclick="sendAlert('auto_lightning_on')">
-        AUTO AFW/BIFROST CLOSURE ON
-      </button>
-
-      <button id="manualOnlyBtn" class="manualOnly" type="button" onclick="sendAlert('auto_lightning_manual_only')">
-        MANUAL ONLY — AUTO CLOSURE OFF
-      </button>
-    </div>
-  </div>
-
   <div id="status" class="status" role="status" aria-live="polite"></div>
 
   <div class="small">
@@ -243,8 +226,6 @@ const pinInput = document.getElementById("pin");
 const statusEl = document.getElementById("status");
 const lightningBtn = document.getElementById("lightningBtn");
 const clearBtn = document.getElementById("clearBtn");
-const autoBtn = document.getElementById("autoBtn");
-const manualOnlyBtn = document.getElementById("manualOnlyBtn");
 
 usernameInput.value = localStorage.getItem("kmemControlUsername") || "164am";
 document.getElementById("endpointText").textContent = `Endpoint: ${CONTROL_ENDPOINT}`;
@@ -260,8 +241,6 @@ function setStatus(text, tone) {
 function setBusy(isBusy) {
   lightningBtn.disabled = isBusy;
   clearBtn.disabled = isBusy;
-  if (autoBtn) autoBtn.disabled = isBusy;
-  if (manualOnlyBtn) manualOnlyBtn.disabled = isBusy;
   usernameInput.disabled = isBusy;
   pinInput.disabled = isBusy;
 }
@@ -269,8 +248,6 @@ function setBusy(isBusy) {
 function actionLabel(action) {
   if (action === "lightning_5nm") return "LIGHTNING WITHIN 5 NM / FLT LINE CLOSED";
   if (action === "clear") return "CLEAR MANUAL ALERT";
-  if (action === "auto_lightning_on") return "AUTO AFW/BIFROST CLOSURE ON";
-  if (action === "auto_lightning_manual_only") return "MANUAL ONLY / AUTO CLOSURE OFF";
   return action;
 }
 
@@ -300,15 +277,7 @@ async function sendAlert(action) {
     if (!ok) return;
   }
 
-  if (action === "auto_lightning_on") {
-    const ok = confirm("Confirm: ENABLE automatic AFW/BIFROST lightning closure?");
-    if (!ok) return;
-  }
 
-  if (action === "auto_lightning_manual_only") {
-    const ok = confirm("Confirm: DISABLE automatic lightning closure and use MANUAL ONLY?");
-    if (!ok) return;
-  }
 
   localStorage.setItem("kmemControlUsername", username);
   setBusy(true);

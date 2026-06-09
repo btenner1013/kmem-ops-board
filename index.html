@@ -4660,24 +4660,11 @@ function wxAlertDisplayHtml(value){
   return escaped.replace(/^(\p{Extended_Pictographic}(?:\uFE0F)?)/u,'<span class="wx-alert-emoji">$1</span>');
 }
 
-function formatWwaRawBlock(data){
-  const lines=Array.isArray(data?.afwWwaDisplayLines)
-    ? data.afwWwaDisplayLines.filter(Boolean)
-    : [];
-
-  if(!lines.length){
-    return "";
-  }
-
-  return "WWA\n"+lines.join("\n");
-}
-
 function formatRawWeatherText(metar,taf,data={}){
   const metarText=(metar||"METAR unavailable").toString().trim();
   const tafText=(taf||"TAF unavailable").toString().trim();
-  const wwaText=formatWwaRawBlock(data);
 
-  return [metarText,tafText,wwaText].filter(Boolean).join("\n\n");
+  return [metarText,tafText].filter(Boolean).join("\n\n");
 }
 
 function formatTrendArrow(trend,trendText){
@@ -4993,57 +4980,25 @@ function setBwcDisplay(value,data){
 
 function setLightningDisplay(value,data={}){
   const el=document.getElementById("lightning");
-  const rawDisplay=safeValue(value,"NONE").toString();
-  const looksLikeAfwStrike=/\bNM\b/i.test(rawDisplay)&&/\bMIN\s+AGO\b/i.test(rawDisplay);
-  let display=looksLikeAfwStrike
-    ? rawDisplay
-        .replace(/[⚡🟡🔴]/g,"")
-        .replace(/\s*\/\s*/g,"\n")
-        .replace(/\bNM\b/gi,"NM")
-        .replace(/\bMIN\s+AGO\b/gi,"MIN AGO")
-        .trim()
-    : compactLightningDisplay(rawDisplay).replace(/^[🟡🔴]\s*/,"");
-  if(looksLikeAfwStrike && display && display.toUpperCase()!=="NONE"){
-    const parts=display.split(/\n+/).map(x=>x.trim()).filter(Boolean);
-    if(parts.length>=2){
-      display=`⚡ ${parts[0]}\n${parts.slice(1).join(" ")}`;
-    }else{
-      display=`⚡ ${display}`;
-    }
-  }
-  let lightning=String(display).toUpperCase();
-  let tone=String(data.lightningTone||"").toLowerCase();
-
-  /*
-    TAF future thunder belongs in WX ALERT / TAF TREND, not the current LIGHTNING box.
-    LIGHTNING should represent current or near-current METAR/ATIS lightning cues.
-  */
-  if(String(data.lightningSource||"").toUpperCase()==="TAF"){
-    display="NONE";
-    lightning="NONE";
-    tone="green";
-    data=Object.assign({},data,{
-      lightningFlash:false,
-      lightningPulse:false,
-      lightningLogText:(data.lightningLogText||"")+" | TAF future thunder displayed in WX ALERT/TAF TREND only."
-    });
-  }
+  const display=compactLightningDisplay(safeValue(value,"NONE")).replace(/^[🟡🔴]\s*/,"");
+  const lightning=String(display).toUpperCase();
 
   el.className="ops-value lightning-compact";
 
-  if(tone==="red")el.classList.add("lightning-red");
-  else if(tone==="yellow")el.classList.add("lightning-yellow");
-  else if(tone==="blue")el.classList.add("lightning-blue");
-  else if(tone==="green")el.classList.add("lightning-green");
-  else if(lightning==="NONE")el.classList.add("lightning-none");
-  else el.classList.add("lightning-watch");
-
-  if(data.lightningFlash===true)el.classList.add("lightning-flash");
-  if(data.lightningPulse===true)el.classList.add("lightning-pulse");
+  if(lightning==="NONE"){
+    el.classList.add("lightning-none");
+  }else if(data.lightningFlash===true){
+    el.classList.add("lightning-red","lightning-flash");
+  }else if(data.lightningPulse===true){
+    el.classList.add("lightning-yellow","lightning-pulse");
+  }else{
+    el.classList.add("lightning-watch");
+  }
 
   el.textContent=display;
   el.title=data.lightningLogText||`Lightning source: ${data.lightningSource||"--"}`;
 }
+
 
 function rcrClassFromValue(value,code,severity){
   const text=`${value||""} ${code||""}`.toUpperCase();
@@ -6167,19 +6122,8 @@ function inferFlowFromRunways(arrRunways,depRunways){
     overlay.style.height=`${Math.max(0,rect.height-(inset*2))}px`;
   }
 
-  function autoLightningEnabledFromManualAlert(){
-    const data=window.kmemManualAlertData||{};
-
-    if(data.autoLightningEnabled===false)return false;
-    if(String(data.lightningClosureMode||"").toUpperCase()==="MANUAL_ONLY")return false;
-    if(String(data.autoLightningMode||"").toUpperCase()==="MANUAL_ONLY")return false;
-
-    return true;
-  }
-
   function currentLightningClosureAlert(){
     const manual=window.kmemManualAlertData||{};
-    const weather=window.kmemWeatherData||{};
 
     if(manual && manual.active){
       return {
@@ -6188,16 +6132,6 @@ function inferFlowFromRunways(arrRunways,depRunways){
         line2:sanitizeManualAlertText(manual.line2,"FLT LINE CLOSED"),
         cao:formatManualAlertCao(manual.updatedZ||manual.caoZ||manual.updated),
         signature:"MANUAL|"+JSON.stringify(manual||{})
-      };
-    }
-
-    if(autoLightningEnabledFromManualAlert() && weather && weather.autoLightningClosureActive===true){
-      return {
-        active:true,
-        line1:"LIGHTNING WITHIN 5 NM",
-        line2:"FLT LINE CLOSED",
-        cao:formatManualAlertCao(weather.autoLightningClosureUpdatedZ||weather.afwWwaUpdatedZ||weather.allFeedsUpdatedZ),
-        signature:"AUTO|"+(weather.autoLightningClosureUpdatedZ||weather.afwWwaUpdatedZ||"")+"|"+(weather.autoLightningClosureReason||"")
       };
     }
 
