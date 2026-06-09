@@ -3560,8 +3560,8 @@ html,body{
   font-weight:1000 !important;
   font-size:1.02em !important;
   line-height:1 !important;
-  margin:0 .10em 0 .06em !important;
-  text-shadow:0 0 4px currentColor !important;
+  margin-left:.08em !important;
+  text-shadow:0 0 4px rgba(255,255,255,.85) !important;
 }
 
 
@@ -4795,9 +4795,14 @@ function windTrendClass(data){
 function windDirArrowFromDegrees(dirText){
   const text=(dirText||"").toString().trim().toUpperCase();
   if(!/^\d{3}$/.test(text))return "";
-  const deg=parseInt(text,10)%360;
+
+  // METAR/ATIS wind direction is the direction wind is FROM.
+  // Display arrow shows where the wind is blowing TO.
+  const fromDeg=parseInt(text,10)%360;
+  const toDeg=(fromDeg+180)%360;
+
   const dirs=["↑","↗","→","↘","↓","↙","←","↖"];
-  const idx=Math.round(deg/45)%8;
+  const idx=Math.round(toDeg/45)%8;
   return dirs[idx]||"";
 }
 
@@ -4859,10 +4864,10 @@ function setWindDisplay(data){
 
     el.innerHTML =
       `<span class="wind-base-final">${dir}</span>` +
-      (dirArrow ? `<span class="wind-dir-mark">${dirArrow}</span>` : "") +
       `<span class="wind-at-final">&nbsp;@&nbsp;</span>` +
       `<span class="${speedClass}">${speed}</span>` +
-      (gust ? `<span class="wind-gap-final">&nbsp;</span><span class="${gustClass}">${gust}</span>` : "");
+      (gust ? `<span class="wind-gap-final">&nbsp;</span><span class="${gustClass}">${gust}</span>` : "") +
+      (dirArrow ? `<span class="wind-dir-mark">&nbsp;${dirArrow}</span>` : "");
   }else{
     el.innerHTML=`<span class="wind-base-final">${safeValue(display)}</span>`;
   }
