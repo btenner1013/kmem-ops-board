@@ -4609,6 +4609,114 @@ body.getac-preset .mil-notam-window{
   position:relative !important;
 }
 
+
+
+/* ============================================================
+   FINAL OVERRIDE — UNIVERSAL NOTAM CRAWL + DISPLAY CONTROL SIZES
+   Purpose:
+   - Same NOTAM crawl behavior on TV/desktop/Getac.
+   - Keep crawl visible immediately instead of starting below the window.
+   - Add tunable NOTAM header/body/feed sizes from display_control.html.
+   ============================================================ */
+:root{
+  --notam-title-px: 18px;
+  --notam-status-px: 16px;
+  --notam-cao-px: 14px;
+  --feed-px: 14px;
+  --notam-scroll-seconds: 55s;
+}
+
+@keyframes notamScrollUp{
+  0%{transform:translateY(0)}
+  10%{transform:translateY(0)}
+  100%{transform:translateY(calc(-100% - 18px))}
+}
+
+.mil-notam-title{
+  font-size:var(--notam-title-px) !important;
+}
+.mil-notam-status{
+  font-size:var(--notam-status-px) !important;
+}
+.mil-notam-cao{
+  font-size:var(--notam-cao-px) !important;
+}
+.footer,
+.feed-health,
+.footer-left,
+.footer-center,
+.footer-right{
+  font-size:var(--feed-px) !important;
+}
+
+.mil-notam-panel{
+  overflow:hidden !important;
+}
+.mil-notam-window{
+  position:relative !important;
+  overflow:hidden !important;
+  min-height:0 !important;
+  height:100% !important;
+}
+.mil-notam-crawl{
+  color:#c7d0dc !important;
+  font-family:Consolas,monospace !important;
+  white-space:pre-wrap !important;
+  overflow-wrap:anywhere !important;
+  padding:2px 4px !important;
+  padding-right:120px !important;
+}
+.mil-notam-active #milNotamCrawl,
+.mil-notam-active .mil-notam-crawl,
+body.getac-preset .mil-notam-active #milNotamCrawl,
+body.getac-preset .mil-notam-active .mil-notam-crawl{
+  display:block !important;
+  position:absolute !important;
+  left:0 !important;
+  top:0 !important;
+  width:100% !important;
+  height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+  transform:translateY(0);
+  animation:notamScrollUp var(--notam-scroll-seconds,55s) linear infinite !important;
+}
+.mil-notam-none #milNotamCrawl,
+.mil-notam-placeholder #milNotamCrawl,
+.mil-notam-none .mil-notam-crawl,
+.mil-notam-placeholder .mil-notam-crawl,
+body.getac-preset .mil-notam-none #milNotamCrawl,
+body.getac-preset .mil-notam-placeholder #milNotamCrawl,
+body.getac-preset .mil-notam-none .mil-notam-crawl,
+body.getac-preset .mil-notam-placeholder .mil-notam-crawl{
+  position:relative !important;
+  top:auto !important;
+  transform:none !important;
+  animation:none !important;
+  display:flex !important;
+  align-items:center !important;
+  height:100% !important;
+}
+
+/* Keep Getac layout compact, but do not change NOTAM behavior. */
+body.getac-preset .mil-notam-panel{
+  display:grid !important;
+  grid-template-columns:minmax(126px,18%) minmax(0,1fr) !important;
+  align-items:stretch !important;
+  column-gap:7px !important;
+  min-height:0 !important;
+  height:100% !important;
+  overflow:hidden !important;
+}
+body.getac-preset .mil-notam-window{
+  height:100% !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+body.getac-preset .mil-notam-crawl{
+  padding-right:96px !important;
+}
+
 </style>
 </head>
 
@@ -5007,8 +5115,12 @@ function compactWxAlertDisplay(value){
     return "NONE";
   }
 
-  const timeMatch=upper.match(/\b(\d{2}(?:-\d{2})?Z)\b/);
-  const time=timeMatch ? " "+timeMatch[1] : "";
+  // Preserve optional next-day date in TAF-derived alert windows.
+  // Examples:
+  //   -SHRA PSBL 08-13Z
+  //   -SHRA PSBL 12 JUN 08-13Z
+  const timeMatch=upper.match(/\b(?:(?:\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?\d{2}(?:-\d{2})?Z)\b/);
+  const time=timeMatch ? " "+timeMatch[0].trim() : "";
 
   const isForecastLike=
     upper.includes("POSSIBLE") ||
@@ -5022,7 +5134,7 @@ function compactWxAlertDisplay(value){
     return isForecastLike ? `${emoji} ${code} PSBL${time}` : `${emoji} ${code} ${activeWord||"ACTIVE"}`;
   }
 
-  // Distant lightning. Keep as current/distant information, not PSBL.
+  // Manual/current lightning remains separate from TAF WX alerts.
   if(upper.includes("LTG") && upper.includes("DSNT")){
     let dir="";
     if(upper.includes("NE AND NW") || upper.includes("NE/NW"))dir=" NE/NW";
@@ -5037,42 +5149,26 @@ function compactWxAlertDisplay(value){
     return "⚡ LTG WITHIN 5NM";
   }
 
-  // Thunderstorm rain. Preserve intensity when the source says -TSRA.
-  if(/\b-TSRA\b/.test(upper) || upper.includes("LIGHT THUNDERSTORM RAIN")){
-    return wxCode("-TSRA","⛈️");
-  }
+  // Thunderstorm rain. Preserve intensity when source says -TSRA/+TSRA.
+  if(/\b-TSRA\b/.test(upper) || upper.includes("LIGHT THUNDERSTORM RAIN"))return wxCode("-TSRA","⛈️");
+  if(/\b\+TSRA\b/.test(upper) || upper.includes("HEAVY THUNDERSTORM RAIN"))return wxCode("+TSRA","⛈️");
+  if(/\bTSRA\b/.test(upper) || upper.includes("THUNDERSTORM RAIN"))return wxCode("TSRA","⛈️");
 
-  if(/\b\+TSRA\b/.test(upper) || upper.includes("HEAVY THUNDERSTORM RAIN")){
-    return wxCode("+TSRA","⛈️");
-  }
-
-  if(/\bTSRA\b/.test(upper) || upper.includes("THUNDERSTORM RAIN")){
-    return wxCode("TSRA","⛈️");
-  }
-
-  // Vicinity thunderstorms.
-  if(/\bVCTS\b/.test(upper) ||
-     upper.includes("VCTY TSTMS") ||
-     upper.includes("VICINITY THUNDER") ||
-     upper.includes("THUNDERSTORM VICINITY") ||
-     upper.includes("THUNDERSTORMS VICINITY")){
+  if(/\bVCTS\b/.test(upper) || upper.includes("VCTY TSTMS") || upper.includes("VICINITY THUNDER") || upper.includes("THUNDERSTORM VICINITY") || upper.includes("THUNDERSTORMS VICINITY")){
     return isForecastLike ? `⛈️ VCTS PSBL${time}` : "⛈️ VCTS ACTIVE";
   }
 
-  // Vicinity showers.
-  if(/\bVCSH\b/.test(upper) ||
-     upper.includes("VCTY SHOWERS") ||
-     upper.includes("VICINITY SHOWERS") ||
-     upper.includes("SHOWERS VICINITY") ||
-     upper.includes("SHOWER VICINITY")){
+  if(/\bVCSH\b/.test(upper) || upper.includes("VCTY SHOWERS") || upper.includes("VICINITY SHOWERS") || upper.includes("SHOWERS VICINITY") || upper.includes("SHOWER VICINITY")){
     return isForecastLike ? `🌧️ VCSH PSBL${time}` : "🌧️ VCSH";
   }
 
-  // Rain/showers without thunder.
+  // Rain/showers without thunder. Do NOT strip the minus sign.
   if(/\b-SHRA\b/.test(upper) || upper.includes("LIGHT RAIN SHOWER")){
     return isForecastLike ? `🌧️ -SHRA PSBL${time}` : "🌧️ -SHRA";
   }
-
+  if(/\b\+SHRA\b/.test(upper) || upper.includes("HEAVY RAIN SHOWER")){
+    return isForecastLike ? `🌧️ +SHRA PSBL${time}` : "🌧️ +SHRA";
+  }
   if(/\bSHRA\b/.test(upper)){
     return isForecastLike ? `🌧️ SHRA PSBL${time}` : "🌧️ SHRA";
   }
@@ -5083,14 +5179,12 @@ function compactWxAlertDisplay(value){
     if(upper.includes("METAR"))return "🌧️ -RA METAR";
     return "🌧️ -RA";
   }
-
   if(/\b\+RA\b/.test(upper) || upper.includes("HEAVY RAIN")){
     if(isForecastLike)return `🌧️ +RA PSBL${time}`;
     if(upper.includes("ATIS"))return "🌧️ +RA ATIS";
     if(upper.includes("METAR"))return "🌧️ +RA METAR";
     return "🌧️ +RA";
   }
-
   if(/\bRA\b/.test(upper)){
     if(isForecastLike)return `🌧️ RA PSBL${time}`;
     if(upper.includes("ATIS"))return "🌧️ RA ATIS";
@@ -5098,20 +5192,13 @@ function compactWxAlertDisplay(value){
     return "🌧️ RA";
   }
 
-  // Smoke / freezing rain / volcanic ash.
-  if(/\bFU\b/.test(upper) || upper.includes("SMOKE")){
-    return isForecastLike ? `🌫️ FU PSBL${time}` : "🌫️ FU ACTIVE";
-  }
-
-  if(/\bFZRA\b/.test(upper) || upper.includes("FREEZING RAIN")){
-    return isForecastLike ? `🧊 FZRA PSBL${time}` : "🧊 FZRA ACTIVE";
-  }
-
-  if(/\bVA\b/.test(upper) || upper.includes("VOLCANIC ASH")){
-    return isForecastLike ? `🌋 VA PSBL${time}` : "🌋 VA ACTIVE";
-  }
+  if(/\bFU\b/.test(upper) || upper.includes("SMOKE"))return isForecastLike ? `🌫️ FU PSBL${time}` : "🌫️ FU ACTIVE";
+  if(/\bFZRA\b/.test(upper) || upper.includes("FREEZING RAIN"))return isForecastLike ? `🧊 FZRA PSBL${time}` : "🧊 FZRA ACTIVE";
+  if(/\bVA\b/.test(upper) || upper.includes("VOLCANIC ASH"))return isForecastLike ? `🌋 VA PSBL${time}` : "🌋 VA ACTIVE";
 
   // Last-resort cleanup for unexpected backend text.
+  text=text.replace(/LIGHT\s+RAIN\s+SHOWERS\s+POSSIBLE/ig,"🌧️ -SHRA PSBL");
+  text=text.replace(/RAIN\s+SHOWERS\s+POSSIBLE/ig,"🌧️ SHRA PSBL");
   text=text.replace(/LIGHT\s+THUNDERSTORM\s+RAIN\s+POSSIBLE/ig,"⛈️ -TSRA PSBL");
   text=text.replace(/THUNDERSTORM\s+RAIN\s+POSSIBLE/ig,"⛈️ TSRA PSBL");
   text=text.replace(/THUNDERSTORM\s+VICINITY\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
@@ -6718,8 +6805,12 @@ function inferFlowFromRunways(arrRunways,depRunways){
     rawWxPx:20,
     wxAlertPx:22,
     notamPx:20,
+    notamTitlePx:18,
+    notamStatusPx:16,
+    notamCaoPx:14,
     labelPx:14,
     footerPx:18,
+    feedPx:14,
     rawLine:1.45,
     notamLine:1.38,
     strongPulse:true
@@ -6750,6 +6841,10 @@ function inferFlowFromRunways(arrRunways,depRunways){
     const notam=px(s.notamPx,10,34,DEFAULTS.notamPx);
     const label=px(s.labelPx,9,24,DEFAULTS.labelPx);
     const footer=px(s.footerPx,10,28,DEFAULTS.footerPx);
+    const notamTitle=px(s.notamTitlePx,10,36,DEFAULTS.notamTitlePx);
+    const notamStatus=px(s.notamStatusPx,10,32,DEFAULTS.notamStatusPx);
+    const notamCao=px(s.notamCaoPx,9,28,DEFAULTS.notamCaoPx);
+    const feed=px(s.feedPx,8,28,DEFAULTS.feedPx);
     const rawLine=Math.max(1.10,Math.min(1.80,Number(s.rawLine)||DEFAULTS.rawLine));
     const notamLine=Math.max(1.10,Math.min(1.80,Number(s.notamLine)||DEFAULTS.notamLine));
     const pulse=s.strongPulse!==false;
@@ -6797,9 +6892,35 @@ function inferFlowFromRunways(arrRunways,depRunways){
         line-height:${notamLine} !important;
       }
 
+      .mil-notam-title,
+      body.getac-preset .mil-notam-title{
+        font-size:${notamTitle}px !important;
+      }
+
+      .mil-notam-status,
+      body.getac-preset .mil-notam-status{
+        font-size:${notamStatus}px !important;
+      }
+
+      .mil-notam-cao,
+      body.getac-preset .mil-notam-cao{
+        font-size:${notamCao}px !important;
+      }
+
       .footer,
       body.getac-preset .footer{
         font-size:${footer}px !important;
+      }
+
+      .feed-health,
+      .footer-left,
+      .footer-center,
+      .footer-right,
+      body.getac-preset .feed-health,
+      body.getac-preset .footer-left,
+      body.getac-preset .footer-center,
+      body.getac-preset .footer-right{
+        font-size:${feed}px !important;
       }
 
       ${pulse ? `
@@ -7022,6 +7143,7 @@ function inferFlowFromRunways(arrRunways,depRunways){
         void crawl.offsetHeight;
       }
 
+      crawl.style.top="0";
       crawl.style.animation=anim;
       crawl.style.animationName="notamScrollUp";
       crawl.style.animationDuration=seconds+"s";

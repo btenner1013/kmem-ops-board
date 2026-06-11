@@ -499,6 +499,24 @@ input[type=range]{
       </div>
 
       <div class="control">
+        <div class="row"><label>NOTAM header/title</label><span class="value" id="notamTitlePxVal"></span></div>
+        <input id="notamTitlePx" type="range" min="10" max="36" step="1">
+        <div class="help">Controls the KMEM MIL NOTAMS title size.</div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label>NOTAM count/status</label><span class="value" id="notamStatusPxVal"></span></div>
+        <input id="notamStatusPx" type="range" min="10" max="32" step="1">
+        <div class="help">Controls the 2 MIL / 2 RWY CLSD line.</div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label>NOTAM CAO line</label><span class="value" id="notamCaoPxVal"></span></div>
+        <input id="notamCaoPx" type="range" min="9" max="28" step="1">
+        <div class="help">Controls the CAO timestamp under the NOTAM count.</div>
+      </div>
+
+      <div class="control">
         <div class="row"><label>WX Alert text</label><span class="value" id="wxAlertPxVal"></span></div>
         <input id="wxAlertPx" type="range" min="12" max="38" step="1">
       </div>
@@ -511,6 +529,12 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>Footer text</label><span class="value" id="footerPxVal"></span></div>
         <input id="footerPx" type="range" min="10" max="28" step="1">
+      </div>
+
+      <div class="control">
+        <div class="row"><label>Feed status text</label><span class="value" id="feedPxVal"></span></div>
+        <input id="feedPx" type="range" min="8" max="28" step="1">
+        <div class="help">Controls the FEEDS: METAR OK | TAF OK | ATIS OK line.</div>
       </div>
 
       <div class="control">
@@ -585,8 +609,12 @@ const defaults={
   rawWxPx:20,
   wxAlertPx:22,
   notamPx:20,
+  notamTitlePx:18,
+  notamStatusPx:16,
+  notamCaoPx:14,
   labelPx:14,
   footerPx:18,
+  feedPx:14,
   rawLine:1.45,
   notamLine:1.38,
   notamScrollSec:55,
@@ -607,10 +635,10 @@ const factoryDefaults=Object.assign({},defaults);
 
 
 const presets={
-  "TV 100":{clockPx:72,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
-  "TV 90":{clockPx:76,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:60,strongPulse:true},
-  "Desktop":{clockPx:72,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
-  "Getac":{clockPx:54,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,labelPx:12,footerPx:14,rawLine:1.20,notamLine:1.12,notamScrollSec:65,getacScale:90,awake:"1",strongPulse:true},
+  "TV 100":{clockPx:72,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
+  "TV 90":{clockPx:76,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,notamTitlePx:19,notamStatusPx:17,notamCaoPx:15,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:60,strongPulse:true},
+  "Desktop":{clockPx:72,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
+  "Getac":{clockPx:54,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,notamTitlePx:14,notamStatusPx:12,notamCaoPx:11,labelPx:12,footerPx:14,feedPx:12,rawLine:1.20,notamLine:1.12,notamScrollSec:65,getacScale:90,awake:"1",strongPulse:true},
   "Phone":{phoneBlockValuePx:20,phoneRcrPx:24,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36}
 };
 
@@ -689,7 +717,7 @@ function setPreset(name){
 
   const boardKeys=[
     "preset","clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx",
-    "labelPx","footerPx","rawLine","notamLine","notamScrollSec","getacScale","awake","strongPulse"
+    "notamTitlePx","notamStatusPx","notamCaoPx","labelPx","footerPx","feedPx","rawLine","notamLine","notamScrollSec","getacScale","awake","strongPulse"
   ];
 
   const phoneKeys=[
@@ -751,7 +779,7 @@ function saveDefaults(){
 }
 
 function updateLabels(){
-  ["clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","labelPx","footerPx","phoneBlockValuePx","phoneRcrPx","phoneRawWxPx","phoneWxAlertPx","phoneNotamPx","phoneLabelPx","phoneFooterPx"].forEach(id=>{
+  ["clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","notamTitlePx","notamStatusPx","notamCaoPx","labelPx","footerPx","feedPx","phoneBlockValuePx","phoneRcrPx","phoneRawWxPx","phoneWxAlertPx","phoneNotamPx","phoneLabelPx","phoneFooterPx"].forEach(id=>{
     const el=document.getElementById(id);
     const v=document.getElementById(id+"Val");
     if(el&&v)v.textContent=el.value+" px";
