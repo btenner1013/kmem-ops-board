@@ -2011,7 +2011,12 @@ def detect_weather_alerts(metar, taf, atis_text=""):
                 check["category"]
             )
             window = group.get("tafWindow", "")
-            text = f"{check['label']} POSSIBLE {window}".strip()
+            # TAF-derived WX ALERT text should use the raw aviation weather code,
+            # not a long plain-English label. Examples:
+            #   🌧️ -SHRA PSBL 08-13Z
+            #   🌧️ -SHRA PSBL 12 JUN 08-13Z
+            # Current METAR/ATIS alerts still use the longer label/source wording.
+            text = f"{code} PSBL {window}".strip()
             alerts.append({
                 "code": code,
                 "label": check["label"],

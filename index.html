@@ -4510,6 +4510,105 @@ body.getac-preset .feed-health{
 .awake-indicator.awake-warn{color:#ffcc00}
 .awake-indicator.awake-off{color:#aaa}
 
+
+
+/* ============================================================
+   FINAL PATCH — UNIVERSAL NOTAM CRAWL + GETAC VISIBILITY
+   Purpose:
+   - Restore same scrolling NOTAM behavior on TV/desktop/Getac.
+   - Do not use static Getac NOTAM summary.
+   - Keep NOTAM crawl inside its panel and visible.
+   - Display-control text size overrides still work because injected CSS
+     is appended later with equal/higher specificity.
+   ============================================================ */
+
+.mil-notam-panel{
+  overflow:hidden !important;
+}
+
+.mil-notam-window{
+  position:relative !important;
+  overflow:hidden !important;
+  min-height:0 !important;
+}
+
+.mil-notam-active .mil-notam-crawl,
+body.getac-preset .mil-notam-active .mil-notam-crawl{
+  display:block !important;
+  position:absolute !important;
+  left:0 !important;
+  width:100% !important;
+  height:auto !important;
+  max-height:none !important;
+  top:100% !important;
+  transform:translateY(0) !important;
+  white-space:pre-wrap !important;
+  overflow-wrap:anywhere !important;
+  overflow:visible !important;
+  animation-name:notamScrollUp !important;
+  animation-duration:var(--notam-scroll-seconds, 55s) !important;
+  animation-timing-function:linear !important;
+  animation-iteration-count:infinite !important;
+}
+
+.mil-notam-none .mil-notam-crawl,
+.mil-notam-placeholder .mil-notam-crawl,
+body.getac-preset .mil-notam-none .mil-notam-crawl,
+body.getac-preset .mil-notam-placeholder .mil-notam-crawl{
+  position:relative !important;
+  top:auto !important;
+  transform:none !important;
+  animation:none !important;
+  display:flex !important;
+  align-items:center !important;
+  height:100% !important;
+}
+
+/* Getac still gets a no-page-scroll compact layout, but NOTAMs crawl. */
+body.getac-preset .mil-notam-panel{
+  display:grid !important;
+  grid-template-columns:minmax(118px, 17%) minmax(0, 1fr) !important;
+  align-items:stretch !important;
+  column-gap:6px !important;
+  padding:4px 6px !important;
+  min-height:0 !important;
+  height:100% !important;
+  overflow:hidden !important;
+}
+
+body.getac-preset .mil-notam-header{
+  min-height:0 !important;
+  height:100% !important;
+  justify-content:center !important;
+  padding-right:5px !important;
+  overflow:hidden !important;
+}
+
+body.getac-preset .mil-notam-title{
+  font-size:calc(.70rem * var(--getac-scale, .90)) !important;
+  line-height:1.02 !important;
+  letter-spacing:.4px !important;
+}
+
+body.getac-preset .mil-notam-status{
+  font-size:calc(.62rem * var(--getac-scale, .90)) !important;
+  line-height:1.02 !important;
+  margin-top:1px !important;
+}
+
+body.getac-preset .mil-notam-cao{
+  font-size:calc(.58rem * var(--getac-scale, .90)) !important;
+  line-height:1.02 !important;
+  margin-top:1px !important;
+}
+
+body.getac-preset .mil-notam-window{
+  height:100% !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+  position:relative !important;
+}
+
 </style>
 </head>
 
@@ -6657,38 +6756,49 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
     const css=`
       .detail-value,
-      .ops-value{
+      .ops-value,
+      body.getac-preset .detail-value,
+      body.getac-preset .ops-value{
         font-size:${blockValue}px !important;
       }
 
       .detail-label,
       .ops-label,
-      .trend-label{
+      .trend-label,
+      body.getac-preset .detail-label,
+      body.getac-preset .ops-label,
+      body.getac-preset .trend-label{
         font-size:${label}px !important;
       }
 
-      #rcr{
+      #rcr,
+      body.getac-preset #rcr{
         font-size:${rcr}px !important;
         line-height:1.05 !important;
       }
 
       #tafTrend.wx-alert-compact,
-      .wx-alert-compact{
+      .wx-alert-compact,
+      body.getac-preset #tafTrend.wx-alert-compact,
+      body.getac-preset .wx-alert-compact{
         font-size:${wx}px !important;
         line-height:1.05 !important;
       }
 
-      .raw{
+      .raw,
+      body.getac-preset .raw{
         font-size:${raw}px !important;
         line-height:${rawLine} !important;
       }
 
-      .mil-notam-crawl{
+      .mil-notam-crawl,
+      body.getac-preset .mil-notam-crawl{
         font-size:${notam}px !important;
         line-height:${notamLine} !important;
       }
 
-      .footer{
+      .footer,
+      body.getac-preset .footer{
         font-size:${footer}px !important;
       }
 
