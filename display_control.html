@@ -456,6 +456,18 @@ input[type=range]{
   </div>
 
   <div class="card">
+    <h2>Getac / Small Landscape Quick Links</h2>
+    <div class="presets">
+      <button class="primary" onclick="setGetacPreset(90,true,true)">GETAC 90% + AWAKE</button>
+      <button onclick="setGetacPreset(85,true,true)">GETAC 85% + AWAKE</button>
+      <button onclick="setGetacPreset(95,true,true)">GETAC 95% + AWAKE</button>
+      <button onclick="openGetacBoard(90,true)">Open Getac Board</button>
+      <button onclick="setAwakeOnly(false)">Awake Off</button>
+    </div>
+    <p class="help">Getac mode uses a no-scroll one-window layout, compact NOTAMs, and URL fallback such as <b>?preset=getac&amp;scale=90&amp;awake=1</b>.</p>
+  </div>
+
+  <div class="card">
     <h2>Font Controls</h2>
     <div class="grid">
       <div class="control">
@@ -578,6 +590,8 @@ const defaults={
   rawLine:1.45,
   notamLine:1.38,
   notamScrollSec:55,
+  getacScale:90,
+  awake:"1",
   phoneBlockValuePx:20,
   phoneRcrPx:24,
   phoneRawWxPx:17,
@@ -596,7 +610,7 @@ const presets={
   "TV 100":{clockPx:72,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
   "TV 90":{clockPx:76,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:60,strongPulse:true},
   "Desktop":{clockPx:72,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,labelPx:14,footerPx:18,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
-  "Getac":{clockPx:62,blockValuePx:22,rcrPx:25,rawWxPx:18,wxAlertPx:22,notamPx:18,labelPx:13,footerPx:16,rawLine:1.38,notamLine:1.32,notamScrollSec:65,strongPulse:true},
+  "Getac":{clockPx:54,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,labelPx:12,footerPx:14,rawLine:1.20,notamLine:1.12,notamScrollSec:65,getacScale:90,awake:"1",strongPulse:true},
   "Phone":{phoneBlockValuePx:20,phoneRcrPx:24,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36}
 };
 
@@ -675,7 +689,7 @@ function setPreset(name){
 
   const boardKeys=[
     "preset","clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx",
-    "labelPx","footerPx","rawLine","notamLine","notamScrollSec","strongPulse"
+    "labelPx","footerPx","rawLine","notamLine","notamScrollSec","getacScale","awake","strongPulse"
   ];
 
   const phoneKeys=[
@@ -788,6 +802,29 @@ function updatePreview(){
 
 function openBoard(){
   window.open("./index.html?displayTune=1","_blank");
+}
+
+function setGetacPreset(scale,awake,openAfter){
+  const current=load();
+  const p=presets["Getac"]||{};
+  const s=Object.assign({},current,p,{preset:"Getac",getacScale:scale||90,awake:awake?"1":"0"});
+  localStorage.setItem(KEY,JSON.stringify(s));
+  setInputs(s);
+  save();
+  if(openAfter)openGetacBoard(scale||90,awake);
+}
+
+function setAwakeOnly(enabled){
+  const s=Object.assign({},load(),{awake:enabled?"1":"0"});
+  localStorage.setItem(KEY,JSON.stringify(s));
+  setInputs(s);
+  save();
+}
+
+function openGetacBoard(scale,awake){
+  const sc=scale||90;
+  const aw=awake?"1":"0";
+  window.open(`./index.html?preset=getac&scale=${sc}&awake=${aw}&v=getac-control`,"_blank");
 }
 
 document.querySelectorAll("input").forEach(el=>{

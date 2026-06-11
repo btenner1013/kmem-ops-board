@@ -4338,6 +4338,178 @@ html,body{
   }
 }
 
+
+
+/* ============================================================
+   Phase GETAC — compact no-scroll display preset + wake indicator
+   Trigger: ?preset=getac or display-control preset Getac
+   ============================================================ */
+html.getac-preset,
+body.getac-preset{
+  width:100vw !important;
+  height:100vh !important;
+  max-width:100vw !important;
+  max-height:100vh !important;
+  overflow:hidden !important;
+}
+
+body.getac-preset .board{
+  width:100vw !important;
+  height:100vh !important;
+  max-width:100vw !important;
+  max-height:100vh !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+  display:grid !important;
+  grid-template-rows:minmax(52px,10vh) minmax(0,1fr) minmax(82px,14vh) minmax(28px,4.5vh) !important;
+  gap:3px !important;
+  padding:4px !important;
+}
+body.getac-preset .top,
+body.getac-preset .middle{
+  display:grid !important;
+  grid-template-columns:44% 56% !important;
+  gap:4px !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+body.getac-preset .panel{
+  min-height:0 !important;
+  overflow:hidden !important;
+  padding:5px !important;
+}
+body.getac-preset .clock-panel{
+  min-height:0 !important;
+  justify-content:center !important;
+  padding:4px 6px !important;
+}
+body.getac-preset .clock{
+  font-size:calc(clamp(1.75rem,3.8vw,3.9rem) * var(--getac-scale, .90)) !important;
+  line-height:.88 !important;
+  margin:0 !important;
+}
+body.getac-preset .date{
+  font-size:calc(clamp(.68rem,.78vw,.90rem) * var(--getac-scale, .90)) !important;
+  line-height:1.05 !important;
+  margin-top:2px !important;
+}
+body.getac-preset .label,
+body.getac-preset .title{
+  font-size:calc(clamp(.78rem,.86vw,1.0rem) * var(--getac-scale, .90)) !important;
+  line-height:1.05 !important;
+  margin-bottom:3px !important;
+}
+body.getac-preset .summary-grid{gap:4px !important;margin-bottom:4px !important}
+body.getac-preset .flight-category{
+  font-size:calc(clamp(1.45rem,2.55vw,2.85rem) * var(--getac-scale, .90)) !important;
+  line-height:.92 !important;
+}
+body.getac-preset .atis-letter{
+  font-size:calc(clamp(1.0rem,1.55vw,1.85rem) * var(--getac-scale, .90)) !important;
+  line-height:.95 !important;
+}
+body.getac-preset .details-grid{grid-template-columns:repeat(4,1fr) !important;gap:3px !important;margin-bottom:3px !important}
+body.getac-preset .ops-grid{grid-template-columns:repeat(3,1fr) !important;gap:3px !important;margin-bottom:3px !important}
+body.getac-preset .status-grid{gap:3px !important;margin-bottom:3px !important}
+body.getac-preset .detail-box,
+body.getac-preset .ops-box,
+body.getac-preset .trend-box{min-height:27px !important;padding:3px 4px !important}
+body.getac-preset .detail-label,
+body.getac-preset .ops-label,
+body.getac-preset .trend-label{
+  font-size:calc(.60rem * var(--getac-scale, .90)) !important;
+  line-height:1.02 !important;
+}
+body.getac-preset .detail-value,
+body.getac-preset .ops-value,
+body.getac-preset .trend-value{
+  font-size:calc(.80rem * var(--getac-scale, .90)) !important;
+  line-height:1.08 !important;
+  white-space:normal !important;
+}
+body.getac-preset .raw{
+  font-size:calc(.72rem * var(--getac-scale, .90)) !important;
+  line-height:1.17 !important;
+  padding-top:3px !important;
+  max-height:none !important;
+  overflow:hidden !important;
+}
+body.getac-preset .radar-panel{min-height:0 !important;overflow:hidden !important}
+body.getac-preset .radarimg{
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  object-fit:contain !important;
+  object-position:center center !important;
+}
+body.getac-preset .mil-notam-panel{
+  display:grid !important;
+  grid-template-columns:minmax(126px,18%) 1fr !important;
+  min-height:0 !important;
+  height:100% !important;
+  padding:5px 7px !important;
+  column-gap:7px !important;
+  overflow:hidden !important;
+}
+body.getac-preset .mil-notam-header{
+  min-height:0 !important;
+  height:100% !important;
+  justify-content:center !important;
+  padding-right:6px !important;
+  overflow:hidden !important;
+}
+body.getac-preset .mil-notam-title{font-size:calc(.76rem * var(--getac-scale, .90)) !important;line-height:1.04 !important}
+body.getac-preset .mil-notam-status{font-size:calc(.68rem * var(--getac-scale, .90)) !important;line-height:1.04 !important;margin-top:1px !important}
+body.getac-preset .mil-notam-cao{font-size:calc(.60rem * var(--getac-scale, .90)) !important;line-height:1.04 !important;margin-top:1px !important}
+body.getac-preset .mil-notam-window{
+  height:100% !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+  position:relative !important;
+}
+body.getac-preset .mil-notam-crawl,
+body.getac-preset .mil-notam-active .mil-notam-crawl{
+  display:block !important;
+  position:relative !important;
+  top:auto !important;
+  transform:none !important;
+  width:100% !important;
+  height:100% !important;
+  max-height:100% !important;
+  overflow:hidden !important;
+  white-space:pre-wrap !important;
+  overflow-wrap:anywhere !important;
+  font-size:calc(.66rem * var(--getac-scale, .90)) !important;
+  line-height:1.10 !important;
+  padding:0 2px !important;
+  animation:none !important;
+}
+body.getac-preset .footer{
+  min-height:0 !important;
+  height:100% !important;
+  padding:3px 6px !important;
+  font-size:calc(.66rem * var(--getac-scale, .90)) !important;
+  line-height:1.05 !important;
+  overflow:hidden !important;
+  display:grid !important;
+  grid-template-columns:.9fr 1.6fr .9fr !important;
+  align-items:center !important;
+}
+body.getac-preset .feed-health{
+  font-size:calc(.56rem * var(--getac-scale, .90)) !important;
+  line-height:1.05 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+.awake-indicator{
+  position:fixed;right:6px;bottom:4px;z-index:9999;
+  font-family:Arial,sans-serif;font-size:10px;font-weight:900;letter-spacing:.4px;
+  padding:2px 5px;border:1px solid rgba(255,255,255,.35);
+  background:rgba(0,0,0,.68);color:#00ff88;pointer-events:none;opacity:.85;
+}
+.awake-indicator.awake-warn{color:#ffcc00}
+.awake-indicator.awake-off{color:#aaa}
+
 </style>
 </head>
 
@@ -7108,6 +7280,115 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
     return text.toUpperCase();
   };
+})();
+</script>
+
+
+
+<script>
+/* ============================================================
+   Phase GETAC — URL preset, display-control bridge, and wake lock
+   Supports: ?preset=getac&scale=90&awake=1
+   ============================================================ */
+(function(){
+  const STORAGE_KEY="kmemOpsDisplaySettingsV1";
+  const QS=new URLSearchParams(window.location.search);
+
+  function truthy(v){return ["1","true","yes","on"].includes(String(v||"").toLowerCase());}
+  function falsy(v){return ["0","false","no","off"].includes(String(v||"").toLowerCase());}
+  function clampScale(v){const n=Number(v);return Number.isFinite(n)?Math.max(70,Math.min(115,n)):null;}
+
+  function readSettings(){
+    try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}
+    catch(e){return {};}
+  }
+
+  function saveSettingsPatch(patch){
+    try{
+      const current=readSettings();
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(Object.assign({},current,patch)));
+    }catch(e){}
+  }
+
+  function getPreset(){
+    const saved=readSettings();
+    const raw=(QS.get("preset") || saved.preset || "").toString().trim().toLowerCase();
+    if(raw==="getac" || raw==="getac / small" || raw==="getac-small" || raw==="small-landscape")return "getac";
+    if(raw.includes("getac"))return "getac";
+    return raw;
+  }
+
+  function getScale(){
+    const saved=readSettings();
+    return clampScale(QS.get("scale")) || clampScale(saved.getacScale) || (getPreset()==="getac" ? 90 : 100);
+  }
+
+  function applyPreset(){
+    const preset=getPreset();
+    const scale=getScale();
+
+    document.documentElement.classList.toggle("getac-preset",preset==="getac");
+    document.body.classList.toggle("getac-preset",preset==="getac");
+    document.documentElement.style.setProperty("--getac-scale",String(scale/100));
+
+    if(QS.has("preset") || QS.has("scale")){
+      saveSettingsPatch({preset:preset==="getac"?"Getac":"Desktop",getacScale:scale});
+    }
+  }
+
+  window.kmemIsGetacPreset=function(){return getPreset()==="getac";};
+  window.kmemApplyDisplayPreset=applyPreset;
+
+  window.addEventListener("storage",function(e){if(e.key===STORAGE_KEY)applyPreset();});
+  try{
+    const channel=new BroadcastChannel("kmemDisplaySettings");
+    channel.onmessage=function(e){if(e && e.data && e.data.type==="settings-updated")applyPreset();};
+  }catch(e){}
+
+  applyPreset();
+  document.addEventListener("DOMContentLoaded",applyPreset);
+  window.addEventListener("resize",applyPreset);
+  setInterval(applyPreset,1500);
+
+  let wakeLock=null;
+  function wakeWanted(){
+    const saved=readSettings();
+    if(QS.has("awake")){
+      const wanted=!falsy(QS.get("awake"));
+      saveSettingsPatch({awake:wanted?"1":"0"});
+      return wanted;
+    }
+    if(saved.awake!==undefined)return !falsy(saved.awake);
+    return true;
+  }
+  function setAwakeIndicator(text,cls){
+    let el=document.getElementById("awakeIndicator");
+    if(!el){
+      el=document.createElement("div");
+      el.id="awakeIndicator";
+      el.className="awake-indicator";
+      document.body.appendChild(el);
+    }
+    el.textContent=text;
+    el.className="awake-indicator "+(cls||"");
+  }
+  async function requestWakeLock(){
+    if(!wakeWanted()){setAwakeIndicator("AWAKE OFF","awake-off");return;}
+    try{
+      if(!("wakeLock" in navigator)){setAwakeIndicator("AWAKE UNAVAILABLE","awake-warn");return;}
+      wakeLock=await navigator.wakeLock.request("screen");
+      setAwakeIndicator("AWAKE ON","");
+      wakeLock.addEventListener("release",()=>{
+        if(wakeWanted() && document.visibilityState==="visible")setAwakeIndicator("AWAKE REQ","awake-warn");
+      });
+    }catch(err){
+      console.warn("KMEM wake lock failed:",err);
+      setAwakeIndicator("AWAKE UNAVAILABLE","awake-warn");
+    }
+  }
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")requestWakeLock();});
+  window.addEventListener("load",()=>{requestWakeLock();setTimeout(requestWakeLock,1500);});
+  requestWakeLock();
 })();
 </script>
 

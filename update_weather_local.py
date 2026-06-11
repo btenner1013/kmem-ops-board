@@ -1670,16 +1670,110 @@ def alert_text_for(label, sources):
     return label
 
 
-def taf_window_display_from_token(window_token):
+TAF_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+
+
+def parse_taf_issue_datetime_utc(taf_text, now_z=None):
+    """Parse TAF issue time from DDHHMMZ and infer month/year from current UTC."""
+    now_z = now_z or datetime.now(timezone.utc)
+    text = str(taf_text or "").upper()
+    match = re.search(r"\bTAF(?:\s+AMD|\s+COR)?\s+[A-Z]{4}\s+(\d{2})(\d{2})(\d{2})Z\b", text)
+    if not match:
+        match = re.search(r"\b[A-Z]{4}\s+(\d{2})(\d{2})(\d{2})Z\s+\d{4}/\d{4}\b", text)
+    if not match:
+        return now_z
+
+    day = int(match.group(1))
+    hour = int(match.group(2))
+    minute = int(match.group(3))
+
+    candidates = []
+    for month_offset in (0, -1, 1):
+        year = now_z.year
+        month = now_z.month + month_offset
+        if month < 1:
+            month = 12
+            year -= 1
+        elif month > 12:
+            month = 1
+            year += 1
+        try:
+            candidates.append(datetime(year, month, day, hour, minute, tzinfo=timezone.utc))
+        except ValueError:
+            pass
+
+    plausible = [c for c in candidates if c <= now_z + timedelta(hours=36)]
+    if plausible:
+        return min(plausible, key=lambda c: abs((c - now_z).total_seconds()))
+    return now_z
+
+
+def taf_token_start_datetime(window_token, taf_issue_dt=None):
+    """Return the start datetime for a TAF window token such as 1208/1213 or FM120800."""
     token = (window_token or "").upper().strip()
+    taf_issue_dt = taf_issue_dt or datetime.now(timezone.utc)
 
     if re.match(r"^\d{4}/\d{4}$", token):
-        return f"{token[2:4]}-{token[7:9]}Z"
+        day = int(token[0:2])
+        hour = int(token[2:4])
+    elif re.match(r"^FM\d{6}$", token):
+        day = int(token[2:4])
+        hour = int(token[4:6])
+    else:
+        return None
 
+    candidates = []
+    for month_offset in (0, -1, 1):
+        year = taf_issue_dt.year
+        month = taf_issue_dt.month + month_offset
+        if month < 1:
+            month = 12
+            year -= 1
+        elif month > 12:
+            month = 1
+            year += 1
+        try:
+            candidates.append(datetime(year, month, day, hour, tzinfo=timezone.utc))
+        except ValueError:
+            pass
+
+    if not candidates:
+        return None
+
+    # TAF windows are DDHH-based.  Around the issue time the valid-period start can
+    # be a little before the issue timestamp, so choose the nearest same/nearby
+    # calendar candidate instead of forcing it after issue time.
+    return min(candidates, key=lambda c: abs((c - taf_issue_dt).total_seconds()))
+
+
+def taf_alert_window_time_text(window_token):
+    token = (window_token or "").upper().strip()
+    if re.match(r"^\d{4}/\d{4}$", token):
+        return f"{token[2:4]}-{token[7:9]}Z"
     if re.match(r"^FM\d{6}$", token):
         return f"FM {token[4:6]}Z"
-
     return ""
+
+
+def taf_window_display_from_token(window_token, taf_issue_dt=None, current_utc_dt=None):
+    """
+    Format TAF-derived WX alert windows.
+
+    Same current UTC date: 08-13Z
+    Different UTC date: 12 JUN 08-13Z
+    """
+    token = (window_token or "").upper().strip()
+    base = taf_alert_window_time_text(token)
+    if not base:
+        return ""
+
+    start_dt = taf_token_start_datetime(token, taf_issue_dt)
+    current_utc_dt = current_utc_dt or datetime.now(timezone.utc)
+
+    if start_dt and start_dt.date() != current_utc_dt.date():
+        return f"{start_dt.day:02d} {TAF_MONTHS[start_dt.month - 1]} {base}"
+
+    return base
 
 
 def taf_window_sort_key(window_token, fallback_order=999):
@@ -1695,6 +1789,8 @@ def taf_window_sort_key(window_token, fallback_order=999):
 
 
 def split_taf_groups_for_windows(taf):
+    current_utc_dt = datetime.now(timezone.utc)
+    taf_issue_dt = parse_taf_issue_datetime_utc(taf, current_utc_dt)
     text = re.sub(r"\s+", " ", (taf or "").upper()).strip()
 
     if not text or "UNAVAILABLE" in text or "ERROR" in text or "FAILED" in text:
@@ -1712,7 +1808,7 @@ def split_taf_groups_for_windows(taf):
         groups.append({
             "tafGroupType": "PREVAILING",
             "tafWindowToken": main_valid,
-            "tafWindow": taf_window_display_from_token(main_valid),
+            "tafWindow": taf_window_display_from_token(main_valid, taf_issue_dt, current_utc_dt),
             "tafStartKey": taf_window_sort_key(main_valid, 0),
             "tafGroupText": base_text.strip()
         })
@@ -1735,7 +1831,7 @@ def split_taf_groups_for_windows(taf):
         groups.append({
             "tafGroupType": marker_text if not marker_text.startswith("FM") else "FM",
             "tafWindowToken": window_token,
-            "tafWindow": taf_window_display_from_token(window_token),
+            "tafWindow": taf_window_display_from_token(window_token, taf_issue_dt, current_utc_dt),
             "tafStartKey": taf_window_sort_key(window_token, idx + 1),
             "tafGroupText": group_text
         })
@@ -2166,20 +2262,10 @@ def taf_group_has_thunder(group_text):
     )
 
 
-def format_taf_window(window_token, prefix=""):
+def format_taf_window(window_token, prefix="", taf_issue_dt=None, current_utc_dt=None):
     if not window_token:
         return ""
-
-    if re.match(r"^\d{4}/\d{4}$", window_token):
-        start_hh = window_token[2:4]
-        end_hh = window_token[7:9]
-        return f"{start_hh}-{end_hh}Z"
-
-    if re.match(r"^FM\d{6}$", window_token):
-        hh = window_token[4:6]
-        return f"FM {hh}Z"
-
-    return ""
+    return taf_window_display_from_token(window_token, taf_issue_dt, current_utc_dt)
 
 
 def find_taf_thunder_window(taf):
