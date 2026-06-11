@@ -267,6 +267,153 @@ def parse_z_datetime(value):
         return None
 
 
+
+
+def zulu_iso(dt):
+    """Return a stable UTC ISO string for weather source timestamps."""
+    if not dt:
+        return None
+    try:
+        return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        return None
+
+
+def source_age_minutes(observed_dt, now_z=None):
+    """Return source age in whole minutes, or None when the source time is unknown."""
+    if not observed_dt:
+        return None
+    now_z = now_z or datetime.now(timezone.utc)
+    try:
+        age = (now_z - observed_dt.astimezone(timezone.utc)).total_seconds() / 60.0
+        # A small negative age can happen around source clock skew; clamp it.
+        if age < 0 and age > -10:
+            age = 0
+        return int(round(age))
+    except Exception:
+        return None
+
+
+def freshness_status(fetch_status, age_minutes, warn_minutes, stale_minutes):
+    """
+    Separate "fetch worked" from "source content is current."  A stale source should
+    not remain OK just because the HTTP request succeeded.
+    """
+    status = (fetch_status or "FAILED").upper()
+
+    if status.startswith("FAILED"):
+        return status
+
+    if age_minutes is None:
+        if status == "USED_LAST_GOOD":
+            return "LAST_GOOD_TIME_UNKNOWN"
+        if status == "OK":
+            return "SOURCE_TIME_UNKNOWN"
+        return status
+
+    if age_minutes >= stale_minutes:
+        if status == "USED_LAST_GOOD":
+            return "STALE_LAST_GOOD"
+        return "STALE_SOURCE"
+
+    if age_minutes >= warn_minutes:
+        if status == "USED_LAST_GOOD":
+            return "WARN_LAST_GOOD"
+        return "WARN_SOURCE"
+
+    return status
+
+
+def parse_metar_datetime_utc(metar_text, now_z=None):
+    """
+    Parse a METAR observation time from DDHHMMZ and infer the month/year from now.
+    Example: METAR KMEM 110033Z ...
+    """
+    if not metar_text:
+        return None
+
+    now_z = now_z or datetime.now(timezone.utc)
+    text = str(metar_text).upper()
+    match = re.search(r"\b(?:METAR\s+|SPECI\s+)?[A-Z]{4}\s+(\d{2})(\d{2})(\d{2})Z\b", text)
+    if not match:
+        match = re.search(r"\b(\d{2})(\d{2})(\d{2})Z\b", text)
+    if not match:
+        return None
+
+    day = int(match.group(1))
+    hour = int(match.group(2))
+    minute = int(match.group(3))
+
+    # Try current month first, then nearby month boundaries.
+    candidates = []
+    for month_offset in (0, -1, 1):
+        year = now_z.year
+        month = now_z.month + month_offset
+        if month < 1:
+            month = 12
+            year -= 1
+        elif month > 12:
+            month = 1
+            year += 1
+        try:
+            candidates.append(datetime(year, month, day, hour, minute, tzinfo=timezone.utc))
+        except ValueError:
+            pass
+
+    if not candidates:
+        return None
+
+    # Prefer the candidate closest to now, with a bias against future times.
+    not_future = [c for c in candidates if c <= now_z + timedelta(minutes=10)]
+    if not_future:
+        return max(not_future)
+    return min(candidates, key=lambda c: abs((c - now_z).total_seconds()))
+
+
+def parse_atis_datetime_utc(atis_text, now_z=None):
+    """
+    Parse a D-ATIS observation/update time from HHMMZ style tokens. ATIS text often
+    lacks the UTC day, so infer the most recent plausible time.
+    """
+    if not atis_text:
+        return None
+
+    now_z = now_z or datetime.now(timezone.utc)
+    text = str(atis_text).upper()
+
+    # Prefer ATIS-specific timestamp wording when present, otherwise any HHMMZ token.
+    patterns = [
+        r"(?:ATIS|INFO|INFORMATION|OBS|OBSERVATION|UPDATED|TIME)\D{0,25}\b(\d{2})(\d{2})Z\b",
+        r"\b(\d{2})(\d{2})Z\b",
+    ]
+
+    candidates = []
+    for pattern in patterns:
+        for h, m in re.findall(pattern, text):
+            hour = int(h)
+            minute = int(m)
+            if hour > 23 or minute > 59:
+                continue
+
+            for day_offset in (0, -1, 1):
+                base = now_z + timedelta(days=day_offset)
+                try:
+                    dt = datetime(base.year, base.month, base.day, hour, minute, tzinfo=timezone.utc)
+                    candidates.append(dt)
+                except ValueError:
+                    pass
+        if candidates:
+            break
+
+    if not candidates:
+        return None
+
+    plausible = [c for c in candidates if c <= now_z + timedelta(minutes=10)]
+    if plausible:
+        return max(plausible)
+    return min(candidates, key=lambda c: abs((c - now_z).total_seconds()))
+
+
 def load_trend_history():
     history = load_json_file(TREND_HISTORY_PATH)
 
