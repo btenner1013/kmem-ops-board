@@ -4717,6 +4717,131 @@ body.getac-preset .mil-notam-crawl{
   padding-right:96px !important;
 }
 
+
+
+/* ============================================================
+   PHASE 96 — FINAL DISPLAY-CONTROL + UNIVERSAL NOTAM CRAWL FIX
+   Purpose:
+   - Clock slider controls local/Zulu clock text on desktop/TV/Getac.
+   - Footer slider controls DATA UPDATED and REFRESH lines only.
+   - Feed status slider controls only the FEEDS line.
+   - NOTAM title/status/CAO/body sliders control their intended text.
+   - NOTAMs crawl universally on desktop/TV/Getac; Getac changes size/layout only.
+   ============================================================ */
+:root{
+  --clock-px:72px;
+  --notam-title-px:18px;
+  --notam-status-px:16px;
+  --notam-cao-px:14px;
+  --notam-body-px:20px;
+  --notam-line-height:1.38;
+  --footer-px:18px;
+  --feed-px:14px;
+  --notam-scroll-seconds:55s;
+}
+
+@keyframes kmemNotamCrawlDynamic{
+  0%{transform:translateY(var(--notam-start-y,0px));}
+  100%{transform:translateY(var(--notam-end-y,-140px));}
+}
+
+.clock,
+.local-clock,
+.zulu-clock{
+  font-size:var(--clock-px) !important;
+}
+
+.mil-notam-title,
+body.getac-preset .mil-notam-title{
+  font-size:var(--notam-title-px) !important;
+  line-height:1.05 !important;
+}
+
+.mil-notam-status,
+body.getac-preset .mil-notam-status{
+  font-size:var(--notam-status-px) !important;
+  line-height:1.05 !important;
+}
+
+.mil-notam-cao,
+body.getac-preset .mil-notam-cao{
+  font-size:var(--notam-cao-px) !important;
+  line-height:1.05 !important;
+}
+
+.mil-notam-crawl,
+body.getac-preset .mil-notam-crawl{
+  font-size:var(--notam-body-px) !important;
+  line-height:var(--notam-line-height) !important;
+  white-space:pre-wrap !important;
+  overflow-wrap:anywhere !important;
+  padding:2px 120px 2px 4px !important;
+}
+
+.footer,
+body.getac-preset .footer{
+  font-size:var(--footer-px) !important;
+}
+
+.footer-left,
+.footer-right,
+body.getac-preset .footer-left,
+body.getac-preset .footer-right{
+  font-size:var(--footer-px) !important;
+}
+
+#feedHealth,
+.feed-health,
+.footer-center.feed-health,
+body.getac-preset #feedHealth,
+body.getac-preset .feed-health,
+body.getac-preset .footer-center.feed-health{
+  font-size:var(--feed-px) !important;
+}
+
+.mil-notam-window,
+body.getac-preset .mil-notam-window{
+  position:relative !important;
+  overflow:hidden !important;
+  height:100% !important;
+  min-height:0 !important;
+}
+
+.mil-notam-active #milNotamCrawl,
+.mil-notam-active .mil-notam-crawl,
+body.getac-preset .mil-notam-active #milNotamCrawl,
+body.getac-preset .mil-notam-active .mil-notam-crawl{
+  display:block !important;
+  position:absolute !important;
+  left:0 !important;
+  top:0 !important;
+  width:100% !important;
+  height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+  animation-name:kmemNotamCrawlDynamic !important;
+  animation-duration:var(--notam-scroll-seconds,55s) !important;
+  animation-timing-function:linear !important;
+  animation-iteration-count:infinite !important;
+  animation-fill-mode:none !important;
+}
+
+.mil-notam-none #milNotamCrawl,
+.mil-notam-placeholder #milNotamCrawl,
+.mil-notam-none .mil-notam-crawl,
+.mil-notam-placeholder .mil-notam-crawl,
+body.getac-preset .mil-notam-none #milNotamCrawl,
+body.getac-preset .mil-notam-placeholder #milNotamCrawl,
+body.getac-preset .mil-notam-none .mil-notam-crawl,
+body.getac-preset .mil-notam-placeholder .mil-notam-crawl{
+  display:flex !important;
+  position:relative !important;
+  align-items:center !important;
+  height:100% !important;
+  top:auto !important;
+  transform:none !important;
+  animation:none !important;
+}
 </style>
 </head>
 
@@ -5150,8 +5275,8 @@ function compactWxAlertDisplay(value){
   }
 
   // Thunderstorm rain. Preserve intensity when source says -TSRA/+TSRA.
-  if(/\b-TSRA\b/.test(upper) || upper.includes("LIGHT THUNDERSTORM RAIN"))return wxCode("-TSRA","⛈️");
-  if(/\b\+TSRA\b/.test(upper) || upper.includes("HEAVY THUNDERSTORM RAIN"))return wxCode("+TSRA","⛈️");
+  if(/(^|\\s)-TSRA\\b/.test(upper) || upper.includes("LIGHT THUNDERSTORM RAIN"))return wxCode("-TSRA","⛈️");
+  if(/(^|\\s)\\+TSRA\\b/.test(upper) || upper.includes("HEAVY THUNDERSTORM RAIN"))return wxCode("+TSRA","⛈️");
   if(/\bTSRA\b/.test(upper) || upper.includes("THUNDERSTORM RAIN"))return wxCode("TSRA","⛈️");
 
   if(/\bVCTS\b/.test(upper) || upper.includes("VCTY TSTMS") || upper.includes("VICINITY THUNDER") || upper.includes("THUNDERSTORM VICINITY") || upper.includes("THUNDERSTORMS VICINITY")){
@@ -5163,23 +5288,23 @@ function compactWxAlertDisplay(value){
   }
 
   // Rain/showers without thunder. Do NOT strip the minus sign.
-  if(/\b-SHRA\b/.test(upper) || upper.includes("LIGHT RAIN SHOWER")){
+  if(/(^|\\s)-SHRA\\b/.test(upper) || upper.includes("LIGHT RAIN SHOWER")){
     return isForecastLike ? `🌧️ -SHRA PSBL${time}` : "🌧️ -SHRA";
   }
-  if(/\b\+SHRA\b/.test(upper) || upper.includes("HEAVY RAIN SHOWER")){
+  if(/(^|\\s)\\+SHRA\\b/.test(upper) || upper.includes("HEAVY RAIN SHOWER")){
     return isForecastLike ? `🌧️ +SHRA PSBL${time}` : "🌧️ +SHRA";
   }
   if(/\bSHRA\b/.test(upper)){
     return isForecastLike ? `🌧️ SHRA PSBL${time}` : "🌧️ SHRA";
   }
 
-  if(/\b-RA\b/.test(upper) || upper.includes("LIGHT RAIN")){
+  if(/(^|\\s)-RA\\b/.test(upper) || upper.includes("LIGHT RAIN")){
     if(isForecastLike)return `🌧️ -RA PSBL${time}`;
     if(upper.includes("ATIS"))return "🌧️ -RA ATIS";
     if(upper.includes("METAR"))return "🌧️ -RA METAR";
     return "🌧️ -RA";
   }
-  if(/\b\+RA\b/.test(upper) || upper.includes("HEAVY RAIN")){
+  if(/(^|\\s)\\+RA\\b/.test(upper) || upper.includes("HEAVY RAIN")){
     if(isForecastLike)return `🌧️ +RA PSBL${time}`;
     if(upper.includes("ATIS"))return "🌧️ +RA ATIS";
     if(upper.includes("METAR"))return "🌧️ +RA METAR";
@@ -6793,13 +6918,15 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
 
 <script>
-/* Phase 64 — display tuning bridge.
-   Reads localStorage from display-control.html and applies it live. */
+/* Phase 96 — display tuning bridge.
+   Reads localStorage from display_control.html and applies it live.
+   Fixes clock/footer/feed/NOTAM mapping. */
 (function(){
   const STORAGE_KEY="kmemOpsDisplaySettingsV1";
 
   const DEFAULTS={
     preset:"Desktop",
+    clockPx:72,
     blockValuePx:24,
     rcrPx:24,
     rawWxPx:20,
@@ -6813,6 +6940,7 @@ function inferFlowFromRunways(arrRunways,depRunways){
     feedPx:14,
     rawLine:1.45,
     notamLine:1.38,
+    notamScrollSec:55,
     strongPulse:true
   };
 
@@ -6831,9 +6959,16 @@ function inferFlowFromRunways(arrRunways,depRunways){
     return Math.max(min,Math.min(max,n));
   }
 
+  function num(value,min,max,fallback){
+    const n=Number(value);
+    if(!Number.isFinite(n))return fallback;
+    return Math.max(min,Math.min(max,n));
+  }
+
   function applyDisplaySettings(){
     const s=readSettings();
 
+    const clock=px(s.clockPx,42,128,DEFAULTS.clockPx);
     const blockValue=px(s.blockValuePx,14,42,DEFAULTS.blockValuePx);
     const rcr=px(s.rcrPx,14,42,DEFAULTS.rcrPx);
     const raw=px(s.rawWxPx,10,34,DEFAULTS.rawWxPx);
@@ -6845,11 +6980,30 @@ function inferFlowFromRunways(arrRunways,depRunways){
     const notamStatus=px(s.notamStatusPx,10,32,DEFAULTS.notamStatusPx);
     const notamCao=px(s.notamCaoPx,9,28,DEFAULTS.notamCaoPx);
     const feed=px(s.feedPx,8,28,DEFAULTS.feedPx);
-    const rawLine=Math.max(1.10,Math.min(1.80,Number(s.rawLine)||DEFAULTS.rawLine));
-    const notamLine=Math.max(1.10,Math.min(1.80,Number(s.notamLine)||DEFAULTS.notamLine));
+    const rawLine=num(s.rawLine,1.10,1.80,DEFAULTS.rawLine);
+    const notamLine=num(s.notamLine,1.10,1.80,DEFAULTS.notamLine);
+    const notamScroll=num(s.notamScrollSec,10,180,DEFAULTS.notamScrollSec);
     const pulse=s.strongPulse!==false;
 
+    const root=document.documentElement;
+    root.style.setProperty("--clock-px",clock+"px");
+    root.style.setProperty("--notam-body-px",notam+"px");
+    root.style.setProperty("--notam-title-px",notamTitle+"px");
+    root.style.setProperty("--notam-status-px",notamStatus+"px");
+    root.style.setProperty("--notam-cao-px",notamCao+"px");
+    root.style.setProperty("--footer-px",footer+"px");
+    root.style.setProperty("--feed-px",feed+"px");
+    root.style.setProperty("--notam-line-height",String(notamLine));
+    root.style.setProperty("--notam-scroll-seconds",notamScroll+"s");
+
     const css=`
+      .clock,.local-clock,.zulu-clock,
+      body.getac-preset .clock,
+      body.getac-preset .local-clock,
+      body.getac-preset .zulu-clock{
+        font-size:${clock}px !important;
+      }
+
       .detail-value,
       .ops-value,
       body.getac-preset .detail-value,
@@ -6908,32 +7062,25 @@ function inferFlowFromRunways(arrRunways,depRunways){
       }
 
       .footer,
-      body.getac-preset .footer{
+      body.getac-preset .footer,
+      .footer-left,
+      .footer-right,
+      body.getac-preset .footer-left,
+      body.getac-preset .footer-right{
         font-size:${footer}px !important;
       }
 
-      .feed-health,
-      .footer-left,
-      .footer-center,
-      .footer-right,
-      body.getac-preset .feed-health,
-      body.getac-preset .footer-left,
-      body.getac-preset .footer-center,
-      body.getac-preset .footer-right{
+      #feedHealth,
+      .footer-center.feed-health,
+      body.getac-preset #feedHealth,
+      body.getac-preset .footer-center.feed-health{
         font-size:${feed}px !important;
       }
 
       ${pulse ? `
-      .alert-pulse{
-        animation:pulseStrong .78s ease-in-out infinite !important;
-      }
-      .lightning-pulse{
-        animation:pulseStrong .88s ease-in-out infinite !important;
-      }` : `
-      .alert-pulse,
-      .lightning-pulse{
-        animation:none !important;
-      }`}
+      .alert-pulse{animation:pulseStrong .78s ease-in-out infinite !important;}
+      .lightning-pulse{animation:pulseStrong .88s ease-in-out infinite !important;}` : `
+      .alert-pulse,.lightning-pulse{animation:none !important;}`}
     `;
 
     let style=document.getElementById("displayTuningStyle");
@@ -6943,6 +7090,8 @@ function inferFlowFromRunways(arrRunways,depRunways){
       document.head.appendChild(style);
     }
     if(style.textContent!==css)style.textContent=css;
+
+    if(window.applyNotamScrollSpeed)window.applyNotamScrollSpeed(true);
   }
 
   window.applyDisplaySettings=applyDisplaySettings;
@@ -7093,14 +7242,13 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
 
 <script>
-/* Phase 74 — final NOTAM scroll speed enforcement.
-   Reads notamScrollSec from display_control.html and forces it onto the live crawl element.
-*/
+/* Phase 96 — final NOTAM crawl enforcement.
+   Uses dynamic measured travel so NOTAMs actually move inside the panel.
+   Same behavior for desktop/TV/Getac. */
 (function(){
   const STORAGE_KEY="kmemOpsDisplaySettingsV1";
   const DEFAULT_SCROLL=55;
-  let lastSeconds=null;
-  let lastActive=null;
+  let lastSignature="";
 
   function readSeconds(){
     try{
@@ -7124,34 +7272,56 @@ function inferFlowFromRunways(arrRunways,depRunways){
   function applyNotamScrollSpeed(force=false){
     const seconds=readSeconds();
     const panel=document.getElementById("milNotamPanel") || document.querySelector(".mil-notam-panel");
+    const windowEl=document.querySelector(".mil-notam-window");
     const crawl=document.getElementById("milNotamCrawl") || document.querySelector(".mil-notam-crawl");
+
     document.documentElement.style.setProperty("--notam-scroll-seconds",seconds+"s");
 
     if(!crawl)return false;
 
     const active=crawlIsActive(panel,crawl);
-    const changed=force || seconds!==lastSeconds || active!==lastActive;
-
-    lastSeconds=seconds;
-    lastActive=active;
 
     if(active){
-      const anim=`notamScrollUp ${seconds}s linear infinite`;
-
-      if(changed){
-        crawl.style.animation="none";
-        void crawl.offsetHeight;
-      }
-
+      crawl.style.position="absolute";
+      crawl.style.left="0";
       crawl.style.top="0";
-      crawl.style.animation=anim;
-      crawl.style.animationName="notamScrollUp";
+      crawl.style.width="100%";
+      crawl.style.height="auto";
+      crawl.style.maxHeight="none";
+      crawl.style.overflow="visible";
+      crawl.style.display="block";
+
+      const winH=windowEl ? Math.max(20,windowEl.clientHeight||0) : 80;
+      const contentH=Math.max(20,crawl.scrollHeight||crawl.offsetHeight||0);
+
+      // Start visible, then crawl upward through the panel.
+      // End far enough to fully clear the text, even when text is shorter than the window.
+      const startY=0;
+      const endY=-(contentH + Math.max(12,Math.round(winH*0.30)));
+
+      crawl.style.setProperty("--notam-start-y",startY+"px");
+      crawl.style.setProperty("--notam-end-y",endY+"px");
+      crawl.style.animationName="kmemNotamCrawlDynamic";
       crawl.style.animationDuration=seconds+"s";
       crawl.style.animationTimingFunction="linear";
       crawl.style.animationIterationCount="infinite";
+
+      const sig=[seconds,active,winH,contentH,crawl.textContent.length].join("|");
+      if(force || sig!==lastSignature){
+        crawl.style.animation="none";
+        void crawl.offsetHeight;
+        crawl.style.animation=`kmemNotamCrawlDynamic ${seconds}s linear infinite`;
+        lastSignature=sig;
+      }
     }else{
+      crawl.style.position="relative";
+      crawl.style.top="auto";
+      crawl.style.transform="none";
       crawl.style.animation="none";
-      crawl.style.animationDuration=seconds+"s";
+      crawl.style.display="flex";
+      crawl.style.alignItems="center";
+      crawl.style.height="100%";
+      lastSignature="";
     }
 
     crawl.dataset.notamScrollSeconds=String(seconds);
@@ -7175,6 +7345,7 @@ function inferFlowFromRunways(arrRunways,depRunways){
   }catch(e){}
 
   document.addEventListener("DOMContentLoaded",()=>applyNotamScrollSpeed(true));
+  window.addEventListener("resize",()=>applyNotamScrollSpeed(true));
   setInterval(()=>applyNotamScrollSpeed(false),750);
 })();
 </script>
@@ -7420,53 +7591,28 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
 
 <script>
-/* Phase 79 — clock font size display control */
+/* Phase 96 — clock font size display control fallback.
+   Main control is handled by display tuning bridge. */
 (function(){
   const STORAGE_KEY="kmemOpsDisplaySettingsV1";
   const DEFAULT_CLOCK=72;
-
-  function readClockPx(){
+  function applyClockSize(){
     try{
       const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
       const n=Number(saved.clockPx);
-      if(Number.isFinite(n))return Math.max(42,Math.min(128,n));
-    }catch(e){}
-    return DEFAULT_CLOCK;
-  }
-
-  function applyClockSize(){
-    const px=readClockPx();
-    document.documentElement.style.setProperty("--clock-font-px",px+"px");
-
-    /* Explicitly set desktop/app windows. Mobile CSS above still overrides this. */
-    if(window.matchMedia("(min-width:901px)").matches){
-      document.querySelectorAll(".clock").forEach(el=>{
-        el.style.fontSize=px+"px";
-      });
-    }else{
-      document.querySelectorAll(".clock").forEach(el=>{
-        el.style.fontSize="";
-      });
+      const px=Number.isFinite(n)?Math.max(42,Math.min(128,n)):DEFAULT_CLOCK;
+      document.documentElement.style.setProperty("--clock-px",px+"px");
+    }catch(e){
+      document.documentElement.style.setProperty("--clock-px",DEFAULT_CLOCK+"px");
     }
   }
-
   window.applyClockSize=applyClockSize;
-
-  window.addEventListener("storage",e=>{
-    if(e.key===STORAGE_KEY)applyClockSize();
-  });
-
+  window.addEventListener("storage",e=>{if(e.key===STORAGE_KEY)applyClockSize();});
   try{
     const channel=new BroadcastChannel("kmemDisplaySettings");
-    channel.onmessage=e=>{
-      if(e && e.data && e.data.type==="settings-updated"){
-        applyClockSize();
-      }
-    };
+    channel.onmessage=e=>{if(e && e.data && e.data.type==="settings-updated")applyClockSize();};
   }catch(e){}
-
   document.addEventListener("DOMContentLoaded",applyClockSize);
-  window.addEventListener("resize",applyClockSize);
   setInterval(applyClockSize,1500);
 })();
 </script>
