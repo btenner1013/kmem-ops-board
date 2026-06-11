@@ -6,7 +6,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from html import unescape
 from http.cookiejar import CookieJar
 
@@ -105,7 +105,10 @@ def fetch_url(url):
         request = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "Mozilla/5.0"
+                "User-Agent": "Mozilla/5.0",
+                "Cache-Control": "no-cache, no-store, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0"
             }
         )
 
@@ -2803,6 +2806,9 @@ def should_save_last_good(data):
         and is_good_taf(data.get("taf", ""))
         and is_good_atis(data.get("atisText", ""))
         and is_good_bwc(data)
+        and data.get("metarFetchStatus") == "OK"
+        and data.get("atisFetchStatus") == "OK"
+        and data.get("tafFetchStatus") in {"OK", "USED_LAST_GOOD"}
     )
 
 def build_weather_json():
@@ -2824,16 +2830,18 @@ def build_weather_json():
     trend_history = load_trend_history()
     trend_reference_sample = choose_trend_reference_sample(trend_history, now_z)
 
+    cache_buster = int(now_z.timestamp())
+
     metar_current = fetch_url(
-        "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false"
+        f"https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false&_={cache_buster}"
     ).strip()
 
     taf_current = fetch_url(
-        "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw"
+        f"https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw&_={cache_buster}"
     ).strip()
 
     atis_html = fetch_url(
-        "https://atisrelay.com/datis/KMEM"
+        f"https://atisrelay.com/datis/KMEM?_={cache_buster}"
     )
 
     atis_raw = html_to_text(atis_html)
@@ -2878,6 +2886,22 @@ def build_weather_json():
         atis_text = "D-ATIS unavailable"
         atis_fetch_status = "FAILED_NO_LAST_GOOD"
         print("D-ATIS fetch failed; no valid last-known-good D-ATIS available.")
+
+    metar_observed_dt = parse_metar_datetime_utc(metar, now_z)
+    metar_age_minutes = source_age_minutes(metar_observed_dt, now_z)
+    original_metar_fetch_status = metar_fetch_status
+    metar_fetch_status = freshness_status(metar_fetch_status, metar_age_minutes, 55, 75)
+
+    if metar_fetch_status != original_metar_fetch_status:
+        print(f"METAR freshness warning: status {metar_fetch_status}; age {metar_age_minutes} min; observed {zulu_iso(metar_observed_dt) or 'UNKNOWN'}.")
+
+    atis_observed_dt = parse_atis_datetime_utc(atis_text, now_z)
+    atis_age_minutes = source_age_minutes(atis_observed_dt, now_z)
+    original_atis_fetch_status = atis_fetch_status
+    atis_fetch_status = freshness_status(atis_fetch_status, atis_age_minutes, 60, 90)
+
+    if atis_fetch_status != original_atis_fetch_status:
+        print(f"D-ATIS freshness warning: status {atis_fetch_status}; age {atis_age_minutes} min; observed {zulu_iso(atis_observed_dt) or 'UNKNOWN'}.")
 
     atis_letter = parse_atis_letter(atis_text)
     atis_phonetic = phonetic_for_letter(atis_letter)
@@ -2967,6 +2991,10 @@ def build_weather_json():
         "metarFetchStatus": metar_fetch_status,
         "tafFetchStatus": taf_fetch_status,
         "atisFetchStatus": atis_fetch_status,
+        "metarObservedZ": zulu_iso(metar_observed_dt),
+        "metarAgeMinutes": metar_age_minutes,
+        "atisObservedZ": zulu_iso(atis_observed_dt),
+        "atisAgeMinutes": atis_age_minutes,
         "lastKnownGoodUsed": last_known_good_used,
         "lastKnownGoodCachePath": LAST_GOOD_WEATHER_PATH,
         "trendLookbackHours": TREND_LOOKBACK_HOURS,
@@ -3109,7 +3137,7 @@ def build_weather_json():
 
     print("weather.json updated.")
     print("DATA UPDATED:", data["allFeedsUpdatedZ"])
-    print("ATIS:", data["atisLetter"], data["atisPhonetic"])
+    print("ATIS:", data["atisLetter"], data["atisPhonetic"], "AGE:", data.get("atisAgeMinutes"), "OBS:", data.get("atisObservedZ"))
     print("OBS SOURCE:", data["obsSource"], data["obsFieldSources"])
     print("TREND REF:", data["trendReferenceSource"], data["trendReferenceTimestampZ"], "SAMPLES:", data["trendSampleCount"])
     print("ARR RWY:", data["arrRunways"])
@@ -3135,7 +3163,7 @@ def build_weather_json():
     print("MIL NOTAMS:", data["milNotamStatus"], "STATUS:", data["milNotamFetchStatus"], "UPDATED:", data["milNotamUpdatedZ"])
     print("RWY CLOSURE NOTAMS:", data.get("runwayClosureNotamCount", 0))
     print("LIGHTNING:", data["lightning"], "SOURCE:", data["lightningSource"], "TONE:", data["lightningTone"])
-    print("METAR:", data["metar"])
+    print("METAR:", data["metar"], "AGE:", data.get("metarAgeMinutes"), "OBS:", data.get("metarObservedZ"))
     print("FETCH STATUS:", "METAR", data["metarFetchStatus"], "TAF", data["tafFetchStatus"], "ATIS", data["atisFetchStatus"], "LKG", data["lastKnownGoodUsed"])
     print("Trigger:", data["workflowMetadata"]["lastWorkflowEvent"])
 

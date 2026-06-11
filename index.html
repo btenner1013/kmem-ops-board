@@ -4659,18 +4659,23 @@ function parseAviationTime(text){
   const m=(text||"").match(/\b(\d{2})(\d{2})(\d{2})Z\b/);
   if(!m)return null;
 
-  const now=new Date();
+  const now=getBoardNow();
+  const day=parseInt(m[1],10);
+  const hour=parseInt(m[2],10);
+  const minute=parseInt(m[3],10);
+  const candidates=[];
 
-  return new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      parseInt(m[1],10),
-      parseInt(m[2],10),
-      parseInt(m[3],10),
-      0
-    )
-  );
+  for(const monthOffset of [-1,0,1]){
+    const dt=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+monthOffset,day,hour,minute,0));
+    if(dt.getUTCDate()===day)candidates.push(dt);
+  }
+
+  const futureLimit=getBoardNowMs()+15*60000;
+  const valid=candidates.filter(dt=>dt.getTime()<=futureLimit);
+  if(!valid.length)return null;
+
+  valid.sort((a,b)=>Math.abs(getBoardNowMs()-a.getTime())-Math.abs(getBoardNowMs()-b.getTime()));
+  return valid[0];
 }
 
 function parseMetarTime(metar){
@@ -5363,7 +5368,15 @@ function isBadText(value,badWords){
 function parseAtisTime(atisText){
   const text=(atisText||"").toUpperCase();
 
-  let m=text.match(/\bATIS\s+INFO\s+[A-Z]\s+(\d{2})(\d{2})Z\b/);
+  let m=text.match(/\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\s+(\d{2})(\d{2})Z\b/);
+
+  if(!m){
+    m=text.match(/\bATIS\s+INFORMATION\s+[A-Z]\s+(\d{2})(\d{2})\s*Z\b/);
+  }
+
+  if(!m){
+    m=text.match(/\bINFORMATION\s+[A-Z]\s+(\d{2})(\d{2})\s*Z\b/);
+  }
 
   if(!m){
     m=text.match(/\bINFORMATION\s+[A-Z]\s+(\d{2}):(\d{2})\s*Z\b/);
@@ -5372,17 +5385,20 @@ function parseAtisTime(atisText){
   if(!m)return null;
 
   const now=getBoardNow();
+  const hour=parseInt(m[1],10);
+  const minute=parseInt(m[2],10);
+  const base=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),hour,minute,0));
+  const candidates=[
+    new Date(base.getTime()-24*60*60000),
+    base,
+    new Date(base.getTime()+24*60*60000)
+  ];
+  const futureLimit=getBoardNowMs()+15*60000;
+  const valid=candidates.filter(dt=>dt.getTime()<=futureLimit);
+  if(!valid.length)return null;
 
-  return new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      parseInt(m[1],10),
-      parseInt(m[2],10),
-      0
-    )
-  );
+  valid.sort((a,b)=>Math.abs(getBoardNowMs()-a.getTime())-Math.abs(getBoardNowMs()-b.getTime()));
+  return valid[0];
 }
 
 function feedClassForStatus(status){
@@ -5449,14 +5465,16 @@ function updateSourceHealth(data,updatedZ){
   const tafBad=isBadText(taf,["UNAVAILABLE","ERROR","FAILED"]);
   const atisBad=isBadText(atis,["D-ATIS UNAVAILABLE","UNAVAILABLE","ERROR","FAILED"]);
 
-  const metarAge=minutesSince(parseMetarTime(metar));
+  const metarStatus=(data.metarFetchStatus||"").toString().toUpperCase();
+  const metarAgeFromData=Number(data.metarAgeMinutes);
+  const metarAge=Number.isFinite(metarAgeFromData) ? metarAgeFromData : minutesSince(parseMetarTime(metar));
 
-  if(metarBad||!metar.toUpperCase().includes("METAR")){
+  if(metarBad||!metar.toUpperCase().includes("METAR")||metarStatus.includes("FAILED")){
     addPart("METAR","BAD","");
-  }else if(metarAge!==null&&metarAge>75){
-    addPart("METAR","STALE",`${metarAge}M`);
-  }else if(metarAge!==null&&metarAge>55){
-    addPart("METAR","WARN",`${metarAge}M`);
+  }else if(metarStatus.includes("STALE")||(metarAge!==null&&metarAge>75)){
+    addPart("METAR","STALE",metarAge!==null?`${metarAge}M`:"");
+  }else if(metarStatus.includes("WARN")||metarStatus.includes("TIME_UNKNOWN")||(metarAge!==null&&metarAge>55)){
+    addPart("METAR","WARN",metarAge!==null?`${metarAge}M`:"");
   }else{
     addPart("METAR","OK","");
   }
@@ -5471,14 +5489,16 @@ function updateSourceHealth(data,updatedZ){
     addPart("TAF","OK","");
   }
 
-  const atisAge=minutesSince(parseAtisTime(atis));
+  const atisStatus=(data.atisFetchStatus||"").toString().toUpperCase();
+  const atisAgeFromData=Number(data.atisAgeMinutes);
+  const atisAge=Number.isFinite(atisAgeFromData) ? atisAgeFromData : minutesSince(parseAtisTime(atis));
 
-  if(atisBad||!(data.atisDisplay||data.atisLetter)){
+  if(atisBad||!(data.atisDisplay||data.atisLetter)||atisStatus.includes("FAILED")){
     addPart("ATIS","BAD","");
-  }else if(atisAge!==null&&atisAge>90){
-    addPart("ATIS","STALE",`${atisAge}M`);
-  }else if(atisAge!==null&&atisAge>60){
-    addPart("ATIS","WARN",`${atisAge}M`);
+  }else if(atisStatus.includes("STALE")||(atisAge!==null&&atisAge>90)){
+    addPart("ATIS","STALE",atisAge!==null?`${atisAge}M`:"");
+  }else if(atisStatus.includes("WARN")||atisStatus.includes("TIME_UNKNOWN")||(atisAge!==null&&atisAge>60)){
+    addPart("ATIS","WARN",atisAge!==null?`${atisAge}M`:"");
   }else{
     addPart("ATIS","OK","");
   }
