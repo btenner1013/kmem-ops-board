@@ -4842,118 +4842,6 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl{
   transform:none !important;
   animation:none !important;
 }
-
-/* ============================================================
-   PHASE 97 — FINAL OVERRIDE: UNIVERSAL NOTAM CRAWL + CONTROL MAP + WX CODE PRESERVE
-   This is intentionally last so older phase/mobile/Getac rules cannot
-   freeze the NOTAMs or steal display-control sliders.
-   ============================================================ */
-
-@keyframes kmemNotamContinuousLoop{
-  0%{transform:translateY(0);}
-  100%{transform:translateY(-50%);}
-}
-
-.mil-notam-panel,
-body.getac-preset .mil-notam-panel{
-  overflow:hidden !important;
-}
-
-.mil-notam-window,
-body.getac-preset .mil-notam-window{
-  position:relative !important;
-  overflow:hidden !important;
-  height:100% !important;
-  min-height:0 !important;
-}
-
-.mil-notam-active #milNotamCrawl,
-.mil-notam-active .mil-notam-crawl,
-body.getac-preset .mil-notam-active #milNotamCrawl,
-body.getac-preset .mil-notam-active .mil-notam-crawl{
-  display:block !important;
-  position:absolute !important;
-  left:0 !important;
-  top:0 !important;
-  width:100% !important;
-  height:auto !important;
-  max-height:none !important;
-  overflow:visible !important;
-  white-space:pre-wrap !important;
-  overflow-wrap:anywhere !important;
-  animation-name:kmemNotamContinuousLoop !important;
-  animation-duration:var(--notam-scroll-seconds,55s) !important;
-  animation-timing-function:linear !important;
-  animation-iteration-count:infinite !important;
-  animation-fill-mode:none !important;
-  will-change:transform !important;
-}
-
-.mil-notam-crawl,
-body.getac-preset .mil-notam-crawl{
-  font-size:var(--notam-body-px,20px) !important;
-  line-height:var(--notam-line-height,1.38) !important;
-  padding:2px 120px 2px 4px !important;
-}
-
-.mil-notam-title,
-body.getac-preset .mil-notam-title{
-  font-size:var(--notam-title-px,18px) !important;
-}
-
-.mil-notam-status,
-body.getac-preset .mil-notam-status{
-  font-size:var(--notam-status-px,16px) !important;
-}
-
-.mil-notam-cao,
-body.getac-preset .mil-notam-cao{
-  font-size:var(--notam-cao-px,14px) !important;
-}
-
-.clock,
-.local-clock,
-.zulu-clock,
-body.getac-preset .clock,
-body.getac-preset .local-clock,
-body.getac-preset .zulu-clock{
-  font-size:var(--clock-px,72px) !important;
-}
-
-.footer-left,
-.footer-right,
-#dataUpdated,
-#staleWarning,
-#refreshCountdown,
-body.getac-preset .footer-left,
-body.getac-preset .footer-right,
-body.getac-preset #dataUpdated,
-body.getac-preset #staleWarning,
-body.getac-preset #refreshCountdown{
-  font-size:var(--footer-px,18px) !important;
-}
-
-#feedHealth,
-.footer-center.feed-health,
-body.getac-preset #feedHealth,
-body.getac-preset .footer-center.feed-health{
-  font-size:var(--feed-px,14px) !important;
-}
-
-.mil-notam-none #milNotamCrawl,
-.mil-notam-placeholder #milNotamCrawl,
-.mil-notam-none .mil-notam-crawl,
-.mil-notam-placeholder .mil-notam-crawl,
-body.getac-preset .mil-notam-none #milNotamCrawl,
-body.getac-preset .mil-notam-placeholder #milNotamCrawl,
-body.getac-preset .mil-notam-none .mil-notam-crawl,
-body.getac-preset .mil-notam-placeholder .mil-notam-crawl{
-  position:relative !important;
-  top:auto !important;
-  transform:none !important;
-  animation:none !important;
-}
-
 </style>
 </head>
 
@@ -5346,33 +5234,16 @@ function compactLightningDisplay(value){
 
 function compactWxAlertDisplay(value){
   let text=safeValue(value,"NONE").toString().replace(/\s+/g," ").trim();
+  const upper=text.toUpperCase();
 
-  if(!text || text==="--" || /^NONE$/i.test(text) || /^N\/A$/i.test(text)){
+  if(!upper || upper==="--" || upper==="NONE" || upper==="N/A"){
     return "NONE";
   }
 
-  /*
-    Final WX alert display rule:
-    - Prefer raw aviation weather codes from weather.json / TAF.
-    - Preserve intensity prefixes: -SHRA, +SHRA, -RA, +RA, -TSRA, +TSRA.
-    - Preserve next-day date when present: 12 JUN 08-13Z.
-    - Do not convert -SHRA to plain SHRA or verbose "LIGHT RAIN SHOWERS" on the board.
-  */
-  const explicitForecast=text.match(/(?:^|\s)([+\-]?(?:TSRA|SHRA|RA|FZRA|FZDZ|PL|SN|SG|IC|GR|GS|VA|FU|HZ|FG|BR|VCTS|VCSH))\s+(?:PSBL|POSSIBLE)\s+((?:\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?\d{2}-\d{2}Z)/i);
-  if(explicitForecast){
-    const code=explicitForecast[1].toUpperCase();
-    const windowText=explicitForecast[2].toUpperCase();
-    const emoji=
-      /TS|VCTS/.test(code) ? "⛈️" :
-      /FZ|PL|SN|SG|IC|GR|GS/.test(code) ? "🧊" :
-      /VA/.test(code) ? "🌋" :
-      /FU|HZ|FG|BR/.test(code) ? "🌫️" :
-      "🌧️";
-    return `${emoji} ${code} PSBL ${windowText}`;
-  }
-
-  const upper=text.toUpperCase();
-
+  // Preserve optional next-day date in TAF-derived alert windows.
+  // Examples:
+  //   -SHRA PSBL 08-13Z
+  //   -SHRA PSBL 12 JUN 08-13Z
   const timeMatch=upper.match(/\b(?:(?:\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?\d{2}(?:-\d{2})?Z)\b/);
   const time=timeMatch ? " "+timeMatch[0].trim() : "";
 
@@ -5388,6 +5259,7 @@ function compactWxAlertDisplay(value){
     return isForecastLike ? `${emoji} ${code} PSBL${time}` : `${emoji} ${code} ${activeWord||"ACTIVE"}`;
   }
 
+  // Manual/current lightning remains separate from TAF WX alerts.
   if(upper.includes("LTG") && upper.includes("DSNT")){
     let dir="";
     if(upper.includes("NE AND NW") || upper.includes("NE/NW"))dir=" NE/NW";
@@ -5402,8 +5274,9 @@ function compactWxAlertDisplay(value){
     return "⚡ LTG WITHIN 5NM";
   }
 
-  if(/(^|\s)-TSRA\b/.test(upper) || upper.includes("LIGHT THUNDERSTORM RAIN"))return wxCode("-TSRA","⛈️");
-  if(/(^|\s)\+TSRA\b/.test(upper) || upper.includes("HEAVY THUNDERSTORM RAIN"))return wxCode("+TSRA","⛈️");
+  // Thunderstorm rain. Preserve intensity when source says -TSRA/+TSRA.
+  if(/(^|\\s)-TSRA\\b/.test(upper) || upper.includes("LIGHT THUNDERSTORM RAIN"))return wxCode("-TSRA","⛈️");
+  if(/(^|\\s)\\+TSRA\\b/.test(upper) || upper.includes("HEAVY THUNDERSTORM RAIN"))return wxCode("+TSRA","⛈️");
   if(/\bTSRA\b/.test(upper) || upper.includes("THUNDERSTORM RAIN"))return wxCode("TSRA","⛈️");
 
   if(/\bVCTS\b/.test(upper) || upper.includes("VCTY TSTMS") || upper.includes("VICINITY THUNDER") || upper.includes("THUNDERSTORM VICINITY") || upper.includes("THUNDERSTORMS VICINITY")){
@@ -5414,23 +5287,24 @@ function compactWxAlertDisplay(value){
     return isForecastLike ? `🌧️ VCSH PSBL${time}` : "🌧️ VCSH";
   }
 
-  if(/(^|\s)-SHRA\b/.test(upper) || upper.includes("LIGHT RAIN SHOWER")){
+  // Rain/showers without thunder. Do NOT strip the minus sign.
+  if(/(^|\\s)-SHRA\\b/.test(upper) || upper.includes("LIGHT RAIN SHOWER")){
     return isForecastLike ? `🌧️ -SHRA PSBL${time}` : "🌧️ -SHRA";
   }
-  if(/(^|\s)\+SHRA\b/.test(upper) || upper.includes("HEAVY RAIN SHOWER")){
+  if(/(^|\\s)\\+SHRA\\b/.test(upper) || upper.includes("HEAVY RAIN SHOWER")){
     return isForecastLike ? `🌧️ +SHRA PSBL${time}` : "🌧️ +SHRA";
   }
   if(/\bSHRA\b/.test(upper)){
     return isForecastLike ? `🌧️ SHRA PSBL${time}` : "🌧️ SHRA";
   }
 
-  if(/(^|\s)-RA\b/.test(upper) || upper.includes("LIGHT RAIN")){
+  if(/(^|\\s)-RA\\b/.test(upper) || upper.includes("LIGHT RAIN")){
     if(isForecastLike)return `🌧️ -RA PSBL${time}`;
     if(upper.includes("ATIS"))return "🌧️ -RA ATIS";
     if(upper.includes("METAR"))return "🌧️ -RA METAR";
     return "🌧️ -RA";
   }
-  if(/(^|\s)\+RA\b/.test(upper) || upper.includes("HEAVY RAIN")){
+  if(/(^|\\s)\\+RA\\b/.test(upper) || upper.includes("HEAVY RAIN")){
     if(isForecastLike)return `🌧️ +RA PSBL${time}`;
     if(upper.includes("ATIS"))return "🌧️ +RA ATIS";
     if(upper.includes("METAR"))return "🌧️ +RA METAR";
@@ -5447,8 +5321,18 @@ function compactWxAlertDisplay(value){
   if(/\bFZRA\b/.test(upper) || upper.includes("FREEZING RAIN"))return isForecastLike ? `🧊 FZRA PSBL${time}` : "🧊 FZRA ACTIVE";
   if(/\bVA\b/.test(upper) || upper.includes("VOLCANIC ASH"))return isForecastLike ? `🌋 VA PSBL${time}` : "🌋 VA ACTIVE";
 
+  // Last-resort cleanup for unexpected backend text.
   text=text.replace(/LIGHT\s+RAIN\s+SHOWERS\s+POSSIBLE/ig,"🌧️ -SHRA PSBL");
   text=text.replace(/RAIN\s+SHOWERS\s+POSSIBLE/ig,"🌧️ SHRA PSBL");
+  text=text.replace(/LIGHT\s+THUNDERSTORM\s+RAIN\s+POSSIBLE/ig,"⛈️ -TSRA PSBL");
+  text=text.replace(/THUNDERSTORM\s+RAIN\s+POSSIBLE/ig,"⛈️ TSRA PSBL");
+  text=text.replace(/THUNDERSTORM\s+VICINITY\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
+  text=text.replace(/THUNDERSTORMS\s+VICINITY\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
+  text=text.replace(/VICINITY\s+THUNDERSTORMS\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
+  text=text.replace(/VCTY\s+TSTMS\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
+  text=text.replace(/VCTY\s+SHOWERS\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
+  text=text.replace(/SHOWERS\s+VICINITY\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
+  text=text.replace(/VICINITY\s+SHOWERS\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
   text=text.replace(/\s+/g," ").trim();
 
   return text || "NONE";
@@ -5896,12 +5780,8 @@ function setTafTrend(data){
     if(data.wxAlertFlash===true)trend.classList.add("alert-flash");
     if(data.wxAlertPulse===true)trend.classList.add("alert-pulse");
 
-    const primaryAlert=(data.wxPrimaryAlert && typeof data.wxPrimaryAlert==="object") ? data.wxPrimaryAlert : null;
-    const wxDisplayText=(primaryAlert && primaryAlert.displayText) ? primaryAlert.displayText : data.wxAlertText;
-    const wxTitleText=(primaryAlert && primaryAlert.text) ? primaryAlert.text : (data.wxAlertLogText||wxDisplayText);
-
-    trend.innerHTML=wxAlertDisplayHtml(wxDisplayText);
-    trend.title=wxTitleText;
+    trend.innerHTML=wxAlertDisplayHtml(data.wxAlertText);
+    trend.title=data.wxAlertLogText||data.wxAlertText;
     return;
   }
 
@@ -6577,13 +6457,7 @@ function setMilNotamsDisplay(data){
       status.textContent=data.milNotamStatus||`${count} ACTIVE`;
     }
 
-    /*
-      Universal NOTAM crawl:
-      Duplicate the text so the crawl loops continuously even when the
-      current NOTAM list is short enough to fit inside the panel.
-    */
-    crawl.dataset.originalText=scrollText;
-    crawl.textContent=scrollText+"\n\n"+scrollText;
+    crawl.textContent=scrollText;
     crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"} | effective times display-only`;
     return;
   }
@@ -7368,111 +7242,204 @@ function inferFlowFromRunways(arrRunways,depRunways){
 
 
 <script>
-/* Phase 96 — final NOTAM crawl enforcement.
-   Uses dynamic measured travel so NOTAMs actually move inside the panel.
-   Same behavior for desktop/TV/Getac. */
+/* Phase 100 — universal NOTAM crawl hard override.
+   This replaces the old measured-transform scroller. It duplicates the NOTAM body
+   internally and scrolls the duplicate loop vertically so the NOTAM text moves on
+   desktop, TV, Getac, and split-screen views. It also makes the MIL NOTAM text
+   slider apply directly to the scrolling body. */
 (function(){
   const STORAGE_KEY="kmemOpsDisplaySettingsV1";
-  const DEFAULT_SCROLL=55;
-  let lastSignature="";
+  let lastRaw="";
+  let lastSizeSig="";
 
-  function readSeconds(){
-    try{
-      const s=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
-      const n=Number(s.notamScrollSec);
-      if(Number.isFinite(n))return Math.max(10,Math.min(180,n));
-    }catch(e){}
-    return DEFAULT_SCROLL;
+  function readSettings(){
+    try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}
+    catch(e){return {};}
   }
 
-  function crawlIsActive(panel,crawl){
+  function clamp(n,min,max,fallback){
+    n=Number(n);
+    if(!Number.isFinite(n))return fallback;
+    return Math.max(min,Math.min(max,n));
+  }
+
+  function escapeHtml(text){
+    return String(text||"")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;");
+  }
+
+  function isActiveNotam(panel,crawl){
     if(panel && panel.classList.contains("mil-notam-active"))return true;
-    const text=(crawl?.textContent||"").replace(/\s+/g," ").trim().toUpperCase();
-    if(!text)return false;
-    if(text.includes("NO ACTIVE KMEM MIL NOTAMS"))return false;
-    if(text.includes("NO ACTIVE MIL NOTAMS"))return false;
-    if(text.includes("FAA NMS API PENDING"))return false;
+    const t=(crawl?.textContent||"").replace(/\s+/g," ").trim().toUpperCase();
+    if(!t)return false;
+    if(t.includes("FAA NMS API PENDING"))return false;
+    if(t.includes("NO ACTIVE KMEM MIL NOTAMS"))return false;
+    if(t.includes("NO ACTIVE MIL NOTAMS"))return false;
     return true;
+  }
+
+  function getRawText(crawl){
+    if(!crawl)return "";
+    if(crawl.dataset.kmemRawNotamText)return crawl.dataset.kmemRawNotamText;
+    return (crawl.textContent||"").trim();
+  }
+
+  function buildLoopHtml(raw){
+    const safe=escapeHtml(raw);
+    return [
+      '<div class="kmem-notam-copy">',safe,'</div>',
+      '<div class="kmem-notam-gap" aria-hidden="true"></div>',
+      '<div class="kmem-notam-copy" aria-hidden="true">',safe,'</div>'
+    ].join("");
   }
 
   function applyNotamScrollSpeed(force=false){
-    const seconds=readSeconds();
     const panel=document.getElementById("milNotamPanel") || document.querySelector(".mil-notam-panel");
-    const windowEl=document.querySelector(".mil-notam-window");
+    const win=document.querySelector(".mil-notam-window");
     const crawl=document.getElementById("milNotamCrawl") || document.querySelector(".mil-notam-crawl");
+    if(!crawl || !win)return false;
 
-    document.documentElement.style.setProperty("--notam-scroll-seconds",seconds+"s");
+    const settings=readSettings();
+    const bodyPx=clamp(settings.notamPx,10,42,20);
+    const line=clamp(settings.notamLine,1.05,1.80,1.32);
+    const seconds=clamp(settings.notamScrollSec,10,120,28);
 
-    if(!crawl)return false;
+    // Put the current control values directly on the element so older CSS cannot win.
+    crawl.style.setProperty("font-size",bodyPx+"px","important");
+    crawl.style.setProperty("line-height",String(line),"important");
+    crawl.style.setProperty("white-space","pre-wrap","important");
+    crawl.style.setProperty("overflow-wrap","anywhere","important");
 
-    const active=crawlIsActive(panel,crawl);
+    const title=document.querySelector(".mil-notam-title");
+    const status=document.getElementById("milNotamStatus") || document.querySelector(".mil-notam-status");
+    const cao=document.getElementById("milNotamCao") || document.querySelector(".mil-notam-cao");
+    if(title)title.style.setProperty("font-size",clamp(settings.notamTitlePx,10,40,18)+"px","important");
+    if(status)status.style.setProperty("font-size",clamp(settings.notamStatusPx,10,36,16)+"px","important");
+    if(cao)cao.style.setProperty("font-size",clamp(settings.notamCaoPx,9,32,14)+"px","important");
 
-    if(active){
-      crawl.style.position="absolute";
-      crawl.style.left="0";
-      crawl.style.top="0";
-      crawl.style.width="100%";
-      crawl.style.height="auto";
-      crawl.style.maxHeight="none";
-      crawl.style.overflow="visible";
-      crawl.style.display="block";
-
-      const winH=windowEl ? Math.max(20,windowEl.clientHeight||0) : 80;
-      const contentH=Math.max(20,crawl.scrollHeight||crawl.offsetHeight||0);
-
-      // Start visible, then crawl upward through the panel.
-      // End far enough to fully clear the text, even when text is shorter than the window.
-      const startY=0;
-      const endY=-(contentH + Math.max(12,Math.round(winH*0.30)));
-
-      crawl.style.setProperty("--notam-start-y",startY+"px");
-      crawl.style.setProperty("--notam-end-y",endY+"px");
-      crawl.style.animationName="kmemNotamCrawlDynamic";
-      crawl.style.animationDuration=seconds+"s";
-      crawl.style.animationTimingFunction="linear";
-      crawl.style.animationIterationCount="infinite";
-
-      const sig=[seconds,active,winH,contentH,crawl.textContent.length].join("|");
-      if(force || sig!==lastSignature){
-        crawl.style.animation="none";
-        void crawl.offsetHeight;
-        crawl.style.animation=`kmemNotamCrawlDynamic ${seconds}s linear infinite`;
-        lastSignature=sig;
+    const active=isActiveNotam(panel,crawl);
+    if(!active){
+      crawl.classList.remove("kmem-notam-loop");
+      if(crawl.dataset.kmemRawNotamText){
+        crawl.textContent=crawl.dataset.kmemRawNotamText;
+        delete crawl.dataset.kmemRawNotamText;
       }
-    }else{
-      crawl.style.position="relative";
-      crawl.style.top="auto";
-      crawl.style.transform="none";
-      crawl.style.animation="none";
-      crawl.style.display="flex";
-      crawl.style.alignItems="center";
-      crawl.style.height="100%";
-      lastSignature="";
+      crawl.style.setProperty("position","relative","important");
+      crawl.style.setProperty("animation","none","important");
+      crawl.style.setProperty("transform","none","important");
+      lastRaw="";
+      lastSizeSig="";
+      return true;
     }
 
-    crawl.dataset.notamScrollSeconds=String(seconds);
-    if(panel)panel.dataset.notamScrollSeconds=String(seconds);
+    const raw=getRawText(crawl);
+    const sizeSig=[bodyPx,line,seconds,win.clientHeight,raw.length].join("|");
+
+    if(force || raw!==lastRaw || sizeSig!==lastSizeSig || !crawl.classList.contains("kmem-notam-loop")){
+      crawl.dataset.kmemRawNotamText=raw;
+      crawl.innerHTML=buildLoopHtml(raw);
+      crawl.classList.add("kmem-notam-loop");
+
+      crawl.style.setProperty("position","absolute","important");
+      crawl.style.setProperty("left","0","important");
+      crawl.style.setProperty("top","0","important");
+      crawl.style.setProperty("width","100%","important");
+      crawl.style.setProperty("height","auto","important");
+      crawl.style.setProperty("max-height","none","important");
+      crawl.style.setProperty("display","block","important");
+      crawl.style.setProperty("overflow","visible","important");
+      crawl.style.setProperty("font-size",bodyPx+"px","important");
+      crawl.style.setProperty("line-height",String(line),"important");
+
+      requestAnimationFrame(()=>{
+        const first=crawl.querySelector(".kmem-notam-copy");
+        const gap=crawl.querySelector(".kmem-notam-gap");
+        const distance=Math.max(
+          40,
+          Math.ceil((first?.offsetHeight||crawl.scrollHeight||120) + (gap?.offsetHeight||28))
+        );
+        crawl.style.setProperty("--notam-loop-distance",distance+"px");
+        crawl.style.setProperty("--notam-scroll-seconds",seconds+"s");
+        crawl.style.setProperty("animation","none","important");
+        void crawl.offsetHeight;
+        crawl.style.setProperty("animation",`kmemNotamLoop ${seconds}s linear infinite`,"important");
+      });
+
+      lastRaw=raw;
+      lastSizeSig=sizeSig;
+    }else{
+      crawl.style.setProperty("--notam-scroll-seconds",seconds+"s");
+      crawl.style.setProperty("animation-duration",seconds+"s","important");
+    }
+
     return true;
+  }
+
+  function installStyle(){
+    let style=document.getElementById("phase100NotamLoopStyle");
+    const css=`
+@keyframes kmemNotamLoop{
+  0%{transform:translateY(0);}
+  100%{transform:translateY(calc(-1 * var(--notam-loop-distance,300px)));}
+}
+.mil-notam-window,
+body.getac-preset .mil-notam-window{
+  position:relative !important;
+  overflow:hidden !important;
+}
+#milNotamCrawl.kmem-notam-loop,
+.mil-notam-crawl.kmem-notam-loop,
+body.getac-preset #milNotamCrawl.kmem-notam-loop,
+body.getac-preset .mil-notam-crawl.kmem-notam-loop{
+  position:absolute !important;
+  left:0 !important;
+  top:0 !important;
+  width:100% !important;
+  height:auto !important;
+  max-height:none !important;
+  display:block !important;
+  overflow:visible !important;
+  animation:kmemNotamLoop var(--notam-scroll-seconds,28s) linear infinite !important;
+  will-change:transform !important;
+}
+#milNotamCrawl.kmem-notam-loop .kmem-notam-copy,
+.mil-notam-crawl.kmem-notam-loop .kmem-notam-copy{
+  white-space:pre-wrap !important;
+  overflow-wrap:anywhere !important;
+  word-break:normal !important;
+}
+#milNotamCrawl.kmem-notam-loop .kmem-notam-gap,
+.mil-notam-crawl.kmem-notam-loop .kmem-notam-gap{
+  height:34px !important;
+}
+`;
+    if(!style){
+      style=document.createElement("style");
+      style.id="phase100NotamLoopStyle";
+      document.head.appendChild(style);
+    }
+    if(style.textContent!==css)style.textContent=css;
   }
 
   window.applyNotamScrollSpeed=()=>applyNotamScrollSpeed(true);
 
-  window.addEventListener("storage",e=>{
-    if(e.key===STORAGE_KEY)applyNotamScrollSpeed(true);
-  });
+  function tick(force=false){
+    installStyle();
+    applyNotamScrollSpeed(force);
+  }
 
+  window.addEventListener("storage",e=>{if(e.key===STORAGE_KEY)tick(true);});
   try{
     const channel=new BroadcastChannel("kmemDisplaySettings");
-    channel.onmessage=e=>{
-      if(e && e.data && e.data.type==="settings-updated"){
-        applyNotamScrollSpeed(true);
-      }
-    };
+    channel.onmessage=e=>{if(e && e.data && e.data.type==="settings-updated")tick(true);};
   }catch(e){}
-
-  document.addEventListener("DOMContentLoaded",()=>applyNotamScrollSpeed(true));
-  window.addEventListener("resize",()=>applyNotamScrollSpeed(true));
-  setInterval(()=>applyNotamScrollSpeed(false),750);
+  document.addEventListener("DOMContentLoaded",()=>tick(true));
+  window.addEventListener("resize",()=>tick(true));
+  setInterval(()=>tick(false),300);
+  tick(true);
 })();
 </script>
 

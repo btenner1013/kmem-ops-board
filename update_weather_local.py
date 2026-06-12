@@ -1746,16 +1746,83 @@ def taf_token_start_datetime(window_token, taf_issue_dt=None):
     return min(candidates, key=lambda c: abs((c - taf_issue_dt).total_seconds()))
 
 
+def taf_token_end_datetime(window_token, taf_issue_dt=None):
+    """Return the end datetime for a TAF DDHH/DDHH valid window token."""
+    token = (window_token or "").upper().strip()
+    taf_issue_dt = taf_issue_dt or datetime.now(timezone.utc)
+    if not re.match(r"^\d{4}/\d{4}$", token):
+        return None
+
+    start_dt = taf_token_start_datetime(token, taf_issue_dt)
+    if not start_dt:
+        return None
+
+    end_day = int(token[5:7])
+    end_hour = int(token[7:9])
+
+    candidates = []
+    for month_offset in (0, -1, 1):
+        year = taf_issue_dt.year
+        month = taf_issue_dt.month + month_offset
+        if month < 1:
+            month = 12
+            year -= 1
+        elif month > 12:
+            month = 1
+            year += 1
+        try:
+            candidates.append(datetime(year, month, end_day, end_hour, tzinfo=timezone.utc))
+        except ValueError:
+            pass
+
+    if not candidates:
+        return None
+
+    # Pick the first end candidate after the start. This handles month rollovers.
+    after_start = [c for c in candidates if c > start_dt]
+    if after_start:
+        return min(after_start, key=lambda c: (c - start_dt).total_seconds())
+
+    # Fallback for malformed edge cases.
+    return min(candidates, key=lambda c: abs((c - start_dt).total_seconds()))
+
+
 def taf_alert_window_time_text(window_token):
     token = (window_token or "").upper().strip()
     if re.match(r"^\d{4}/\d{4}$", token):
         return f"{token[2:4]}-{token[7:9]}Z"
     if re.match(r"^FM\d{6}$", token):
-        return f"FM {token[4:6]}Z"
+        return f"{token[4:6]}Z"
     return ""
 
 
-def taf_window_display_from_token(window_token, taf_issue_dt=None, current_utc_dt=None):
+def taf_window_display_from_datetimes(start_dt, end_dt=None, current_utc_dt=None):
+    """
+    Format TAF alert windows from real UTC datetimes.
+
+    Same current UTC date: 09-18Z
+    Different UTC date: 12 JUN 09-18Z
+
+    If no end is known, use 09Z rather than FM 09Z.
+    """
+    if not start_dt:
+        return ""
+
+    current_utc_dt = current_utc_dt or datetime.now(timezone.utc)
+    start_hh = f"{start_dt.hour:02d}"
+
+    if end_dt and end_dt > start_dt:
+        base = f"{start_hh}-{end_dt.hour:02d}Z"
+    else:
+        base = f"{start_hh}Z"
+
+    if start_dt.date() != current_utc_dt.date():
+        return f"{start_dt.day:02d} {TAF_MONTHS[start_dt.month - 1]} {base}"
+
+    return base
+
+
+def taf_window_display_from_token(window_token, taf_issue_dt=None, current_utc_dt=None, end_dt=None):
     """
     Format TAF-derived WX alert windows.
 
@@ -1763,17 +1830,17 @@ def taf_window_display_from_token(window_token, taf_issue_dt=None, current_utc_d
     Different UTC date: 12 JUN 08-13Z
     """
     token = (window_token or "").upper().strip()
-    base = taf_alert_window_time_text(token)
-    if not base:
-        return ""
-
-    start_dt = taf_token_start_datetime(token, taf_issue_dt)
+    taf_issue_dt = taf_issue_dt or datetime.now(timezone.utc)
     current_utc_dt = current_utc_dt or datetime.now(timezone.utc)
 
-    if start_dt and start_dt.date() != current_utc_dt.date():
-        return f"{start_dt.day:02d} {TAF_MONTHS[start_dt.month - 1]} {base}"
+    start_dt = taf_token_start_datetime(token, taf_issue_dt)
+    if not start_dt:
+        return ""
 
-    return base
+    if end_dt is None and re.match(r"^\d{4}/\d{4}$", token):
+        end_dt = taf_token_end_datetime(token, taf_issue_dt)
+
+    return taf_window_display_from_datetimes(start_dt, end_dt, current_utc_dt)
 
 
 def taf_window_sort_key(window_token, fallback_order=999):
@@ -1788,6 +1855,21 @@ def taf_window_sort_key(window_token, fallback_order=999):
     return 100000 + fallback_order
 
 
+def iso_z(dt):
+    if not dt:
+        return ""
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def parse_iso_z(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
 def split_taf_groups_for_windows(taf):
     current_utc_dt = datetime.now(timezone.utc)
     taf_issue_dt = parse_taf_issue_datetime_utc(taf, current_utc_dt)
@@ -1799,7 +1881,17 @@ def split_taf_groups_for_windows(taf):
     groups = []
     main_valid_match = re.search(r"\b(\d{4}/\d{4})\b", text)
     main_valid = main_valid_match.group(1) if main_valid_match else ""
+    main_start_dt = taf_token_start_datetime(main_valid, taf_issue_dt) if main_valid else None
+    main_end_dt = taf_token_end_datetime(main_valid, taf_issue_dt) if main_valid else None
+
     markers = list(re.finditer(r"\b(FM\d{6}|TEMPO|BECMG|PROB30|PROB40)\b", text))
+
+    def next_fm_start_datetime(after_idx):
+        for later in markers[after_idx + 1:]:
+            token = later.group(1)
+            if token.startswith("FM"):
+                return taf_token_start_datetime(token, taf_issue_dt)
+        return main_end_dt
 
     if main_valid_match:
         base_start = main_valid_match.end()
@@ -1808,8 +1900,10 @@ def split_taf_groups_for_windows(taf):
         groups.append({
             "tafGroupType": "PREVAILING",
             "tafWindowToken": main_valid,
-            "tafWindow": taf_window_display_from_token(main_valid, taf_issue_dt, current_utc_dt),
+            "tafWindow": taf_window_display_from_datetimes(main_start_dt, main_end_dt, current_utc_dt),
             "tafStartKey": taf_window_sort_key(main_valid, 0),
+            "tafStartIso": iso_z(main_start_dt),
+            "tafEndIso": iso_z(main_end_dt),
             "tafGroupText": base_text.strip()
         })
 
@@ -1818,26 +1912,98 @@ def split_taf_groups_for_windows(taf):
         next_start = markers[idx + 1].start() if idx + 1 < len(markers) else len(text)
         group_text = text[marker.start():next_start].strip()
         window_token = ""
+        start_dt = None
+        end_dt = None
 
         if marker_text.startswith("FM"):
             window_token = marker_text
+            start_dt = taf_token_start_datetime(marker_text, taf_issue_dt)
+            # FM prevailing groups last until the next FM group or the TAF valid end.
+            # TEMPO/PROB groups inside that period do not terminate the prevailing FM condition.
+            end_dt = next_fm_start_datetime(idx)
         else:
             window_match = re.search(r"\b(\d{4}/\d{4})\b", group_text)
             if window_match:
                 window_token = window_match.group(1)
             else:
                 window_token = main_valid
+            start_dt = taf_token_start_datetime(window_token, taf_issue_dt)
+            end_dt = taf_token_end_datetime(window_token, taf_issue_dt)
 
         groups.append({
             "tafGroupType": marker_text if not marker_text.startswith("FM") else "FM",
             "tafWindowToken": window_token,
-            "tafWindow": taf_window_display_from_token(window_token, taf_issue_dt, current_utc_dt),
+            "tafWindow": taf_window_display_from_datetimes(start_dt, end_dt, current_utc_dt),
             "tafStartKey": taf_window_sort_key(window_token, idx + 1),
+            "tafStartIso": iso_z(start_dt),
+            "tafEndIso": iso_z(end_dt),
             "tafGroupText": group_text
         })
 
     return groups
 
+
+def merge_adjacent_taf_fm_alerts(taf_alerts, current_utc_dt=None):
+    """Merge adjacent FM groups with the same TAF weather code so display is not just '09Z'."""
+    current_utc_dt = current_utc_dt or datetime.now(timezone.utc)
+    fm_alerts = []
+    other_alerts = []
+
+    for alert in taf_alerts:
+        if alert.get("tafGroupType") == "FM" and alert.get("tafStartIso") and alert.get("tafEndIso"):
+            fm_alerts.append(dict(alert))
+        else:
+            other_alerts.append(alert)
+
+    grouped = {}
+    for alert in fm_alerts:
+        key = (alert.get("code"), alert.get("category"), alert.get("displayTone"))
+        grouped.setdefault(key, []).append(alert)
+
+    merged = []
+    for key, items in grouped.items():
+        items.sort(key=lambda a: parse_iso_z(a.get("tafStartIso")) or datetime.max.replace(tzinfo=timezone.utc))
+        current = None
+        current_start = None
+        current_end = None
+
+        for item in items:
+            start = parse_iso_z(item.get("tafStartIso"))
+            end = parse_iso_z(item.get("tafEndIso"))
+            if not start or not end:
+                merged.append(item)
+                continue
+
+            if current is None:
+                current = dict(item)
+                current_start = start
+                current_end = end
+                continue
+
+            # Merge contiguous or overlapping FM periods of the same code.
+            if start <= current_end + timedelta(minutes=1):
+                if end > current_end:
+                    current_end = end
+            else:
+                current["tafStartIso"] = iso_z(current_start)
+                current["tafEndIso"] = iso_z(current_end)
+                current["tafWindow"] = taf_window_display_from_datetimes(current_start, current_end, current_utc_dt)
+                current["text"] = f"{current['code']} PSBL {current['tafWindow']}".strip()
+                current["displayText"] = f"{current.get('emoji','')} {current['text']}".strip()
+                merged.append(current)
+                current = dict(item)
+                current_start = start
+                current_end = end
+
+        if current is not None:
+            current["tafStartIso"] = iso_z(current_start)
+            current["tafEndIso"] = iso_z(current_end)
+            current["tafWindow"] = taf_window_display_from_datetimes(current_start, current_end, current_utc_dt)
+            current["text"] = f"{current['code']} PSBL {current['tafWindow']}".strip()
+            current["displayText"] = f"{current.get('emoji','')} {current['text']}".strip()
+            merged.append(current)
+
+    return other_alerts + merged
 
 def atis_weather_alert_scan_text(atis_text):
     """Return the operational ATIS portion for current hazard scanning."""
@@ -2032,7 +2198,9 @@ def detect_weather_alerts(metar, taf, atis_text=""):
                 "displayText": f"{check['emoji']} {text}".strip(),
                 "tafWindow": window,
                 "tafStartKey": group.get("tafStartKey", 999999),
-                "tafGroupType": group.get("tafGroupType", "")
+                "tafGroupType": group.get("tafGroupType", ""),
+                "tafStartIso": group.get("tafStartIso", ""),
+                "tafEndIso": group.get("tafEndIso", "")
             })
 
     current_alerts = [
@@ -2040,6 +2208,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
         if set(alert.get("sources", [])).intersection({"ATIS", "METAR"})
     ]
     taf_alerts = [alert for alert in alerts if "TAF" in alert.get("sources", [])]
+    taf_alerts = merge_adjacent_taf_fm_alerts(taf_alerts, datetime.now(timezone.utc))
 
     def current_sort_key(alert):
         sources = set(alert.get("sources", []))
