@@ -98,6 +98,10 @@ html,body{
   white-space:nowrap;
   font-size:var(--notam-cao-px) !important;
 }
+.mil-notam-cao-ok{ color:var(--ops-green) !important; text-shadow:0 0 7px rgba(0,255,136,.35); }
+.mil-notam-cao-warn{ color:var(--warning) !important; text-shadow:0 0 7px rgba(255,204,0,.30); }
+.mil-notam-cao-stale{ color:var(--closed) !important; text-shadow:0 0 7px rgba(255,68,68,.30); }
+.mil-notam-cao-bad{ color:var(--closed) !important; animation:blink 1s step-start infinite; }
 
 .mil-notam-window{
   position:relative !important;
@@ -209,6 +213,9 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 .wind-arrow{ font-weight:900; font-size:1.35em; margin-left:12px; display:inline-block; vertical-align:-0.06em; }
 .flow-arrow{ font-weight:900; font-size:1.28em; margin-left:10px; display:inline-block; vertical-align:-0.05em; }
+.wind-trend-calm,.wind-trend-decreasing{ color:var(--ops-green) !important; }
+.wind-trend-steady{ color:var(--warning) !important; }
+.wind-trend-increasing{ color:var(--closed) !important; }
 
 .tempdp-value{ white-space:nowrap; }
 .ops-value{ color:var(--ops-green); font-size:clamp(.88rem,.98vw,1.22rem); line-height:1.12; white-space:normal; overflow:hidden; text-overflow:ellipsis; overflow-wrap:anywhere; text-align:center !important;}
@@ -281,8 +288,10 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
   padding-top:6px;
 }
 
-.radar-panel{ display:flex; flex-direction:column; min-height:0; }
-.radarimg{ width:100%; flex:1; min-height:0; object-fit:contain; background:black; border:1px solid #333; }
+.radar-panel{ display:flex; flex-direction:column; min-height:0; gap:4px; }
+.radar-title-row{ display:flex; align-items:center; gap:10px; margin-bottom:0; line-height:1; white-space:nowrap; }
+.radar-mode{ color:var(--blue-info); font-size:.82em; letter-spacing:1px; padding-left:10px; border-left:1px solid rgba(230,230,230,.35); }
+.radarimg{ display:block; width:100%; height:100%; flex:1 1 auto; min-height:0; object-fit:contain; object-position:center center; background:black; border:1px solid #333; }
 
 .footer{
   display:grid;
