@@ -81,6 +81,16 @@ button.warn{
   border:1px solid var(--line);
   padding:10px;
 }
+.control.featured{ border-color:var(--blue); background:#071219; }
+.control-section{
+  grid-column:1/-1;
+  color:var(--green);
+  font-weight:1000;
+  letter-spacing:.05em;
+  margin-top:4px;
+  padding:8px 0 2px;
+  border-bottom:1px solid var(--line);
+}
 .row{
   display:grid;
   grid-template-columns:1fr 90px;
@@ -204,6 +214,11 @@ input[type=range]{
 .phone-preview-card h2{ color:#35b7ff !important; }
 .production-notice{ border-color:var(--blue) !important; }
 .production-notice h2{ color:var(--blue) !important; }
+.legend-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.legend-item{ border:1px solid var(--line); padding:10px; line-height:1.35; }
+.legend-item b{ display:block; color:white; margin-bottom:4px; }
+.legend-item span{ color:var(--dim); font-size:.92rem; }
+@media(max-width:720px){ .legend-grid{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -232,13 +247,13 @@ input[type=range]{
   <div class="card">
     <h2>Display Presets</h2>
     <div class="presets">
-      <button onclick="setPreset('TV 100')">TV 100%</button>
-      <button onclick="setPreset('TV 90')">TV 90%</button>
+      <button onclick="setPreset('TV 90')">TV Fit 90%</button>
+      <button onclick="setPreset('TV 100')">TV Large 100%</button>
       <button onclick="setPreset('Desktop')">Desktop</button>
       <button onclick="setPreset('Getac')">Getac / Small</button>
       <button class="warn" onclick="resetDefaults()">Reset Defaults</button>
     </div>
-    <p class="help">Presets are just starting points. TV/Desktop/Getac adjust board fonts. Phone uses fixed legacy sizing.</p>
+    <p class="help">Start with a preset, then fine tune below. Phone uses the automatic compact layout and ignores oversized desktop tuning where needed.</p>
   </div>
 
   <div class="card">
@@ -254,16 +269,18 @@ input[type=range]{
   </div>
 
   <div class="card">
-    <h2>Font Controls</h2>
+    <h2>Text Size Controls</h2>
+    <p class="help">Move one section at a time. The yellow number is the saved size currently being broadcast to open board windows.</p>
     <div class="grid">
+      <div class="control-section">CLOCKS AND MAIN DATA</div>
       <div class="control">
-        <div class="row"><label>Clock text</label><span class="value" id="clockPxVal"></span></div>
+        <div class="row"><label>Clock numbers</label><span class="value" id="clockPxVal"></span></div>
         <input id="clockPx" type="range" min="42" max="128" step="2">
-        <div class="help">Memphis local time and Zulu/UTC clock size.</div>
+        <div class="help">Memphis local and Zulu clock numbers. The board now auto-shrinks this if a screen is short.</div>
       </div>
 
       <div class="control">
-        <div class="row"><label>Data block values</label><span class="value" id="blockValuePxVal"></span></div>
+        <div class="row"><label>Main data values</label><span class="value" id="blockValuePxVal"></span></div>
         <input id="blockValuePx" type="range" min="14" max="42" step="1">
         <div class="help">Altimeter, ceiling, visibility, runways, flow, wind, BWC, temp/dewpoint. RCR/RCC is separate.</div>
       </div>
@@ -274,14 +291,28 @@ input[type=range]{
       </div>
 
       <div class="control">
-        <div class="row"><label>METAR / TAF text</label><span class="value" id="rawWxPxVal"></span></div>
-        <input id="rawWxPx" type="range" min="10" max="34" step="1">
+        <div class="row"><label>Small box labels</label><span class="value" id="labelPxVal"></span></div>
+        <input id="labelPx" type="range" min="9" max="24" step="1">
+        <div class="help">Labels like ALTIMETER, CEILING, WIND, BWC, and WX ALERT.</div>
       </div>
 
-      <div class="control">
+      <div class="control-section">WEATHER TEXT AND ALERTS</div>
+      <div class="control featured">
+        <div class="row"><label>Raw METAR / TAF text</label><span class="value" id="rawWxPxVal"></span></div>
+        <input id="rawWxPx" type="range" min="10" max="34" step="1">
+        <div class="help">Raw aviation weather block. Phone mode compresses this so NOTAMs remain reachable.</div>
+      </div>
+
+      <div class="control featured">
+        <div class="row"><label>WX ALERT line</label><span class="value" id="wxAlertPxVal"></span></div>
+        <input id="wxAlertPx" type="range" min="12" max="38" step="1">
+      </div>
+
+      <div class="control-section">MIL NOTAM PANEL</div>
+      <div class="control featured">
         <div class="row"><label>MIL NOTAM scrolling body text</label><span class="value" id="notamPxVal"></span></div>
         <input id="notamPx" type="range" min="10" max="34" step="1">
-        <div class="help">Controls the moving NOTAM crawl body only.</div>
+        <div class="help">Moving NOTAM crawl body on TV/Desktop/Getac. Phone mode makes this text fixed/static.</div>
       </div>
 
       <div class="control">
@@ -302,16 +333,7 @@ input[type=range]{
         <div class="help">Left NOTAM current-as-of line.</div>
       </div>
 
-      <div class="control">
-        <div class="row"><label>WX Alert text</label><span class="value" id="wxAlertPxVal"></span></div>
-        <input id="wxAlertPx" type="range" min="12" max="38" step="1">
-      </div>
-
-      <div class="control">
-        <div class="row"><label>Box labels</label><span class="value" id="labelPxVal"></span></div>
-        <input id="labelPx" type="range" min="9" max="24" step="1">
-      </div>
-
+      <div class="control-section">FOOTER AND LINE SPACING</div>
       <div class="control">
         <div class="row"><label>Footer DATA UPDATED / REFRESH text</label><span class="value" id="footerPxVal"></span></div>
         <input id="footerPx" type="range" min="10" max="28" step="1">
@@ -343,6 +365,16 @@ input[type=range]{
       <input id="strongPulse" type="checkbox">
       Strong WX/lightning pulse
     </label>
+  </div>
+
+  <div class="card">
+    <h2>Pulse / Flash Reference</h2>
+    <div class="legend-grid">
+      <div class="legend-item"><b>Pulse</b><span>Smooth scale/glow animation for WX alerts or lightning when the data marks the item as active but not a hard closure.</span></div>
+      <div class="legend-item"><b>Flash</b><span>Hard blink used for urgent states such as runway closed, poor RCR, stale/bad feeds, bad NOTAM CAO, or explicit alert flash flags.</span></div>
+      <div class="legend-item"><b>Manual lightning overlay</b><span>Full-width white/red flashing banner from the hazard control file when lightning closure is active.</span></div>
+      <div class="legend-item"><b>Strong pulse toggle</b><span>Controls the stronger glow/scale effect for WX and lightning pulse classes. It does not disable hard safety flashes.</span></div>
+    </div>
   </div>
 
   <div class="card desktop-preview-card">

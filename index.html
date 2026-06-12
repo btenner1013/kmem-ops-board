@@ -178,7 +178,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .title{ font-size:clamp(.95rem,1.1vw,1.35rem); margin-bottom:6px; }
 
 .clock{
-  font-size:var(--clock-px) !important;
+  font-size:min(var(--clock-px),8vw,7.6vh) !important;
   font-weight:bold;
   line-height:.95;
   white-space:nowrap;
@@ -361,7 +361,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 /* Split-screen / smaller laptop tuning */
 @media (max-width:1400px){
-  .board{ grid-template-rows:minmax(78px,14vh) minmax(0,1fr) minmax(44px,6vh); gap:4px; padding:5px; }
+  .board{ grid-template-rows:minmax(112px,16vh) minmax(0,1fr) minmax(44px,6vh); gap:4px; padding:5px; }
   .panel{ padding:6px; }
   .date{ font-size:clamp(.78rem,.95vw,1.1rem); }
   .flight-category{ font-size:clamp(2rem,3.25vw,3.6rem); }
@@ -490,7 +490,7 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
 .reference-only-label{ color:var(--closed) !important; font-size:inherit !important; font-weight:1000 !important; letter-spacing:1px !important; text-align:right !important; white-space:nowrap !important; text-shadow:0 0 6px rgba(255,68,68,.45) !important; }
 
 /* Display Tuning Bridge Application Rules */
-.clock,.local-clock,.zulu-clock, body.getac-preset .clock, body.getac-preset .local-clock, body.getac-preset .zulu-clock{ font-size:var(--clock-px) !important; }
+.clock,.local-clock,.zulu-clock, body.getac-preset .clock, body.getac-preset .local-clock, body.getac-preset .zulu-clock{ font-size:min(var(--clock-px),8vw,7.6vh) !important; }
 .mil-notam-title, body.getac-preset .mil-notam-title{ font-size:var(--notam-title-px) !important; line-height:1.05 !important; }
 .mil-notam-status, body.getac-preset .mil-notam-status{ font-size:var(--notam-status-px) !important; line-height:1.05 !important; }
 .mil-notam-cao, body.getac-preset .mil-notam-cao{ font-size:var(--notam-cao-px) !important; line-height:1.05 !important; }
@@ -605,6 +605,136 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
   .mil-notam-active .mil-notam-crawl {
     padding-right: 4px !important;
   }
+}
+
+/* Phone-first compact board. Keeps raw WX and NOTAMs readable without inner scrolling. */
+@media (max-width:700px){
+  html,body{
+    width:100% !important;
+    height:auto !important;
+    min-height:100% !important;
+    overflow:auto !important;
+  }
+  .board{
+    display:flex !important;
+    flex-direction:column !important;
+    width:100% !important;
+    min-height:100vh !important;
+    height:auto !important;
+    overflow:visible !important;
+    gap:5px !important;
+    padding:5px !important;
+  }
+  .top,.bottom{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:5px !important;
+    min-height:0 !important;
+    overflow:visible !important;
+  }
+  .top{ order:1; }
+  .middle{ display:contents !important; }
+  .weather-panel{ order:2; }
+  .mil-notam-panel{ order:3; }
+  .radar-panel{ order:4; }
+  .bottom{ order:5; }
+  .panel{
+    padding:6px !important;
+    min-height:0 !important;
+    overflow:visible !important;
+  }
+  .clock-panel{ min-height:0 !important; }
+  .label,.title{ font-size:clamp(.82rem,3.5vw,1.05rem) !important; line-height:1.05 !important; }
+  .clock{ font-size:min(var(--clock-px),15vw,50px) !important; line-height:.9 !important; }
+  .date{ font-size:clamp(.72rem,3vw,.92rem) !important; line-height:1.1 !important; white-space:normal !important; margin-top:2px !important; }
+
+  .weather-panel{ display:flex !important; flex-direction:column !important; gap:4px !important; }
+  .weather-title-row{ gap:6px !important; align-items:flex-start !important; }
+  .reference-only-label{ font-size:.76em !important; white-space:normal !important; text-align:right !important; line-height:1.05 !important; }
+  .summary-grid{ grid-template-columns:.7fr 1.3fr !important; gap:4px !important; margin-bottom:0 !important; }
+  .flight-category{ font-size:clamp(2rem,14vw,3.2rem) !important; line-height:.9 !important; }
+  .atis-letter{ font-size:clamp(1.15rem,6vw,1.8rem) !important; text-align:right !important; white-space:normal !important; }
+  .details-grid,.ops-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:4px !important; margin-bottom:0 !important; }
+  .detail-box,.ops-box,.trend-box{ min-height:38px !important; padding:4px !important; }
+  .detail-label,.ops-label,.trend-label{ font-size:clamp(.62rem,2.7vw,.78rem) !important; line-height:1.05 !important; }
+  .detail-value,.ops-value,.trend-value{ font-size:clamp(.86rem,4.1vw,1.08rem) !important; line-height:1.06 !important; }
+  .wind-compact-final{ font-size:clamp(.88rem,4vw,1.05rem) !important; }
+  #tafTrend.wx-alert-compact,.wx-alert-compact{ white-space:normal !important; overflow:visible !important; }
+
+  .raw{
+    max-height:none !important;
+    overflow:visible !important;
+    flex:none !important;
+    font-size:clamp(.58rem,2.55vw,.76rem) !important;
+    line-height:1.14 !important;
+    padding-top:4px !important;
+    white-space:pre-wrap !important;
+  }
+
+  .mil-notam-panel{
+    display:block !important;
+    min-height:0 !important;
+    height:auto !important;
+    padding:7px !important;
+    overflow:visible !important;
+  }
+  .mil-notam-header{
+    display:block !important;
+    height:auto !important;
+    border-right:0 !important;
+    border-bottom:1px solid rgba(230,230,230,.35) !important;
+    padding-right:0 !important;
+    padding-bottom:6px !important;
+    margin-bottom:6px !important;
+  }
+  .mil-notam-title{ font-size:clamp(1rem,5.6vw,1.35rem) !important; white-space:normal !important; }
+  .mil-notam-status,.mil-notam-cao{ font-size:clamp(.82rem,3.8vw,1rem) !important; }
+  .mil-notam-window{
+    position:relative !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+  .mil-notam-active #milNotamCrawl,
+  .mil-notam-active .mil-notam-crawl,
+  body.getac-preset .mil-notam-active #milNotamCrawl,
+  body.getac-preset .mil-notam-active .mil-notam-crawl{
+    display:block !important;
+    position:static !important;
+    top:auto !important;
+    transform:none !important;
+    animation:none !important;
+    width:100% !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    white-space:pre-wrap !important;
+    overflow-wrap:anywhere !important;
+    padding:0 !important;
+    font-size:clamp(.68rem,3vw,.86rem) !important;
+    line-height:1.18 !important;
+  }
+  .mil-notam-none #milNotamCrawl,
+  .mil-notam-placeholder #milNotamCrawl,
+  .mil-notam-none .mil-notam-crawl,
+  .mil-notam-placeholder .mil-notam-crawl{
+    display:block !important;
+    align-items:normal !important;
+    height:auto !important;
+  }
+
+  .radar-panel{ min-height:260px !important; overflow:hidden !important; }
+  .radar-title-row{ font-size:clamp(.82rem,3.5vw,1rem) !important; }
+  .radarimg{ min-height:220px !important; height:auto !important; object-fit:contain !important; }
+  .footer{
+    grid-template-columns:1fr !important;
+    row-gap:3px !important;
+    text-align:left !important;
+    font-size:clamp(.78rem,3.5vw,.95rem) !important;
+    line-height:1.1 !important;
+  }
+  .footer-left,.footer-center,.footer-right{ text-align:left !important; white-space:normal !important; }
 }
 </style>
 </head>
@@ -2122,6 +2252,14 @@ setInterval(phase46BoldArrows,1000);
       #rcr, body.getac-preset #rcr{ font-size:${px(s.rcrPx,14,42,DEFAULTS.rcrPx)}px !important; line-height:1.05 !important; }
       #tafTrend.wx-alert-compact, .wx-alert-compact, body.getac-preset #tafTrend.wx-alert-compact, body.getac-preset .wx-alert-compact{ font-size:${px(s.wxAlertPx,12,38,DEFAULTS.wxAlertPx)}px !important; line-height:1.05 !important; }
       .raw, body.getac-preset .raw{ font-size:${px(s.rawWxPx,10,34,DEFAULTS.rawWxPx)}px !important; line-height:${num(s.rawLine,1.10,1.80,DEFAULTS.rawLine)} !important; }
+      @media (max-width:700px){
+        .detail-label, .ops-label, .trend-label, body.getac-preset .detail-label, body.getac-preset .ops-label, body.getac-preset .trend-label{ font-size:clamp(.62rem,2.7vw,.78rem) !important; line-height:1.05 !important; }
+        .detail-value, .ops-value, .trend-value, body.getac-preset .detail-value, body.getac-preset .ops-value, body.getac-preset .trend-value{ font-size:clamp(.86rem,4.1vw,1.08rem) !important; line-height:1.06 !important; }
+        #rcr, body.getac-preset #rcr{ font-size:clamp(.9rem,4.4vw,1.12rem) !important; }
+        #tafTrend.wx-alert-compact, .wx-alert-compact, body.getac-preset #tafTrend.wx-alert-compact, body.getac-preset .wx-alert-compact{ font-size:clamp(.96rem,4.5vw,1.18rem) !important; white-space:normal !important; overflow:visible !important; }
+        .raw, body.getac-preset .raw{ font-size:clamp(.58rem,2.55vw,.76rem) !important; line-height:1.14 !important; max-height:none !important; overflow:visible !important; }
+        .footer, .footer-left, .footer-center, .footer-right, body.getac-preset .footer, body.getac-preset .footer-left, body.getac-preset .footer-center, body.getac-preset .footer-right{ font-size:clamp(.78rem,3.5vw,.95rem) !important; line-height:1.1 !important; }
+      }
       ${pulse ? `
       .alert-pulse{animation:pulseStrong .78s ease-in-out infinite !important;}
       .lightning-pulse{animation:pulseStrong .88s ease-in-out infinite !important;}` : `
