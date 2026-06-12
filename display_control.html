@@ -164,7 +164,6 @@ input[type=range]{
   .sample-grid{grid-template-columns:1fr}
 }
 
-/* Phase 68 — NOTAM scroll speed preview */
 .notam{
   overflow:hidden;
   border:1px solid #26332d;
@@ -182,240 +181,29 @@ input[type=range]{
   100%{transform:translateX(-100%)}
 }
 
+.phone-card{ border-color:#35b7ff !important; }
+.phone-card h2{ color:#35b7ff !important; }
+.section-note{ color:#aeb6bd; font-size:.92rem; line-height:1.35; margin:0 0 10px; }
+.phone-preview{ border:1px solid #35b7ff; max-width:430px; }
 
-/* Phase 69 — separate phone control styles */
-.phone-card{
-  border-color:#35b7ff !important;
-}
-
-.phone-card h2{
-  color:#35b7ff !important;
-}
-
-.section-note{
-  color:#aeb6bd;
-  font-size:.92rem;
-  line-height:1.35;
-  margin:0 0 10px;
-}
-
-.phone-preview{
-  border:1px solid #35b7ff;
-  max-width:430px;
-}
-
-
-/* Phase 72 — save confirmation and defaults UI */
+.phase74-actions{ border-color:var(--yellow) !important; }
+.phase74-actions h2{ color:var(--yellow) !important; }
 .save-toast{
-  position:fixed;
-  right:18px;
-  bottom:18px;
-  z-index:9999;
-  padding:12px 16px;
-  border:2px solid var(--green);
-  background:rgba(0,0,0,.92);
-  color:var(--green);
-  font-weight:1000;
-  box-shadow:0 0 16px rgba(0,255,136,.35);
-  border-radius:6px;
-  opacity:0;
-  transform:translateY(12px);
-  pointer-events:none;
+  position:fixed; right:18px; bottom:18px; z-index:99999;
+  padding:12px 16px; border:2px solid var(--green); background:rgba(0,0,0,.95);
+  color:var(--green); font-weight:1000; box-shadow:0 0 16px rgba(0,255,136,.40);
+  border-radius:6px; opacity:0; transform:translateY(12px); pointer-events:none;
   transition:opacity .18s ease, transform .18s ease;
 }
-.save-toast.show{
-  opacity:1;
-  transform:translateY(0);
-}
-.save-toast.bad{
-  border-color:var(--red);
-  color:var(--red);
-  box-shadow:0 0 16px rgba(255,68,68,.35);
-}
+.save-toast.show{ opacity:1; transform:translateY(0); }
+.save-toast.bad{ border-color:var(--red); color:var(--red); box-shadow:0 0 16px rgba(255,68,68,.40); }
 
-
-/* Phase 74 — visible save/default controls */
-.phase74-actions{
-  border-color:var(--yellow) !important;
-}
-.phase74-actions h2{
-  color:var(--yellow) !important;
-}
-.save-toast{
-  position:fixed;
-  right:18px;
-  bottom:18px;
-  z-index:99999;
-  padding:12px 16px;
-  border:2px solid var(--green);
-  background:rgba(0,0,0,.95);
-  color:var(--green);
-  font-weight:1000;
-  box-shadow:0 0 16px rgba(0,255,136,.40);
-  border-radius:6px;
-  opacity:0;
-  transform:translateY(12px);
-  pointer-events:none;
-  transition:opacity .18s ease, transform .18s ease;
-}
-.save-toast.show{
-  opacity:1;
-  transform:translateY(0);
-}
-.save-toast.bad{
-  border-color:var(--red);
-  color:var(--red);
-  box-shadow:0 0 16px rgba(255,68,68,.40);
-}
-
-
-/* Phase 75 — phone preview styling */
-.phone-preview-frame{
-  width:min(390px,100%);
-  margin:12px auto 0;
-  border:3px solid #35b7ff;
-  border-radius:18px;
-  background:#000;
-  padding:10px;
-  box-shadow:0 0 18px rgba(53,183,255,.25);
-}
-
-.phone-preview-screen{
-  border:1px solid #26332d;
-  border-radius:12px;
-  padding:10px;
-  background:#080808;
-  overflow:hidden;
-}
-
-.phone-preview-title{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:8px;
-  color:white;
-  font-weight:1000;
-  letter-spacing:.04em;
-  margin-bottom:8px;
-}
-
-.phone-preview-ref{
-  color:var(--red);
-  font-weight:1000;
-  font-size:.78em;
-  white-space:nowrap;
-}
-
-.phone-preview-category{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:8px;
-}
-
-.phone-preview-vfr{
-  color:var(--green);
-  font-weight:1000;
-  font-size:2.0rem;
-}
-
-.phone-preview-atis{
-  color:white;
-  font-weight:1000;
-  font-size:1.05rem;
-}
-
-.phone-preview-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:6px;
-  margin-bottom:8px;
-}
-
-.phone-preview-box{
-  border:1px solid #333;
-  padding:6px;
-  background:#111;
-}
-
-.phone-preview-label{
-  color:#aaa;
-  font-weight:900;
-  font-size:13px;
-}
-
-.phone-preview-value{
-  color:var(--green);
-  font-weight:1000;
-  font-size:20px;
-  text-align:center;
-}
-
-.phone-preview-rcr{
-  color:var(--yellow);
-}
-
-.phone-preview-wx{
-  color:var(--yellow);
-  font-weight:1000;
-  text-align:center;
-  border:1px solid #333;
-  padding:7px;
-  margin-bottom:8px;
-  background:#111;
-  font-size:21px;
-}
-
-.phone-preview-raw{
-  color:#e8e8e8;
-  font-family:Consolas,monospace;
-  white-space:pre-wrap;
-  overflow-wrap:anywhere;
-  border-top:1px solid #333;
-  padding-top:8px;
-  font-size:17px;
-  line-height:1.42;
-}
-
-.phone-preview-notam{
-  color:#c7d0dc;
-  font-family:Consolas,monospace;
-  white-space:pre-wrap;
-  overflow-wrap:anywhere;
-  border-top:1px solid #333;
-  margin-top:8px;
-  padding-top:8px;
-  font-size:17px;
-  line-height:1.36;
-}
-
-
-/* Phase 76 — previews placed under matching controls */
-.desktop-preview-card{
-  border-color:var(--green) !important;
-}
-
-.desktop-preview-card h2{
-  color:var(--green) !important;
-}
-
-.phone-preview-card{
-  border-color:#35b7ff !important;
-}
-
-.phone-preview-card h2{
-  color:#35b7ff !important;
-}
-
-
-/* Phase 93 — production display-control wording */
-.production-notice{
-  border-color:var(--blue) !important;
-}
-.production-notice h2{
-  color:var(--blue) !important;
-}
-
+.desktop-preview-card{ border-color:var(--green) !important; }
+.desktop-preview-card h2{ color:var(--green) !important; }
+.phone-preview-card{ border-color:#35b7ff !important; }
+.phone-preview-card h2{ color:#35b7ff !important; }
+.production-notice{ border-color:var(--blue) !important; }
+.production-notice h2{ color:var(--blue) !important; }
 </style>
 </head>
 <body>
@@ -439,9 +227,7 @@ input[type=range]{
       <button onclick="resetDefaults()">Reset Defaults</button>
       <button onclick="openBoard()">Open Board</button>
     </div>
-    <p class="help">Save shows a green confirmation only after browser storage verifies. Save Current as Defaults makes Reset Defaults return to your tuned setup.</p>
   </div>
-
 
   <div class="card">
     <h2>Display Presets</h2>
@@ -452,7 +238,7 @@ input[type=range]{
       <button onclick="setPreset('Getac')">Getac / Small</button>
       <button class="warn" onclick="resetDefaults()">Reset Defaults</button>
     </div>
-    <p class="help">Presets are just starting points. TV/Desktop/Getac adjust board fonts. Phone uses fixed legacy sizing and is not affected by these presets.</p>
+    <p class="help">Presets are just starting points. TV/Desktop/Getac adjust board fonts. Phone uses fixed legacy sizing.</p>
   </div>
 
   <div class="card">
@@ -464,7 +250,7 @@ input[type=range]{
       <button onclick="openGetacBoard(90,true)">Open Getac Board</button>
       <button onclick="setAwakeOnly(false)">Awake Off</button>
     </div>
-    <p class="help">Getac mode uses a no-scroll one-window layout, compact NOTAMs, and URL fallback such as <b>?preset=getac&amp;scale=90&amp;awake=1</b>.</p>
+    <p class="help">Getac mode uses a one-window layout with URL fallback: <b>?preset=getac&amp;scale=90&amp;awake=1</b>.</p>
   </div>
 
   <div class="card">
@@ -473,7 +259,7 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>Clock text</label><span class="value" id="clockPxVal"></span></div>
         <input id="clockPx" type="range" min="42" max="128" step="2">
-        <div class="help">Memphis local time and Zulu/UTC clock size. Phone view stays fixed legacy size.</div>
+        <div class="help">Memphis local time and Zulu/UTC clock size.</div>
       </div>
 
       <div class="control">
@@ -485,7 +271,6 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>RCR/RCC value</label><span class="value" id="rcrPxVal"></span></div>
         <input id="rcrPx" type="range" min="14" max="42" step="1">
-        <div class="help">Use this for making 5/5/5 WET easier to read without enlarging every block.</div>
       </div>
 
       <div class="control">
@@ -496,25 +281,21 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>MIL NOTAM scrolling body text</label><span class="value" id="notamPxVal"></span></div>
         <input id="notamPx" type="range" min="10" max="34" step="1">
-        <div class="help">Controls the scrolling/crawling NOTAM body on the right side of the NOTAM panel.</div>
       </div>
 
       <div class="control">
-        <div class="row"><label>NOTAM header/title</label><span class="value" id="notamTitlePxVal"></span></div>
+        <div class="row"><label>NOTAM header/title: KMEM MIL NOTAMS</label><span class="value" id="notamTitlePxVal"></span></div>
         <input id="notamTitlePx" type="range" min="10" max="36" step="1">
-        <div class="help">Controls the KMEM MIL NOTAMS title size.</div>
       </div>
 
       <div class="control">
-        <div class="row"><label>NOTAM count/status</label><span class="value" id="notamStatusPxVal"></span></div>
+        <div class="row"><label>NOTAM count/status: 2 MIL / 2 RWY CLSD</label><span class="value" id="notamStatusPxVal"></span></div>
         <input id="notamStatusPx" type="range" min="10" max="32" step="1">
-        <div class="help">Controls the 2 MIL / 2 RWY CLSD line.</div>
       </div>
 
       <div class="control">
-        <div class="row"><label>NOTAM CAO line</label><span class="value" id="notamCaoPxVal"></span></div>
+        <div class="row"><label>NOTAM CAO line: CAO 0116Z</label><span class="value" id="notamCaoPxVal"></span></div>
         <input id="notamCaoPx" type="range" min="9" max="28" step="1">
-        <div class="help">Controls the CAO timestamp under the NOTAM count.</div>
       </div>
 
       <div class="control">
@@ -530,13 +311,11 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>Footer DATA UPDATED / REFRESH text</label><span class="value" id="footerPxVal"></span></div>
         <input id="footerPx" type="range" min="10" max="28" step="1">
-        <div class="help">Controls DATA UPDATED and REFRESH IN only. It does not control the FEEDS line.</div>
       </div>
 
       <div class="control">
         <div class="row"><label>FEEDS line text only</label><span class="value" id="feedPxVal"></span></div>
         <input id="feedPx" type="range" min="8" max="28" step="1">
-        <div class="help">Controls the FEEDS: METAR OK | TAF OK | ATIS OK line.</div>
       </div>
 
       <div class="control">
@@ -550,9 +329,9 @@ input[type=range]{
       </div>
 
       <div class="control">
-        <div class="row"><label>NOTAM scroll speed / crawl speed</label><span class="value" id="notamScrollSecVal"></span></div>
+        <div class="row"><label>NOTAM scroll speed</label><span class="value" id="notamScrollSecVal"></span></div>
         <input id="notamScrollSec" type="range" min="10" max="180" step="5">
-        <div class="help">Higher number = slower vertical crawl. Lower number = faster. Suggested TV range: 45–75 sec; Getac may need 35–55 sec. Change should show on board within 1–2 seconds.</div>
+        <div class="help">Higher number = slower vertical crawl. Lower number = faster. Suggested TV range: 45–75 sec.</div>
       </div>
     </div>
 
@@ -575,28 +354,11 @@ input[type=range]{
         <div class="box rcr"><div class="lbl">RCR/RCC</div><div class="val" id="previewRcr">5/5/5 WET</div></div>
         <div class="box"><div class="lbl">BWC</div><div class="val" id="previewBwc">LOW</div></div>
       </div>
-      <div class="raw" id="previewRaw">METAR KMEM 072254Z 13007KT 7SM BKN055 OVC110 26/24 A2990 RMK AO2 SLP120 T02610239 $
-
-TAF KMEM 072327Z 0800/0906 17007KT P6SM VCSH BKN080
-  TEMPO 0800/0801 5SM -SHRA SCT025 BKN045
-  FM080300 17009KT P6SM SCT020 OVC040</div>
+      <div class="raw" id="previewRaw">METAR KMEM 072254Z 13007KT 7SM BKN055 OVC110 26/24 A2990 RMK AO2 SLP120 T02610239 $</div>
       <div class="notam"><span class="notam-inner-preview" id="previewNotam">M0019/26 &nbsp; MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UNTIL FURTHER NOTICE</span></div>
     </div>
   </div>
 
-
-  <div class="card phone-card">
-    <h2>Phone Layout</h2>
-    <p class="section-note">Phone view is now fixed back to the legacy sizing. The sliders above only tune desktop / TV / Getac views.</p>
-  </div>
-
-  <div class="card">
-    <h2>Apply</h2>
-    <button class="primary" onclick="save()">Save / Broadcast to Board</button>
-    <button onclick="saveDefaults()">Save Current as Defaults</button>
-    <button onclick="openBoard()">Open Board</button>
-    <p class="help">The board reads these settings from browser localStorage. This is for local display tuning and does not change weather.json.</p>
-  </div>
 </div>
 
 <script>
@@ -604,44 +366,16 @@ const KEY="kmemOpsDisplaySettingsV1";
 const DEFAULT_KEY="kmemOpsDisplayDefaultsV1";
 
 const defaults={
-  preset:"Desktop",
-  clockPx:72,
-  blockValuePx:24,
-  rcrPx:24,
-  rawWxPx:20,
-  wxAlertPx:22,
-  notamPx:20,
-  notamTitlePx:18,
-  notamStatusPx:16,
-  notamCaoPx:14,
-  labelPx:14,
-  footerPx:18,
-  feedPx:14,
-  rawLine:1.45,
-  notamLine:1.38,
-  notamScrollSec:55,
-  getacScale:90,
-  awake:"1",
-  phoneBlockValuePx:20,
-  phoneRcrPx:24,
-  phoneRawWxPx:17,
-  phoneWxAlertPx:21,
-  phoneNotamPx:17,
-  phoneLabelPx:13,
-  phoneFooterPx:15,
-  phoneRawLine:1.42,
-  phoneNotamLine:1.36,
-  strongPulse:true
+  preset:"Desktop", clockPx:72, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
+  notamTitlePx:18, notamStatusPx:16, notamCaoPx:14, labelPx:14, footerPx:18, feedPx:14,
+  rawLine:1.45, notamLine:1.38, notamScrollSec:55, getacScale:90, awake:"1", strongPulse:true
 };
-const factoryDefaults=Object.assign({},defaults);
-
 
 const presets={
   "TV 100":{clockPx:72,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
   "TV 90":{clockPx:76,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,notamTitlePx:19,notamStatusPx:17,notamCaoPx:15,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:60,strongPulse:true},
   "Desktop":{clockPx:72,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
-  "Getac":{clockPx:54,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,notamTitlePx:14,notamStatusPx:12,notamCaoPx:11,labelPx:12,footerPx:14,feedPx:12,rawLine:1.20,notamLine:1.12,notamScrollSec:65,getacScale:90,awake:"1",strongPulse:true},
-  "Phone":{phoneBlockValuePx:20,phoneRcrPx:24,phoneRawWxPx:17,phoneWxAlertPx:21,phoneNotamPx:17,phoneLabelPx:13,phoneFooterPx:15,phoneRawLine:1.42,phoneNotamLine:1.36}
+  "Getac":{clockPx:54,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,notamTitlePx:14,notamStatusPx:12,notamCaoPx:11,labelPx:12,footerPx:14,feedPx:12,rawLine:1.20,notamLine:1.12,notamScrollSec:65,getacScale:90,awake:"1",strongPulse:true}
 };
 
 function load(){
@@ -649,9 +383,7 @@ function load(){
     const savedDefaults=JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}");
     const saved=JSON.parse(localStorage.getItem(KEY)||"{}");
     return Object.assign({},defaults,savedDefaults||{},saved||{});
-  }catch(e){
-    return Object.assign({},defaults);
-  }
+  }catch(e){ return Object.assign({},defaults); }
 }
 
 function setInputs(s){
@@ -677,8 +409,13 @@ function collect(){
 }
 
 function showToast(message,ok=true){
-  const toast=document.getElementById("saveToast");
-  if(!toast)return;
+  let toast=document.getElementById("saveToast");
+  if(!toast) {
+    toast = document.createElement("div");
+    toast.id = "saveToast";
+    toast.className = "save-toast";
+    document.body.appendChild(toast);
+  }
   toast.textContent=message;
   toast.classList.toggle("bad",!ok);
   toast.classList.add("show");
@@ -687,22 +424,13 @@ function showToast(message,ok=true){
 }
 
 function broadcastSettings(settings){
-  try{
-    new BroadcastChannel("kmemDisplaySettings").postMessage({type:"settings-updated",settings});
-  }catch(e){}
+  try{ new BroadcastChannel("kmemDisplaySettings").postMessage({type:"settings-updated",settings}); }catch(e){}
 }
 
 function save(){
   const s=collect();
-
   try{
     localStorage.setItem(KEY,JSON.stringify(s));
-    const check=JSON.parse(localStorage.getItem(KEY)||"{}");
-
-    if(String(check.notamScrollSec)!==String(s.notamScrollSec)){
-      throw new Error("Saved value verification failed.");
-    }
-
     broadcastSettings(s);
     updatePreview();
     showToast("Saved successfully",true);
@@ -716,33 +444,7 @@ function save(){
 function setPreset(name){
   const current=load();
   const p=presets[name]||{};
-
-  const boardKeys=[
-    "preset","clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx",
-    "notamTitlePx","notamStatusPx","notamCaoPx","labelPx","footerPx","feedPx","rawLine","notamLine","notamScrollSec","getacScale","awake","strongPulse"
-  ];
-
-  const phoneKeys=[
-    "preset","phoneBlockValuePx","phoneRcrPx","phoneRawWxPx","phoneWxAlertPx",
-    "phoneNotamPx","phoneLabelPx","phoneFooterPx","phoneRawLine","phoneNotamLine"
-  ];
-
-  const s=Object.assign({},current);
-
-  if(name==="Phone"){
-    phoneKeys.forEach(k=>{
-      if(k==="preset")return;
-      if(Object.prototype.hasOwnProperty.call(p,k))s[k]=p[k];
-    });
-    s.preset=name;
-  }else{
-    boardKeys.forEach(k=>{
-      if(k==="preset")return;
-      if(Object.prototype.hasOwnProperty.call(p,k))s[k]=p[k];
-    });
-    s.preset=name;
-  }
-
+  const s=Object.assign({},current,p,{preset:name});
   localStorage.setItem(KEY,JSON.stringify(s));
   setInputs(s);
   save();
@@ -750,9 +452,7 @@ function setPreset(name){
 
 function resetDefaults(){
   let d=Object.assign({},defaults);
-  try{
-    d=Object.assign({},defaults,JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}"));
-  }catch(e){}
+  try{ d=Object.assign({},defaults,JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}")); }catch(e){}
   localStorage.setItem(KEY,JSON.stringify(d));
   setInputs(d);
   save();
@@ -760,15 +460,8 @@ function resetDefaults(){
 
 function saveDefaults(){
   const s=collect();
-
   try{
     localStorage.setItem(DEFAULT_KEY,JSON.stringify(s));
-    const check=JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}");
-
-    if(String(check.rawWxPx)!==String(s.rawWxPx) || String(check.notamScrollSec)!==String(s.notamScrollSec)){
-      throw new Error("Default verification failed.");
-    }
-
     localStorage.setItem(KEY,JSON.stringify(s));
     broadcastSettings(s);
     updatePreview();
@@ -781,12 +474,12 @@ function saveDefaults(){
 }
 
 function updateLabels(){
-  ["clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","notamTitlePx","notamStatusPx","notamCaoPx","labelPx","footerPx","feedPx","phoneBlockValuePx","phoneRcrPx","phoneRawWxPx","phoneWxAlertPx","phoneNotamPx","phoneLabelPx","phoneFooterPx"].forEach(id=>{
+  ["clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","notamTitlePx","notamStatusPx","notamCaoPx","labelPx","footerPx","feedPx"].forEach(id=>{
     const el=document.getElementById(id);
     const v=document.getElementById(id+"Val");
     if(el&&v)v.textContent=el.value+" px";
   });
-  ["rawLine","notamLine","phoneRawLine","phoneNotamLine"].forEach(id=>{
+  ["rawLine","notamLine"].forEach(id=>{
     const el=document.getElementById(id);
     const v=document.getElementById(id+"Val");
     if(el&&v)v.textContent=Number(el.value).toFixed(2);
@@ -808,31 +501,10 @@ function updatePreview(){
   document.getElementById("previewNotam").style.fontSize=s.notamPx+"px";
   document.getElementById("previewNotam").style.lineHeight=s.notamLine;
   document.documentElement.style.setProperty("--preview-notam-scroll-seconds", (s.notamScrollSec||55)+"s");
-
-  const phoneBlock=document.getElementById("phonePreviewBlock");
-  const phoneRcr=document.getElementById("phonePreviewRcr");
-  const phoneWx=document.getElementById("phonePreviewWx");
-  const phoneRaw=document.getElementById("phonePreviewRaw");
-  const phoneNotam=document.getElementById("phonePreviewNotam");
-
-  if(phoneBlock)phoneBlock.style.fontSize=(s.phoneBlockValuePx||20)+"px";
-  if(phoneRcr)phoneRcr.style.fontSize=(s.phoneRcrPx||24)+"px";
-  if(phoneWx)phoneWx.style.fontSize=(s.phoneWxAlertPx||21)+"px";
-  if(phoneRaw){
-    phoneRaw.style.fontSize=(s.phoneRawWxPx||17)+"px";
-    phoneRaw.style.lineHeight=s.phoneRawLine||1.42;
-  }
-  if(phoneNotam){
-    phoneNotam.style.fontSize=(s.phoneNotamPx||17)+"px";
-    phoneNotam.style.lineHeight=s.phoneNotamLine||1.36;
-  }
-
   updateLabels();
 }
 
-function openBoard(){
-  window.open("./index.html?displayTune=1","_blank");
-}
+function openBoard(){ window.open("./index.html?displayTune=1","_blank"); }
 
 function setGetacPreset(scale,awake,openAfter){
   const current=load();
@@ -867,6 +539,5 @@ document.querySelectorAll("input").forEach(el=>{
 
 setInputs(load());
 </script>
-<div id="saveToast" class="save-toast" role="status" aria-live="polite"></div>
 </body>
 </html>
