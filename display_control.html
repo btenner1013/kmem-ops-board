@@ -265,7 +265,7 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>Data block values</label><span class="value" id="blockValuePxVal"></span></div>
         <input id="blockValuePx" type="range" min="14" max="42" step="1">
-        <div class="help">Altimeter, ceiling, visibility, runways, flow, wind, BWC, temp/dewpoint.</div>
+        <div class="help">Altimeter, ceiling, visibility, runways, flow, wind, BWC, temp/dewpoint. RCR/RCC is separate.</div>
       </div>
 
       <div class="control">
@@ -281,21 +281,25 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>MIL NOTAM scrolling body text</label><span class="value" id="notamPxVal"></span></div>
         <input id="notamPx" type="range" min="10" max="34" step="1">
+        <div class="help">Controls the moving NOTAM crawl body only.</div>
       </div>
 
       <div class="control">
         <div class="row"><label>NOTAM header/title: KMEM MIL NOTAMS</label><span class="value" id="notamTitlePxVal"></span></div>
         <input id="notamTitlePx" type="range" min="10" max="36" step="1">
+        <div class="help">Left NOTAM title text.</div>
       </div>
 
       <div class="control">
         <div class="row"><label>NOTAM count/status: 2 MIL / 2 RWY CLSD</label><span class="value" id="notamStatusPxVal"></span></div>
         <input id="notamStatusPx" type="range" min="10" max="32" step="1">
+        <div class="help">Left NOTAM count/status text.</div>
       </div>
 
       <div class="control">
         <div class="row"><label>NOTAM CAO line: CAO 0116Z</label><span class="value" id="notamCaoPxVal"></span></div>
         <input id="notamCaoPx" type="range" min="9" max="28" step="1">
+        <div class="help">Left NOTAM current-as-of line.</div>
       </div>
 
       <div class="control">

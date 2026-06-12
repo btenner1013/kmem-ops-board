@@ -390,10 +390,10 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
   .detail-value,.ops-value,.trend-value{ font-size:1.02rem; }
   .mil-notam-panel{ min-height:70px; display:block !important; padding:6px 7px !important; }
   .mil-notam-header{ display:block !important; border-right:0 !important; border-bottom:1px solid rgba(230,230,230,.35) !important; padding-right:0 !important; padding-bottom:7px !important; margin-bottom:8px !important; }
-  .mil-notam-window{ display:block !important; position:relative !important; height:auto !important; min-height:auto !important; max-height:none !important; overflow:visible !important; }
-  .mil-notam-active .mil-notam-crawl, .mil-notam-none .mil-notam-crawl, .mil-notam-crawl{
-    display:block !important; position:static !important; width:100% !important; height:auto !important; min-height:auto !important; max-height:none !important;
-    top:auto !important; transform:none !important; animation:none !important; overflow:visible !important; white-space:pre-wrap !important; overflow-wrap:anywhere !important; padding:0 !important;
+  .mil-notam-window{ display:block !important; position:relative !important; height:clamp(78px,18vh,180px) !important; min-height:78px !important; max-height:180px !important; overflow:hidden !important; }
+  .mil-notam-active .mil-notam-crawl{
+    display:block !important; position:absolute !important; width:100% !important; height:auto !important; min-height:auto !important; max-height:none !important;
+    top:100% !important; transform:translateY(0) !important; animation:notamScrollSimple var(--notam-scroll-seconds,55s) linear infinite !important; overflow:visible !important; white-space:pre-wrap !important; overflow-wrap:anywhere !important; padding:0 4px !important;
   }
 }
 
@@ -856,13 +856,13 @@ function setCategoryDisplay(category){
 }
 
 function parseAltimeter(metar){
-  const m=metar.match(/A(\d{4})/);
+  const m=metar.match(/\bA(\d{4})\b/);
   if(!m)return"--";
   return m[1].slice(0,2)+"."+m[1].slice(2);
 }
 
 function parseAviationTime(text){
-  const m=(text||"").match(/(\d{2})(\d{2})(\d{2})Z/);
+  const m=(text||"").match(/\b(\d{2})(\d{2})(\d{2})Z\b/);
   if(!m)return null;
   const now=getBoardNow();
   const day=parseInt(m[1],10);
@@ -919,14 +919,20 @@ function compactLightningDisplay(value){
 
 function compactWxAlertDisplay(value){
   let text=safeValue(value,"NONE").toString().replace(/\s+/g," ").trim();
+  text=text.replace(/^WX\s+ALERT\s*\|\s*/i,"").trim();
   if(!text || text==="--" || /^NONE$/i.test(text) || /^N\/A$/i.test(text)){ return "NONE"; }
+
+  const rawCodeRe=/(^|[\s(])([+-]?(?:TSRA|SHRA|FZRA|FZDZ|RA|DZ|SN|SG|PL|GR|GS|VCTS|VCSH|VA|FU|HZ|FG|BR|SQ|FC|LLWS))(?=$|[\s),.;:])/i;
+  if(rawCodeRe.test(text)){
+    return text;
+  }
 
   let body=text.replace(/^(\p{Extended_Pictographic}(?:️)?\s*)/u,"").trim();
   const upper=body.toUpperCase();
   if(!upper || upper==="NONE")return "NONE";
 
   function findTimeWindow(s){
-    const m=s.match(/(?:(?:\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?\d{2}(?:-\d{2})?Z)/i);
+    const m=s.match(/\b(?:(?:\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?\d{2}(?:-\d{2})?Z)\b/i);
     return m ? m[0].toUpperCase().trim() : "";
   }
 
@@ -934,18 +940,18 @@ function compactWxAlertDisplay(value){
     const u=s.toUpperCase();
     if(u.includes("-TSRA") || u.includes("LIGHT THUNDERSTORM RAIN"))return "-TSRA";
     if(u.includes("+TSRA") || u.includes("HEAVY THUNDERSTORM RAIN"))return "+TSRA";
-    if(/TSRA/.test(u) || u.includes("THUNDERSTORM RAIN"))return "TSRA";
-    if(/VCTS/.test(u) || u.includes("VCTY TSTMS") || u.includes("VICINITY THUNDER") || u.includes("THUNDERSTORM VICINITY") || u.includes("THUNDERSTORMS VICINITY"))return "VCTS";
+    if(/\bTSRA\b/.test(u) || u.includes("THUNDERSTORM RAIN"))return "TSRA";
+    if(/\bVCTS\b/.test(u) || u.includes("VCTY TSTMS") || u.includes("VICINITY THUNDER") || u.includes("THUNDERSTORM VICINITY") || u.includes("THUNDERSTORMS VICINITY"))return "VCTS";
     if(u.includes("-SHRA") || u.includes("LIGHT RAIN SHOWER"))return "-SHRA";
     if(u.includes("+SHRA") || u.includes("HEAVY RAIN SHOWER"))return "+SHRA";
-    if(/SHRA/.test(u) || u.includes("RAIN SHOWERS"))return "SHRA";
-    if(/VCSH/.test(u) || u.includes("VCTY SHOWERS") || u.includes("VICINITY SHOWERS") || u.includes("SHOWERS VICINITY") || u.includes("SHOWER VICINITY"))return "VCSH";
+    if(/\bSHRA\b/.test(u) || u.includes("RAIN SHOWERS"))return "SHRA";
+    if(/\bVCSH\b/.test(u) || u.includes("VCTY SHOWERS") || u.includes("VICINITY SHOWERS") || u.includes("SHOWERS VICINITY") || u.includes("SHOWER VICINITY"))return "VCSH";
     if(u.includes("-RA") || u.includes("LIGHT RAIN"))return "-RA";
     if(u.includes("+RA") || u.includes("HEAVY RAIN"))return "+RA";
-    if(/RA/.test(u))return "RA";
-    if(/FZRA/.test(u) || u.includes("FREEZING RAIN"))return "FZRA";
-    if(/FU/.test(u) || u.includes("SMOKE"))return "FU";
-    if(/VA/.test(u) || u.includes("VOLCANIC ASH"))return "VA";
+    if(/\bRA\b/.test(u))return "RA";
+    if(/\bFZRA\b/.test(u) || u.includes("FREEZING RAIN"))return "FZRA";
+    if(/\bFU\b/.test(u) || u.includes("SMOKE"))return "FU";
+    if(/\bVA\b/.test(u) || u.includes("VOLCANIC ASH"))return "VA";
     return "";
   }
 
@@ -961,7 +967,7 @@ function compactWxAlertDisplay(value){
 
   if(upper.includes("LTG") && upper.includes("DSNT")){
     let dir="";
-    const dirMatch=upper.match(/(NW|NE|SW|SE|N|S|E|W)/);
+    const dirMatch=upper.match(/\b(NW|NE|SW|SE|N|S|E|W)\b/);
     if(upper.includes("NE AND NW") || upper.includes("NE/NW"))dir=" NE/NW";
     else if(dirMatch)dir=" "+dirMatch[1];
     return "⚡ LTG DSNT"+dir;
@@ -1004,9 +1010,7 @@ function wxAlertDisplayHtml(value){
 function formatRawWeatherText(metar,taf,data={}){
   const metarText=(metar||"METAR unavailable").toString().trim();
   const tafText=(taf||"TAF unavailable").toString().trim();
-  return [metarText,tafText].filter(Boolean).join("
-
-");
+  return [metarText,tafText].filter(Boolean).join("\n\n");
 }
 
 function formatTrendArrow(trend,trendText){
@@ -1064,7 +1068,7 @@ function formatWindDisplay(value){
     return gust===null ? `${dir} @ ${speed}` : `${dir} @ ${speed} G${gust}`;
   }
 
-  return text.replace(/[↑↓←→↗↘↙↖]/g,"").replace(/\s*@\s*/," @ ").replace(/\s*KT/,"").replace(/\s+/g," ");
+  return text.replace(/[↑↓←→↗↘↙↖]/g,"").replace(/\s*@\s*/," @ ").replace(/\s*KT\b/,"").replace(/\s+/g," ");
 }
 
 function formatTempDpDisplay(value){
@@ -1248,7 +1252,7 @@ function setLightningDisplay(value,data={}){
 
 function rcrClassFromValue(value,code,severity){
   const text=`${value||""} ${code||""}`.toUpperCase();
-  const m=text.match(/([0-6])\/([0-6])\/([0-6])/);
+  const m=text.match(/\b([0-6])\/([0-6])\/([0-6])\b/);
   if(m){
     const worst=Math.min(parseInt(m[1],10),parseInt(m[2],10),parseInt(m[3],10));
     if(worst>=6)return "rcr-good";
@@ -1282,7 +1286,14 @@ function setTafTrend(data){
   trend.className="trend-value wx-alert-compact";
   label.textContent="WX ALERT";
 
-  const hasAlert=(data.wxAlertVisible===true && data.wxAlertText && data.wxAlertText!=="NONE");
+  const primaryDisplay=(data.wxPrimaryAlert && data.wxPrimaryAlert.displayText) ? data.wxPrimaryAlert.displayText : "";
+  const fallbackDisplay=data.wxAlertText || data.tafTrend || "";
+  const wxDisplayText=primaryDisplay || fallbackDisplay;
+  const hasAlert=(
+    data.wxAlertVisible===true &&
+    wxDisplayText &&
+    !/^(?:NONE|--|N\/A)$/i.test(String(wxDisplayText).replace(/^WX\s+ALERT\s*\|\s*/i,"").trim())
+  );
   const tone=(data.wxAlertTone||"yellow").toLowerCase();
 
   if(hasAlert){
@@ -1292,16 +1303,6 @@ function setTafTrend(data){
 
     if(data.wxAlertFlash===true)trend.classList.add("alert-flash");
     if(data.wxAlertPulse===true)trend.classList.add("alert-pulse");
-
-    const hasPrimaryAlert = !!(data.wxPrimaryAlert && data.wxPrimaryAlert.displayText);
-    const wxDisplayText = hasPrimaryAlert ? data.wxPrimaryAlert.displayText : data.wxAlertText;
-
-    if (hasPrimaryAlert) {
-      let escaped=String(wxDisplayText).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-      trend.innerHTML=escaped.replace(/^(\p{Extended_Pictographic}(?:️)?)/u,'<span class="wx-alert-emoji">$1</span>');
-      trend.title=data.wxAlertLogText||wxDisplayText;
-      return;
-    }
 
     trend.innerHTML=wxAlertDisplayHtml(wxDisplayText);
     trend.title=data.wxAlertLogText||wxDisplayText;
@@ -1360,10 +1361,10 @@ function isBadText(value,badWords){
 
 function parseAtisTime(atisText){
   const text=(atisText||"").toUpperCase();
-  let m=text.match(/(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\s+(\d{2})(\d{2})Z/);
-  if(!m) m=text.match(/ATIS\s+INFORMATION\s+[A-Z]\s+(\d{2})(\d{2})\s*Z/);
-  if(!m) m=text.match(/INFORMATION\s+[A-Z]\s+(\d{2})(\d{2})\s*Z/);
-  if(!m) m=text.match(/INFORMATION\s+[A-Z]\s+(\d{2}):(\d{2})\s*Z/);
+  let m=text.match(/\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\s+(\d{2})(\d{2})Z\b/);
+  if(!m) m=text.match(/\bATIS\s+INFORMATION\s+[A-Z]\s+(\d{2})(\d{2})\s*Z\b/);
+  if(!m) m=text.match(/\bINFORMATION\s+[A-Z]\s+(\d{2})(\d{2})\s*Z\b/);
+  if(!m) m=text.match(/\bINFORMATION\s+[A-Z]\s+(\d{2}):(\d{2})\s*Z\b/);
   if(!m)return null;
 
   const now=getBoardNow();
@@ -1496,7 +1497,7 @@ function formatCaoZulu(value){
   const text=String(value||"").trim();
   let match=text.match(/(?:T|\s)(\d{2}):(\d{2})(?::\d{2})?/);
   if(match)return `CAO ${match[1]}${match[2]}Z`;
-  match=text.match(/(\d{2})(\d{2})Z/);
+  match=text.match(/\b(\d{2})(\d{2})Z\b/);
   if(match)return `CAO ${match[1]}${match[2]}Z`;
   return "CAO --";
 }
@@ -1544,10 +1545,10 @@ function normalizeNotamTimeText(value){
     const d=new Date(iso);
     return `${String(d.getUTCDate()).padStart(2,"0")} ${months[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`;
   }
-  text=text.replace(/(\d{1,2})\s+([A-Z]{3})\s+(\d{2}):(\d{2})\s+(\d{4})/ig,(m,dd,mon,hh,mm,yyyy)=>{
+  text=text.replace(/\b(\d{1,2})\s+([A-Z]{3})\s+(\d{2}):(\d{2})\s+(\d{4})\b/ig,(m,dd,mon,hh,mm,yyyy)=>{
     return `${String(dd).padStart(2,"0")} ${mon.toUpperCase()} ${hh}${mm}Z`;
   });
-  text=text.replace(/(\d{1,2})\s+([A-Z]{3})\s+(\d{4})Z?/ig,(m,dd,mon,hhmm)=>{
+  text=text.replace(/\b(\d{1,2})\s+([A-Z]{3})\s+(\d{4})Z?\b/ig,(m,dd,mon,hhmm)=>{
     return `${String(dd).padStart(2,"0")} ${mon.toUpperCase()} ${hhmm}Z`;
   });
   return text.toUpperCase();
@@ -1569,13 +1570,13 @@ function extractEffectiveRangeFromNotam(item,text){
   }
 
   const raw=(text||"").toUpperCase();
-  let m=raw.match(/(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4})\s+UNTIL\s+(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE)/i);
+  let m=raw.match(/\b(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4})\s+UNTIL\s+(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE)\b/i);
   if(m)return `EFF ${normalizeNotamTimeText(m[1])} - ${normalizeNotamTimeText(m[2])}`;
 
-  m=raw.match(/(\d{10}|\d{12})-(\d{10}|\d{12}|UFN)/);
+  m=raw.match(/\b(\d{10}|\d{12})-(\d{10}|\d{12}|UFN)\b/);
   if(m)return `EFF ${normalizeNotamTimeText(m[1])} - ${normalizeNotamTimeText(m[2])}`;
 
-  m=raw.match(/UNTIL\s+(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE)/i);
+  m=raw.match(/\bUNTIL\s+(\d{1,2}\s+[A-Z]{3}\s+\d{2}:\d{2}\s+\d{4}|UFN|FURTHER NOTICE)\b/i);
   if(m)return `UNTIL ${normalizeNotamTimeText(m[1])}`;
 
   return "";
@@ -1628,7 +1629,7 @@ function extractRunwayClosureNotams(data){
     const upper=text.toUpperCase();
     if(!text)return;
 
-    const isRwyClosure=(/RWY\s+[0-9]{1,2}[LRC]?(?:\/[0-9]{1,2}[LRC]?)?.*CLSD/i.test(upper) || /CLSD.*RWY\s+[0-9]{1,2}[LRC]?(?:\/[0-9]{1,2}[LRC]?)?/i.test(upper));
+    const isRwyClosure=(/\bRWY\s+[0-9]{1,2}[LRC]?(?:\/[0-9]{1,2}[LRC]?)?\b.*\bCLSD\b/i.test(upper) || /\bCLSD\b.*\bRWY\s+[0-9]{1,2}[LRC]?(?:\/[0-9]{1,2}[LRC]?)?\b/i.test(upper));
     if(!isRwyClosure)return;
 
     const compactText=text.replace(/\s+/g," ").trim().toUpperCase();
@@ -1659,8 +1660,7 @@ function formatNotamWithEffectiveTime(item,opts={}){
   if(number)lines.push(number);
   if(body)lines.push(body);
   if(eff)lines.push(eff);
-  return lines.join("
-").trim();
+  return lines.join("\n").trim();
 }
 
 function setMilNotamsDisplay(data){
@@ -1687,9 +1687,7 @@ function setMilNotamsDisplay(data){
   let scrollParts=[];
 
   if(items.length>0){
-    const milText=items.map(item=>formatNotamWithEffectiveTime(item,{rwyClosure:false})).filter(Boolean).join("
-
-");
+    const milText=items.map(item=>formatNotamWithEffectiveTime(item,{rwyClosure:false})).filter(Boolean).join("\n\n");
     if(milText)scrollParts.push(milText);
   }else if(data.milNotamScrollText){
     scrollParts.push(data.milNotamScrollText);
@@ -1701,18 +1699,12 @@ function setMilNotamsDisplay(data){
       if(item.number)lines.push(item.number);
       if(item.text)lines.push(item.text);
       if(item.effective)lines.push(item.effective);
-      return lines.join("
-").trim();
-    }).filter(Boolean).join("
-
-");
-    if(rwyText)scrollParts.push(`RWY CLOSURE NOTAMS
-${rwyText}`);
+      return lines.join("\n").trim();
+    }).filter(Boolean).join("\n\n");
+    if(rwyText)scrollParts.push(`RWY CLOSURE NOTAMS\n${rwyText}`);
   }
 
-  const scrollText=scrollParts.filter(Boolean).join("
-
-");
+  const scrollText=scrollParts.filter(Boolean).join("\n\n");
 
   panel.classList.remove("mil-notam-active","mil-notam-none","mil-notam-placeholder");
 
@@ -1978,7 +1970,7 @@ setInterval(phase46BoldArrows,1000);
     const text=String(value).trim();
     let match=text.match(/(?:T|\s)(\d{2}):(\d{2})(?::\d{2})?/);
     if(match)return `CAO ${match[1]}${match[2]}Z`;
-    match=text.match(/(\d{2})(\d{2})Z/);
+    match=text.match(/\b(\d{2})(\d{2})Z\b/);
     if(match)return `CAO ${match[1]}${match[2]}Z`;
     try{
       const parsed=new Date(text);
