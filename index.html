@@ -5234,92 +5234,103 @@ function compactLightningDisplay(value){
 
 function compactWxAlertDisplay(value){
   let text=safeValue(value,"NONE").toString().replace(/\s+/g," ").trim();
-  const upper=text.toUpperCase();
 
-  if(!upper || upper==="--" || upper==="NONE" || upper==="N/A"){
+  if(!text || text==="--" || /^NONE$/i.test(text) || /^N\/A$/i.test(text)){
     return "NONE";
   }
 
-  // Preserve optional next-day date in TAF-derived alert windows.
-  // Examples:
-  //   -SHRA PSBL 08-13Z
-  //   -SHRA PSBL 12 JUN 08-13Z
-  const timeMatch=upper.match(/\b(?:(?:\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?\d{2}(?:-\d{2})?Z)\b/);
-  const time=timeMatch ? " "+timeMatch[0].trim() : "";
+  /*
+    Phase 101:
+    Preserve raw aviation weather codes from weather.json / TAF.
+    Do not strip leading intensity signs.
+    Examples:
+      🌧️ -SHRA PSBL 09-18Z
+      🌧️ -SHRA PSBL 12 JUN 08-13Z
+      ⛈️ TSRA PSBL 11-15Z
+  */
 
+  // Remove leading emoji only for detection; add the correct emoji back below.
+  let body=text.replace(/^(\p{Extended_Pictographic}(?:\uFE0F)?\s*)/u,"").trim();
+  const upper=body.toUpperCase();
+
+  if(!upper || upper==="NONE")return "NONE";
+
+  function findTimeWindow(s){
+    const m=s.match(/\b(?:(?:\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?\d{2}(?:-\d{2})?Z)\b/i);
+    return m ? m[0].toUpperCase().trim() : "";
+  }
+
+  function inferCode(s){
+    const u=s.toUpperCase();
+
+    // Intensity-specific codes must be checked before generic codes.
+    if(u.includes("-TSRA") || u.includes("LIGHT THUNDERSTORM RAIN"))return "-TSRA";
+    if(u.includes("+TSRA") || u.includes("HEAVY THUNDERSTORM RAIN"))return "+TSRA";
+    if(/\bTSRA\b/.test(u) || u.includes("THUNDERSTORM RAIN"))return "TSRA";
+
+    if(/\bVCTS\b/.test(u) || u.includes("VCTY TSTMS") || u.includes("VICINITY THUNDER") || u.includes("THUNDERSTORM VICINITY") || u.includes("THUNDERSTORMS VICINITY"))return "VCTS";
+
+    if(u.includes("-SHRA") || u.includes("LIGHT RAIN SHOWER"))return "-SHRA";
+    if(u.includes("+SHRA") || u.includes("HEAVY RAIN SHOWER"))return "+SHRA";
+    if(/\bSHRA\b/.test(u) || u.includes("RAIN SHOWERS"))return "SHRA";
+
+    if(/\bVCSH\b/.test(u) || u.includes("VCTY SHOWERS") || u.includes("VICINITY SHOWERS") || u.includes("SHOWERS VICINITY") || u.includes("SHOWER VICINITY"))return "VCSH";
+
+    if(u.includes("-RA") || u.includes("LIGHT RAIN"))return "-RA";
+    if(u.includes("+RA") || u.includes("HEAVY RAIN"))return "+RA";
+    if(/\bRA\b/.test(u))return "RA";
+
+    if(/\bFZRA\b/.test(u) || u.includes("FREEZING RAIN"))return "FZRA";
+    if(/\bFU\b/.test(u) || u.includes("SMOKE"))return "FU";
+    if(/\bVA\b/.test(u) || u.includes("VOLCANIC ASH"))return "VA";
+
+    return "";
+  }
+
+  function emojiFor(code){
+    if(code.includes("TS") || code==="VCTS")return "⛈️";
+    if(code.includes("RA") || code.includes("SH") || code==="VCSH")return "🌧️";
+    if(code==="FZRA")return "🧊";
+    if(code==="FU")return "🌫️";
+    if(code==="VA")return "🌋";
+    if(code.includes("LTG"))return "⚡";
+    return "";
+  }
+
+  // Lightning remains separate from TAF WX alerts, but preserve readable current LTG lines.
+  if(upper.includes("LTG") && upper.includes("DSNT")){
+    let dir="";
+    const dirMatch=upper.match(/\b(NW|NE|SW|SE|N|S|E|W)\b/);
+    if(upper.includes("NE AND NW") || upper.includes("NE/NW"))dir=" NE/NW";
+    else if(dirMatch)dir=" "+dirMatch[1];
+    return "⚡ LTG DSNT"+dir;
+  }
+  if(upper.includes("LIGHTNING WITHIN 5 NM")){
+    return "⚡ LTG WITHIN 5NM";
+  }
+
+  const code=inferCode(upper);
+  const time=findTimeWindow(upper);
   const isForecastLike=
     upper.includes("POSSIBLE") ||
     upper.includes("PSBL") ||
     upper.includes("TAF") ||
     upper.includes("PROB") ||
     upper.includes("TEMPO") ||
+    upper.includes("FM") ||
     Boolean(time);
 
-  function wxCode(code, emoji, activeWord){
-    return isForecastLike ? `${emoji} ${code} PSBL${time}` : `${emoji} ${code} ${activeWord||"ACTIVE"}`;
-  }
-
-  // Manual/current lightning remains separate from TAF WX alerts.
-  if(upper.includes("LTG") && upper.includes("DSNT")){
-    let dir="";
-    if(upper.includes("NE AND NW") || upper.includes("NE/NW"))dir=" NE/NW";
-    else{
-      const dirMatch=upper.match(/\b(NW|NE|SW|SE|N|S|E|W)\b/);
-      if(dirMatch)dir=" "+dirMatch[1];
+  if(code){
+    const emoji=emojiFor(code);
+    if(isForecastLike){
+      return `${emoji ? emoji+" " : ""}${code} PSBL${time ? " "+time : ""}`.trim();
     }
-    return "⚡ LTG DSNT"+dir;
-  }
 
-  if(upper.includes("LIGHTNING WITHIN 5 NM")){
-    return "⚡ LTG WITHIN 5NM";
+    // Current METAR/ATIS rain behavior stays separate.
+    if(code.includes("RA") && upper.includes("ATIS"))return `${emoji} ${code} ATIS`.trim();
+    if(code.includes("RA") && upper.includes("METAR"))return `${emoji} ${code} METAR`.trim();
+    return `${emoji ? emoji+" " : ""}${code}`.trim();
   }
-
-  // Thunderstorm rain. Preserve intensity when source says -TSRA/+TSRA.
-  if(/(^|\\s)-TSRA\\b/.test(upper) || upper.includes("LIGHT THUNDERSTORM RAIN"))return wxCode("-TSRA","⛈️");
-  if(/(^|\\s)\\+TSRA\\b/.test(upper) || upper.includes("HEAVY THUNDERSTORM RAIN"))return wxCode("+TSRA","⛈️");
-  if(/\bTSRA\b/.test(upper) || upper.includes("THUNDERSTORM RAIN"))return wxCode("TSRA","⛈️");
-
-  if(/\bVCTS\b/.test(upper) || upper.includes("VCTY TSTMS") || upper.includes("VICINITY THUNDER") || upper.includes("THUNDERSTORM VICINITY") || upper.includes("THUNDERSTORMS VICINITY")){
-    return isForecastLike ? `⛈️ VCTS PSBL${time}` : "⛈️ VCTS ACTIVE";
-  }
-
-  if(/\bVCSH\b/.test(upper) || upper.includes("VCTY SHOWERS") || upper.includes("VICINITY SHOWERS") || upper.includes("SHOWERS VICINITY") || upper.includes("SHOWER VICINITY")){
-    return isForecastLike ? `🌧️ VCSH PSBL${time}` : "🌧️ VCSH";
-  }
-
-  // Rain/showers without thunder. Do NOT strip the minus sign.
-  if(/(^|\\s)-SHRA\\b/.test(upper) || upper.includes("LIGHT RAIN SHOWER")){
-    return isForecastLike ? `🌧️ -SHRA PSBL${time}` : "🌧️ -SHRA";
-  }
-  if(/(^|\\s)\\+SHRA\\b/.test(upper) || upper.includes("HEAVY RAIN SHOWER")){
-    return isForecastLike ? `🌧️ +SHRA PSBL${time}` : "🌧️ +SHRA";
-  }
-  if(/\bSHRA\b/.test(upper)){
-    return isForecastLike ? `🌧️ SHRA PSBL${time}` : "🌧️ SHRA";
-  }
-
-  if(/(^|\\s)-RA\\b/.test(upper) || upper.includes("LIGHT RAIN")){
-    if(isForecastLike)return `🌧️ -RA PSBL${time}`;
-    if(upper.includes("ATIS"))return "🌧️ -RA ATIS";
-    if(upper.includes("METAR"))return "🌧️ -RA METAR";
-    return "🌧️ -RA";
-  }
-  if(/(^|\\s)\\+RA\\b/.test(upper) || upper.includes("HEAVY RAIN")){
-    if(isForecastLike)return `🌧️ +RA PSBL${time}`;
-    if(upper.includes("ATIS"))return "🌧️ +RA ATIS";
-    if(upper.includes("METAR"))return "🌧️ +RA METAR";
-    return "🌧️ +RA";
-  }
-  if(/\bRA\b/.test(upper)){
-    if(isForecastLike)return `🌧️ RA PSBL${time}`;
-    if(upper.includes("ATIS"))return "🌧️ RA ATIS";
-    if(upper.includes("METAR"))return "🌧️ RA METAR";
-    return "🌧️ RA";
-  }
-
-  if(/\bFU\b/.test(upper) || upper.includes("SMOKE"))return isForecastLike ? `🌫️ FU PSBL${time}` : "🌫️ FU ACTIVE";
-  if(/\bFZRA\b/.test(upper) || upper.includes("FREEZING RAIN"))return isForecastLike ? `🧊 FZRA PSBL${time}` : "🧊 FZRA ACTIVE";
-  if(/\bVA\b/.test(upper) || upper.includes("VOLCANIC ASH"))return isForecastLike ? `🌋 VA PSBL${time}` : "🌋 VA ACTIVE";
 
   // Last-resort cleanup for unexpected backend text.
   text=text.replace(/LIGHT\s+RAIN\s+SHOWERS\s+POSSIBLE/ig,"🌧️ -SHRA PSBL");
@@ -5327,11 +5338,6 @@ function compactWxAlertDisplay(value){
   text=text.replace(/LIGHT\s+THUNDERSTORM\s+RAIN\s+POSSIBLE/ig,"⛈️ -TSRA PSBL");
   text=text.replace(/THUNDERSTORM\s+RAIN\s+POSSIBLE/ig,"⛈️ TSRA PSBL");
   text=text.replace(/THUNDERSTORM\s+VICINITY\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
-  text=text.replace(/THUNDERSTORMS\s+VICINITY\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
-  text=text.replace(/VICINITY\s+THUNDERSTORMS\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
-  text=text.replace(/VCTY\s+TSTMS\s+POSSIBLE/ig,"⛈️ VCTS PSBL");
-  text=text.replace(/VCTY\s+SHOWERS\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
-  text=text.replace(/SHOWERS\s+VICINITY\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
   text=text.replace(/VICINITY\s+SHOWERS\s+POSSIBLE/ig,"🌧️ VCSH PSBL");
   text=text.replace(/\s+/g," ").trim();
 
@@ -5780,8 +5786,12 @@ function setTafTrend(data){
     if(data.wxAlertFlash===true)trend.classList.add("alert-flash");
     if(data.wxAlertPulse===true)trend.classList.add("alert-pulse");
 
-    trend.innerHTML=wxAlertDisplayHtml(data.wxAlertText);
-    trend.title=data.wxAlertLogText||data.wxAlertText;
+    const wxDisplayText =
+      (data.wxPrimaryAlert && data.wxPrimaryAlert.displayText) ||
+      data.wxAlertText;
+
+    trend.innerHTML=wxAlertDisplayHtml(wxDisplayText);
+    trend.title=data.wxAlertLogText||wxDisplayText;
     return;
   }
 
@@ -7250,15 +7260,16 @@ function inferFlowFromRunways(arrRunways,depRunways){
 (function(){
   const STORAGE_KEY="kmemOpsDisplaySettingsV1";
   let lastRaw="";
-  let lastSizeSig="";
+  let lastSignature="";
+  let lastForcedAt=0;
 
   function readSettings(){
-    try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}
+    try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}") || {};}
     catch(e){return {};}
   }
 
-  function clamp(n,min,max,fallback){
-    n=Number(n);
+  function clamp(value,min,max,fallback){
+    const n=Number(value);
     if(!Number.isFinite(n))return fallback;
     return Math.max(min,Math.min(max,n));
   }
@@ -7271,20 +7282,20 @@ function inferFlowFromRunways(arrRunways,depRunways){
       .replace(/"/g,"&quot;");
   }
 
-  function isActiveNotam(panel,crawl){
-    if(panel && panel.classList.contains("mil-notam-active"))return true;
-    const t=(crawl?.textContent||"").replace(/\s+/g," ").trim().toUpperCase();
-    if(!t)return false;
-    if(t.includes("FAA NMS API PENDING"))return false;
-    if(t.includes("NO ACTIVE KMEM MIL NOTAMS"))return false;
-    if(t.includes("NO ACTIVE MIL NOTAMS"))return false;
-    return true;
-  }
-
   function getRawText(crawl){
     if(!crawl)return "";
     if(crawl.dataset.kmemRawNotamText)return crawl.dataset.kmemRawNotamText;
     return (crawl.textContent||"").trim();
+  }
+
+  function activeNotam(panel,crawl){
+    if(panel && panel.classList.contains("mil-notam-active"))return true;
+    const t=(crawl?.textContent||"").replace(/\s+/g," ").trim().toUpperCase();
+    if(!t)return false;
+    if(t.includes("NO ACTIVE KMEM MIL NOTAMS"))return false;
+    if(t.includes("NO ACTIVE MIL NOTAMS"))return false;
+    if(t.includes("FAA NMS API PENDING"))return false;
+    return true;
   }
 
   function buildLoopHtml(raw){
@@ -7292,104 +7303,27 @@ function inferFlowFromRunways(arrRunways,depRunways){
     return [
       '<div class="kmem-notam-copy">',safe,'</div>',
       '<div class="kmem-notam-gap" aria-hidden="true"></div>',
+      '<div class="kmem-notam-copy" aria-hidden="true">',safe,'</div>',
+      '<div class="kmem-notam-gap" aria-hidden="true"></div>',
       '<div class="kmem-notam-copy" aria-hidden="true">',safe,'</div>'
     ].join("");
   }
 
-  function applyNotamScrollSpeed(force=false){
-    const panel=document.getElementById("milNotamPanel") || document.querySelector(".mil-notam-panel");
-    const win=document.querySelector(".mil-notam-window");
-    const crawl=document.getElementById("milNotamCrawl") || document.querySelector(".mil-notam-crawl");
-    if(!crawl || !win)return false;
-
-    const settings=readSettings();
-    const bodyPx=clamp(settings.notamPx,10,42,20);
-    const line=clamp(settings.notamLine,1.05,1.80,1.32);
-    const seconds=clamp(settings.notamScrollSec,10,120,28);
-
-    // Put the current control values directly on the element so older CSS cannot win.
-    crawl.style.setProperty("font-size",bodyPx+"px","important");
-    crawl.style.setProperty("line-height",String(line),"important");
-    crawl.style.setProperty("white-space","pre-wrap","important");
-    crawl.style.setProperty("overflow-wrap","anywhere","important");
-
-    const title=document.querySelector(".mil-notam-title");
-    const status=document.getElementById("milNotamStatus") || document.querySelector(".mil-notam-status");
-    const cao=document.getElementById("milNotamCao") || document.querySelector(".mil-notam-cao");
-    if(title)title.style.setProperty("font-size",clamp(settings.notamTitlePx,10,40,18)+"px","important");
-    if(status)status.style.setProperty("font-size",clamp(settings.notamStatusPx,10,36,16)+"px","important");
-    if(cao)cao.style.setProperty("font-size",clamp(settings.notamCaoPx,9,32,14)+"px","important");
-
-    const active=isActiveNotam(panel,crawl);
-    if(!active){
-      crawl.classList.remove("kmem-notam-loop");
-      if(crawl.dataset.kmemRawNotamText){
-        crawl.textContent=crawl.dataset.kmemRawNotamText;
-        delete crawl.dataset.kmemRawNotamText;
-      }
-      crawl.style.setProperty("position","relative","important");
-      crawl.style.setProperty("animation","none","important");
-      crawl.style.setProperty("transform","none","important");
-      lastRaw="";
-      lastSizeSig="";
-      return true;
-    }
-
-    const raw=getRawText(crawl);
-    const sizeSig=[bodyPx,line,seconds,win.clientHeight,raw.length].join("|");
-
-    if(force || raw!==lastRaw || sizeSig!==lastSizeSig || !crawl.classList.contains("kmem-notam-loop")){
-      crawl.dataset.kmemRawNotamText=raw;
-      crawl.innerHTML=buildLoopHtml(raw);
-      crawl.classList.add("kmem-notam-loop");
-
-      crawl.style.setProperty("position","absolute","important");
-      crawl.style.setProperty("left","0","important");
-      crawl.style.setProperty("top","0","important");
-      crawl.style.setProperty("width","100%","important");
-      crawl.style.setProperty("height","auto","important");
-      crawl.style.setProperty("max-height","none","important");
-      crawl.style.setProperty("display","block","important");
-      crawl.style.setProperty("overflow","visible","important");
-      crawl.style.setProperty("font-size",bodyPx+"px","important");
-      crawl.style.setProperty("line-height",String(line),"important");
-
-      requestAnimationFrame(()=>{
-        const first=crawl.querySelector(".kmem-notam-copy");
-        const gap=crawl.querySelector(".kmem-notam-gap");
-        const distance=Math.max(
-          40,
-          Math.ceil((first?.offsetHeight||crawl.scrollHeight||120) + (gap?.offsetHeight||28))
-        );
-        crawl.style.setProperty("--notam-loop-distance",distance+"px");
-        crawl.style.setProperty("--notam-scroll-seconds",seconds+"s");
-        crawl.style.setProperty("animation","none","important");
-        void crawl.offsetHeight;
-        crawl.style.setProperty("animation",`kmemNotamLoop ${seconds}s linear infinite`,"important");
-      });
-
-      lastRaw=raw;
-      lastSizeSig=sizeSig;
-    }else{
-      crawl.style.setProperty("--notam-scroll-seconds",seconds+"s");
-      crawl.style.setProperty("animation-duration",seconds+"s","important");
-    }
-
-    return true;
-  }
-
   function installStyle(){
-    let style=document.getElementById("phase100NotamLoopStyle");
+    let style=document.getElementById("phase101NotamControlStyle");
     const css=`
-@keyframes kmemNotamLoop{
+@keyframes kmemNotamLoopPhase101{
   0%{transform:translateY(0);}
   100%{transform:translateY(calc(-1 * var(--notam-loop-distance,300px)));}
 }
+
 .mil-notam-window,
 body.getac-preset .mil-notam-window{
   position:relative !important;
   overflow:hidden !important;
+  min-height:0 !important;
 }
+
 #milNotamCrawl.kmem-notam-loop,
 .mil-notam-crawl.kmem-notam-loop,
 body.getac-preset #milNotamCrawl.kmem-notam-loop,
@@ -7402,33 +7336,171 @@ body.getac-preset .mil-notam-crawl.kmem-notam-loop{
   max-height:none !important;
   display:block !important;
   overflow:visible !important;
-  animation:kmemNotamLoop var(--notam-scroll-seconds,28s) linear infinite !important;
+  white-space:pre-wrap !important;
+  overflow-wrap:anywhere !important;
+  word-break:normal !important;
+  animation-name:kmemNotamLoopPhase101 !important;
+  animation-duration:var(--notam-scroll-seconds,55s) !important;
+  animation-timing-function:linear !important;
+  animation-iteration-count:infinite !important;
   will-change:transform !important;
 }
-#milNotamCrawl.kmem-notam-loop .kmem-notam-copy,
-.mil-notam-crawl.kmem-notam-loop .kmem-notam-copy{
+
+#milNotamCrawl.kmem-notam-loop *,
+.mil-notam-crawl.kmem-notam-loop *,
+body.getac-preset #milNotamCrawl.kmem-notam-loop *,
+body.getac-preset .mil-notam-crawl.kmem-notam-loop *{
+  font-size:inherit !important;
+  line-height:inherit !important;
   white-space:pre-wrap !important;
   overflow-wrap:anywhere !important;
   word-break:normal !important;
 }
+
 #milNotamCrawl.kmem-notam-loop .kmem-notam-gap,
 .mil-notam-crawl.kmem-notam-loop .kmem-notam-gap{
-  height:34px !important;
+  height:42px !important;
 }
 `;
     if(!style){
       style=document.createElement("style");
-      style.id="phase100NotamLoopStyle";
+      style.id="phase101NotamControlStyle";
       document.head.appendChild(style);
     }
     if(style.textContent!==css)style.textContent=css;
   }
 
-  window.applyNotamScrollSpeed=()=>applyNotamScrollSpeed(true);
+  function applyControlSizes(settings){
+    const title=document.querySelector(".mil-notam-title");
+    const status=document.getElementById("milNotamStatus") || document.querySelector(".mil-notam-status");
+    const cao=document.getElementById("milNotamCao") || document.querySelector(".mil-notam-cao");
+    const crawl=document.getElementById("milNotamCrawl") || document.querySelector(".mil-notam-crawl");
+
+    const titlePx=clamp(settings.notamTitlePx,10,44,18);
+    const statusPx=clamp(settings.notamStatusPx,10,40,16);
+    const caoPx=clamp(settings.notamCaoPx,9,36,14);
+    const bodyPx=clamp(settings.notamPx,10,48,20);
+    const line=clamp(settings.notamLine,1.05,1.85,1.32);
+
+    if(title)title.style.setProperty("font-size",titlePx+"px","important");
+    if(status)status.style.setProperty("font-size",statusPx+"px","important");
+    if(cao)cao.style.setProperty("font-size",caoPx+"px","important");
+
+    if(crawl){
+      crawl.style.setProperty("font-size",bodyPx+"px","important");
+      crawl.style.setProperty("line-height",String(line),"important");
+      crawl.querySelectorAll("*").forEach(el=>{
+        el.style.setProperty("font-size","inherit","important");
+        el.style.setProperty("line-height","inherit","important");
+      });
+    }
+
+    return {bodyPx,line};
+  }
+
+  function applyNotamLoop(force=false){
+    installStyle();
+
+    const settings=readSettings();
+    const panel=document.getElementById("milNotamPanel") || document.querySelector(".mil-notam-panel");
+    const win=document.querySelector(".mil-notam-window");
+    const crawl=document.getElementById("milNotamCrawl") || document.querySelector(".mil-notam-crawl");
+
+    if(!win || !crawl)return false;
+
+    const sizes=applyControlSizes(settings);
+    const seconds=clamp(settings.notamScrollSec,10,180,55);
+    const isActive=activeNotam(panel,crawl);
+
+    if(!isActive){
+      crawl.classList.remove("kmem-notam-loop");
+      if(crawl.dataset.kmemRawNotamText){
+        crawl.textContent=crawl.dataset.kmemRawNotamText;
+        delete crawl.dataset.kmemRawNotamText;
+      }
+      crawl.style.setProperty("position","relative","important");
+      crawl.style.setProperty("animation","none","important");
+      crawl.style.setProperty("transform","none","important");
+      lastRaw="";
+      lastSignature="";
+      return true;
+    }
+
+    const raw=getRawText(crawl);
+    const signature=[
+      raw,
+      sizes.bodyPx,
+      sizes.line,
+      seconds,
+      Math.round(win.clientHeight||0),
+      Math.round(win.clientWidth||0)
+    ].join("|");
+
+    if(force || raw!==lastRaw || signature!==lastSignature || !crawl.classList.contains("kmem-notam-loop")){
+      crawl.dataset.kmemRawNotamText=raw;
+      crawl.innerHTML=buildLoopHtml(raw);
+      crawl.classList.add("kmem-notam-loop");
+
+      crawl.style.setProperty("position","absolute","important");
+      crawl.style.setProperty("left","0","important");
+      crawl.style.setProperty("top","0","important");
+      crawl.style.setProperty("width","100%","important");
+      crawl.style.setProperty("height","auto","important");
+      crawl.style.setProperty("max-height","none","important");
+      crawl.style.setProperty("display","block","important");
+      crawl.style.setProperty("overflow","visible","important");
+      crawl.style.setProperty("font-size",sizes.bodyPx+"px","important");
+      crawl.style.setProperty("line-height",String(sizes.line),"important");
+      crawl.style.setProperty("--notam-scroll-seconds",seconds+"s");
+
+      crawl.querySelectorAll("*").forEach(el=>{
+        el.style.setProperty("font-size","inherit","important");
+        el.style.setProperty("line-height","inherit","important");
+      });
+
+      requestAnimationFrame(()=>{
+        const first=crawl.querySelector(".kmem-notam-copy");
+        const gap=crawl.querySelector(".kmem-notam-gap");
+        const distance=Math.max(
+          50,
+          Math.ceil((first?.offsetHeight||crawl.scrollHeight||140) + (gap?.offsetHeight||42))
+        );
+        crawl.style.setProperty("--notam-loop-distance",distance+"px");
+        crawl.style.setProperty("animation","none","important");
+        void crawl.offsetHeight;
+        crawl.style.setProperty("animation",`kmemNotamLoopPhase101 ${seconds}s linear infinite`,"important");
+      });
+
+      lastRaw=raw;
+      lastSignature=signature;
+      lastForcedAt=Date.now();
+      return true;
+    }
+
+    // Keep applying sizes live so the MIL NOTAM text slider visibly changes the body.
+    crawl.style.setProperty("font-size",sizes.bodyPx+"px","important");
+    crawl.style.setProperty("line-height",String(sizes.line),"important");
+    crawl.style.setProperty("--notam-scroll-seconds",seconds+"s");
+    crawl.style.setProperty("animation-duration",seconds+"s","important");
+    crawl.querySelectorAll("*").forEach(el=>{
+      el.style.setProperty("font-size","inherit","important");
+      el.style.setProperty("line-height","inherit","important");
+    });
+
+    // Force a clean recalculation every few seconds in case the browser/zoom changed.
+    if(Date.now()-lastForcedAt>5000){
+      lastSignature="";
+      lastForcedAt=Date.now();
+    }
+
+    return true;
+  }
+
+  window.applyNotamScrollSpeed=()=>applyNotamLoop(true);
+  window.kmemForceNotamLoop=()=>applyNotamLoop(true);
 
   function tick(force=false){
-    installStyle();
-    applyNotamScrollSpeed(force);
+    applyNotamLoop(force);
   }
 
   window.addEventListener("storage",e=>{if(e.key===STORAGE_KEY)tick(true);});
@@ -7436,9 +7508,18 @@ body.getac-preset .mil-notam-crawl.kmem-notam-loop{
     const channel=new BroadcastChannel("kmemDisplaySettings");
     channel.onmessage=e=>{if(e && e.data && e.data.type==="settings-updated")tick(true);};
   }catch(e){}
+
   document.addEventListener("DOMContentLoaded",()=>tick(true));
+  window.addEventListener("load",()=>tick(true));
   window.addEventListener("resize",()=>tick(true));
-  setInterval(()=>tick(false),300);
+
+  const obs=new MutationObserver(()=>tick(true));
+  document.addEventListener("DOMContentLoaded",()=>{
+    const crawl=document.getElementById("milNotamCrawl");
+    if(crawl)obs.observe(crawl,{childList:true,subtree:true,characterData:true});
+  });
+
+  setInterval(()=>tick(false),500);
   tick(true);
 })();
 </script>

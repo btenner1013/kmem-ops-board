@@ -494,8 +494,9 @@ input[type=range]{
       </div>
 
       <div class="control">
-        <div class="row"><label>MIL NOTAM text</label><span class="value" id="notamPxVal"></span></div>
+        <div class="row"><label>MIL NOTAM scrolling body text</label><span class="value" id="notamPxVal"></span></div>
         <input id="notamPx" type="range" min="10" max="34" step="1">
+        <div class="help">Controls the scrolling/crawling NOTAM body on the right side of the NOTAM panel.</div>
       </div>
 
       <div class="control">
@@ -527,12 +528,13 @@ input[type=range]{
       </div>
 
       <div class="control">
-        <div class="row"><label>Footer text</label><span class="value" id="footerPxVal"></span></div>
+        <div class="row"><label>Footer DATA UPDATED / REFRESH text</label><span class="value" id="footerPxVal"></span></div>
         <input id="footerPx" type="range" min="10" max="28" step="1">
+        <div class="help">Controls DATA UPDATED and REFRESH IN only. It does not control the FEEDS line.</div>
       </div>
 
       <div class="control">
-        <div class="row"><label>Feed status text</label><span class="value" id="feedPxVal"></span></div>
+        <div class="row"><label>FEEDS line text only</label><span class="value" id="feedPxVal"></span></div>
         <input id="feedPx" type="range" min="8" max="28" step="1">
         <div class="help">Controls the FEEDS: METAR OK | TAF OK | ATIS OK line.</div>
       </div>
@@ -548,9 +550,9 @@ input[type=range]{
       </div>
 
       <div class="control">
-        <div class="row"><label>NOTAM scroll speed</label><span class="value" id="notamScrollSecVal"></span></div>
+        <div class="row"><label>NOTAM scroll speed / crawl speed</label><span class="value" id="notamScrollSecVal"></span></div>
         <input id="notamScrollSec" type="range" min="10" max="180" step="5">
-        <div class="help">Higher number = slower crawl. Suggested TV range: 45–75 sec. Change should show on board within 1–2 seconds.</div>
+        <div class="help">Higher number = slower vertical crawl. Lower number = faster. Suggested TV range: 45–75 sec; Getac may need 35–55 sec. Change should show on board within 1–2 seconds.</div>
       </div>
     </div>
 
