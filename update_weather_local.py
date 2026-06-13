@@ -267,6 +267,90 @@ def parse_z_datetime(value):
         return None
 
 
+def parse_notam_datetime(value):
+    if not value:
+        return None
+
+    text = str(value).strip().upper()
+
+    if not text or text in {"UFN", "FURTHER NOTICE", "UNTIL FURTHER NOTICE"}:
+        return None
+
+    compact = re.search(r"\b(\d{12}|\d{10})\b", text)
+    if compact:
+        token = compact.group(1)
+        if len(token) == 10:
+            token = "20" + token
+        try:
+            return datetime.strptime(token, "%Y%m%d%H%M").replace(tzinfo=timezone.utc)
+        except Exception:
+            pass
+
+    month_map = {
+        "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4,
+        "MAY": 5, "JUN": 6, "JUL": 7, "AUG": 8,
+        "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12
+    }
+
+    def month_notam_datetime(day, month, year, hhmm):
+        if month not in month_map:
+            return None
+        year = int(year)
+        hour = int(hhmm[:2])
+        minute = int(hhmm[2:4])
+        if year < 1900 or year > 2100 or hour > 23 or minute > 59:
+            return None
+        return datetime(year, month_map[month], int(day), hour, minute, tzinfo=timezone.utc)
+
+    m = re.search(r"\b(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s+(\d{4})Z?\b", text)
+    if m:
+        try:
+            parsed = month_notam_datetime(m.group(1), m.group(2), m.group(3), m.group(4))
+            if parsed:
+                return parsed
+        except Exception:
+            pass
+
+    m = re.search(r"\b(\d{1,2})\s+([A-Z]{3})\s+(\d{4})Z?(?:\s+(\d{4}))?\b", text)
+    if m:
+        try:
+            parsed = month_notam_datetime(m.group(1), m.group(2), m.group(4) or datetime.now(timezone.utc).year, m.group(3))
+            if parsed:
+                return parsed
+        except Exception:
+            pass
+
+    return parse_z_datetime(text)
+
+
+def notam_is_current(item, now_z=None):
+    now_z = now_z or datetime.now(timezone.utc)
+
+    if not isinstance(item, dict):
+        return True
+
+    start = parse_notam_datetime(
+        item.get("effectiveStart")
+        or item.get("start")
+        or item.get("validFrom")
+        or item.get("effectiveFrom")
+    )
+    end = parse_notam_datetime(
+        item.get("effectiveEnd")
+        or item.get("end")
+        or item.get("validTo")
+        or item.get("effectiveTo")
+    )
+
+    if start and now_z < start:
+        return False
+
+    if end and now_z >= end:
+        return False
+
+    return True
+
+
 
 
 def zulu_iso(dt):
@@ -740,13 +824,13 @@ def parse_rcr_rcc(atis_text):
             text = "DRY"
             severity = "good"
         elif lowest == 5:
-            text = f"RCR/RCC {code} GOOD"
+            text = f"RSC/RCR {code} GOOD"
             severity = "good"
         elif lowest == 4:
-            text = f"RCR/RCC {code} CAUTION"
+            text = f"RSC/RCR {code} CAUTION"
             severity = "caution"
         else:
-            text = f"RCR/RCC {code} POOR"
+            text = f"RSC/RCR {code} POOR"
             severity = "poor"
 
         result.update({
@@ -788,7 +872,7 @@ def parse_rcr_rcc(atis_text):
     for pattern, label in caution_patterns:
         if re.search(pattern, compact):
             result.update({
-                "rcrText": f"RCR/RCC CAUTION / {label}",
+                "rcrText": f"RSC/RCR CAUTION / {label}",
                 "rcrCode": "--",
                 "rcrSeverity": "caution",
                 "rcrRaw": label
@@ -807,7 +891,7 @@ def parse_rcr_rcc(atis_text):
     for pattern, label in generic_report_patterns:
         if re.search(pattern, compact):
             result.update({
-                "rcrText": "RCR/RCC MENTIONED - REVIEW ATIS",
+                "rcrText": "RSC/RCR MENTIONED - REVIEW ATIS",
                 "rcrCode": "--",
                 "rcrSeverity": "caution",
                 "rcrRaw": label
@@ -831,22 +915,28 @@ def default_rcr_rcc(source="NOTAM_FICON"):
 
 def parse_rcr_rcc_from_ficon_notams(ficon_notams):
     """
-    Primary RCR/RCC source for the board.
+    Primary RSC/RCR source for the board.
 
     Uses FAA/NMS FICON NOTAM text, not ATIS, because ATIS wording varies.
     Board rule:
-      - no runway FICON found: DRY
-      - all runway codes are 6/6/6: DRY
-      - otherwise show the worst runway code found
+      - no current runway FICON found: DRY
+      - current runway 6/6/6: DRY
+      - future/expired and non-runway FICON ignored
+      - otherwise show the worst current runway code found
     """
     records = []
+    now_z = datetime.now(timezone.utc)
 
     for item in ficon_notams or []:
+        if isinstance(item, dict) and not notam_is_current(item, now_z):
+            continue
+
         if isinstance(item, dict):
             text = " ".join([
                 str(item.get("number") or ""),
                 str(item.get("text") or ""),
-                str(item.get("displayText") or "")
+                str(item.get("displayText") or ""),
+                str(item.get("rawText") or "")
             ])
         else:
             text = str(item)
@@ -902,7 +992,7 @@ def parse_rcr_rcc_from_ficon_notams(ficon_notams):
     else:
         severity = "poor"
 
-    text = f"RCC {code}"
+    text = f"RSC/RCR {code}"
     if condition and condition != "DRY":
         text += f" {condition}"
 
@@ -3369,6 +3459,99 @@ def normalize_runway_closure_notams(raw, previous_data=None):
     return []
 
 
+def normalize_status_notams(raw, key_names, classification, fallback_predicate=None):
+    raw = raw or {}
+    normalized = []
+    seen = set()
+
+    candidate_lists = [(raw.get(key), True) for key in key_names]
+
+    if fallback_predicate:
+        candidate_lists.extend([
+            (raw.get("airportNotams"), False),
+            (raw.get("allNotams"), False),
+            (raw.get("notams"), False),
+            (raw.get("items"), False)
+        ])
+
+    for items, explicit_list in candidate_lists:
+        if not isinstance(items, list):
+            continue
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
+            text_blob = notam_text_blob(item)
+            if fallback_predicate and not explicit_list and not fallback_predicate(text_blob):
+                continue
+
+            number = str(item.get("number") or item.get("id") or item.get("notamNumber") or "UNKNOWN").strip()
+            raw_text = str(item.get("rawText") or item.get("text") or item.get("displayText") or text_blob).strip()
+            display_text = str(item.get("displayText") or item.get("text") or raw_text).strip()
+
+            effective_start = normalize_notam_time_for_export(
+                item.get("effectiveStart")
+                or item.get("start")
+                or item.get("startTime")
+                or item.get("validFrom")
+                or item.get("effectiveFrom")
+                or item.get("begin")
+            )
+
+            effective_end = normalize_notam_time_for_export(
+                item.get("effectiveEnd")
+                or item.get("end")
+                or item.get("endTime")
+                or item.get("validTo")
+                or item.get("effectiveTo")
+            )
+
+            key = (number, raw_text, effective_start, effective_end, classification)
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            normalized.append({
+                "number": number,
+                "classification": item.get("classification") or classification,
+                "severity": item.get("severity") or "amber",
+                "text": raw_text,
+                "displayText": display_text,
+                "effectiveStart": effective_start,
+                "effectiveEnd": effective_end,
+                "lastUpdated": item.get("lastUpdated") or item.get("updated") or "",
+                "source": item.get("source") or raw.get("source") or "FAA_NMS_STAGING",
+                "rawText": raw_text
+            })
+
+    return normalized
+
+
+def is_construction_status_notam_text(text):
+    compact = re.sub(r"\s+", " ", str(text or "").upper()).strip()
+    if not compact or "FICON" in compact:
+        return False
+    padded = f" {compact} "
+    return any(term in padded for term in [
+        " WIP ", " WORK IN PROGRESS", " CONSTRUCTION", " CONST ",
+        " MAINT", " MAINTENANCE", " MARKING", " MARKINGS",
+        " MOWING", " SPRAYING", " WEEDING", " REPAIR",
+        " PAVEMENT WORK", " WORK AREA"
+    ])
+
+
+def is_taxi_restriction_notam_text(text):
+    compact = re.sub(r"\s+", " ", str(text or "").upper()).strip()
+    if not compact or "FICON" in compact:
+        return False
+    surface_hit = re.search(r"\b(TWY|TAXIWAY|TAXILANE|RAMP|APRON|GATE|MOVEMENT AREA|MOVEMENT-AREA)\b", compact)
+    restriction_hit = re.search(r"\b(CLSD|CLOSED|RESTRICT|RESTRICTED|RESTR|UNAVBL|NOT AVBL|TAXI ROUTE|ROUTE)\b", compact)
+    return bool(surface_hit and restriction_hit)
+
+
 def normalize_mil_notams_output(raw, fetch_status="OK"):
     raw = raw or {}
     items = raw.get("milNotams") or raw.get("items") or []
@@ -3419,6 +3602,20 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
     else:
         status = raw.get("milNotamStatus") or "NONE ACTIVE"
 
+    runway_closure_notams = normalize_runway_closure_notams(raw)
+    construction_status_notams = normalize_status_notams(
+        raw,
+        ["constructionStatusNotams", "constructionNotams", "airfieldStatusNotams"],
+        "CONST_AFLD_STATUS",
+        is_construction_status_notam_text
+    )
+    taxi_restriction_notams = normalize_status_notams(
+        raw,
+        ["taxiRestrictionNotams", "taxiRouteRestrictionNotams", "taxiRouteNotams"],
+        "TAXI_ROUTE_RESTR",
+        is_taxi_restriction_notam_text
+    )
+
     return {
         "milNotamCount": count,
         "milNotamStatus": status,
@@ -3430,8 +3627,12 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         "milNotamRawStatus": raw.get("status") or "UNKNOWN",
         "ficonNotams": raw.get("ficonNotams") or [],
         "ficonNotamCount": raw.get("ficonNotamCount") or len(raw.get("ficonNotams") or []),
-        "runwayClosureNotams": normalize_runway_closure_notams(raw),
-        "runwayClosureNotamCount": len(normalize_runway_closure_notams(raw))
+        "runwayClosureNotams": runway_closure_notams,
+        "runwayClosureNotamCount": len(runway_closure_notams),
+        "constructionStatusNotams": construction_status_notams,
+        "constructionStatusNotamCount": len(construction_status_notams),
+        "taxiRestrictionNotams": taxi_restriction_notams,
+        "taxiRestrictionNotamCount": len(taxi_restriction_notams)
     }
 
 
@@ -3451,7 +3652,11 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
             "ficonNotams": use_previous_field(previous_data, "ficonNotams", []),
             "ficonNotamCount": use_previous_field(previous_data, "ficonNotamCount", 0),
             "runwayClosureNotams": use_previous_field(previous_data, "runwayClosureNotams", []),
-            "runwayClosureNotamCount": use_previous_field(previous_data, "runwayClosureNotamCount", 0)
+            "runwayClosureNotamCount": use_previous_field(previous_data, "runwayClosureNotamCount", 0),
+            "constructionStatusNotams": use_previous_field(previous_data, "constructionStatusNotams", []),
+            "constructionStatusNotamCount": use_previous_field(previous_data, "constructionStatusNotamCount", 0),
+            "taxiRestrictionNotams": use_previous_field(previous_data, "taxiRestrictionNotams", []),
+            "taxiRestrictionNotamCount": use_previous_field(previous_data, "taxiRestrictionNotamCount", 0)
         }
 
     return {
@@ -3466,7 +3671,11 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
         "ficonNotams": [],
         "ficonNotamCount": 0,
         "runwayClosureNotams": [],
-        "runwayClosureNotamCount": 0
+        "runwayClosureNotamCount": 0,
+        "constructionStatusNotams": [],
+        "constructionStatusNotamCount": 0,
+        "taxiRestrictionNotams": [],
+        "taxiRestrictionNotamCount": 0
     }
 
 
@@ -3709,7 +3918,7 @@ def build_weather_json():
 
     mil_notam_data = fetch_mil_notams(previous_data)
     rcr_data = parse_rcr_rcc_from_ficon_notams(mil_notam_data.get("ficonNotams", []))
-    print("RCR/RCC:", rcr_data["rcrText"], "SOURCE:", rcr_data["rcrSource"], "SEVERITY:", rcr_data["rcrSeverity"])
+    print("RSC/RCR:", rcr_data["rcrText"], "SOURCE:", rcr_data["rcrSource"], "SEVERITY:", rcr_data["rcrSeverity"])
 
     data = {
         "metar": metar or "METAR unavailable",
@@ -3839,6 +4048,10 @@ def build_weather_json():
         "ficonNotamCount": mil_notam_data.get("ficonNotamCount", 0),
         "runwayClosureNotams": mil_notam_data.get("runwayClosureNotams", []),
         "runwayClosureNotamCount": mil_notam_data.get("runwayClosureNotamCount", 0),
+        "constructionStatusNotams": mil_notam_data.get("constructionStatusNotams", []),
+        "constructionStatusNotamCount": mil_notam_data.get("constructionStatusNotamCount", 0),
+        "taxiRestrictionNotams": mil_notam_data.get("taxiRestrictionNotams", []),
+        "taxiRestrictionNotamCount": mil_notam_data.get("taxiRestrictionNotamCount", 0),
 
         "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
 
@@ -3877,7 +4090,7 @@ def build_weather_json():
     print("ARR RWY:", data["arrRunways"])
     print("DEP RWY:", data["depRunways"])
     print("RWY CLSD:", data["closedRunways"])
-    print("RCR/RCC:", data["rcrText"], "SEVERITY:", data["rcrSeverity"])
+    print("RSC/RCR:", data["rcrText"], "SEVERITY:", data["rcrSeverity"])
     print("ALTIMETER:", data["altimeter"], log_trend(data["altimeterTrend"]))
     print("CEILING:", data["ceilingDisplay"], log_trend(data["ceilingTrend"]))
     print("VIS:", data["visibilityDisplay"], log_trend(data["visibilityTrend"]))
@@ -3896,6 +4109,7 @@ def build_weather_json():
     print("WX ALERTS:", data["wxAlertLogText"])
     print("MIL NOTAMS:", data["milNotamStatus"], "STATUS:", data["milNotamFetchStatus"], "UPDATED:", data["milNotamUpdatedZ"])
     print("RWY CLOSURE NOTAMS:", data.get("runwayClosureNotamCount", 0))
+    print("AFLD STATUS NOTAMS:", "CONST", data.get("constructionStatusNotamCount", 0), "TAXI", data.get("taxiRestrictionNotamCount", 0))
     print("LIGHTNING:", data["lightning"], "SOURCE:", data["lightningSource"], "TONE:", data["lightningTone"])
     print("METAR:", data["metar"], "AGE:", data.get("metarAgeMinutes"), "OBS:", data.get("metarObservedZ"))
     print("FETCH STATUS:", "METAR", data["metarFetchStatus"], "TAF", data["tafFetchStatus"], "ATIS", data["atisFetchStatus"], "LKG", data["lastKnownGoodUsed"])

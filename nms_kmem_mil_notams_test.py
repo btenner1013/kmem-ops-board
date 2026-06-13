@@ -306,6 +306,65 @@ def compact_runway_closure_display(text):
     return ""
 
 
+def is_construction_status_text(text):
+    compact = re.sub(r"\s+", " ", str(text or "").upper()).strip()
+
+    if not compact:
+        return False
+
+    if "FICON" in compact:
+        return False
+
+    status_terms = [
+        " WIP ",
+        " WORK IN PROGRESS",
+        " CONSTRUCTION",
+        " CONST ",
+        " MAINT",
+        " MAINTENANCE",
+        " MARKING",
+        " MARKINGS",
+        " MOWING",
+        " SPRAYING",
+        " WEEDING",
+        " REPAIR",
+        " PAVEMENT WORK",
+        " WORK AREA"
+    ]
+
+    padded = f" {compact} "
+    return any(term in padded for term in status_terms)
+
+
+def is_taxi_route_restriction_text(text):
+    compact = re.sub(r"\s+", " ", str(text or "").upper()).strip()
+
+    if not compact:
+        return False
+
+    if "FICON" in compact:
+        return False
+
+    surface_hit = re.search(r"\b(TWY|TAXIWAY|TAXILANE|RAMP|APRON|GATE|MOVEMENT AREA|MOVEMENT-AREA)\b", compact)
+    restriction_hit = re.search(r"\b(CLSD|CLOSED|RESTRICT|RESTRICTED|RESTR|UNAVBL|NOT AVBL|TAXI ROUTE|ROUTE)\b", compact)
+
+    if not surface_hit or not restriction_hit:
+        return False
+
+    # Runway closures are handled in their own section.
+    if is_runway_closure_text(compact) and not re.search(r"\b(TWY|TAXIWAY|TAXILANE|RAMP|APRON|GATE)\b", compact):
+        return False
+
+    return True
+
+
+def status_record(record, classification):
+    item = dict(record)
+    item["classification"] = classification
+    item["rawText"] = item.get("rawText") or item.get("text") or ""
+    return item
+
+
 def normalize_notam_effective_compact(value):
     """
     Keep backend effective fields compact but consistent for display.
@@ -466,11 +525,13 @@ def main():
     print(f"Explicit FICON metadata candidates: {len(explicit_ficon_candidates)}")
     print(f"Explicit RWY closure metadata candidates: {len(explicit_runway_closure_candidates)}")
     print(f"Recent local records scanned for hidden FICON/RWY closures: {len(recent_local_candidates)}")
-    print(f"Detail records to scan for MIL/FICON/RWY closures: {len(candidates)}")
+    print(f"Detail records to scan for MIL/FICON/AFLD status: {len(candidates)}")
 
     notams = []
     ficon_notams = []
     runway_closure_notams = []
+    construction_status_notams = []
+    taxi_restriction_notams = []
 
     for item in sorted(candidates, key=local_number_key, reverse=True):
         time.sleep(REQUEST_DELAY_SECONDS)
@@ -512,7 +573,7 @@ def main():
 
         txt_upper = txt.upper()
 
-        # Keep runway/taxiway/apron FICON in the separate FICON list for RCR/RCC parsing.
+        # Keep runway/taxiway/apron FICON in the separate FICON list for RSC/RCR parsing.
         # Do not put FICON into the MIL NOTAM crawl.
         if "FICON" in txt_upper:
             ficon_notams.append(record)
@@ -530,6 +591,12 @@ def main():
                 runway_record["displayText"] = closure_display
                 runway_record["rawText"] = txt
                 runway_closure_notams.append(runway_record)
+
+        if is_construction_status_text(txt):
+            construction_status_notams.append(status_record(record, "CONST_AFLD_STATUS"))
+
+        if is_taxi_route_restriction_text(txt):
+            taxi_restriction_notams.append(status_record(record, "TAXI_ROUTE_RESTR"))
 
         if str(record.get("classification", "")).upper() in ("MIL", "MILITARY") or record["number"].upper().startswith("M"):
             notams.append(record)
@@ -549,7 +616,11 @@ def main():
         "ficonNotamCount": len(ficon_notams),
         "runwayClosureNotams": runway_closure_notams,
         "runwayClosureNotamCount": len(runway_closure_notams),
-        "detailScanMode": "PHASE88_STRICT_RWY_CLOSURE_ONLY",
+        "constructionStatusNotams": construction_status_notams,
+        "constructionStatusNotamCount": len(construction_status_notams),
+        "taxiRestrictionNotams": taxi_restriction_notams,
+        "taxiRestrictionNotamCount": len(taxi_restriction_notams),
+        "detailScanMode": "PHASE102_AFLD_STATUS_SCOPED",
         "detailRecordsScanned": len(candidates),
     }
 
@@ -561,6 +632,8 @@ def main():
     print(f"Status: {result['milNotamStatus']}")
     print(f"FICON: {result['ficonNotamCount']} records")
     print(f"RWY closures: {result['runwayClosureNotamCount']} records")
+    print(f"Construction/status: {result['constructionStatusNotamCount']} records")
+    print(f"Taxi restrictions: {result['taxiRestrictionNotamCount']} records")
     print(f"Wrote:  {OUTPUT_FILE}")
     print()
 
@@ -574,6 +647,12 @@ def main():
         eff_start = n.get("effectiveStart") or "UNK"
         eff_end = n.get("effectiveEnd") or "UFN"
         print(f"RWYCL {n['number']}: {n['displayText']} EFF {eff_start}-{eff_end}")
+
+    for n in construction_status_notams:
+        print(f"CONST {n['number']}: {n['displayText']}")
+
+    for n in taxi_restriction_notams:
+        print(f"TAXI  {n['number']}: {n['displayText']}")
 
 
 if __name__ == "__main__":

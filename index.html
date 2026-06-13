@@ -50,7 +50,7 @@ html,body{
   height:100vh;
   width:100vw;
   display:grid;
-  grid-template-rows:minmax(var(--top-row-px),21vh) minmax(0,1fr) minmax(var(--notam-row-px),7.5vh) minmax(var(--footer-row-px),7.5vh);
+  grid-template-rows:var(--top-row-px) minmax(0,1fr) var(--notam-row-px) var(--footer-row-px);
   gap:5px;
   padding:7px;
 }
@@ -83,9 +83,10 @@ html,body{
   color:#e6e6e6;
   font-weight:900;
   letter-spacing:1px;
-  white-space:nowrap;
+  white-space:normal;
   overflow:hidden;
   text-overflow:clip;
+  line-height:1.04;
   font-size:var(--notam-title-px) !important;
 }
 
@@ -93,9 +94,10 @@ html,body{
   color:#b8c7d9;
   font-weight:900;
   margin-top:2px;
-  white-space:nowrap;
+  white-space:pre-line;
   overflow:hidden;
   text-overflow:clip;
+  line-height:1.08;
   font-size:var(--notam-status-px) !important;
 }
 
@@ -150,6 +152,19 @@ body.getac-preset .mil-notam-active .mil-notam-crawl {
   transform:translateY(0);
   animation:notamScrollSimple var(--notam-scroll-seconds,55s) linear infinite !important;
 }
+
+.notam-major-heading,.notam-section-heading{
+  display:block;
+  color:#f2f2f2;
+  font-weight:1000;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.notam-major-heading{ color:var(--closed); letter-spacing:.05em; }
+.notam-section-heading{ color:#dbe7f3; margin-top:.55em; }
+.notam-number{ display:block; color:#f2f2f2; font-weight:1000; margin-top:.45em; }
+.notam-body{ display:block; color:#c7d0dc; font-weight:500; }
+.notam-eff{ display:block; color:#9fb0c0; font-size:.92em; }
 
 .mil-notam-none #milNotamCrawl,
 .mil-notam-placeholder #milNotamCrawl,
@@ -375,7 +390,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 /* Split-screen / smaller laptop tuning */
 @media (max-width:1400px){
-  .board{ grid-template-rows:minmax(var(--top-row-px),16vh) minmax(0,1fr) minmax(var(--notam-row-px),6vh) minmax(var(--footer-row-px),6vh); gap:4px; padding:5px; }
+  .board{ grid-template-rows:var(--top-row-px) minmax(0,1fr) var(--notam-row-px) var(--footer-row-px); gap:4px; padding:5px; }
   .panel{ padding:6px; }
   .date{ font-size:clamp(.78rem,.95vw,1.1rem); }
   .flight-category{ font-size:clamp(2rem,3.25vw,3.6rem); }
@@ -427,8 +442,8 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
   .middle{ display:contents !important; }
   .weather-panel{ display:contents !important; }
   .weather-main{ order:2; display:flex !important; flex-direction:column !important; gap:3px !important; min-height:0 !important; overflow:visible !important; padding:5px !important; border:2px solid var(--border) !important; background:var(--panel) !important; width:100% !important; max-width:100% !important; }
-  .mil-notam-panel{ order:3; width:100% !important; max-width:100% !important; }
-  .raw{ order:4; border:2px solid var(--border) !important; background:var(--panel) !important; padding:5px !important; width:100% !important; max-width:100% !important; }
+  .raw{ order:3; border:2px solid var(--border) !important; background:var(--panel) !important; padding:5px !important; width:100% !important; max-width:100% !important; }
+  .mil-notam-panel{ order:4; width:100% !important; max-width:100% !important; }
   .radar-panel{ order:5; min-height:260px !important; overflow:hidden !important; }
   .bottom{ order:6; display:flex !important; flex-direction:column !important; gap:4px !important; }
   .panel{ padding:5px !important; overflow:visible !important; }
@@ -557,7 +572,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 /* Getac Base Overrides */
 html.getac-preset, body.getac-preset{ width:100vw !important; height:100vh !important; max-width:100vw !important; max-height:100vh !important; overflow:hidden !important; }
-body.getac-preset .board{ width:100vw !important; height:100vh !important; max-width:100vw !important; max-height:100vh !important; min-height:0 !important; overflow:hidden !important; display:grid !important; grid-template-rows:minmax(clamp(52px,var(--top-row-px),84px),10vh) minmax(0,1fr) minmax(clamp(82px,var(--notam-row-px),118px),14vh) minmax(clamp(28px,var(--footer-row-px),40px),4.5vh) !important; gap:3px !important; padding:4px !important; }
+body.getac-preset .board{ width:100vw !important; height:100vh !important; max-width:100vw !important; max-height:100vh !important; min-height:0 !important; overflow:hidden !important; display:grid !important; grid-template-rows:clamp(52px,var(--top-row-px),84px) minmax(0,1fr) clamp(82px,var(--notam-row-px),118px) clamp(28px,var(--footer-row-px),40px) !important; gap:3px !important; padding:4px !important; }
 body.getac-preset .top, body.getac-preset .middle{ display:grid !important; grid-template-columns:var(--weather-col-pct) minmax(0,1fr) !important; gap:4px !important; min-height:0 !important; overflow:hidden !important; }
 body.getac-preset .panel{ min-height:0 !important; overflow:hidden !important; padding:5px !important; }
 body.getac-preset .clock-panel{ min-height:0 !important; justify-content:center !important; padding:4px 6px !important; }
@@ -744,8 +759,8 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
     max-width:100% !important;
     min-width:0 !important;
   }
-  .mil-notam-panel{ order:3; width:100% !important; max-width:100% !important; min-width:0 !important; }
-  .raw{ order:4; border:2px solid var(--border) !important; background:var(--panel) !important; padding:6px !important; width:100% !important; max-width:100% !important; min-width:0 !important; }
+  .raw{ order:3; border:2px solid var(--border) !important; background:var(--panel) !important; padding:6px !important; width:100% !important; max-width:100% !important; min-width:0 !important; }
+  .mil-notam-panel{ order:4; width:100% !important; max-width:100% !important; min-width:0 !important; }
   .radar-panel{ order:5; width:100% !important; max-width:100% !important; min-width:0 !important; }
   .bottom{ order:6; }
   .panel{
@@ -995,7 +1010,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
           <div id="bwc" class="ops-value bwc-pending">PENDING</div>
         </div>
         <div class="ops-box">
-          <div class="ops-label">RCR/RCC</div>
+          <div class="ops-label">RSC/RCR</div>
           <div id="rcr" class="ops-value rcr-good">--</div>
         </div>
       </div>
@@ -1019,7 +1034,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 
   <div id="milNotamPanel" class="panel mil-notam-panel mil-notam-placeholder">
     <div class="mil-notam-header">
-      <div class="mil-notam-title">KMEM MIL NOTAMS</div>
+      <div class="mil-notam-title">KMEM AFLD STATUS / NOTAMS</div>
       <div id="milNotamStatus" class="mil-notam-status">PLACEHOLDER</div>
       <div id="milNotamCao" class="mil-notam-cao">CAO --</div>
     </div>
@@ -1233,6 +1248,15 @@ function setMetarAge(metar){
 function safeValue(value,fallback="--"){
   if(value===null||value===undefined||value==="")return fallback;
   return value;
+}
+
+function escapeHtml(value){
+  return String(value??"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
 }
 
 function compactLightningDisplay(value){
@@ -1601,7 +1625,7 @@ function rcrClassFromValue(value,code,severity){
 function setRcrDisplay(data){
   const el=document.getElementById("rcr");
   const value=data.rcrText||"DRY";
-  const displayValue=String(value).replace(/^RCC\s+/i,"").trim();
+  const displayValue=String(value).replace(/^(?:RSC\/RCR|RCR\/RCC|RCC)\s+/i,"").trim();
   el.className="ops-value";
   el.classList.add(rcrClassFromValue(value,data.rcrCode||"--",data.rcrSeverity||"good"));
   el.textContent=displayValue;
@@ -1995,6 +2019,133 @@ function formatNotamWithEffectiveTime(item,opts={}){
   return lines.join("\n").trim();
 }
 
+function parseNotamDateValue(value){
+  if(value===undefined||value===null||value==="")return null;
+  const text=String(value).trim().toUpperCase();
+  if(!text||text==="UFN"||text==="FURTHER NOTICE"||text==="UNTIL FURTHER NOTICE")return null;
+
+  let m=text.match(/\b(\d{12}|\d{10})\b/);
+  if(m){
+    let token=m[1];
+    if(token.length===10)token="20"+token;
+    const year=Number(token.slice(0,4));
+    const month=Number(token.slice(4,6))-1;
+    const day=Number(token.slice(6,8));
+    const hour=Number(token.slice(8,10));
+    const minute=Number(token.slice(10,12));
+    const time=Date.UTC(year,month,day,hour,minute);
+    return isNaN(time)?null:new Date(time);
+  }
+
+  const iso=Date.parse(text);
+  if(!isNaN(iso))return new Date(iso);
+
+  const months={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+
+  const monthDate=(day,monthName,yearValue,hhmm)=>{
+    if(months[monthName]===undefined)return null;
+    const year=Number(yearValue);
+    const hour=Number(String(hhmm).slice(0,2));
+    const minute=Number(String(hhmm).slice(2,4));
+    if(year<1900||year>2100||hour>23||minute>59)return null;
+    const time=Date.UTC(year,months[monthName],Number(day),hour,minute);
+    return isNaN(time)?null:new Date(time);
+  };
+
+  m=text.match(/\b(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s+(\d{4})Z?\b/);
+  if(m){
+    const d=monthDate(m[1],m[2],m[3],m[4]);
+    if(d)return d;
+  }
+
+  m=text.match(/\b(\d{1,2})\s+([A-Z]{3})\s+(\d{4})Z?(?:\s+(\d{4}))?\b/);
+  if(m){
+    const d=monthDate(m[1],m[2],m[4]||getBoardNow().getUTCFullYear(),m[3]);
+    if(d)return d;
+  }
+
+  return null;
+}
+
+function notamState(item){
+  const now=getBoardNow();
+  const start=parseNotamDateValue(item?.effectiveStart||item?.start||item?.validFrom||item?.effectiveFrom);
+  const end=parseNotamDateValue(item?.effectiveEnd||item?.end||item?.validTo||item?.effectiveTo);
+
+  if(end&&now>=end)return "expired";
+  if(start&&now<start)return "future";
+  return "current";
+}
+
+function splitNotamsByState(items){
+  const current=[];
+  const future=[];
+
+  (items||[]).forEach(item=>{
+    const state=notamState(item);
+    if(state==="current")current.push(item);
+    else if(state==="future")future.push(item);
+  });
+
+  const sortByStart=(a,b)=>{
+    const ad=parseNotamDateValue(a?.effectiveStart||a?.start||a?.validFrom||a?.effectiveFrom);
+    const bd=parseNotamDateValue(b?.effectiveStart||b?.start||b?.validFrom||b?.effectiveFrom);
+    return (ad?ad.getTime():0)-(bd?bd.getTime():0);
+  };
+
+  current.sort(sortByStart);
+  future.sort(sortByStart);
+  return {current,future};
+}
+
+function normalizeNotamList(value){
+  return Array.isArray(value)?value.filter(item=>item&&typeof item==="object"):[];
+}
+
+function notamFullTextFromItem(item){
+  if(!item)return "";
+  return String(item.rawText||item.fullText||item.notamText||item.text||item.displayText||item.message||item.body||item.description||"");
+}
+
+function notamItemHtml(item){
+  const number=notamNumberFromItem(item);
+  const raw=notamFullTextFromItem(item);
+  const body=stripNotamDisplayMetadata(raw||notamTextFromItem(item));
+  const eff=extractEffectiveRangeFromNotam(item,raw||body);
+  const parts=[];
+
+  if(number)parts.push(`<span class="notam-number">${escapeHtml(number)}</span>`);
+  if(body)parts.push(`<span class="notam-body">${escapeHtml(body)}</span>`);
+  if(eff)parts.push(`<span class="notam-eff">${escapeHtml(eff)}</span>`);
+
+  return parts.join("\n");
+}
+
+function notamSectionHtml(title,items,{omitIfEmpty=false}={}){
+  if((!items||items.length===0)&&omitIfEmpty)return "";
+  const heading=`<span class="notam-section-heading">${escapeHtml(title)}</span>`;
+  if(!items||items.length===0)return `${heading}\nNONE`;
+  return `${heading}\n${items.map(notamItemHtml).filter(Boolean).join("\n\n")}`;
+}
+
+function formatCaoFull(updated){
+  const d=parseUpdatedZ(updated);
+  if(!d)return "CAO --";
+  const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  return `CAO ${String(d.getUTCDate()).padStart(2,"0")} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`;
+}
+
+function currentRunwayFiconWorseThanDry(data){
+  const items=normalizeNotamList(data.ficonNotams);
+  return items.filter(item=>{
+    if(notamState(item)!=="current")return false;
+    const text=notamFullTextFromItem(item).toUpperCase();
+    const match=text.match(/\bRWY\s+\d{1,2}[LCR]?\s+FICON\s+([0-6])\s*\/\s*([0-6])\s*\/\s*([0-6])\b/);
+    if(!match)return false;
+    return !(match[1]==="6"&&match[2]==="6"&&match[3]==="6");
+  });
+}
+
 function setMilNotamsDisplay(data){
   const panel=document.getElementById("milNotamPanel");
   const status=document.getElementById("milNotamStatus");
@@ -2003,11 +2154,6 @@ function setMilNotamsDisplay(data){
 
   if(!panel||!status||!crawl)return;
 
-  const items=Array.isArray(data.milNotams)?data.milNotams:[];
-  const rwyClosureItems=extractRunwayClosureNotams(data);
-
-  const explicitCount=Number(data.milNotamCount);
-  const count=Number.isFinite(explicitCount)?explicitCount:items.length;
   const source=data.milNotamSource||"FAA NMS";
   const updated=data.milNotamUpdatedZ||data.allFeedsUpdatedZ||"--";
 
@@ -2016,39 +2162,49 @@ function setMilNotamsDisplay(data){
 
   setCaoStatusDisplay(cao,updated,fetchStatus,rawStatus);
 
-  let scrollParts=[];
+  const mil=splitNotamsByState(normalizeNotamList(data.milNotams));
+  const rwy=splitNotamsByState(normalizeNotamList(data.runwayClosureNotams));
+  const construction=splitNotamsByState(normalizeNotamList(data.constructionStatusNotams));
+  const taxi=splitNotamsByState(normalizeNotamList(data.taxiRestrictionNotams));
+  const ficonNow=currentRunwayFiconWorseThanDry(data);
+  const futureCount=rwy.future.length+construction.future.length+taxi.future.length+mil.future.length;
 
-  if(items.length>0){
-    const milText=items.map(item=>formatNotamWithEffectiveTime(item,{rwyClosure:false})).filter(Boolean).join("\n\n");
-    if(milText)scrollParts.push(milText);
-  }else if(data.milNotamScrollText){
-    scrollParts.push(data.milNotamScrollText);
-  }
+  const currentMilCount=mil.current.length;
+  const currentRwyCount=rwy.current.length;
+  status.textContent=[
+    `CURRENT: ${currentMilCount} MIL | ${currentRwyCount} RWY CLSD`,
+    `CONST/STATUS NOW: ${construction.current.length ? construction.current.length+" ACTIVE" : "NONE"}`,
+    `TAXI RTE/RESTR NOW: ${taxi.current.length ? taxi.current.length+" ACTIVE" : "NONE"}`
+  ].join("\n");
 
-  if(rwyClosureItems.length>0){
-    const rwyText=rwyClosureItems.map(item=>{
-      const lines=[];
-      if(item.number)lines.push(item.number);
-      if(item.text)lines.push(item.text);
-      if(item.effective)lines.push(item.effective);
-      return lines.join("\n").trim();
-    }).filter(Boolean).join("\n\n");
-    if(rwyText)scrollParts.push(`RWY CLOSURE NOTAMS\n${rwyText}`);
-  }
+  const scrollParts=[
+    `<span class="notam-major-heading">FOR REFERENCE ONLY</span>`,
+    `<span class="notam-major-heading">CURRENT AIRFIELD STATUS / NOTAM IMPACTS</span>`,
+    escapeHtml(formatCaoFull(updated)),
+    notamSectionHtml("RWY CLOSURES NOW",rwy.current),
+    notamSectionHtml("RSC/RCR / FICON NOW",ficonNow,{omitIfEmpty:true}),
+    notamSectionHtml("CONST / AFLD STATUS NOW",construction.current),
+    notamSectionHtml("TAXI ROUTES / RESTR NOW",taxi.current),
+    notamSectionHtml("MIL NOTAMS",mil.current),
+    `<span class="notam-major-heading">UPCOMING / FUTURE NOTAM IMPACTS</span>`,
+    futureCount
+      ? [
+          notamSectionHtml("RWY CLOSURES UPCOMING",rwy.future,{omitIfEmpty:true}),
+          notamSectionHtml("CONST / AFLD STATUS UPCOMING",construction.future,{omitIfEmpty:true}),
+          notamSectionHtml("TAXI ROUTES / RESTR UPCOMING",taxi.future,{omitIfEmpty:true}),
+          notamSectionHtml("MIL NOTAMS UPCOMING",mil.future,{omitIfEmpty:true})
+        ].filter(Boolean).join("\n\n")
+      : "NONE"
+  ];
 
-  const scrollText=scrollParts.filter(Boolean).join("\n\n");
+  const scrollHtml=scrollParts.filter(Boolean).join("\n\n");
 
   panel.classList.remove("mil-notam-active","mil-notam-none","mil-notam-placeholder");
 
-  if((count>0||rwyClosureItems.length>0)&&scrollText){
+  if(scrollHtml){
     panel.classList.add("mil-notam-active");
-
-    if(count>0&&rwyClosureItems.length>0){ status.textContent=`${count} MIL / ${rwyClosureItems.length} RWY CLSD`; }
-    else if(rwyClosureItems.length>0){ status.textContent=`${rwyClosureItems.length} RWY CLSD`; }
-    else{ status.textContent=data.milNotamStatus||`${count} ACTIVE`; }
-
-    crawl.textContent=scrollText;
-    crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"} | effective times display-only`;
+    crawl.innerHTML=scrollHtml;
+    crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"} | active/future status display`;
 
     measureMilNotamScroll();
     
@@ -2061,8 +2217,8 @@ function setMilNotamsDisplay(data){
     status.textContent="NMS STALE";
     crawl.textContent=`MIL NOTAM FEED ${fetchStatus}. USING LAST AVAILABLE DATA IF PRESENT. UPDATED ${updated}`;
   }else{
-    status.textContent="NONE ACTIVE";
-    crawl.textContent=`NO ACTIVE KMEM MIL NOTAMS. UPDATED ${updated}`;
+    status.textContent="CURRENT: 0 MIL | 0 RWY CLSD\nCONST/STATUS NOW: NONE\nTAXI RTE/RESTR NOW: NONE";
+    crawl.textContent=`NO CURRENT KMEM AIRFIELD STATUS / NOTAM IMPACTS. UPDATED ${updated}`;
   }
 }
 
@@ -2556,7 +2712,7 @@ setInterval(phase46BoldArrows,1000);
     const candidates=[...document.querySelectorAll(".mil-notam-panel,.mil-notams,.bottom-panel,.bottom > *")];
     for(const el of candidates){
       const txt=(el.textContent||"").toUpperCase();
-      if(txt.includes("KMEM MIL NOTAMS") || txt.includes("MIL NOTAMS"))return el;
+      if(txt.includes("KMEM AFLD STATUS / NOTAMS") || txt.includes("AFLD STATUS") || txt.includes("MIL NOTAMS"))return el;
     }
     return null;
   }
