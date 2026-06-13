@@ -238,40 +238,41 @@ input[type=range]{
     <h2>Quick Actions</h2>
     <div class="presets">
       <button class="primary" onclick="save()">Save / Broadcast to Board</button>
-      <button class="warn" onclick="saveDefaults()">Save Current as Defaults</button>
-      <button onclick="resetDefaults()">Reset Defaults</button>
       <button onclick="openBoard()">Open Board</button>
+      <button onclick="openAwakeBoard()">Open Board + Keep Awake</button>
+      <button onclick="resetDefaults()">Reset Balanced Defaults</button>
+      <button class="warn" onclick="saveDefaults()">Save This Device Default</button>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>Display Presets</h2>
-    <div class="presets">
-      <button onclick="setPreset('TV 90')">TV Fit 90%</button>
-      <button onclick="setPreset('TV 100')">TV Large 100%</button>
-      <button onclick="setPreset('Desktop')">Desktop</button>
-      <button onclick="setPreset('Getac')">Getac / Small</button>
-      <button class="warn" onclick="resetDefaults()">Reset Defaults</button>
-    </div>
-    <p class="help">Start with a preset, then fine tune below. Phone uses the automatic compact layout and ignores oversized desktop tuning where needed.</p>
-  </div>
-
-  <div class="card">
-    <h2>Getac / Small Landscape Quick Links</h2>
-    <div class="presets">
-      <button class="primary" onclick="setGetacPreset(90,true,true)">GETAC 90% + AWAKE</button>
-      <button onclick="setGetacPreset(85,true,true)">GETAC 85% + AWAKE</button>
-      <button onclick="setGetacPreset(95,true,true)">GETAC 95% + AWAKE</button>
-      <button onclick="openGetacBoard(90,true)">Open Getac Board</button>
-      <button onclick="setAwakeOnly(false)">Awake Off</button>
-    </div>
-    <p class="help">Getac mode uses a one-window layout with URL fallback: <b>?preset=getac&amp;scale=90&amp;awake=1</b>.</p>
+    <p class="help">Settings are local to this browser/device. Use the sliders below for TV, desktop, Getac, or iPad. Phone keeps its compact automatic layout.</p>
   </div>
 
   <div class="card">
     <h2>Text Size Controls</h2>
-    <p class="help">Move one section at a time. The yellow number is the saved size currently being broadcast to open board windows.</p>
+    <p class="help">Move one section at a time. Settings are stored in this browser on this device, then broadcast only to board windows already open on this same device.</p>
     <div class="grid">
+      <div class="control-section">SCREEN FIT FOR THIS DEVICE</div>
+      <div class="control featured">
+        <div class="row"><label>Top clock/date row height</label><span class="value" id="topRowPxVal"></span></div>
+        <input id="topRowPx" type="range" min="54" max="170" step="2">
+        <div class="help">Use this when the local or Zulu date gets clipped under the clock.</div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label>Weather / radar width split</label><span class="value" id="weatherColPctVal"></span></div>
+        <input id="weatherColPct" type="range" min="35" max="55" step="1">
+        <div class="help">More left = larger weather side. More right = larger radar side.</div>
+      </div>
+
+      <div class="control">
+        <div class="row"><label>MIL NOTAM row height</label><span class="value" id="notamRowPxVal"></span></div>
+        <input id="notamRowPx" type="range" min="42" max="140" step="2">
+      </div>
+
+      <div class="control">
+        <div class="row"><label>Footer row height</label><span class="value" id="footerRowPxVal"></span></div>
+        <input id="footerRowPx" type="range" min="28" max="90" step="2">
+      </div>
+
       <div class="control-section">CLOCKS AND MAIN DATA</div>
       <div class="control">
         <div class="row"><label>Clock numbers</label><span class="value" id="clockPxVal"></span></div>
@@ -404,16 +405,16 @@ const DEFAULT_KEY="kmemOpsDisplayDefaultsV1";
 const defaults={
   preset:"Desktop", clockPx:72, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
   notamTitlePx:18, notamStatusPx:16, notamCaoPx:14, labelPx:14, footerPx:18, feedPx:14,
-  rawLine:1.45, notamLine:1.38, notamScrollSec:55, getacScale:90, awake:"1", strongPulse:true
+  rawLine:1.45, notamLine:1.38, notamScrollSec:55, topRowPx:116, notamRowPx:76, footerRowPx:54,
+  weatherColPct:44, getacScale:90, awake:"1", strongPulse:true
 };
 
 const presets={
-  "TV 100":{clockPx:72,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
-  "TV 90":{clockPx:76,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,notamTitlePx:19,notamStatusPx:17,notamCaoPx:15,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:60,strongPulse:true},
-  "Desktop":{clockPx:72,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,strongPulse:true},
-  "Getac":{clockPx:54,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,notamTitlePx:14,notamStatusPx:12,notamCaoPx:11,labelPx:12,footerPx:14,feedPx:12,rawLine:1.20,notamLine:1.12,notamScrollSec:65,getacScale:90,awake:"1",strongPulse:true}
+  "TV 100":{clockPx:72,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,topRowPx:116,notamRowPx:76,footerRowPx:54,weatherColPct:44,strongPulse:true},
+  "TV 90":{clockPx:76,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,notamTitlePx:19,notamStatusPx:17,notamCaoPx:15,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:60,topRowPx:122,notamRowPx:82,footerRowPx:56,weatherColPct:44,strongPulse:true},
+  "Desktop":{clockPx:72,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,topRowPx:116,notamRowPx:76,footerRowPx:54,weatherColPct:44,strongPulse:true},
+  "Getac":{clockPx:54,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,notamTitlePx:14,notamStatusPx:12,notamCaoPx:11,labelPx:12,footerPx:14,feedPx:12,rawLine:1.20,notamLine:1.12,notamScrollSec:65,topRowPx:74,notamRowPx:92,footerRowPx:32,weatherColPct:44,getacScale:90,awake:"1",strongPulse:true}
 };
-
 function load(){
   try{
     const savedDefaults=JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}");
@@ -510,11 +511,14 @@ function saveDefaults(){
 }
 
 function updateLabels(){
-  ["clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","notamTitlePx","notamStatusPx","notamCaoPx","labelPx","footerPx","feedPx"].forEach(id=>{
+  ["clockPx","blockValuePx","rcrPx","rawWxPx","wxAlertPx","notamPx","notamTitlePx","notamStatusPx","notamCaoPx","labelPx","footerPx","feedPx","topRowPx","notamRowPx","footerRowPx"].forEach(id=>{
     const el=document.getElementById(id);
     const v=document.getElementById(id+"Val");
     if(el&&v)v.textContent=el.value+" px";
   });
+  const splitEl=document.getElementById("weatherColPct");
+  const splitVal=document.getElementById("weatherColPctVal");
+  if(splitEl&&splitVal)splitVal.textContent=splitEl.value+"% weather";
   ["rawLine","notamLine"].forEach(id=>{
     const el=document.getElementById(id);
     const v=document.getElementById(id+"Val");
@@ -541,6 +545,8 @@ function updatePreview(){
 }
 
 function openBoard(){ window.open("./index.html?displayTune=1","_blank"); }
+
+function openAwakeBoard(){ window.open("./index.html?awake=1&displayTune=1","_blank"); }
 
 function setGetacPreset(scale,awake,openAfter){
   const current=load();

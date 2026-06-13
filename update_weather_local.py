@@ -947,10 +947,6 @@ def parse_altimeter(metar):
 def parse_visibility_sm(metar):
     txt = metar or ""
 
-    match = re.search(r"\bP?(\d{1,2})SM\b", txt)
-    if match:
-        return float(match.group(1))
-
     match = re.search(r"\b(\d+)\s+(\d+)/(\d+)SM\b", txt)
     if match:
         whole = float(match.group(1))
@@ -958,13 +954,51 @@ def parse_visibility_sm(metar):
         denominator = float(match.group(3))
         return whole + numerator / denominator
 
-    match = re.search(r"\b(\d+)/(\d+)SM\b", txt)
+    match = re.search(r"\bM?(\d+)/(\d+)SM\b", txt)
     if match:
         numerator = float(match.group(1))
         denominator = float(match.group(2))
         return numerator / denominator
 
+    match = re.search(r"\bP?(\d{1,2})SM\b", txt)
+    if match:
+        return float(match.group(1))
+
     return None
+
+
+def visibility_display_from_parts(whole=None, numerator=None, denominator=None, prefix=""):
+    prefix = (prefix or "").upper()
+    lead = "M" if prefix == "M" else "P" if prefix == "P" else ""
+
+    if whole is not None and numerator is not None and denominator is not None:
+        return f"{lead}{int(whole)} {int(numerator)}/{int(denominator)} SM"
+
+    if numerator is not None and denominator is not None:
+        return f"{lead}{int(numerator)}/{int(denominator)} SM"
+
+    if whole is not None:
+        return f"{lead}{int(whole)} SM"
+
+    return ""
+
+
+def parse_metar_visibility_display(metar):
+    txt = metar or ""
+
+    match = re.search(r"\b(\d+)\s+(\d+)/(\d+)SM\b", txt)
+    if match:
+        return visibility_display_from_parts(match.group(1), match.group(2), match.group(3))
+
+    match = re.search(r"\b(M?)(\d+)/(\d+)SM\b", txt)
+    if match:
+        return visibility_display_from_parts(None, match.group(2), match.group(3), match.group(1))
+
+    match = re.search(r"\b(P?)(\d{1,2})SM\b", txt)
+    if match:
+        return visibility_display_from_parts(match.group(2), None, None, match.group(1))
+
+    return ""
 
 
 def parse_wind(metar):
@@ -1181,24 +1215,33 @@ def parse_atis_altimeter(atis_text):
 
     return None
 
-def parse_atis_visibility_sm(atis_text):
+def atis_visibility_scan_text(atis_text):
     txt = atis_observation_scan_text(atis_text)
+    return re.sub(
+        r"\b(?:TWR|TOWER)\s+VIS(?:IBILITY)?\s+(?:\d+\s+\d+/\d+|M?\d+/\d+|P?\d{1,2})(?:\s*SM)?\b",
+        " ",
+        txt
+    )
+
+
+def parse_atis_visibility_sm(atis_text):
+    txt = atis_visibility_scan_text(atis_text)
 
     patterns = [
-        r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(P?\d{1,2})(?:\s*SM)?\b",
         r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(\d+)\s+(\d+)/(\d+)(?:\s*SM)?\b",
-        r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(\d+)/(\d+)(?:\s*SM)?\b"
+        r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?M?(\d+)/(\d+)(?:\s*SM)?\b",
+        r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(P?\d{1,2})(?:\s*SM)?\b"
     ]
 
-    whole_frac = re.search(patterns[1], txt)
+    whole_frac = re.search(patterns[0], txt)
     if whole_frac:
         return float(whole_frac.group(1)) + float(whole_frac.group(2)) / float(whole_frac.group(3))
 
-    frac = re.search(patterns[2], txt)
+    frac = re.search(patterns[1], txt)
     if frac:
         return float(frac.group(1)) / float(frac.group(2))
 
-    whole = re.search(patterns[0], txt)
+    whole = re.search(patterns[2], txt)
     if whole:
         token = whole.group(1).replace("P", "")
         try:
@@ -1207,19 +1250,38 @@ def parse_atis_visibility_sm(atis_text):
             return None
 
     # ATIS commonly includes raw METAR-style visibility in the broadcast, e.g. 10SM or P6SM.
-    match = re.search(r"\bP?(\d{1,2})SM\b", txt)
-    if match:
-        return float(match.group(1))
-
     match = re.search(r"\b(\d+)\s+(\d+)/(\d+)SM\b", txt)
     if match:
         return float(match.group(1)) + float(match.group(2)) / float(match.group(3))
 
-    match = re.search(r"\b(\d+)/(\d+)SM\b", txt)
+    match = re.search(r"\bM?(\d+)/(\d+)SM\b", txt)
     if match:
         return float(match.group(1)) / float(match.group(2))
 
+    match = re.search(r"\bP?(\d{1,2})SM\b", txt)
+    if match:
+        return float(match.group(1))
+
     return None
+
+
+def parse_atis_visibility_display(atis_text):
+    txt = atis_visibility_scan_text(atis_text)
+
+    match = re.search(r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(\d+)\s+(\d+)/(\d+)(?:\s*SM)?\b", txt)
+    if match:
+        return visibility_display_from_parts(match.group(1), match.group(2), match.group(3))
+
+    match = re.search(r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(M?)(\d+)/(\d+)(?:\s*SM)?\b", txt)
+    if match:
+        return visibility_display_from_parts(None, match.group(2), match.group(3), match.group(1))
+
+    match = re.search(r"\bVIS(?:IBILITY)?\s+(?:IS\s+)?(P?)(\d{1,2})(?:\s*SM)?\b", txt)
+    if match:
+        return visibility_display_from_parts(match.group(2), None, None, match.group(1))
+
+    return parse_metar_visibility_display(txt)
+
 
 def parse_atis_wind(atis_text):
     txt = atis_observation_scan_text(atis_text)
@@ -1319,7 +1381,9 @@ def parse_best_observation_values(metar, atis_text, atis_fetch_status):
         Higher gust wins first; if gusts are close, higher sustained speed wins;
         if still close, ATIS wins.
       - Altimeter: prefer ATIS when valid; METAR is backup.
-      - Visibility: use the lower/more restrictive value; if within 1 SM, ATIS wins.
+      - Visibility: use the lower/more restrictive ATIS/METAR prevailing value.
+        If effectively equal, ATIS wins. Preserve the selected source's fraction
+        style for display, such as 1 1/2 SM or 1/4 SM.
       - Ceiling: use the lower/more restrictive value; if within 500 FT, ATIS wins.
       - Temp/dewpoint: prefer ATIS when valid; METAR is backup.
 
@@ -1328,6 +1392,7 @@ def parse_best_observation_values(metar, atis_text, atis_fetch_status):
     """
     metar_altimeter = parse_altimeter(metar)
     metar_visibility_sm = parse_visibility_sm(metar)
+    metar_visibility_display = parse_metar_visibility_display(metar)
     metar_ceiling_ft = parse_ceiling_ft(metar)
     metar_wind = parse_wind(metar)
     metar_temp_c, metar_dewpoint_c = parse_temp_dewpoint(metar)
@@ -1338,6 +1403,7 @@ def parse_best_observation_values(metar, atis_text, atis_fetch_status):
 
     atis_altimeter = parse_atis_altimeter(atis_obs_text) if atis_available else None
     atis_visibility_sm = parse_atis_visibility_sm(atis_obs_text) if atis_available else None
+    atis_visibility_display = parse_atis_visibility_display(atis_obs_text) if atis_available else ""
     atis_ceiling_ft = parse_ceiling_ft(atis_obs_text) if atis_available else None
     atis_wind = parse_atis_wind(atis_obs_text) if atis_available else None
     atis_temp_c, atis_dewpoint_c = parse_atis_temp_dewpoint(atis_obs_text) if atis_available else (None, None)
@@ -1356,16 +1422,17 @@ def parse_best_observation_values(metar, atis_text, atis_fetch_status):
         return metar_value
 
     def choose_visibility(atis_value, metar_value):
-        # Lower visibility is more restrictive. If almost equal, use ATIS.
+        # Lower visibility is more restrictive. TWR VIS is stripped before ATIS
+        # parsing, so only ATIS/METAR prevailing visibility can drive the board.
         if atis_value is not None and metar_value is not None:
-            if abs(float(atis_value) - float(metar_value)) <= 1.0:
+            if float(atis_value) < float(metar_value) - 0.05:
                 field_sources["visibility"] = "ATIS"
                 return atis_value
-            if float(atis_value) < float(metar_value):
-                field_sources["visibility"] = "ATIS"
-                return atis_value
-            field_sources["visibility"] = "METAR"
-            return metar_value
+            if float(metar_value) < float(atis_value) - 0.05:
+                field_sources["visibility"] = "METAR"
+                return metar_value
+            field_sources["visibility"] = "ATIS"
+            return atis_value
 
         if atis_value is not None:
             field_sources["visibility"] = "ATIS"
@@ -1447,6 +1514,14 @@ def parse_best_observation_values(metar, atis_text, atis_fetch_status):
     visibility_sm = choose_visibility(atis_visibility_sm, metar_visibility_sm)
     ceiling_ft = choose_ceiling(atis_ceiling_ft, metar_ceiling_ft)
 
+    visibility_source = field_sources.get("visibility")
+    if visibility_source == "ATIS":
+        visibility_display = atis_visibility_display or format_visibility(visibility_sm)
+    elif visibility_source == "METAR":
+        visibility_display = metar_visibility_display or format_visibility(visibility_sm)
+    else:
+        visibility_display = format_visibility(visibility_sm)
+
     observation_source = "ATIS" if any(source == "ATIS" for source in field_sources.values()) else "METAR"
     if "ATIS" in field_sources.values() and "METAR" in field_sources.values():
         observation_source = "MIXED"
@@ -1458,18 +1533,21 @@ def parse_best_observation_values(metar, atis_text, atis_fetch_status):
         "obsFieldSources": field_sources,
         "altimeter": altimeter,
         "visibilitySm": visibility_sm,
+        "visibilityDisplay": visibility_display,
         "ceilingFt": ceiling_ft,
         "windData": wind_data,
         "tempC": temp_c,
         "dewpointC": dewpoint_c,
         "metarAltimeter": metar_altimeter,
         "metarVisibilitySm": metar_visibility_sm,
+        "metarVisibilityDisplay": metar_visibility_display,
         "metarCeilingFt": metar_ceiling_ft,
         "metarWindData": metar_wind,
         "metarTempC": metar_temp_c,
         "metarDewpointC": metar_dewpoint_c,
         "atisAltimeter": atis_altimeter,
         "atisVisibilitySm": atis_visibility_sm,
+        "atisVisibilityDisplay": atis_visibility_display,
         "atisCeilingFt": atis_ceiling_ft,
         "atisWindData": atis_wind,
         "atisTempC": atis_temp_c,
@@ -1591,6 +1669,67 @@ def weather_code_present(source_text, code):
     return False
 
 
+VA_CODES = {"VA"}
+CONVECTIVE_CODES = {"+TSRA", "TSRA", "-TSRA", "TS", "VCTS", "FC"}
+
+
+def is_va_convective_pair(alert_a, alert_b):
+    code_a = (alert_a.get("code") or "").upper()
+    code_b = (alert_b.get("code") or "").upper()
+    return (
+        (code_a in VA_CODES and code_b in CONVECTIVE_CODES)
+        or (code_b in VA_CODES and code_a in CONVECTIVE_CODES)
+    )
+
+
+def alert_code_component(alert):
+    emoji = (alert.get("emoji") or "").strip()
+    code = (alert.get("code") or "").strip()
+    return f"{emoji} {code}".strip() if code else (alert.get("displayText") or "").strip()
+
+
+def combine_simultaneous_alerts(alerts, window=None):
+    if not alerts:
+        return None
+
+    alerts = sorted(alerts, key=lambda alert: (0 if (alert.get("code") or "").upper() in VA_CODES else 1, taf_hazard_rank(alert.get("code"))))
+    first = dict(alerts[0])
+    seen = set()
+    codes = []
+    components = []
+
+    for alert in alerts:
+        code = (alert.get("code") or "").upper()
+        if code in seen:
+            continue
+        seen.add(code)
+        codes.append(code)
+        component = alert_code_component(alert)
+        if component:
+            components.append(component)
+
+    display_base = " / ".join(components) if components else first.get("displayText", "")
+    code_text = " / ".join(codes)
+    if window:
+        first["text"] = f"{code_text} PSBL {window}".strip()
+        first["displayText"] = f"{display_base} PSBL {window}".strip()
+        first["tafWindow"] = window
+    else:
+        sources = sorted({src for alert in alerts for src in alert.get("sources", [])})
+        source_text = "/".join(sources) if sources else "CURRENT"
+        first["text"] = f"{code_text} IN {source_text}".strip()
+        first["displayText"] = display_base
+
+    first["code"] = "/".join(codes)
+    first["label"] = " / ".join(alert.get("label", "") for alert in alerts if alert.get("label"))
+    first["sources"] = sorted({src for alert in alerts for src in alert.get("sources", [])})
+    first["displayTone"] = "red" if any(alert.get("displayTone") == "red" for alert in alerts) else first.get("displayTone", "yellow")
+    first["flash"] = any(bool(alert.get("flash")) for alert in alerts)
+    first["pulse"] = any(bool(alert.get("pulse")) for alert in alerts)
+    first["priority"] = min(alert.get("priority", 99) for alert in alerts)
+    return first
+
+
 def classify_alert(code, sources, category):
     source_set = set(sources)
     current_source = bool(source_set.intersection({"METAR", "ATIS"}))
@@ -1602,7 +1741,8 @@ def classify_alert(code, sources, category):
         "hail",
         "wind_shear",
         "tornado",
-        "squall"
+        "squall",
+        "ash"
     }
 
     heavy_precip_codes = {
@@ -1812,6 +1952,11 @@ def taf_window_display_from_datetimes(start_dt, end_dt=None, current_utc_dt=None
     start_hh = f"{start_dt.hour:02d}"
 
     if end_dt and end_dt > start_dt:
+        if end_dt.date() != start_dt.date():
+            return (
+                f"{start_dt.day:02d} {TAF_MONTHS[start_dt.month - 1]} {start_hh}Z-"
+                f"{end_dt.day:02d} {TAF_MONTHS[end_dt.month - 1]} {end_dt.hour:02d}Z"
+            )
         base = f"{start_hh}-{end_dt.hour:02d}Z"
     else:
         base = f"{start_hh}Z"
@@ -1891,7 +2036,7 @@ def split_taf_groups_for_windows(taf):
             token = later.group(1)
             if token.startswith("FM"):
                 return taf_token_start_datetime(token, taf_issue_dt)
-        return main_end_dt
+        return None
 
     if main_valid_match:
         base_start = main_valid_match.end()
@@ -1920,7 +2065,9 @@ def split_taf_groups_for_windows(taf):
             start_dt = taf_token_start_datetime(marker_text, taf_issue_dt)
             # FM prevailing groups last until the next FM group or the TAF valid end.
             # TEMPO/PROB groups inside that period do not terminate the prevailing FM condition.
-            end_dt = next_fm_start_datetime(idx)
+            next_fm_dt = next_fm_start_datetime(idx)
+            end_dt = next_fm_dt or main_end_dt
+            display_end_dt = next_fm_dt
         else:
             window_match = re.search(r"\b(\d{4}/\d{4})\b", group_text)
             if window_match:
@@ -1929,11 +2076,12 @@ def split_taf_groups_for_windows(taf):
                 window_token = main_valid
             start_dt = taf_token_start_datetime(window_token, taf_issue_dt)
             end_dt = taf_token_end_datetime(window_token, taf_issue_dt)
+            display_end_dt = end_dt
 
         groups.append({
             "tafGroupType": marker_text if not marker_text.startswith("FM") else "FM",
             "tafWindowToken": window_token,
-            "tafWindow": taf_window_display_from_datetimes(start_dt, end_dt, current_utc_dt),
+            "tafWindow": taf_window_display_from_datetimes(start_dt, display_end_dt, current_utc_dt),
             "tafStartKey": taf_window_sort_key(window_token, idx + 1),
             "tafStartIso": iso_z(start_dt),
             "tafEndIso": iso_z(end_dt),
@@ -2005,6 +2153,173 @@ def merge_adjacent_taf_fm_alerts(taf_alerts, current_utc_dt=None):
 
     return other_alerts + merged
 
+
+def taf_hazard_rank(code):
+    code = (code or "").upper()
+    ranks = {
+        "VA": 1,
+        "+FZRA": 1,
+        "FZRA": 1,
+        "-FZRA": 1,
+        "+FZDZ": 1,
+        "FZDZ": 1,
+        "-FZDZ": 1,
+        "PL": 1,
+        "+TSRA": 2,
+        "TSRA": 3,
+        "-TSRA": 4,
+        "VCTS": 5,
+        "TS": 5,
+        "FC": 1,
+        "FU": 6,
+        "+RA": 7,
+        "+SHRA": 7,
+        "RA": 8,
+        "SHRA": 8,
+        "-RA": 9,
+        "-SHRA": 9,
+        "FG": 10,
+        "BR": 10,
+    }
+    return ranks.get(code, 20)
+
+
+def taf_timing_bucket(alert, now_z):
+    start = parse_iso_z(alert.get("tafStartIso"))
+    end = parse_iso_z(alert.get("tafEndIso"))
+
+    if end and end <= now_z:
+        return None
+
+    if start and end and start <= now_z < end:
+        return 0
+
+    if not start:
+        return 5
+
+    hours_until = (start - now_z).total_seconds() / 3600.0
+    if hours_until <= 0:
+        return 0
+    if hours_until <= 3:
+        return 1
+    if hours_until <= 6:
+        return 2
+    if hours_until <= 12:
+        return 3
+    return 4
+
+
+def taf_alerts_overlap_or_close(a, b, close_hours=2.0):
+    a_start = parse_iso_z(a.get("tafStartIso"))
+    a_end = parse_iso_z(a.get("tafEndIso")) or a_start
+    b_start = parse_iso_z(b.get("tafStartIso"))
+    b_end = parse_iso_z(b.get("tafEndIso")) or b_start
+
+    if not a_start or not b_start:
+        return False
+
+    if a_end and b_end and a_start < b_end and b_start < a_end:
+        return True
+
+    return abs((a_start - b_start).total_seconds()) <= close_hours * 3600.0
+
+
+def taf_alerts_overlap(a, b):
+    a_start = parse_iso_z(a.get("tafStartIso"))
+    a_end = parse_iso_z(a.get("tafEndIso")) or a_start
+    b_start = parse_iso_z(b.get("tafStartIso"))
+    b_end = parse_iso_z(b.get("tafEndIso")) or b_start
+
+    if not a_start or not b_start or not a_end or not b_end:
+        return False
+
+    return a_start < b_end and b_start < a_end
+
+
+def overlapping_taf_window(alerts, now_z):
+    starts = [parse_iso_z(alert.get("tafStartIso")) for alert in alerts]
+    ends = [parse_iso_z(alert.get("tafEndIso")) for alert in alerts]
+    starts = [dt for dt in starts if dt]
+    ends = [dt for dt in ends if dt]
+
+    if not starts or not ends:
+        return alerts[0].get("tafWindow", "") if alerts else ""
+
+    start = max(starts)
+    end = min(ends)
+    if end <= start:
+        return alerts[0].get("tafWindow", "") if alerts else ""
+
+    return taf_window_display_from_datetimes(start, end, now_z)
+
+
+def select_taf_alert(taf_alerts, now_z=None):
+    now_z = now_z or datetime.now(timezone.utc)
+    candidates = []
+
+    for alert in taf_alerts:
+        bucket = taf_timing_bucket(alert, now_z)
+        if bucket is None:
+            continue
+        item = dict(alert)
+        item["_tafBucket"] = bucket
+        item["_tafStartDt"] = parse_iso_z(item.get("tafStartIso")) or datetime.max.replace(tzinfo=timezone.utc)
+        item["_tafHazardRank"] = taf_hazard_rank(item.get("code"))
+        candidates.append(item)
+
+    if not candidates:
+        return None
+
+    bucket = min(item["_tafBucket"] for item in candidates)
+    bucket_items = [item for item in candidates if item["_tafBucket"] == bucket]
+    earliest = min(bucket_items, key=lambda item: item["_tafStartDt"])
+
+    close_items = [
+        item for item in bucket_items
+        if item is earliest or taf_alerts_overlap_or_close(item, earliest)
+    ]
+
+    if close_items:
+        selected = min(close_items, key=lambda item: (item["_tafHazardRank"], item["_tafStartDt"]))
+    else:
+        selected = earliest
+
+    simultaneous = [selected]
+    for item in bucket_items:
+        if item is selected:
+            continue
+        if is_va_convective_pair(selected, item) and taf_alerts_overlap(selected, item):
+            simultaneous.append(item)
+
+    for key in ["_tafBucket", "_tafStartDt", "_tafHazardRank"]:
+        for item in simultaneous:
+            item.pop(key, None)
+
+    if len(simultaneous) > 1:
+        window = overlapping_taf_window(simultaneous, now_z)
+        return combine_simultaneous_alerts(simultaneous, window)
+
+    return selected
+
+
+def select_current_alert(current_alerts):
+    if not current_alerts:
+        return None
+
+    va_convective = [
+        alert for alert in current_alerts
+        if (alert.get("code") or "").upper() in VA_CODES.union(CONVECTIVE_CODES)
+    ]
+
+    has_va = any((alert.get("code") or "").upper() in VA_CODES for alert in va_convective)
+    has_convective = any((alert.get("code") or "").upper() in CONVECTIVE_CODES for alert in va_convective)
+
+    if has_va and has_convective:
+        return combine_simultaneous_alerts(va_convective)
+
+    return current_alerts[0]
+
+
 def atis_weather_alert_scan_text(atis_text):
     """Return the operational ATIS portion for current hazard scanning."""
     return atis_observation_scan_text(atis_text)
@@ -2017,6 +2332,7 @@ def atis_plain_weather_present(source_text, code):
         "+TSRA": ["HEAVY THUNDERSTORM RAIN"],
         "TSRA": ["THUNDERSTORM RAIN", "THUNDERSTORMS WITH RAIN"],
         "-TSRA": ["LIGHT THUNDERSTORM RAIN"],
+        "TS": ["THUNDERSTORM"],
         "VCTS": ["THUNDERSTORM VICINITY", "THUNDERSTORM IN THE VICINITY", "THUNDERSTORMS IN THE VICINITY", "TS IN THE VICINITY"],
         "+FZRA": ["HEAVY FREEZING RAIN"],
         "FZRA": ["FREEZING RAIN"],
@@ -2042,7 +2358,6 @@ def atis_plain_weather_present(source_text, code):
         "+DZ": ["HEAVY DRIZZLE"],
         "DZ": ["DRIZZLE"],
         "-DZ": ["LIGHT DRIZZLE"],
-        "FU": ["SMOKE"],
         "VA": ["VOLCANIC ASH"],
         "HZ": ["HAZE"],
         "FG": ["FOG"],
@@ -2066,6 +2381,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
         {"code": "+TSRA", "label": "HEAVY THUNDERSTORM RAIN", "emoji": "⛈️", "category": "thunder"},
         {"code": "TSRA", "label": "THUNDERSTORM RAIN", "emoji": "⛈️", "category": "thunder"},
         {"code": "-TSRA", "label": "LIGHT THUNDERSTORM RAIN", "emoji": "⛈️", "category": "thunder"},
+        {"code": "TS", "label": "THUNDERSTORM", "emoji": "⛈️", "category": "thunder"},
         {"code": "VCTS", "label": "THUNDERSTORM VICINITY", "emoji": "⛈️", "category": "thunder"},
 
         {"code": "+FZRA", "label": "HEAVY FREEZING RAIN", "emoji": "🧊", "category": "freezing"},
@@ -2096,7 +2412,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
         {"code": "DZ", "label": "DRIZZLE", "emoji": "🌧️", "category": "drizzle"},
         {"code": "-DZ", "label": "LIGHT DRIZZLE", "emoji": "🌧️", "category": "drizzle"},
 
-        {"code": "FU", "label": "SMOKE", "emoji": "🔥", "category": "smoke"},
+        {"code": "FU", "label": "SMOKE", "emoji": "\U0001F4A8", "category": "smoke"},
         {"code": "VA", "label": "VOLCANIC ASH", "emoji": "🌋", "category": "ash"},
         {"code": "HZ", "label": "HAZE", "emoji": "🌫️", "category": "haze"},
         {"code": "FG", "label": "FOG", "emoji": "🌫️", "category": "fog"},
@@ -2119,7 +2435,14 @@ def detect_weather_alerts(metar, taf, atis_text=""):
             [source],
             check["category"]
         )
-        text = f"{check['label']} IN {source}"
+        raw_display_codes = {
+            "+TSRA", "TSRA", "-TSRA", "TS", "VCTS", "FC",
+            "+FZRA", "FZRA", "-FZRA", "+FZDZ", "FZDZ", "-FZDZ",
+            "PL", "GR", "GS", "+RA", "RA", "-RA", "+SHRA", "SHRA", "-SHRA",
+            "FU", "VA"
+        }
+        text = f"{code} IN {source}" if code in raw_display_codes else f"{check['label']} IN {source}"
+        display_text = f"{check['emoji']} {code}".strip() if code in raw_display_codes else f"{check['emoji']} {text}".strip()
         alerts.append({
             "code": code,
             "label": check["label"],
@@ -2132,7 +2455,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
             "pulse": pulse,
             "priority": priority,
             "text": text,
-            "displayText": f"{check['emoji']} {text}".strip(),
+            "displayText": display_text,
             "tafWindow": "",
             "tafStartKey": -1,
             "tafGroupType": ""
@@ -2208,7 +2531,8 @@ def detect_weather_alerts(metar, taf, atis_text=""):
         if set(alert.get("sources", [])).intersection({"ATIS", "METAR"})
     ]
     taf_alerts = [alert for alert in alerts if "TAF" in alert.get("sources", [])]
-    taf_alerts = merge_adjacent_taf_fm_alerts(taf_alerts, datetime.now(timezone.utc))
+    now_z = datetime.now(timezone.utc)
+    taf_alerts = merge_adjacent_taf_fm_alerts(taf_alerts, now_z)
 
     def current_sort_key(alert):
         sources = set(alert.get("sources", []))
@@ -2216,13 +2540,14 @@ def detect_weather_alerts(metar, taf, atis_text=""):
         return (alert.get("priority", 99), source_tie)
 
     current_alerts.sort(key=current_sort_key)
-    taf_alerts.sort(key=lambda item: (item.get("tafStartKey", 999999), item.get("priority", 99)))
+    selected_current_alert = select_current_alert(current_alerts)
+    selected_taf_alert = select_taf_alert(taf_alerts, now_z)
 
-    if current_alerts:
-        return current_alerts[:1]
+    if selected_current_alert:
+        return [selected_current_alert]
 
-    if taf_alerts:
-        return taf_alerts[:1]
+    if selected_taf_alert:
+        return [selected_taf_alert]
 
     return []
 
@@ -3414,9 +3739,11 @@ def build_weather_json():
         "obsFieldSources": best_obs["obsFieldSources"],
         "metarAltimeterRaw": best_obs["metarAltimeter"],
         "metarVisibilitySm": best_obs["metarVisibilitySm"],
+        "metarVisibilityDisplay": best_obs["metarVisibilityDisplay"],
         "metarCeilingFt": best_obs["metarCeilingFt"],
         "atisAltimeterRaw": best_obs["atisAltimeter"],
         "atisVisibilitySm": best_obs["atisVisibilitySm"],
+        "atisVisibilityDisplay": best_obs["atisVisibilityDisplay"],
         "atisCeilingFt": best_obs["atisCeilingFt"],
 
         "arrRunways": arr_runways,
@@ -3444,7 +3771,7 @@ def build_weather_json():
         "ceilingTrendText": trend_text(ceiling_trend),
 
         "visibilitySm": visibility_sm,
-        "visibilityDisplay": format_visibility(visibility_sm),
+        "visibilityDisplay": best_obs.get("visibilityDisplay") or format_visibility(visibility_sm),
         "visibilityTrend": visibility_trend,
         "visibilityTrendText": trend_text(visibility_trend),
 

@@ -30,6 +30,10 @@
   --footer-px: 18px;
   --feed-px: 14px;
   --notam-scroll-seconds: 55s;
+  --top-row-px: 116px;
+  --notam-row-px: 76px;
+  --footer-row-px: 54px;
+  --weather-col-pct: 44%;
 }
 
 html,body{
@@ -46,18 +50,18 @@ html,body{
   height:100vh;
   width:100vw;
   display:grid;
-  grid-template-rows:minmax(110px,21vh) minmax(0,1fr) minmax(58px,7.5vh) minmax(54px,7.5vh);
+  grid-template-rows:minmax(var(--top-row-px),21vh) minmax(0,1fr) minmax(var(--notam-row-px),7.5vh) minmax(var(--footer-row-px),7.5vh);
   gap:5px;
   padding:7px;
 }
 
 .top{ display:grid; grid-template-columns:1fr 1fr; gap:6px; min-height:0; }
-.middle{ display:grid; grid-template-columns:44% 56%; gap:6px; min-height:0; }
+.middle{ display:grid; grid-template-columns:var(--weather-col-pct) minmax(0,1fr); gap:6px; min-height:0; }
 .bottom{ display:grid; grid-template-columns:1fr; gap:6px; min-height:0; }
 
 .mil-notam-panel{
   display:grid;
-  grid-template-columns:minmax(140px,16%) 1fr;
+  grid-template-columns:minmax(260px,18%) minmax(0,1fr);
   align-items:center;
   column-gap:10px;
   padding:8px 12px;
@@ -80,6 +84,8 @@ html,body{
   font-weight:900;
   letter-spacing:1px;
   white-space:nowrap;
+  overflow:hidden;
+  text-overflow:clip;
   font-size:var(--notam-title-px) !important;
 }
 
@@ -88,6 +94,8 @@ html,body{
   font-weight:900;
   margin-top:2px;
   white-space:nowrap;
+  overflow:hidden;
+  text-overflow:clip;
   font-size:var(--notam-status-px) !important;
 }
 
@@ -96,6 +104,8 @@ html,body{
   font-weight:900;
   margin-top:2px;
   white-space:nowrap;
+  overflow:hidden;
+  text-overflow:clip;
   font-size:var(--notam-cao-px) !important;
 }
 .mil-notam-cao-ok{ color:var(--ops-green) !important; text-shadow:0 0 7px rgba(0,255,136,.35); }
@@ -114,8 +124,8 @@ html,body{
    UNIVERSAL NOTAM SCROLL IMPLEMENTATION
    ============================================================ */
 @keyframes notamScrollSimple {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(calc(-100% - var(--window-height, 100px))); }
+  0%, 8% { transform: translateY(0); }
+  92%, 100% { transform: translateY(calc(var(--notam-scroll-distance, 0px) * -1)); }
 }
 
 .mil-notam-active #milNotamCrawl,
@@ -125,7 +135,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl {
   display:block !important;
   position:absolute !important;
   left:0 !important;
-  top:100% !important;
+  top:0 !important;
   width:100% !important;
   height:auto !important;
   max-height:none !important;
@@ -172,7 +182,9 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
   min-height:0;
 }
 
+.clock-panel{ display:flex; flex-direction:column; justify-content:center; gap:2px; min-height:0; }
 .weather-panel{ display:flex; flex-direction:column; min-height:0; }
+.weather-main{ display:contents; }
 .label,.title{ color:white; font-weight:bold; letter-spacing:1px; }
 .label{ font-size:clamp(1rem,1.3vw,1.6rem); }
 .title{ font-size:clamp(.95rem,1.1vw,1.35rem); margin-bottom:6px; }
@@ -357,16 +369,36 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .ops-value, .detail-value, .trend-value{ overflow-wrap:anywhere; }
 .detail-box,.ops-box,.trend-box{ min-height:34px; padding:4px 5px; }
 .bwc-stamp{ font-size:1em; line-height:1.05; }
+#bwcLabel{ line-height:1.05 !important; overflow-wrap:normal !important; }
+#bwc{ white-space:nowrap !important; overflow-wrap:normal !important; word-break:normal !important; }
 .wind-arrow, .flow-arrow, .trend-arrow{ font-size:1.25em; margin-left:10px; vertical-align:-0.05em; }
 
 /* Split-screen / smaller laptop tuning */
 @media (max-width:1400px){
-  .board{ grid-template-rows:minmax(112px,16vh) minmax(0,1fr) minmax(44px,6vh); gap:4px; padding:5px; }
+  .board{ grid-template-rows:minmax(var(--top-row-px),16vh) minmax(0,1fr) minmax(var(--notam-row-px),6vh) minmax(var(--footer-row-px),6vh); gap:4px; padding:5px; }
   .panel{ padding:6px; }
   .date{ font-size:clamp(.78rem,.95vw,1.1rem); }
   .flight-category{ font-size:clamp(2rem,3.25vw,3.6rem); }
   .atis-letter{ font-size:clamp(1.35rem,2.0vw,2.5rem); }
   .raw{ font-size:clamp(.88rem,.98vw,1.15rem); line-height:1.32; }
+  .bwc-stamp{ display:block !important; max-width:100% !important; margin:1px 0 0 0 !important; font-size:.70em !important; line-height:1.05 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  #bwc{ font-size:clamp(.88rem,1.55vw,1.08rem) !important; line-height:1.02 !important; }
+}
+
+/* Tablet/iPad keeps NOTAMs fixed; TV, desktop, and explicit Getac still scroll. */
+@media (max-width:1100px) and (min-width:701px){
+  body:not(.getac-preset) .mil-notam-panel{ grid-template-columns:minmax(250px,34%) minmax(0,1fr); }
+  body:not(.getac-preset) .board-qr-phase66{ width:78px !important; height:78px !important; }
+  body:not(.getac-preset) .board-qr-label-phase66{ top:calc(50% - 52px) !important; font-size:.56rem !important; }
+  body:not(.getac-preset) .mil-notam-active #milNotamCrawl,
+  body:not(.getac-preset) .mil-notam-active .mil-notam-crawl{
+    position:static !important;
+    transform:none !important;
+    animation:none !important;
+    padding:0 96px 0 4px !important;
+    max-height:100% !important;
+    overflow:hidden !important;
+  }
 }
 
 /* Tablet / narrow desktop */
@@ -387,8 +419,49 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
   .footer-left,.footer-center,.footer-right{ text-align:left; white-space:normal; }
 }
 
+/* Short touch landscape: phones turned sideways still need the whole board. */
+@media (max-width:950px) and (max-height:520px) and (orientation:landscape){
+  html,body{ width:100vw !important; max-width:100vw !important; height:auto !important; min-height:100% !important; overflow:auto !important; overflow-x:hidden !important; }
+  .board{ display:flex !important; flex-direction:column !important; width:100vw !important; max-width:100vw !important; height:auto !important; min-height:100vh !important; overflow:visible !important; gap:4px !important; padding:4px !important; }
+  .top{ order:1; display:grid !important; grid-template-columns:1fr 1fr !important; gap:4px !important; min-height:0 !important; overflow:visible !important; }
+  .middle{ display:contents !important; }
+  .weather-panel{ display:contents !important; }
+  .weather-main{ order:2; display:flex !important; flex-direction:column !important; gap:3px !important; min-height:0 !important; overflow:visible !important; padding:5px !important; border:2px solid var(--border) !important; background:var(--panel) !important; width:100% !important; max-width:100% !important; }
+  .mil-notam-panel{ order:3; width:100% !important; max-width:100% !important; }
+  .raw{ order:4; border:2px solid var(--border) !important; background:var(--panel) !important; padding:5px !important; width:100% !important; max-width:100% !important; }
+  .radar-panel{ order:5; min-height:260px !important; overflow:hidden !important; }
+  .bottom{ order:6; display:flex !important; flex-direction:column !important; gap:4px !important; }
+  .panel{ padding:5px !important; overflow:visible !important; }
+  .label,.title{ font-size:clamp(.72rem,2.2vw,.95rem) !important; line-height:1.05 !important; }
+  .clock{ font-size:min(var(--clock-px),8.8vw,42px) !important; line-height:.9 !important; }
+  .date{ font-size:clamp(.62rem,1.9vw,.78rem) !important; line-height:1.05 !important; white-space:normal !important; margin-top:1px !important; }
+  .weather-title-row{ display:grid !important; grid-template-columns:1fr 1fr !important; min-width:0 !important; max-width:100% !important; }
+  .weather-title-row > span{ min-width:0 !important; max-width:100% !important; }
+  .reference-only-label{ overflow-wrap:anywhere !important; }
+  .summary-grid{ grid-template-columns:.55fr 1.45fr !important; gap:4px !important; margin-bottom:3px !important; }
+  .flight-category{ font-size:clamp(1.8rem,9vw,2.7rem) !important; line-height:.9 !important; }
+  .atis-letter{ font-size:clamp(1rem,4.6vw,1.45rem) !important; text-align:right !important; white-space:normal !important; }
+  .details-grid{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:3px !important; margin-bottom:3px !important; }
+  .ops-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:3px !important; margin-bottom:3px !important; }
+  .status-grid{ margin-bottom:3px !important; }
+  .detail-box,.ops-box,.trend-box{ min-height:32px !important; padding:3px !important; }
+  .detail-label,.ops-label,.trend-label{ font-size:clamp(.55rem,1.85vw,.68rem) !important; line-height:1.02 !important; }
+  .detail-value,.ops-value,.trend-value{ font-size:clamp(.74rem,2.6vw,.96rem) !important; line-height:1.02 !important; }
+  .raw{ max-height:none !important; overflow:visible !important; flex:none !important; font-size:clamp(.56rem,1.75vw,.68rem) !important; line-height:1.12 !important; white-space:pre-wrap !important; }
+  .mil-notam-panel{ display:block !important; min-height:0 !important; height:auto !important; padding:6px !important; overflow:visible !important; }
+  .mil-notam-header{ display:block !important; height:auto !important; border-right:0 !important; border-bottom:1px solid rgba(230,230,230,.35) !important; padding-right:0 !important; padding-bottom:5px !important; margin-bottom:5px !important; }
+  .mil-notam-window{ height:auto !important; min-height:0 !important; max-height:none !important; overflow:visible !important; }
+  .mil-notam-active #milNotamCrawl,
+  .mil-notam-active .mil-notam-crawl,
+  body.getac-preset .mil-notam-active #milNotamCrawl,
+  body.getac-preset .mil-notam-active .mil-notam-crawl{ display:block !important; position:static !important; top:auto !important; transform:none !important; animation:none !important; width:100% !important; height:auto !important; max-height:none !important; overflow:visible !important; white-space:pre-wrap !important; overflow-wrap:anywhere !important; padding:0 !important; font-size:clamp(.62rem,1.95vw,.76rem) !important; line-height:1.15 !important; }
+  .radarimg{ min-height:220px !important; height:auto !important; object-fit:contain !important; }
+  .footer{ grid-template-columns:1fr !important; row-gap:2px !important; font-size:clamp(.68rem,2vw,.84rem) !important; line-height:1.05 !important; }
+  .footer-left,.footer-center,.footer-right{ text-align:left !important; white-space:normal !important; }
+}
+
 /* Phone Legacy Fixed Size Rules */
-@media (max-width:900px), (hover:none) and (pointer:coarse){
+@media (max-width:700px){
   .board{ padding:4px; gap:4px; }
   .clock{ font-size:clamp(2.7rem,12vw,4.2rem) !important; }
   .label{ font-size:clamp(.95rem,4vw,1.2rem); }
@@ -402,8 +475,24 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
   .mil-notam-window{ display:block !important; position:relative !important; height:clamp(78px,18vh,180px) !important; min-height:78px !important; max-height:180px !important; overflow:hidden !important; }
   .mil-notam-active .mil-notam-crawl{
     display:block !important; position:absolute !important; width:100% !important; height:auto !important; min-height:auto !important; max-height:none !important;
-    top:100% !important; transform:translateY(0) !important; animation:notamScrollSimple var(--notam-scroll-seconds,55s) linear infinite !important; overflow:visible !important; white-space:pre-wrap !important; overflow-wrap:anywhere !important; padding:0 4px !important;
+    top:0 !important; transform:translateY(0) !important; animation:notamScrollSimple var(--notam-scroll-seconds,55s) linear infinite !important; overflow:visible !important; white-space:pre-wrap !important; overflow-wrap:anywhere !important; padding:0 4px !important;
   }
+}
+
+@media (max-width:950px) and (max-height:520px) and (orientation:landscape){
+  .clock{ font-size:min(var(--clock-px),8.8vw,42px) !important; }
+  .label,.title{ font-size:clamp(.72rem,2.2vw,.95rem) !important; }
+  .summary-grid{ grid-template-columns:.55fr 1.45fr !important; }
+  .atis-letter{ text-align:right !important; }
+  .details-grid{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
+  .ops-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+  .detail-label,.ops-label,.trend-label{ font-size:clamp(.55rem,1.85vw,.68rem) !important; }
+  .detail-value,.ops-value,.trend-value{ font-size:clamp(.74rem,2.6vw,.96rem) !important; }
+  .mil-notam-window{ height:auto !important; min-height:0 !important; max-height:none !important; overflow:visible !important; }
+  .mil-notam-active #milNotamCrawl,
+  .mil-notam-active .mil-notam-crawl,
+  body.getac-preset .mil-notam-active #milNotamCrawl,
+  body.getac-preset .mil-notam-active .mil-notam-crawl{ position:static !important; transform:none !important; animation:none !important; padding:0 !important; overflow:visible !important; }
 }
 
 /* Base Wind Formatting Rules */
@@ -468,8 +557,8 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 /* Getac Base Overrides */
 html.getac-preset, body.getac-preset{ width:100vw !important; height:100vh !important; max-width:100vw !important; max-height:100vh !important; overflow:hidden !important; }
-body.getac-preset .board{ width:100vw !important; height:100vh !important; max-width:100vw !important; max-height:100vh !important; min-height:0 !important; overflow:hidden !important; display:grid !important; grid-template-rows:minmax(52px,10vh) minmax(0,1fr) minmax(82px,14vh) minmax(28px,4.5vh) !important; gap:3px !important; padding:4px !important; }
-body.getac-preset .top, body.getac-preset .middle{ display:grid !important; grid-template-columns:44% 56% !important; gap:4px !important; min-height:0 !important; overflow:hidden !important; }
+body.getac-preset .board{ width:100vw !important; height:100vh !important; max-width:100vw !important; max-height:100vh !important; min-height:0 !important; overflow:hidden !important; display:grid !important; grid-template-rows:minmax(clamp(52px,var(--top-row-px),84px),10vh) minmax(0,1fr) minmax(clamp(82px,var(--notam-row-px),118px),14vh) minmax(clamp(28px,var(--footer-row-px),40px),4.5vh) !important; gap:3px !important; padding:4px !important; }
+body.getac-preset .top, body.getac-preset .middle{ display:grid !important; grid-template-columns:var(--weather-col-pct) minmax(0,1fr) !important; gap:4px !important; min-height:0 !important; overflow:hidden !important; }
 body.getac-preset .panel{ min-height:0 !important; overflow:hidden !important; padding:5px !important; }
 body.getac-preset .clock-panel{ min-height:0 !important; justify-content:center !important; padding:4px 6px !important; }
 body.getac-preset .summary-grid{gap:4px !important;margin-bottom:4px !important}
@@ -610,15 +699,18 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
 /* Phone-first compact board. Keeps raw WX and NOTAMs readable without inner scrolling. */
 @media (max-width:700px){
   html,body{
-    width:100% !important;
+    width:100vw !important;
+    max-width:100vw !important;
     height:auto !important;
     min-height:100% !important;
     overflow:auto !important;
+    overflow-x:hidden !important;
   }
   .board{
     display:flex !important;
     flex-direction:column !important;
-    width:100% !important;
+    width:100vw !important;
+    max-width:100vw !important;
     min-height:100vh !important;
     height:auto !important;
     overflow:visible !important;
@@ -630,14 +722,32 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
     flex-direction:column !important;
     gap:5px !important;
     min-height:0 !important;
+    min-width:0 !important;
+    width:100% !important;
+    max-width:100% !important;
     overflow:visible !important;
   }
   .top{ order:1; }
   .middle{ display:contents !important; }
-  .weather-panel{ order:2; }
-  .mil-notam-panel{ order:3; }
-  .radar-panel{ order:4; }
-  .bottom{ order:5; }
+  .weather-panel{ display:contents !important; }
+  .weather-main{
+    order:2;
+    display:flex !important;
+    flex-direction:column !important;
+    gap:4px !important;
+    padding:6px !important;
+    min-height:0 !important;
+    overflow:visible !important;
+    border:2px solid var(--border) !important;
+    background:var(--panel) !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+  }
+  .mil-notam-panel{ order:3; width:100% !important; max-width:100% !important; min-width:0 !important; }
+  .raw{ order:4; border:2px solid var(--border) !important; background:var(--panel) !important; padding:6px !important; width:100% !important; max-width:100% !important; min-width:0 !important; }
+  .radar-panel{ order:5; width:100% !important; max-width:100% !important; min-width:0 !important; }
+  .bottom{ order:6; }
   .panel{
     padding:6px !important;
     min-height:0 !important;
@@ -648,16 +758,19 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
   .clock{ font-size:min(var(--clock-px),15vw,50px) !important; line-height:.9 !important; }
   .date{ font-size:clamp(.72rem,3vw,.92rem) !important; line-height:1.1 !important; white-space:normal !important; margin-top:2px !important; }
 
-  .weather-panel{ display:flex !important; flex-direction:column !important; gap:4px !important; }
-  .weather-title-row{ gap:6px !important; align-items:flex-start !important; }
-  .reference-only-label{ font-size:.76em !important; white-space:normal !important; text-align:right !important; line-height:1.05 !important; }
-  .summary-grid{ grid-template-columns:.7fr 1.3fr !important; gap:4px !important; margin-bottom:0 !important; }
+  .weather-title-row{ display:grid !important; grid-template-columns:1fr !important; gap:2px !important; align-items:flex-start !important; min-width:0 !important; max-width:100% !important; }
+  .weather-title-row > span{ min-width:0 !important; max-width:100% !important; }
+  .reference-only-label{ font-size:.64em !important; white-space:normal !important; text-align:left !important; line-height:1.05 !important; overflow-wrap:anywhere !important; }
+  .summary-grid{ grid-template-columns:1fr !important; gap:3px !important; margin-bottom:0 !important; }
   .flight-category{ font-size:clamp(2rem,14vw,3.2rem) !important; line-height:.9 !important; }
-  .atis-letter{ font-size:clamp(1.15rem,6vw,1.8rem) !important; text-align:right !important; white-space:normal !important; }
-  .details-grid,.ops-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:4px !important; margin-bottom:0 !important; }
-  .detail-box,.ops-box,.trend-box{ min-height:38px !important; padding:4px !important; }
-  .detail-label,.ops-label,.trend-label{ font-size:clamp(.62rem,2.7vw,.78rem) !important; line-height:1.05 !important; }
-  .detail-value,.ops-value,.trend-value{ font-size:clamp(.86rem,4.1vw,1.08rem) !important; line-height:1.06 !important; }
+  .atis-letter{ font-size:clamp(1.15rem,6vw,1.8rem) !important; text-align:left !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  .details-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:4px !important; margin-bottom:0 !important; }
+  .ops-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:4px !important; margin-bottom:0 !important; }
+  .summary-grid,.details-grid,.ops-grid,.status-grid{ width:100% !important; max-width:100% !important; min-width:0 !important; }
+  .detail-box,.ops-box,.trend-box{ min-height:34px !important; padding:4px !important; min-width:0 !important; }
+  .detail-label,.ops-label,.trend-label{ font-size:clamp(.58rem,2.45vw,.72rem) !important; line-height:1.04 !important; }
+  .detail-value,.ops-value,.trend-value{ font-size:clamp(.76rem,3.55vw,.98rem) !important; line-height:1.04 !important; }
+  .bwc-stamp{ display:none !important; }
   .wind-compact-final{ font-size:clamp(.88rem,4vw,1.05rem) !important; }
   #tafTrend.wx-alert-compact,.wx-alert-compact{ white-space:normal !important; overflow:visible !important; }
 
@@ -724,6 +837,27 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
     height:auto !important;
   }
 
+  .manual-alert-overlay{ padding:4px !important; }
+  .manual-alert-card{ min-height:92px !important; }
+  .manual-alert-content{
+    flex-direction:column !important;
+    gap:3px !important;
+    white-space:normal !important;
+    padding:4px 8px !important;
+    line-height:1.03 !important;
+  }
+  .manual-alert-line1,.manual-alert-line2{
+    font-size:clamp(1.05rem,6.1vw,1.65rem) !important;
+    line-height:1.02 !important;
+    letter-spacing:.4px !important;
+    max-width:100% !important;
+    white-space:normal !important;
+    overflow-wrap:normal !important;
+  }
+  .manual-alert-bolt{ font-size:clamp(1.05rem,6.2vw,1.7rem) !important; line-height:1 !important; }
+  .manual-alert-bolt:first-child{ display:none !important; }
+  .manual-alert-cao{ font-size:clamp(.7rem,3.2vw,.92rem) !important; white-space:normal !important; }
+
   .radar-panel{ min-height:260px !important; overflow:hidden !important; }
   .radar-title-row{ font-size:clamp(.82rem,3.5vw,1rem) !important; }
   .radarimg{ min-height:220px !important; height:auto !important; object-fit:contain !important; }
@@ -735,6 +869,27 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
     line-height:1.1 !important;
   }
   .footer-left,.footer-center,.footer-right{ text-align:left !important; white-space:normal !important; }
+}
+
+/* Explicit Getac mode always keeps the NOTAM crawl, even on small landscape screens. */
+body.getac-preset .mil-notam-window{
+  position:relative !important;
+  overflow:hidden !important;
+  height:100% !important;
+  min-height:0 !important;
+}
+body.getac-preset .mil-notam-active #milNotamCrawl,
+body.getac-preset .mil-notam-active .mil-notam-crawl{
+  display:block !important;
+  position:absolute !important;
+  left:0 !important;
+  top:0 !important;
+  width:100% !important;
+  height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+  transform:translateY(0) !important;
+  animation:notamScrollSimple var(--notam-scroll-seconds,55s) linear infinite !important;
 }
 </style>
 </head>
@@ -770,6 +925,7 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
 
   <div class="middle">
     <div class="panel weather-panel">
+      <div class="weather-main">
       <div class="title weather-title-row">
         <span>WEATHER</span>
         <span class="reference-only-label">FOR REFERENCE ONLY</span>
@@ -850,6 +1006,7 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
           <div id="tafTrend" class="trend-value wx-alert-compact">--</div>
         </div>
       </div>
+      </div>
 
       <div id="weather" class="raw">Loading KMEM weather...</div>
     </div>
@@ -918,7 +1075,38 @@ function updateClock(){
   document.getElementById("localDate").textContent=now.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric",timeZone:"America/Chicago"});
   document.getElementById("zulu").textContent=now.toISOString().substring(11,19)+"z";
   document.getElementById("zuluDate").textContent="UTC Date: "+now.toISOString().substring(0,10);
+  fitClockPanels();
 }
+
+function fitClockPanels(){
+  const panels=[...document.querySelectorAll(".clock-panel")];
+  for(const panel of panels){
+    const clock=panel.querySelector(".clock");
+    if(clock)clock.style.removeProperty("font-size");
+  }
+
+  requestAnimationFrame(()=>{
+    for(const panel of panels){
+      const clock=panel.querySelector(".clock");
+      const label=panel.querySelector(".label");
+      const date=panel.querySelector(".date");
+      if(!clock||!label||!date)continue;
+
+      const availableHeight=Math.max(22,panel.clientHeight-label.offsetHeight-date.scrollHeight-8);
+      const widthLimit=Math.max(40,panel.clientWidth-8);
+      const currentSize=parseFloat(getComputedStyle(clock).fontSize)||42;
+      const widthScale=clock.scrollWidth>0 ? widthLimit/clock.scrollWidth : 1;
+      const heightScale=clock.scrollHeight>0 ? availableHeight/clock.scrollHeight : 1;
+      const scale=Math.min(1,widthScale,heightScale);
+
+      if(scale<.995){
+        clock.style.setProperty("font-size",Math.max(28,Math.floor(currentSize*scale))+"px","important");
+      }
+    }
+  });
+}
+
+window.addEventListener("resize",()=>setTimeout(fitClockPanels,60));
 
 function checkClockWatchdog(){
   const elapsed=Date.now()-lastClockTick;
@@ -1052,6 +1240,11 @@ function compactLightningDisplay(value){
   text=text.replace(/TS\s+OVER\s+FIELD/ig,"TS OVR FIELD");
   text=text.replace(/THUNDERSTORM\s+OVER\s+FIELD/ig,"TS OVR FIELD");
   text=text.replace(/TSRA\s+ACTIVE\s+NOW/ig,"TSRA ACTIVE");
+  text=text.replace(/\bVCTS\s+\d+(?:-\d+)?\s*NM\b/ig,"VCTS");
+  text=text.replace(/\bDSNT\s+([A-Z]{1,3}(?:\s*(?:-|\/|AND)\s*[A-Z]{1,3})*)\s+\d+(?:-\d+)?\s*NM\b/ig,function(_,dir){
+    const compactDir=String(dir).replace(/\bAND\b/ig,"/").replace(/\s*\/\s*/g,"/").replace(/\s*-\s*/g,"-").replace(/\s+/g," ").trim();
+    return "DSNT "+compactDir;
+  });
   text=text.replace(/\s+/g," ").trim();
   return text;
 }
@@ -1857,9 +2050,7 @@ function setMilNotamsDisplay(data){
     crawl.textContent=scrollText;
     crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"} | effective times display-only`;
 
-    // Dynamic Animation Measurement
-    const win = panel.querySelector(".mil-notam-window");
-    if (win) { crawl.style.setProperty("--window-height", win.clientHeight + "px"); }
+    measureMilNotamScroll();
     
     return;
   }
@@ -1875,14 +2066,25 @@ function setMilNotamsDisplay(data){
   }
 }
 
+function measureMilNotamScroll(){
+  const panel=document.getElementById("milNotamPanel");
+  const crawl=document.getElementById("milNotamCrawl");
+  if(!panel||!crawl||!panel.classList.contains("mil-notam-active"))return;
+
+  const win=panel.querySelector(".mil-notam-window");
+  if(!win)return;
+
+  requestAnimationFrame(()=>{
+    const windowHeight=Math.max(0,win.clientHeight||0);
+    const contentHeight=Math.max(crawl.scrollHeight||0,Math.ceil(crawl.getBoundingClientRect().height)||0);
+    const distance=Math.max(0,contentHeight-windowHeight);
+    crawl.style.setProperty("--notam-scroll-distance",distance+"px");
+  });
+}
+
 // Window resizing re-measures the dynamic NOTAM marquee
 window.addEventListener("resize", () => {
-    const panel = document.getElementById("milNotamPanel");
-    const crawl = document.getElementById("milNotamCrawl");
-    if (panel && crawl && panel.classList.contains("mil-notam-active")) {
-        const win = panel.querySelector(".mil-notam-window");
-        if (win) crawl.style.setProperty("--window-height", win.clientHeight + "px");
-    }
+    measureMilNotamScroll();
 });
 
 function setDetailValue(id,html,conditionClass){
@@ -1955,6 +2157,8 @@ function updateDetails(data){
 }
 
 async function loadWeatherJson(){
+  if(weatherFetchInFlight)return false;
+  weatherFetchInFlight=true;
   try{
     const response=await fetch("weather.json?t="+new Date().getTime(),{cache:"no-store"});
     if(!response.ok)throw new Error("Unable to load weather.json");
@@ -1978,8 +2182,17 @@ async function loadWeatherJson(){
     document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);
     updateStaleWarning(updatedZ);
     updateSourceHealth(data,updatedZ);
+    refreshRemaining=WEATHER_REFRESH_SECONDS;
+    return true;
   }catch(e){
     console.error("weather.json load/render failed",e);
+    if(window.kmemWeatherData){
+      updateStaleWarning(window.kmemWeatherData.allFeedsUpdatedZ||window.kmemWeatherData.lastUpdatedZ||null);
+      const health=document.getElementById("feedHealth");
+      health.className="footer-center feed-health feed-warn";
+      health.innerHTML='FEEDS: <span class="feed-token feed-bad">weather.json BAD</span>';
+      return false;
+    }
     document.getElementById("weather").innerHTML='<span class="warn">Unable to load weather.json</span>';
     document.getElementById("category").textContent="--";
     document.getElementById("atisLetter").textContent="ATIS: --";
@@ -2007,10 +2220,15 @@ async function loadWeatherJson(){
     const health=document.getElementById("feedHealth");
     health.className="footer-center feed-health feed-warn";
     health.innerHTML='FEEDS: <span class="feed-token feed-bad">weather.json BAD</span>';
+    return false;
+  }finally{
+    weatherFetchInFlight=false;
   }
 }
 
-let refreshRemaining=600;
+const WEATHER_REFRESH_SECONDS=300;
+let refreshRemaining=WEATHER_REFRESH_SECONDS;
+let weatherFetchInFlight=false;
 
 function formatCountdown(seconds){
   const minutes=Math.floor(seconds/60);
@@ -2020,9 +2238,14 @@ function formatCountdown(seconds){
 
 function updateRefreshCountdown(){
   const el=document.getElementById("refreshCountdown");
-  if(el) el.textContent=formatCountdown(refreshRemaining);
+  if(el) el.textContent=weatherFetchInFlight ? "FETCH" : formatCountdown(refreshRemaining);
+  if(weatherFetchInFlight)return;
+  if(refreshRemaining<=0){
+    refreshRemaining=0;
+    refreshActiveData();
+    return;
+  }
   refreshRemaining--;
-  if(refreshRemaining<0) window.location.reload();
 }
 
 const NEXRAD_URL="https://radar.weather.gov/ridge/standard/KNQA_loop.gif";
@@ -2040,9 +2263,9 @@ function setRadarNexradOnly(){
   if(mode)mode.textContent="NEXRAD";
 }
 
-function refreshActiveData(){
+async function refreshActiveData(){
   setRadarNexradOnly();
-  loadWeatherJson();
+  return loadWeatherJson();
 }
 
 updateClock();
@@ -2052,7 +2275,6 @@ updateRefreshCountdown();
 setInterval(updateRefreshCountdown,1000);
 setInterval(updateClock,1000);
 setInterval(checkClockWatchdog,30000);
-setInterval(loadWeatherJson,300000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refreshActiveData(); });
 window.addEventListener("focus",()=>{ refreshActiveData(); });
 
@@ -2211,7 +2433,8 @@ setInterval(phase46BoldArrows,1000);
   const DEFAULTS={
     preset:"Desktop", clockPx:72, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
     notamTitlePx:18, notamStatusPx:16, notamCaoPx:14, labelPx:14, footerPx:18, feedPx:14,
-    rawLine:1.45, notamLine:1.38, notamScrollSec:55, strongPulse:true
+    rawLine:1.45, notamLine:1.38, notamScrollSec:55, topRowPx:110, notamRowPx:58, footerRowPx:54,
+    weatherColPct:44, strongPulse:true
   };
 
   function readSettings(){
@@ -2244,6 +2467,10 @@ setInterval(phase46BoldArrows,1000);
     root.style.setProperty("--feed-px", px(s.feedPx,8,28,DEFAULTS.feedPx) + "px");
     root.style.setProperty("--notam-line-height", String(num(s.notamLine,1.10,1.80,DEFAULTS.notamLine)));
     root.style.setProperty("--notam-scroll-seconds", num(s.notamScrollSec,10,180,DEFAULTS.notamScrollSec) + "s");
+    root.style.setProperty("--top-row-px", px(s.topRowPx,54,170,DEFAULTS.topRowPx) + "px");
+    root.style.setProperty("--notam-row-px", px(s.notamRowPx,42,140,DEFAULTS.notamRowPx) + "px");
+    root.style.setProperty("--footer-row-px", px(s.footerRowPx,28,90,DEFAULTS.footerRowPx) + "px");
+    root.style.setProperty("--weather-col-pct", num(s.weatherColPct,35,55,DEFAULTS.weatherColPct) + "%");
 
     const pulse=s.strongPulse!==false;
     const css=`
@@ -2269,6 +2496,7 @@ setInterval(phase46BoldArrows,1000);
     let style=document.getElementById("displayTuningStyle");
     if(!style){ style=document.createElement("style"); style.id="displayTuningStyle"; document.head.appendChild(style); }
     if(style.textContent!==css)style.textContent=css;
+    if(typeof window.measureMilNotamScroll==="function")setTimeout(window.measureMilNotamScroll,50);
   }
 
   window.applyDisplaySettings=applyDisplaySettings;
@@ -2381,7 +2609,7 @@ setInterval(phase46BoldArrows,1000);
 
   function applyPreset(){
     const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
-    const raw=(QS.get("preset") || saved.preset || "").toString().trim().toLowerCase();
+    const raw=(QS.get("preset") || "").toString().trim().toLowerCase();
     const preset=raw.includes("getac") ? "getac" : raw;
     const scale=clampScale(QS.get("scale")) || clampScale(saved.getacScale) || (preset==="getac" ? 90 : 100);
 
