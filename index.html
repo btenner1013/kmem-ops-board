@@ -517,9 +517,9 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 }
 .wind-base-final, .wind-at-final, .wind-speed-final, .wind-speed-normal-final{ color:var(--ops-green) !important; font-weight:1000 !important; }
 .wind-at-final{ color:var(--ops-green) !important; margin:0 .01em !important; }
-.wind-speed-high-final{ color:var(--closed) !important; font-weight:1000 !important; }
+.wind-speed-high-final{ color:var(--warn) !important; font-weight:1000 !important; }
 .wind-gust-final, .wind-gust-normal-final{ color:var(--warning) !important; font-weight:1000 !important; margin-left:.08em !important; }
-.wind-gust-high-final{ color:var(--closed) !important; font-weight:1000 !important; margin-left:.08em !important; }
+.wind-gust-high-final{ color:var(--warn) !important; font-weight:1000 !important; margin-left:.08em !important; }
 
 /* Flow Styling */
 #flow{ overflow:visible !important; line-height:1.12 !important; padding-bottom:.10em !important; }
@@ -1860,6 +1860,7 @@ function updateSourceHealth(data,updatedZ){
   const tafIssueAge=minutesSince(parseAviationTime(taf));
   if(isBadText(taf,["UNAVAILABLE","ERROR","FAILED"])||!taf.toUpperCase().includes("TAF")){ addPart("TAF","BAD",""); }
   else if(tafIssueAge!==null&&tafIssueAge>720){ addPart("TAF","STALE",""); }
+  else if(tafIssueAge!==null&&tafIssueAge>360){ addPart("TAF","WARN",""); }
   else{ addPart("TAF","OK",""); }
 
   const atisStatus=(data.atisFetchStatus||"").toString().toUpperCase();
@@ -2480,8 +2481,9 @@ let refreshRemaining=WEATHER_REFRESH_SECONDS;
 let weatherFetchInFlight=false;
 
 function formatCountdown(seconds){
-  const minutes=Math.floor(seconds/60);
-  const secs=seconds%60;
+  const s=Math.max(0,seconds);
+  const minutes=Math.floor(s/60);
+  const secs=s%60;
   return String(minutes).padStart(2,"0")+":"+String(secs).padStart(2,"0");
 }
 
@@ -2555,15 +2557,6 @@ function phase45PolishOpsText(){
 window.addEventListener("resize",()=>setTimeout(phase45PolishOpsText,100));
 setInterval(phase45PolishOpsText,1000);
 
-function phase46BoldArrows(){
-  const flow=document.getElementById("flow");
-  if(flow && !flow.querySelector(".flow-arrow")){
-    flow.innerHTML=(flow.textContent||"").replace(/([↑↓←→↗↘↙↖])/g,'<span class="flow-arrow">$1</span>');
-  }
-}
-
-window.addEventListener("resize",()=>setTimeout(phase46BoldArrows,100));
-setInterval(phase46BoldArrows,1000);
 </script>
 
 <script>

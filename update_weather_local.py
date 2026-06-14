@@ -4024,7 +4024,6 @@ def should_save_last_good(data):
         is_good_metar(data.get("metar", ""))
         and is_good_taf(data.get("taf", ""))
         and is_good_atis(data.get("atisText", ""))
-        and is_good_bwc(data)
         and data.get("metarFetchStatus") == "OK"
         and data.get("atisFetchStatus") == "OK"
         and data.get("tafFetchStatus") in {"OK", "USED_LAST_GOOD"}
