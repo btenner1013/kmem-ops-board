@@ -114,6 +114,10 @@ html,body{
 .mil-notam-cao-warn{ color:var(--warning) !important; text-shadow:0 0 7px rgba(255,204,0,.30); }
 .mil-notam-cao-stale{ color:var(--closed) !important; text-shadow:0 0 7px rgba(255,68,68,.30); }
 .mil-notam-cao-bad{ color:var(--closed) !important; animation:blink 1s step-start infinite; }
+.ns-ok{ color:var(--ops-green); font-weight:900; white-space:nowrap; }
+.ns-warn{ color:var(--warning); font-weight:900; white-space:nowrap; }
+.ns-red{ color:var(--closed); font-weight:900; white-space:nowrap; }
+.ns-none{ color:#7a8a94; font-weight:900; white-space:nowrap; }
 
 .mil-notam-window{
   position:relative !important;
@@ -161,8 +165,8 @@ body.getac-preset .mil-notam-active .mil-notam-crawl {
   text-underline-offset:3px;
 }
 .notam-major-heading{ color:var(--closed); letter-spacing:.05em; }
-.notam-section-heading{ color:#dbe7f3; margin-top:.55em; }
-.notam-number{ display:block; color:#f2f2f2; font-weight:1000; margin-top:.45em; }
+.notam-section-heading{ color:#dbe7f3; margin-top:.35em; }
+.notam-number{ display:block; color:#f2f2f2; font-weight:1000; margin-top:.25em; }
 .notam-body{ display:block; color:#c7d0dc; font-weight:500; }
 .notam-eff{ display:block; color:#9fb0c0; font-size:.92em; }
 
@@ -2202,14 +2206,14 @@ function notamItemHtml(item){
   if(body)parts.push(`<span class="notam-body">${escapeHtml(body)}</span>`);
   if(eff)parts.push(`<span class="notam-eff">${escapeHtml(eff)}</span>`);
 
-  return parts.join("\n");
+  return parts.join("");
 }
 
 function notamSectionHtml(title,items,{omitIfEmpty=false}={}){
   if((!items||items.length===0)&&omitIfEmpty)return "";
   const heading=`<span class="notam-section-heading">${escapeHtml(title)}</span>`;
   if(!items||items.length===0)return `${heading}\nNONE`;
-  return `${heading}\n${items.map(notamItemHtml).filter(Boolean).join("\n\n")}`;
+  return `${heading}\n${items.map(notamItemHtml).filter(Boolean).join("\n")}`;
 }
 
 function formatCaoFull(updated){
@@ -2255,10 +2259,11 @@ function setMilNotamsDisplay(data){
 
   const currentMilCount=mil.current.length;
   const currentRwyCount=rwy.current.length;
-  status.textContent=[
-    `CURRENT: ${currentMilCount} MIL | ${currentRwyCount} RWY CLSD`,
-    `CONST/STATUS NOW: ${construction.current.length ? construction.current.length+" ACTIVE" : "NONE"}`,
-    `TAXI RTE/RESTR NOW: ${taxi.current.length ? taxi.current.length+" ACTIVE" : "NONE"}`
+  const nsVal=(n,okCls)=>n>0?`<span class="${okCls}">${n}</span>`:`<span class="ns-none">0</span>`;
+  status.innerHTML=[
+    `CURRENT: ${nsVal(currentMilCount,"ns-warn")} MIL | ${nsVal(currentRwyCount,"ns-red")} RWY CLSD`,
+    `CONST/STATUS NOW: ${construction.current.length?`<span class="ns-ok">${construction.current.length} ACTIVE</span>`:`<span class="ns-none">NONE</span>`}`,
+    `TAXI RTE/RESTR NOW: ${taxi.current.length?`<span class="ns-warn">${taxi.current.length} ACTIVE</span>`:`<span class="ns-none">NONE</span>`}`
   ].join("\n");
 
   const scrollParts=[
@@ -2301,7 +2306,7 @@ function setMilNotamsDisplay(data){
     status.textContent="NMS STALE";
     crawl.textContent=`MIL NOTAM FEED ${fetchStatus}. USING LAST AVAILABLE DATA IF PRESENT. UPDATED ${updated}`;
   }else{
-    status.textContent="CURRENT: 0 MIL | 0 RWY CLSD\nCONST/STATUS NOW: NONE\nTAXI RTE/RESTR NOW: NONE";
+    status.innerHTML="CURRENT: <span class=\"ns-none\">0</span> MIL | <span class=\"ns-none\">0</span> RWY CLSD\nCONST/STATUS NOW: <span class=\"ns-none\">NONE</span>\nTAXI RTE/RESTR NOW: <span class=\"ns-none\">NONE</span>";
     crawl.textContent=`NO CURRENT KMEM AIRFIELD STATUS / NOTAM IMPACTS. UPDATED ${updated}`;
   }
 }
