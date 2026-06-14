@@ -283,11 +283,11 @@ input[type=range]{
       <div class="control">
         <div class="row"><label>Main data values</label><span class="value" id="blockValuePxVal"></span></div>
         <input id="blockValuePx" type="range" min="14" max="42" step="1">
-        <div class="help">Altimeter, ceiling, visibility, runways, flow, wind, BWC, temp/dewpoint. RCR/RCC is separate.</div>
+        <div class="help">Altimeter, ceiling, visibility, runways, flow, wind, BWC, temp/dewpoint. RSC/RCR is separate.</div>
       </div>
 
       <div class="control">
-        <div class="row"><label>RCR/RCC value</label><span class="value" id="rcrPxVal"></span></div>
+        <div class="row"><label>RSC/RCR value</label><span class="value" id="rcrPxVal"></span></div>
         <input id="rcrPx" type="range" min="14" max="42" step="1">
       </div>
 
@@ -317,7 +317,7 @@ input[type=range]{
       </div>
 
       <div class="control">
-        <div class="row"><label>NOTAM header/title: KMEM MIL NOTAMS</label><span class="value" id="notamTitlePxVal"></span></div>
+        <div class="row"><label>NOTAM header/title: KMEM AFLD STATUS / NOTAMS</label><span class="value" id="notamTitlePxVal"></span></div>
         <input id="notamTitlePx" type="range" min="10" max="36" step="1">
         <div class="help">Left NOTAM title text.</div>
       </div>
@@ -388,7 +388,7 @@ input[type=range]{
 
       <div class="sample-grid">
         <div class="box"><div class="lbl">WIND STEADY</div><div class="val" id="previewBlock">130↘ @ 07</div></div>
-        <div class="box rcr"><div class="lbl">RCR/RCC</div><div class="val" id="previewRcr">5/5/5 WET</div></div>
+        <div class="box rcr"><div class="lbl">RSC/RCR</div><div class="val" id="previewRcr">5/5/5 WET</div></div>
         <div class="box"><div class="lbl">BWC</div><div class="val" id="previewBwc">LOW</div></div>
       </div>
       <div class="raw" id="previewRaw">METAR KMEM 072254Z 13007KT 7SM BKN055 OVC110 26/24 A2990 RMK AO2 SLP120 T02610239 $</div>

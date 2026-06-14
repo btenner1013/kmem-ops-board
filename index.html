@@ -205,7 +205,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .title{ font-size:clamp(.95rem,1.1vw,1.35rem); margin-bottom:6px; }
 
 .clock{
-  font-size:min(var(--clock-px),8vw,7.6vh) !important;
+  font-size:var(--clock-px) !important;
   font-weight:bold;
   line-height:.95;
   white-space:nowrap;
@@ -594,7 +594,7 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
 .reference-only-label{ color:var(--closed) !important; font-size:inherit !important; font-weight:1000 !important; letter-spacing:1px !important; text-align:right !important; white-space:nowrap !important; text-shadow:0 0 6px rgba(255,68,68,.45) !important; }
 
 /* Display Tuning Bridge Application Rules */
-.clock,.local-clock,.zulu-clock, body.getac-preset .clock, body.getac-preset .local-clock, body.getac-preset .zulu-clock{ font-size:min(var(--clock-px),8vw,7.6vh) !important; }
+.clock,.local-clock,.zulu-clock, body.getac-preset .clock, body.getac-preset .local-clock, body.getac-preset .zulu-clock{ font-size:var(--clock-px) !important; }
 .mil-notam-title, body.getac-preset .mil-notam-title{ font-size:var(--notam-title-px) !important; line-height:1.05 !important; }
 .mil-notam-status, body.getac-preset .mil-notam-status{ font-size:var(--notam-status-px) !important; line-height:1.05 !important; }
 .mil-notam-cao, body.getac-preset .mil-notam-cao{ font-size:var(--notam-cao-px) !important; line-height:1.05 !important; }
@@ -2206,7 +2206,7 @@ function setMilNotamsDisplay(data){
     crawl.innerHTML=scrollHtml;
     crawl.title=`${source} | UPDATED ${updated} | ${fetchStatus||rawStatus||"OK"} | active/future status display`;
 
-    measureMilNotamScroll();
+    restartMilNotamScroll();
     
     return;
   }
@@ -2230,17 +2230,35 @@ function measureMilNotamScroll(){
   const win=panel.querySelector(".mil-notam-window");
   if(!win)return;
 
+  const windowHeight=Math.max(0,win.clientHeight||0);
+  const contentHeight=Math.max(crawl.scrollHeight||0,Math.ceil(crawl.getBoundingClientRect().height)||0);
+  const distance=Math.max(0,contentHeight-windowHeight);
+  crawl.style.setProperty("--notam-scroll-distance",distance+"px");
+}
+
+function restartMilNotamScroll(){
+  const panel=document.getElementById("milNotamPanel");
+  const crawl=document.getElementById("milNotamCrawl");
+  if(!panel||!crawl||!panel.classList.contains("mil-notam-active"))return;
+
   requestAnimationFrame(()=>{
-    const windowHeight=Math.max(0,win.clientHeight||0);
-    const contentHeight=Math.max(crawl.scrollHeight||0,Math.ceil(crawl.getBoundingClientRect().height)||0);
-    const distance=Math.max(0,contentHeight-windowHeight);
-    crawl.style.setProperty("--notam-scroll-distance",distance+"px");
+    requestAnimationFrame(()=>{
+      measureMilNotamScroll();
+      const style=getComputedStyle(crawl);
+      if(style.animationName==="none")return;
+      crawl.style.setProperty("animation","none","important");
+      void crawl.offsetHeight;
+      crawl.style.removeProperty("animation");
+    });
   });
 }
 
+window.measureMilNotamScroll=measureMilNotamScroll;
+window.restartMilNotamScroll=restartMilNotamScroll;
+
 // Window resizing re-measures the dynamic NOTAM marquee
 window.addEventListener("resize", () => {
-    measureMilNotamScroll();
+    requestAnimationFrame(measureMilNotamScroll);
 });
 
 function setDetailValue(id,html,conditionClass){
@@ -2652,7 +2670,24 @@ setInterval(phase46BoldArrows,1000);
     let style=document.getElementById("displayTuningStyle");
     if(!style){ style=document.createElement("style"); style.id="displayTuningStyle"; document.head.appendChild(style); }
     if(style.textContent!==css)style.textContent=css;
-    if(typeof window.measureMilNotamScroll==="function")setTimeout(window.measureMilNotamScroll,50);
+
+    const notamTuneSig=[
+      s.notamPx,
+      s.notamLine,
+      s.notamScrollSec,
+      s.notamRowPx,
+      s.notamTitlePx,
+      s.notamStatusPx,
+      s.notamCaoPx
+    ].join("|");
+    const notamTuneChanged=window.__lastNotamTuneSig!==notamTuneSig;
+    window.__lastNotamTuneSig=notamTuneSig;
+
+    if(notamTuneChanged&&typeof window.restartMilNotamScroll==="function"){
+      setTimeout(window.restartMilNotamScroll,80);
+    }else if(typeof window.measureMilNotamScroll==="function"){
+      requestAnimationFrame(window.measureMilNotamScroll);
+    }
   }
 
   window.applyDisplaySettings=applyDisplaySettings;

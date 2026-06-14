@@ -1778,6 +1778,26 @@ def alert_code_component(alert):
     return f"{emoji} {code}".strip() if code else (alert.get("displayText") or "").strip()
 
 
+def visible_alert_sources(sources):
+    order = ["ATIS", "METAR", "TAF"]
+    normalized = []
+
+    for source in sources or []:
+        label = str(source or "").upper().strip()
+        if label == "SPECI":
+            label = "METAR"
+        if label and label not in normalized:
+            normalized.append(label)
+
+    normalized.sort(key=lambda item: order.index(item) if item in order else len(order))
+    return normalized
+
+
+def visible_alert_source_text(sources):
+    labels = [label for label in visible_alert_sources(sources) if label in {"ATIS", "METAR"}]
+    return "/".join(labels) if labels else "CURRENT"
+
+
 def combine_simultaneous_alerts(alerts, window=None):
     if not alerts:
         return None
@@ -1805,14 +1825,14 @@ def combine_simultaneous_alerts(alerts, window=None):
         first["displayText"] = f"{display_base} PSBL {window}".strip()
         first["tafWindow"] = window
     else:
-        sources = sorted({src for alert in alerts for src in alert.get("sources", [])})
-        source_text = "/".join(sources) if sources else "CURRENT"
+        sources = visible_alert_sources(src for alert in alerts for src in alert.get("sources", []))
+        source_text = visible_alert_source_text(sources)
         first["text"] = f"{code_text} IN {source_text}".strip()
-        first["displayText"] = display_base
+        first["displayText"] = f"{display_base} IN {source_text}".strip()
 
     first["code"] = "/".join(codes)
     first["label"] = " / ".join(alert.get("label", "") for alert in alerts if alert.get("label"))
-    first["sources"] = sorted({src for alert in alerts for src in alert.get("sources", [])})
+    first["sources"] = visible_alert_sources(src for alert in alerts for src in alert.get("sources", []))
     first["displayTone"] = "red" if any(alert.get("displayTone") == "red" for alert in alerts) else first.get("displayTone", "yellow")
     first["flash"] = any(bool(alert.get("flash")) for alert in alerts)
     first["pulse"] = any(bool(alert.get("pulse")) for alert in alerts)
@@ -2407,7 +2427,18 @@ def select_current_alert(current_alerts):
     if has_va and has_convective:
         return combine_simultaneous_alerts(va_convective)
 
-    return current_alerts[0]
+    selected = current_alerts[0]
+    selected_code = (selected.get("code") or "").upper()
+    same_code = [
+        alert for alert in current_alerts
+        if (alert.get("code") or "").upper() == selected_code
+        and set(alert.get("sources", [])).intersection({"ATIS", "METAR", "SPECI"})
+    ]
+
+    if len(same_code) > 1:
+        return combine_simultaneous_alerts(same_code)
+
+    return selected
 
 
 def atis_weather_alert_scan_text(atis_text):
@@ -2520,6 +2551,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
 
     def add_current_alert(check, source):
         code = check["code"]
+        source_label = visible_alert_source_text([source])
         severity, display_tone, flash, pulse, priority = classify_alert(
             code,
             [source],
@@ -2531,8 +2563,9 @@ def detect_weather_alerts(metar, taf, atis_text=""):
             "PL", "GR", "GS", "+RA", "RA", "-RA", "+SHRA", "SHRA", "-SHRA",
             "FU", "VA"
         }
-        text = f"{code} IN {source}" if code in raw_display_codes else f"{check['label']} IN {source}"
-        display_text = f"{check['emoji']} {code}".strip() if code in raw_display_codes else f"{check['emoji']} {text}".strip()
+        base_text = code if code in raw_display_codes else check["label"]
+        text = f"{base_text} IN {source_label}"
+        display_text = f"{check['emoji']} {text}".strip()
         alerts.append({
             "code": code,
             "label": check["label"],
@@ -2627,7 +2660,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
     def current_sort_key(alert):
         sources = set(alert.get("sources", []))
         source_tie = 0 if "ATIS" in sources else 1
-        return (alert.get("priority", 99), source_tie)
+        return (alert.get("priority", 99), taf_hazard_rank(alert.get("code")), source_tie)
 
     current_alerts.sort(key=current_sort_key)
     selected_current_alert = select_current_alert(current_alerts)
