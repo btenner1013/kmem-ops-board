@@ -6,6 +6,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+import time
 from datetime import datetime, timezone, timedelta
 from html import unescape
 from http.cookiejar import CookieJar
@@ -100,24 +101,86 @@ def run_cmd(command, allow_fail=False):
     return result
 
 
-def fetch_url(url):
-    try:
-        request = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0",
-                "Cache-Control": "no-cache, no-store, max-age=0",
-                "Pragma": "no-cache",
-                "Expires": "0"
-            }
-        )
+def fetch_url(url, attempts=2, retry_delay_seconds=1.0):
+    """Fetch text with a light retry so one transient HTTP 500/network hiccup does not
+    immediately force the board into last-known-good weather.
+    """
+    last_error = None
 
-        with urllib.request.urlopen(request, timeout=30) as response:
-            return response.read().decode("utf-8", errors="ignore")
+    for attempt in range(1, max(1, attempts) + 1):
+        try:
+            request = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0",
+                    "Accept": "text/html,application/json,text/plain,*/*",
+                    "Cache-Control": "no-cache, no-store, max-age=0",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
 
-    except Exception as error:
-        print(f"Fetch failed for {url}: {error}")
-        return ""
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.read().decode("utf-8", errors="ignore")
+
+        except Exception as error:
+            last_error = error
+            if attempt < max(1, attempts):
+                print(f"Fetch attempt {attempt} failed for {url}: {error}; retrying...")
+                try:
+                    time.sleep(float(retry_delay_seconds))
+                except Exception:
+                    pass
+            else:
+                print(f"Fetch failed for {url}: {error}")
+
+    return ""
+
+
+def fetch_first_nonempty(urls, label):
+    """Try multiple equivalent/public URLs before falling back to last-known-good."""
+    for url in urls:
+        text = fetch_url(url)
+        if text and text.strip():
+            print(f"{label} fetch OK from {url}")
+            return text
+    print(f"{label} fetch failed for all configured URLs.")
+    return ""
+
+
+def choose_latest_metar_report(raw_text, now_z=None):
+    """Return the newest METAR/SPECI line from an AWC raw response.
+
+    AWC may return SPECI during rapidly changing weather. Treat SPECI as the current
+    METAR observation source for this board. If multiple observations are returned,
+    choose the newest parsed observation time rather than blindly taking a stale line.
+    """
+    raw = (raw_text or "").replace("\r", "\n")
+    candidates = []
+
+    for line in raw.split("\n"):
+        report = re.sub(r"\s+", " ", line).strip()
+        if not report:
+            continue
+        if is_good_metar(report):
+            observed = parse_metar_datetime_utc(report, now_z)
+            candidates.append((observed or datetime.min.replace(tzinfo=timezone.utc), report))
+
+    if candidates:
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        return candidates[0][1]
+
+    report = re.sub(r"\s+", " ", (raw_text or "")).strip()
+    return report if is_good_metar(report) else ""
+
+
+def atis_text_from_html(atis_html):
+    atis_raw = html_to_text(atis_html)
+
+    if len(atis_raw) < 40 or ("KMEM" not in atis_raw.upper() and "MEM" not in atis_raw.upper()):
+        return "D-ATIS unavailable"
+
+    return re.sub(r"\s+", " ", atis_raw).strip()[:1500]
 
 
 def fetch_with_opener(opener, url):
@@ -3208,7 +3271,13 @@ def is_good_metar(metar):
     if text_is_bad(text):
         return False
 
-    return "METAR" in text and "KMEM" in text and re.search(r"\b\d{6}Z\b", text) is not None
+    # A SPECI is a current aviation observation and should be treated as the METAR
+    # source for this board. Rejecting SPECI caused valid special observations to be
+    # ignored, which could leave the display on stale last-known-good METAR data.
+    return (
+        re.search(r"\b(?:METAR|SPECI)\s+KMEM\b", text) is not None
+        and re.search(r"\b\d{6}Z\b", text) is not None
+    )
 
 
 def is_good_taf(taf):
@@ -3808,24 +3877,33 @@ def build_weather_json():
 
     cache_buster = int(now_z.timestamp())
 
-    metar_current = fetch_url(
-        f"https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false&_={cache_buster}"
-    ).strip()
-
-    taf_current = fetch_url(
-        f"https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw&_={cache_buster}"
-    ).strip()
-
-    atis_html = fetch_url(
-        f"https://atisrelay.com/datis/KMEM?_={cache_buster}"
+    metar_raw = fetch_first_nonempty(
+        [
+            f"https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&hours=6&taf=false&_={cache_buster}",
+            f"https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false&_={cache_buster}",
+            "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&hours=6&taf=false",
+            "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false"
+        ],
+        "METAR"
     )
+    metar_current = choose_latest_metar_report(metar_raw, now_z)
 
-    atis_raw = html_to_text(atis_html)
+    taf_current = fetch_first_nonempty(
+        [
+            f"https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw&_={cache_buster}",
+            "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw"
+        ],
+        "TAF"
+    ).strip()
 
-    if len(atis_raw) < 40 or ("KMEM" not in atis_raw.upper() and "MEM" not in atis_raw.upper()):
-        atis_current = "D-ATIS unavailable"
-    else:
-        atis_current = re.sub(r"\s+", " ", atis_raw).strip()[:1500]
+    atis_html = fetch_first_nonempty(
+        [
+            "https://atisrelay.com/datis/KMEM",
+            f"https://atisrelay.com/datis/KMEM?_={cache_buster}"
+        ],
+        "D-ATIS"
+    )
+    atis_current = atis_text_from_html(atis_html)
 
     if is_good_metar(metar_current):
         metar = metar_current
