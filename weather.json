@@ -1,5 +1,5 @@
 {
-  "metar": "SPECI KMEM 140820Z 27005KT 10SM SCT008 OVC016 22/21 A2996 RMK AO2 RAB10E19 OCNL LTG DSNT NE AND W P0000 T02220211 $",
+  "metar": "SPECI KMEM 140845Z 18005KT 10SM -RA FEW008 SCT017 BKN090 OVC140 22/21 A2993 RMK AO2 RAB10E19B40 PRESFR P0000 T02220211 $",
   "taf": "TAF AMD KMEM 140804Z 1408/1512 18009KT P6SM VCTS BKN045CB OVC250 \n  TEMPO 1408/1410 6SM -SHRA SCT008 BKN015 \n  FM141000 23008KT P6SM VCSH SCT035 BKN250 \n  PROB30 1412/1415 5SM -TSRA BKN035CB BKN250 \n  FM141800 30012G18KT P6SM VCSH BKN050 \n  FM150000 04007KT P6SM SCT250",
   "atisText": "MEM ATIS INFO W 0820Z SPECIAL. 27005KT 10SM SCT008 OVC016 22/21 A2996 (TWO NINER NINER SIX) RMK AO2 RAB10E19 OCNL LTG DSNT NE AND W P0000 T02220211. ILS APCH IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. RY 36L ALS OTS, RY 36L PAPI OTS. RWY 18R RAIL OTS. MEM TACAN OTS.RWY 36L CAT 2 NOT AVAILABLE. WIND SHEAR ADZYS IN EFCT. RWY 9 CONDITION CODES, , 5 , , 5 , , 5 , AT 2351Z, RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 0037Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 0037Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 0037Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO W",
   "atisLetter": "W",
@@ -8,10 +8,10 @@
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-06-14T08:20:00Z",
-  "metarAgeMinutes": 23,
+  "metarObservedZ": "2026-06-14T08:45:00Z",
+  "metarAgeMinutes": 8,
   "atisObservedZ": "2026-06-14T08:20:00Z",
-  "atisAgeMinutes": 23,
+  "atisAgeMinutes": 33,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -32,10 +32,10 @@
     "visibility": "ATIS",
     "ceiling": "ATIS"
   },
-  "metarAltimeterRaw": 29.96,
+  "metarAltimeterRaw": 29.93,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
-  "metarCeilingFt": 1600,
+  "metarCeilingFt": 9000,
   "atisAltimeterRaw": 29.96,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
@@ -94,59 +94,55 @@
   "lightningLogText": "ATIS distant lightning NE/W. 10-30 NM.",
   "wxAlerts": [
     {
-      "code": "VCTS",
-      "label": "THUNDERSTORM VICINITY",
-      "emoji": "\u26c8\ufe0f",
-      "category": "thunder",
+      "code": "-RA",
+      "label": "LIGHT RAIN",
+      "emoji": "\ud83c\udf27\ufe0f",
+      "category": "rain",
       "sources": [
-        "TAF"
+        "METAR"
       ],
-      "severity": "forecast",
-      "displayTone": "yellow",
+      "severity": "info",
+      "displayTone": "blue",
       "flash": false,
-      "pulse": true,
-      "priority": 30,
-      "text": "VCTS PSBL NOW-10Z",
-      "displayText": "\u26c8\ufe0f VCTS PSBL NOW-10Z",
-      "tafWindow": "NOW-10Z",
-      "tafStartKey": 344,
-      "tafGroupType": "PREVAILING",
-      "tafStartIso": "2026-06-14T08:00:00Z",
-      "tafEndIso": "2026-06-14T10:00:00Z"
+      "pulse": false,
+      "priority": 60,
+      "text": "-RA IN METAR",
+      "displayText": "\ud83c\udf27\ufe0f -RA IN METAR",
+      "tafWindow": "",
+      "tafStartKey": -1,
+      "tafGroupType": ""
     }
   ],
-  "wxAlertText": "\u26c8\ufe0f VCTS PSBL NOW-10Z",
-  "wxAlertLogText": "VCTS PSBL NOW-10Z",
+  "wxAlertText": "\ud83c\udf27\ufe0f -RA IN METAR",
+  "wxAlertLogText": "-RA IN METAR",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
-    "code": "VCTS",
-    "label": "THUNDERSTORM VICINITY",
-    "emoji": "\u26c8\ufe0f",
-    "category": "thunder",
+    "code": "-RA",
+    "label": "LIGHT RAIN",
+    "emoji": "\ud83c\udf27\ufe0f",
+    "category": "rain",
     "sources": [
-      "TAF"
+      "METAR"
     ],
-    "severity": "forecast",
-    "displayTone": "yellow",
+    "severity": "info",
+    "displayTone": "blue",
     "flash": false,
-    "pulse": true,
-    "priority": 30,
-    "text": "VCTS PSBL NOW-10Z",
-    "displayText": "\u26c8\ufe0f VCTS PSBL NOW-10Z",
-    "tafWindow": "NOW-10Z",
-    "tafStartKey": 344,
-    "tafGroupType": "PREVAILING",
-    "tafStartIso": "2026-06-14T08:00:00Z",
-    "tafEndIso": "2026-06-14T10:00:00Z"
+    "pulse": false,
+    "priority": 60,
+    "text": "-RA IN METAR",
+    "displayText": "\ud83c\udf27\ufe0f -RA IN METAR",
+    "tafWindow": "",
+    "tafStartKey": -1,
+    "tafGroupType": ""
   },
   "wxSecondaryAlert": null,
-  "wxAlertTone": "yellow",
+  "wxAlertTone": "blue",
   "wxAlertFlash": false,
-  "wxAlertPulse": true,
-  "tafTrend": "WX ALERT | \u26c8\ufe0f VCTS PSBL NOW-10Z",
+  "wxAlertPulse": false,
+  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA IN METAR",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-14 08:42:00.000",
+  "bwcUpdatedZ": "2026-06-14 08:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +155,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-14 08:43:59Z",
+  "milNotamUpdatedZ": "2026-06-14 08:54:03Z",
   "milNotamScrollText": "M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -385,13 +381,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-14 08:42Z",
+  "allFeedsUpdatedZ": "2026-06-14 08:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-14 08:42:48Z"
+    "lastWorkflowTimestampZ": "2026-06-14 08:52:47Z"
   }
 }
