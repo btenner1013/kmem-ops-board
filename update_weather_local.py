@@ -174,13 +174,122 @@ def choose_latest_metar_report(raw_text, now_z=None):
     return report if is_good_metar(report) else ""
 
 
+def relaxed_text_unescape(text):
+    """Decode common HTML/JSON escape layers used by public ATIS pages."""
+    value = str(text or "")
+
+    for _ in range(2):
+        value = unescape(value)
+        try:
+            value = urllib.parse.unquote(value)
+        except Exception:
+            pass
+
+        value = (
+            value.replace("\\n", " ")
+            .replace("\\r", " ")
+            .replace("\\t", " ")
+            .replace('\\"', '"')
+            .replace("\\/", "/")
+        )
+
+        def repl(match):
+            try:
+                return chr(int(match.group(1), 16))
+            except Exception:
+                return match.group(0)
+
+        value = re.sub(r"\\u([0-9a-fA-F]{4})", repl, value)
+
+    return value
+
+
+def normalize_atis_candidate(candidate):
+    text = relaxed_text_unescape(candidate)
+    text = html_to_text(text)
+    text = re.sub(r"\s+", " ", text).strip()
+    text = text.strip(" \\\"'`.,;:")
+
+    if not text:
+        return ""
+
+    # If the source begins with only INFO S 0554Z..., make it look like the
+    # normal MEM ATIS wording used by the rest of the parser.
+    if re.match(r"(?i)^INFO(?:RMATION)?\s+[A-Z]\s+\d{4}Z\b", text):
+        text = "MEM ATIS " + text
+
+    # Cut obvious trailing page/app boilerplate after the ATIS handoff wording.
+    match = re.search(
+        r"(?i)\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+[A-Z]\.?",
+        text
+    )
+    if not match:
+        match = re.search(
+            r"(?i)\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+[A-Z]\.?",
+            text
+        )
+    if match:
+        text = text[:match.end()]
+
+    return text[:2500]
+
+
+def extract_atis_text(raw_text):
+    """Extract a usable ATIS broadcast from raw HTML, JSON, or plain text.
+
+    atis.info may serve a browser page or embedded app data; atisrelay serves
+    HTML/text. This keeps the fetcher source-agnostic and returns one normalized
+    ATIS string for downstream parsing.
+    """
+    raw = relaxed_text_unescape(raw_text)
+    search_spaces = [raw, html_to_text(raw)]
+
+    patterns = [
+        r"(?is)\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\b.{20,2500}?\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+[A-Z]\.?",
+        r"(?is)\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\s+\d{4}Z\b.{20,2500}",
+        r"(?is)\bINFO(?:RMATION)?\s+[A-Z]\s+\d{4}Z\b.{20,2500}?\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+[A-Z]\.?",
+        r"(?is)\bINFO(?:RMATION)?\s+[A-Z]\s+\d{4}Z\b.{20,2500}",
+    ]
+
+    for space in search_spaces:
+        for pattern in patterns:
+            match = re.search(pattern, space or "")
+            if match:
+                candidate = normalize_atis_candidate(match.group(0))
+                if candidate and is_good_atis(candidate):
+                    return candidate
+
+    candidate = normalize_atis_candidate(raw)
+    if candidate and is_good_atis(candidate):
+        return candidate
+
+    candidate = normalize_atis_candidate(html_to_text(raw))
+    if candidate and is_good_atis(candidate):
+        return candidate
+
+    return "D-ATIS unavailable"
+
+
 def atis_text_from_html(atis_html):
-    atis_raw = html_to_text(atis_html)
+    return extract_atis_text(atis_html)
 
-    if len(atis_raw) < 40 or ("KMEM" not in atis_raw.upper() and "MEM" not in atis_raw.upper()):
-        return "D-ATIS unavailable"
 
-    return re.sub(r"\s+", " ", atis_raw).strip()[:1500]
+def fetch_current_atis(urls):
+    """Try ATIS sources until one returns a parseable current ATIS text."""
+    for url in urls:
+        raw = fetch_url(url)
+        if not raw or not raw.strip():
+            continue
+
+        atis_text = atis_text_from_html(raw)
+        if is_good_atis(atis_text):
+            print(f"D-ATIS fetch OK from {url}")
+            return atis_text
+
+        print(f"D-ATIS fetch from {url} did not contain valid ATIS text; trying next source.")
+
+    print("D-ATIS fetch failed for all configured URLs.")
+    return "D-ATIS unavailable"
 
 
 def fetch_with_opener(opener, url):
@@ -3896,14 +4005,14 @@ def build_weather_json():
         "TAF"
     ).strip()
 
-    atis_html = fetch_first_nonempty(
+    atis_current = fetch_current_atis(
         [
+            "https://atis.info/KMEM",
+            "https://www.atis.info/KMEM",
             "https://atisrelay.com/datis/KMEM",
             f"https://atisrelay.com/datis/KMEM?_={cache_buster}"
-        ],
-        "D-ATIS"
+        ]
     )
-    atis_current = atis_text_from_html(atis_html)
 
     if is_good_metar(metar_current):
         metar = metar_current
