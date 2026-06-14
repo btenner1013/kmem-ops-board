@@ -1429,7 +1429,8 @@ function compactWxAlertDisplay(value,data={}){
     const emoji=emojiFor(code);
     if(isForecastLike) return `${emoji ? emoji+" " : ""}${code} PSBL${time ? " "+time : ""}`.trim();
     const sourceLabel=observedWxSourceLabel(code,data)||observedWxSourceLabelFromText(upper);
-    return `${emoji ? emoji+" " : ""}${code}${sourceLabel ? " IN "+sourceLabel : ""}`.trim();
+    const sourceSuffix=sourceLabel.includes("ATIS")?"ATIS":sourceLabel?"OBS":"";
+    return `${emoji ? emoji+" " : ""}${code}${sourceSuffix ? " "+sourceSuffix : ""}`.trim();
   }
 
   text=text.replace(/LIGHT\s+RAIN\s+SHOWERS\s+POSSIBLE/ig,"🌧️ -SHRA PSBL");
