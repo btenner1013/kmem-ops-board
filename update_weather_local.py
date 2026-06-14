@@ -2065,9 +2065,9 @@ def combine_simultaneous_alerts(alerts, window=None):
         first["tafWindow"] = window
     else:
         sources = visible_alert_sources(src for alert in alerts for src in alert.get("sources", []))
-        source_text = visible_alert_source_text(sources)
-        first["text"] = f"{code_text} IN {source_text}".strip()
-        first["displayText"] = f"{display_base} IN {source_text}".strip()
+        source_suffix = "ATIS" if "ATIS" in sources else "OBS"
+        first["text"] = f"{code_text} {source_suffix}".strip()
+        first["displayText"] = f"{display_base} {source_suffix}".strip()
 
     first["code"] = "/".join(codes)
     first["label"] = " / ".join(alert.get("label", "") for alert in alerts if alert.get("label"))
@@ -2818,7 +2818,8 @@ def detect_weather_alerts(metar, taf, atis_text=""):
             "FU", "VA"
         }
         base_text = code if code in raw_display_codes else check["label"]
-        text = f"{base_text} IN {source_label}"
+        source_suffix = "ATIS" if source == "ATIS" else "OBS"
+        text = f"{base_text} {source_suffix}"
         display_text = f"{check['emoji']} {text}".strip()
         alerts.append({
             "code": code,
@@ -2920,13 +2921,35 @@ def detect_weather_alerts(metar, taf, atis_text=""):
     selected_current_alert = select_current_alert(current_alerts)
     selected_taf_alert = select_taf_alert(taf_alerts, now_z)
 
-    if selected_current_alert:
+    if not selected_current_alert and not selected_taf_alert:
+        return []
+    if not selected_current_alert:
+        return [selected_taf_alert]
+    if not selected_taf_alert:
         return [selected_current_alert]
 
-    if selected_taf_alert:
-        return [selected_taf_alert]
+    # Both exist — most restrictive wins across all sources.
+    # Active TAF (bucket 0) competes at natural priority; future TAF gets a
+    # timing penalty so current observations beat near-future forecasts.
+    # ATIS > METAR > TAF as a tiebreaker when scores are equal.
+    def _alert_score(alert, is_taf):
+        sources = set(alert.get("sources", []))
+        if is_taf:
+            bucket = taf_timing_bucket(alert, now_z) or 0
+            timing_penalty = bucket * 5
+            source_tie = 2
+        else:
+            timing_penalty = 0
+            source_tie = 0 if "ATIS" in sources else 1
+        return (
+            alert.get("priority", 99) + timing_penalty,
+            taf_hazard_rank(alert.get("code")),
+            source_tie
+        )
 
-    return []
+    c_score = _alert_score(selected_current_alert, False)
+    t_score = _alert_score(selected_taf_alert, True)
+    return [selected_current_alert if c_score <= t_score else selected_taf_alert]
 
 def summarize_weather_alerts(alerts):
     if not alerts:
