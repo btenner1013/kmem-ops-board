@@ -965,7 +965,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
           <div id="visibility" class="detail-value">--</div>
         </div>
         <div class="detail-box">
-          <div class="detail-label">METAR AGE</div>
+          <div id="metarAgeLabel" class="detail-label">OBS AGE</div>
           <div id="metarAge" class="detail-value">--</div>
         </div>
       </div>
@@ -1233,8 +1233,12 @@ function minutesSince(dateObj){
 
 function setMetarAge(metar){
   const el=document.getElementById("metarAge");
+  const labelEl=document.getElementById("metarAgeLabel");
   const t=parseMetarTime(metar);
   const age=minutesSince(t);
+  const isSpeci=/^\s*SPECI\b/i.test(metar||"");
+
+  if(labelEl) labelEl.textContent=isSpeci?"SPECI AGE":"OBS AGE";
 
   el.className="detail-value";
   if(age===null){ el.textContent="--"; return; }
@@ -1848,7 +1852,7 @@ function updateSourceHealth(data,updatedZ){
   const metarAgeFromData=Number(data.metarAgeMinutes);
   const metarAge=Number.isFinite(metarAgeFromData) ? metarAgeFromData : minutesSince(parseMetarTime(metar));
 
-  if(metarBad||!metar.toUpperCase().includes("METAR")||metarStatus.includes("FAILED")){ addPart("METAR","BAD",""); }
+  if(metarBad||!/\b(METAR|SPECI)\b/.test(metar.toUpperCase())||metarStatus.includes("FAILED")){ addPart("METAR","BAD",""); }
   else if(metarStatus.includes("STALE")||(metarAge!==null&&metarAge>75)){ addPart("METAR","STALE",metarAge!==null?`${metarAge}M`:""); }
   else if(metarStatus.includes("WARN")||metarStatus.includes("TIME_UNKNOWN")||(metarAge!==null&&metarAge>55)){ addPart("METAR","WARN",metarAge!==null?`${metarAge}M`:""); }
   else{ addPart("METAR","OK",""); }
