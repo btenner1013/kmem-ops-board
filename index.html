@@ -1273,14 +1273,86 @@ function compactLightningDisplay(value){
   return text;
 }
 
-function compactWxAlertDisplay(value){
+function normalizeWxToken(token){
+  return String(token||"").toUpperCase().trim().replace(/[=.,;:()[\]{}]/g,"");
+}
+
+function wxCodePresentInText(sourceText,code){
+  const target=normalizeWxToken(code);
+  if(!target)return false;
+  const tokens=String(sourceText||"").split(/\s+/).map(normalizeWxToken);
+  return tokens.some(token=>token===target);
+}
+
+function atisWxScanText(atisText){
+  let text=String(atisText||"");
+  const upper=text.toUpperCase();
+  const starts=["MEM ATIS INFO","KMEM ATIS INFO","ATIS INFO"];
+  let start=-1;
+  for(const marker of starts){
+    const idx=upper.indexOf(marker);
+    if(idx!==-1&&(start===-1||idx<start))start=idx;
+  }
+  if(start!==-1)text=text.slice(start);
+
+  const cutMarkers=[
+    " NOTICE TO AIRMEN",
+    " NOTICE: INFO FROM FAA",
+    " METAR VFR METAR",
+    " METAR MVFR METAR",
+    " METAR IFR METAR",
+    " METAR LIFR METAR"
+  ];
+  const scanUpper=text.toUpperCase();
+  let end=-1;
+  for(const marker of cutMarkers){
+    const idx=scanUpper.indexOf(marker);
+    if(idx!==-1&&(end===-1||idx<end))end=idx;
+  }
+  if(end!==-1)text=text.slice(0,end);
+  return text;
+}
+
+function observedWxSourceLabel(code,data={}){
+  const labels=[];
+  const add=label=>{ if(label&&!labels.includes(label))labels.push(label); };
+  const explicitSources=(data.wxPrimaryAlert&&Array.isArray(data.wxPrimaryAlert.sources))?data.wxPrimaryAlert.sources:[];
+  explicitSources.forEach(source=>{
+    const label=String(source||"").toUpperCase()==="SPECI"?"METAR":String(source||"").toUpperCase();
+    if(label==="ATIS"||label==="METAR")add(label);
+  });
+
+  const log=String(data.wxAlertLogText||"").toUpperCase();
+  if(/\bIN\s+ATIS\/METAR\b/.test(log)){ add("ATIS"); add("METAR"); }
+  else{
+    if(/\bIN\s+ATIS\b/.test(log))add("ATIS");
+    if(/\bIN\s+(?:METAR|SPECI)\b/.test(log))add("METAR");
+  }
+
+  if(wxCodePresentInText(atisWxScanText(data.atisText),code))add("ATIS");
+  if(wxCodePresentInText(data.metar,code))add("METAR");
+
+  const ordered=["ATIS","METAR"].filter(label=>labels.includes(label));
+  return ordered.join("/");
+}
+
+function observedWxSourceLabelFromText(upperText){
+  const text=String(upperText||"");
+  if(/\bIN\s+ATIS\/METAR\b/.test(text))return "ATIS/METAR";
+  if(/\bIN\s+(?:METAR|SPECI)\b/.test(text)&&/\bIN\s+ATIS\b/.test(text))return "ATIS/METAR";
+  if(/\bIN\s+ATIS\b/.test(text))return "ATIS";
+  if(/\bIN\s+(?:METAR|SPECI)\b/.test(text))return "METAR";
+  return "";
+}
+
+function compactWxAlertDisplay(value,data={}){
   let text=safeValue(value,"NONE").toString().replace(/\s+/g," ").trim();
   text=text.replace(/^WX\s+ALERT\s*\|\s*/i,"").trim();
   if(!text || text==="--" || /^NONE$/i.test(text) || /^N\/A$/i.test(text)){ return "NONE"; }
 
   const rawCodeRe=/(^|[\s(])([+-]?(?:TSRA|SHRA|FZRA|FZDZ|RA|DZ|SN|SG|PL|GR|GS|VCTS|VCSH|VA|FU|HZ|FG|BR|SQ|FC|LLWS))(?=$|[\s),.;:])/i;
-  if(rawCodeRe.test(text)){
-    return text;
+  if(rawCodeRe.test(text)&&/\s\/\s/.test(text)){
+    return text.replace(/\bSPECI\b/ig,"METAR");
   }
 
   let body=text.replace(/^(\p{Extended_Pictographic}(?:️)?\s*)/u,"").trim();
@@ -1341,9 +1413,8 @@ function compactWxAlertDisplay(value){
   if(code){
     const emoji=emojiFor(code);
     if(isForecastLike) return `${emoji ? emoji+" " : ""}${code} PSBL${time ? " "+time : ""}`.trim();
-    if(code.includes("RA") && upper.includes("ATIS"))return `${emoji} ${code} ATIS`.trim();
-    if(code.includes("RA") && upper.includes("METAR"))return `${emoji} ${code} METAR`.trim();
-    return `${emoji ? emoji+" " : ""}${code}`.trim();
+    const sourceLabel=observedWxSourceLabel(code,data)||observedWxSourceLabelFromText(upper);
+    return `${emoji ? emoji+" " : ""}${code}${sourceLabel ? " IN "+sourceLabel : ""}`.trim();
   }
 
   text=text.replace(/LIGHT\s+RAIN\s+SHOWERS\s+POSSIBLE/ig,"🌧️ -SHRA PSBL");
@@ -1357,8 +1428,8 @@ function compactWxAlertDisplay(value){
   return text || "NONE";
 }
 
-function wxAlertDisplayHtml(value){
-  const display=compactWxAlertDisplay(value);
+function wxAlertDisplayHtml(value,data={}){
+  const display=compactWxAlertDisplay(value,data);
   const escaped=String(display).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   return escaped.replace(/^(\p{Extended_Pictographic}(?:️)?)/u,'<span class="wx-alert-emoji">$1</span>');
 }
@@ -1660,7 +1731,7 @@ function setTafTrend(data){
     if(data.wxAlertFlash===true)trend.classList.add("alert-flash");
     if(data.wxAlertPulse===true)trend.classList.add("alert-pulse");
 
-    trend.innerHTML=wxAlertDisplayHtml(wxDisplayText);
+    trend.innerHTML=wxAlertDisplayHtml(wxDisplayText,data);
     trend.title=data.wxAlertLogText||wxDisplayText;
     return;
   }

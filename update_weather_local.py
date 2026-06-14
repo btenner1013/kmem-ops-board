@@ -1648,7 +1648,9 @@ def parse_ceiling_ft(metar):
     txt = metar or ""
     ceilings = []
 
-    for layer_type, height in re.findall(r"\b(BKN|OVC|VV)(\d{3})\b", txt):
+    # Ceiling is the lowest BKN/OVC/VV layer. Convective suffixes such as
+    # BKN075CB and BKN050TCU still count as ceiling layers.
+    for layer_type, height in re.findall(r"\b(BKN|OVC|VV)(\d{3})(?:CB|TCU)?\b", txt):
         ceilings.append(int(height) * 100)
 
     if not ceilings:
