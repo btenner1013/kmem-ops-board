@@ -1,5 +1,5 @@
 {
-  "metar": "SPECI KMEM 140750Z 29008G17KT 10SM SCT008 BKN014 BKN046 OVC250 22/21 A2997 RMK AO2 OCNL LTG DSNT NW-NE $",
+  "metar": "METAR KMEM 140754Z 29008KT 10SM BKN008 BKN016 BKN046 OVC250 22/21 A2996 RMK AO2 CIG 007V012 SLP142 OCNL LTG DSNT NE AND W T02220211 $",
   "taf": "TAF KMEM 140751Z 1408/1512 18009KT P6SM VCTS BKN045CB OVC250 \n  FM141000 23008KT P6SM VCSH SCT035 BKN250 \n  PROB30 1412/1415 5SM -TSRA BKN035CB BKN250 \n  FM141800 30012G18KT P6SM VCSH BKN050 \n  FM150000 04007KT P6SM SCT250",
   "atisText": "MEM ATIS INFO V 0754Z. 29008KT 10SM BKN008 BKN016 BKN046 OVC250 22/21 A2996 (TWO NINER NINER SIX) RMK AO2 CIG 007V012 SLP142 OCNL LTG DSNT NE AND W T02220211. ILS APCH IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. RY 36L ALS OTS, RY 36L PAPI OTS. RWY 18R RAIL OTS. MEM TACAN OTS.RWY 36L CAT 2 NOT AVAILABLE. WIND SHEAR ADZYS IN EFCT. RWY 9 CONDITION CODES, , 5 , , 5 , , 5 , AT 2351Z, RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 0037Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 0037Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 0037Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO V",
   "atisLetter": "V",
@@ -8,10 +8,10 @@
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-06-14T07:50:00Z",
+  "metarObservedZ": "2026-06-14T07:54:00Z",
   "metarAgeMinutes": 6,
   "atisObservedZ": "2026-06-14T07:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 6,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -22,20 +22,20 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-06-14T05:02:47Z",
-  "trendSampleCount": 25,
+  "trendSampleCount": 26,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
-  "obsSource": "MIXED",
+  "obsSource": "ATIS",
   "obsFieldSources": {
-    "wind": "METAR",
+    "wind": "ATIS",
     "tempDp": "ATIS",
     "altimeter": "ATIS",
     "visibility": "ATIS",
     "ceiling": "ATIS"
   },
-  "metarAltimeterRaw": 29.97,
+  "metarAltimeterRaw": 29.96,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
-  "metarCeilingFt": 1400,
+  "metarCeilingFt": 800,
   "atisAltimeterRaw": 29.96,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
@@ -68,16 +68,16 @@
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2191",
   "visibilityTrendText": "RISING",
-  "windRaw": "29008G17KT",
-  "windDisplay": "29008G17KT",
+  "windRaw": "29008KT",
+  "windDisplay": "29008KT",
   "windDirDeg": 290,
   "windSpeedKt": 8,
-  "windGustKt": 17,
+  "windGustKt": null,
   "windArrow": "\u2192",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25ba",
-  "windTrendText": "STEADY",
-  "windTrendClass": "steady",
+  "windTrend": "\u25bc",
+  "windTrendText": "DECREASING",
+  "windTrendClass": "improving",
   "tempC": 22,
   "dewpointC": 21,
   "tempDpDisplay": "22/21",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-14 07:57:38Z",
+  "milNotamUpdatedZ": "2026-06-14 08:01:26Z",
   "milNotamScrollText": "M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -385,13 +385,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-14 07:56Z",
+  "allFeedsUpdatedZ": "2026-06-14 07:59Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-14 07:56:25Z"
+    "lastWorkflowTimestampZ": "2026-06-14 07:59:47Z"
   }
 }
