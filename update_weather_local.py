@@ -2289,8 +2289,10 @@ def taf_window_display_from_datetimes(start_dt, end_dt=None, current_utc_dt=None
     """
     Format TAF alert windows from real UTC datetimes.
 
+    Active (start passed, not yet ended): NOW-10Z / NOW-15 JUN 03Z
     Same current UTC date: 09-18Z
     Different UTC date: 12 JUN 09-18Z
+    Cross-midnight: 14 JUN 22Z-15 JUN 03Z
 
     If no end is known, use 09Z rather than FM 09Z.
     """
@@ -2298,16 +2300,23 @@ def taf_window_display_from_datetimes(start_dt, end_dt=None, current_utc_dt=None
         return ""
 
     current_utc_dt = current_utc_dt or datetime.now(timezone.utc)
+    is_active = start_dt <= current_utc_dt and (end_dt is None or end_dt > current_utc_dt)
     start_hh = f"{start_dt.hour:02d}"
 
     if end_dt and end_dt > start_dt:
         if end_dt.date() != start_dt.date():
+            end_str = f"{end_dt.day:02d} {TAF_MONTHS[end_dt.month - 1]} {end_dt.hour:02d}Z"
+            if is_active:
+                return f"NOW-{end_str}"
             return (
-                f"{start_dt.day:02d} {TAF_MONTHS[start_dt.month - 1]} {start_hh}Z-"
-                f"{end_dt.day:02d} {TAF_MONTHS[end_dt.month - 1]} {end_dt.hour:02d}Z"
+                f"{start_dt.day:02d} {TAF_MONTHS[start_dt.month - 1]} {start_hh}Z-{end_str}"
             )
+        if is_active:
+            return f"NOW-{end_dt.hour:02d}Z"
         base = f"{start_hh}-{end_dt.hour:02d}Z"
     else:
+        if is_active:
+            return "NOW"
         base = f"{start_hh}Z"
 
     if start_dt.date() != current_utc_dt.date():
@@ -2391,13 +2400,19 @@ def split_taf_groups_for_windows(taf):
         base_start = main_valid_match.end()
         base_end = markers[0].start() if markers else len(text)
         base_text = text[base_start:base_end]
+        # PREVAILING conditions last until the first FM group takes over, not the full TAF end.
+        first_fm_dt = next((
+            taf_token_start_datetime(m.group(1), taf_issue_dt)
+            for m in markers if m.group(1).startswith("FM")
+        ), None)
+        prevailing_end_dt = first_fm_dt or main_end_dt
         groups.append({
             "tafGroupType": "PREVAILING",
             "tafWindowToken": main_valid,
-            "tafWindow": taf_window_display_from_datetimes(main_start_dt, main_end_dt, current_utc_dt),
+            "tafWindow": taf_window_display_from_datetimes(main_start_dt, prevailing_end_dt, current_utc_dt),
             "tafStartKey": taf_window_sort_key(main_valid, 0),
             "tafStartIso": iso_z(main_start_dt),
-            "tafEndIso": iso_z(main_end_dt),
+            "tafEndIso": iso_z(prevailing_end_dt),
             "tafGroupText": base_text.strip()
         })
 

@@ -1366,7 +1366,12 @@ function compactWxAlertDisplay(value,data={}){
   if(!upper || upper==="NONE")return "NONE";
 
   function findTimeWindow(s){
-    const m=s.match(/\b(?:(?:\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?\d{2}(?:-\d{2})?Z)\b/i);
+    const MON="JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC";
+    const nowM=s.match(new RegExp("\\bNOW(?:-(?:(?:\\d{1,2}\\s+(?:"+MON+")\\s+)?\\d{2}Z))?\\b","i"));
+    if(nowM) return nowM[0].toUpperCase().trim();
+    const crossM=s.match(new RegExp("\\b(?:\\d{1,2}\\s+(?:"+MON+")\\s+)?\\d{2}Z-\\d{1,2}\\s+(?:"+MON+")\\s+\\d{2}Z\\b","i"));
+    if(crossM) return crossM[0].toUpperCase().trim();
+    const m=s.match(new RegExp("\\b(?:(?:\\d{1,2}\\s+(?:"+MON+")\\s+)?\\d{2}(?:-\\d{2})?Z)\\b","i"));
     return m ? m[0].toUpperCase().trim() : "";
   }
 
