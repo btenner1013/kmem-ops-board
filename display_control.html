@@ -174,12 +174,6 @@ input[type=range]{
   .sample-grid{grid-template-columns:1fr}
 }
 
-.notam{
-  overflow:hidden;
-  border:1px solid #26332d;
-  padding:8px;
-}
-
 .notam-inner-preview{
   display:inline-block;
   white-space:nowrap;
@@ -547,29 +541,6 @@ function updatePreview(){
 function openBoard(){ window.open("./index.html?displayTune=1","_blank"); }
 
 function openAwakeBoard(){ window.open("./index.html?awake=1&displayTune=1","_blank"); }
-
-function setGetacPreset(scale,awake,openAfter){
-  const current=load();
-  const p=presets["Getac"]||{};
-  const s=Object.assign({},current,p,{preset:"Getac",getacScale:scale||90,awake:awake?"1":"0"});
-  localStorage.setItem(KEY,JSON.stringify(s));
-  setInputs(s);
-  save();
-  if(openAfter)openGetacBoard(scale||90,awake);
-}
-
-function setAwakeOnly(enabled){
-  const s=Object.assign({},load(),{awake:enabled?"1":"0"});
-  localStorage.setItem(KEY,JSON.stringify(s));
-  setInputs(s);
-  save();
-}
-
-function openGetacBoard(scale,awake){
-  const sc=scale||90;
-  const aw=awake?"1":"0";
-  window.open(`./index.html?preset=getac&scale=${sc}&awake=${aw}&v=getac-control`,"_blank");
-}
 
 document.querySelectorAll("input").forEach(el=>{
   el.addEventListener("input",()=>{
