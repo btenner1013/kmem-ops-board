@@ -593,11 +593,11 @@ def notam_is_current(item, now_z=None):
 def zulu_iso(dt):
     """Return a stable UTC ISO string for weather source timestamps."""
     if not dt:
-        return None
+        return ""
     try:
         return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     except Exception:
-        return None
+        return ""
 
 
 def source_age_minutes(observed_dt, now_z=None):
@@ -4354,8 +4354,12 @@ def build_weather_json():
 
     snapshot_current_weather_before_overwrite(weather_path)
 
-    with open(weather_path, "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=2)
+    try:
+        with open(weather_path, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+    except Exception as write_error:
+        print(f"ERROR: Failed to write weather.json: {write_error}")
+        return
 
     if should_save_last_good(data):
         save_last_good_weather(data)

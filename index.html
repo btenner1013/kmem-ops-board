@@ -518,8 +518,10 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .wind-base-final, .wind-at-final, .wind-speed-final, .wind-speed-normal-final{ color:var(--ops-green) !important; font-weight:1000 !important; }
 .wind-at-final{ color:var(--ops-green) !important; margin:0 .01em !important; }
 .wind-speed-high-final{ color:var(--warn) !important; font-weight:1000 !important; }
+.wind-speed-critical-final{ color:var(--closed) !important; font-weight:1000 !important; }
 .wind-gust-final, .wind-gust-normal-final{ color:var(--warning) !important; font-weight:1000 !important; margin-left:.08em !important; }
 .wind-gust-high-final{ color:var(--warn) !important; font-weight:1000 !important; margin-left:.08em !important; }
+.wind-gust-critical-final{ color:var(--closed) !important; font-weight:1000 !important; margin-left:.08em !important; }
 
 /* Flow Styling */
 #flow{ overflow:visible !important; line-height:1.12 !important; padding-bottom:.10em !important; }
@@ -591,7 +593,7 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
 .awake-indicator.awake-off{color:#aaa}
 
 .weather-title-row{ display:flex !important; align-items:center !important; justify-content:space-between !important; gap:12px !important; width:100% !important; }
-.reference-only-label{ color:var(--closed) !important; font-size:inherit !important; font-weight:1000 !important; letter-spacing:1px !important; text-align:right !important; white-space:nowrap !important; text-shadow:0 0 6px rgba(255,68,68,.45) !important; }
+.reference-only-label{ color:var(--dim) !important; font-size:inherit !important; font-weight:1000 !important; letter-spacing:1px !important; text-align:right !important; white-space:nowrap !important; }
 
 /* Display Tuning Bridge Application Rules */
 .clock,.local-clock,.zulu-clock, body.getac-preset .clock, body.getac-preset .local-clock, body.getac-preset .zulu-clock{ font-size:var(--clock-px) !important; }
@@ -1573,15 +1575,15 @@ function setWindDisplay(data){
     return;
   }
 
-  const match=display.match(/^([A-Z0-9]{3})\s*@\s(\d{2})(?:\s(G\d{2}))?$/);
+  const match=display.match(/^([A-Z0-9]{3})\s*@\s(\d{2,3})(?:\s(G\d{2,3}))?$/);
   if(match){
     const dir=match[1];
     const speed=match[2];
     const gust=match[3]||"";
     const speedNum=parseInt(speed,10);
     const gustNum=gust?parseInt(gust.replace("G",""),10):null;
-    const speedClass=(speedNum>=20) ? "wind-speed-final wind-speed-high-final" : "wind-speed-final wind-speed-normal-final";
-    const gustClass=(gust && gustNum>=25) ? "wind-gust-final wind-gust-high-final" : "wind-gust-final wind-gust-normal-final";
+    const speedClass=(speedNum>=35) ? "wind-speed-final wind-speed-critical-final" : (speedNum>=20) ? "wind-speed-final wind-speed-high-final" : "wind-speed-final wind-speed-normal-final";
+    const gustClass=(gust && gustNum>=40) ? "wind-gust-final wind-gust-critical-final" : (gust && gustNum>=25) ? "wind-gust-final wind-gust-high-final" : "wind-gust-final wind-gust-normal-final";
 
     el.innerHTML =
       `<span class="wind-base-final">${dir}</span>` +
@@ -2119,12 +2121,13 @@ function parseNotamDateValue(value){
   const months={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
 
   const monthDate=(day,monthName,yearValue,hhmm)=>{
-    if(months[monthName]===undefined)return null;
+    const mn=String(monthName||"").trim().toUpperCase();
+    if(months[mn]===undefined)return null;
     const year=Number(yearValue);
     const hour=Number(String(hhmm).slice(0,2));
     const minute=Number(String(hhmm).slice(2,4));
     if(year<1900||year>2100||hour>23||minute>59)return null;
-    const time=Date.UTC(year,months[monthName],Number(day),hour,minute);
+    const time=Date.UTC(year,months[mn],Number(day),hour,minute);
     return isNaN(time)?null:new Date(time);
   };
 
@@ -2319,12 +2322,16 @@ function restartMilNotamScroll(){
 
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
-      measureMilNotamScroll();
-      const style=getComputedStyle(crawl);
-      if(style.animationName==="none")return;
-      crawl.style.setProperty("animation","none","important");
-      void crawl.offsetHeight;
-      crawl.style.removeProperty("animation");
+      try{
+        measureMilNotamScroll();
+        const style=getComputedStyle(crawl);
+        if(style.animationName==="none")return;
+        crawl.style.setProperty("animation","none","important");
+        void crawl.offsetHeight;
+        crawl.style.removeProperty("animation");
+      }catch(e){
+        console.warn("NOTAM scroll restart failed:",e);
+      }
     });
   });
 }
