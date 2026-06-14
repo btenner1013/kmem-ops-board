@@ -274,20 +274,85 @@ def atis_text_from_html(atis_html):
     return extract_atis_text(atis_html)
 
 
+def fetch_atis_info_api(icao="KMEM"):
+    """Try D-ATIS JSON API sources that return structured data directly.
+    datis.clowd.io returns [{"airport":..., "datis":"...full text..."}].
+    atis.info/KMEM is JS-rendered and has no public API; omitted here.
+    """
+    candidates = [
+        f"https://datis.clowd.io/api/{icao}",
+    ]
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+    }
+    for url in candidates:
+        try:
+            request = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(request, timeout=15) as response:
+                raw = response.read().decode("utf-8", errors="ignore")
+        except Exception as err:
+            print(f"D-ATIS D-ATIS JSON API miss {url}: {err}")
+            continue
+        if not raw or not raw.strip():
+            print(f"D-ATIS D-ATIS JSON API empty response from {url}; trying next.")
+            continue
+        print(f"D-ATIS D-ATIS JSON API response from {url}: {raw[:200]}")
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = None
+        if data is not None:
+            for field in ("atis", "datis", "text", "atisText", "message", "body", "data", "report"):
+                value = data.get(field) if isinstance(data, dict) else None
+                if not value and isinstance(data, list) and data:
+                    value = (data[0] or {}).get(field)
+                if value and isinstance(value, str):
+                    candidate = extract_atis_text(value)
+                    if is_good_atis(candidate):
+                        print(f"D-ATIS fetch OK from D-ATIS JSON API ({url}, field={field})")
+                        return candidate
+            if isinstance(data, dict):
+                for key in (icao, icao.upper(), icao.lower(), "airport", "station"):
+                    sub = data.get(key)
+                    if isinstance(sub, dict):
+                        for field in ("atis", "datis", "text", "atisText", "message", "body"):
+                            value = sub.get(field)
+                            if value and isinstance(value, str):
+                                candidate = extract_atis_text(value)
+                                if is_good_atis(candidate):
+                                    print(f"D-ATIS fetch OK from D-ATIS JSON API ({url}, key={key}, field={field})")
+                                    return candidate
+            print(f"D-ATIS D-ATIS JSON API JSON at {url} had no recognized ATIS field; trying next.")
+            continue
+        candidate = extract_atis_text(raw)
+        if is_good_atis(candidate):
+            print(f"D-ATIS fetch OK from D-ATIS JSON API plain-text ({url})")
+            return candidate
+        print(f"D-ATIS D-ATIS JSON API plain-text at {url} did not contain valid ATIS; trying next.")
+    return ""
+
+
 def fetch_current_atis(urls):
     """Try ATIS sources until one returns a parseable current ATIS text."""
+    api_result = fetch_atis_info_api("KMEM")
+    if is_good_atis(api_result):
+        return api_result
+    print("D-ATIS D-ATIS JSON API: no valid ATIS returned; trying remaining sources.")
     for url in urls:
+        if "atis.info" in url:
+            print(f"D-ATIS skipping JS-rendered page {url} (use API instead).")
+            continue
         raw = fetch_url(url)
         if not raw or not raw.strip():
             continue
-
         atis_text = atis_text_from_html(raw)
         if is_good_atis(atis_text):
             print(f"D-ATIS fetch OK from {url}")
             return atis_text
-
         print(f"D-ATIS fetch from {url} did not contain valid ATIS text; trying next source.")
-
     print("D-ATIS fetch failed for all configured URLs.")
     return "D-ATIS unavailable"
 
@@ -3991,7 +4056,8 @@ def build_weather_json():
             f"https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&hours=6&taf=false&_={cache_buster}",
             f"https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false&_={cache_buster}",
             "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&hours=6&taf=false",
-            "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false"
+            "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false",
+            "https://tgftp.nws.noaa.gov/data/observations/metar/stations/KMEM.TXT"
         ],
         "METAR"
     )
@@ -4007,8 +4073,6 @@ def build_weather_json():
 
     atis_current = fetch_current_atis(
         [
-            "https://atis.info/KMEM",
-            "https://www.atis.info/KMEM",
             "https://atisrelay.com/datis/KMEM",
             f"https://atisrelay.com/datis/KMEM?_={cache_buster}"
         ]
