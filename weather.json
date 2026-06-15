@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 150254Z 00000KT 10SM FEW038 24/20 A3001 RMK AO2 SLP156 T02390200 53012 $",
   "taf": "TAF KMEM 150257Z 1503/1606 30006KT P6SM SCT030 BKN050 \n  FM150400 04005KT P6SM SCT070 BKN150 \n  FM151800 36007KT P6SM BKN100",
-  "atisText": "MEM ATIS INFO Z 0154Z. 28004KT 10SM FEW030 24/19 A2999 (TWO NINER NINER NINER) RMK AO2 SLP149 T02440194. VISUAL APCH IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RY 36L ALS OTS, RY 36L PAPI OTS. RWY 18R RAIL OTS. MEM TACAN OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO Z",
-  "atisLetter": "Z",
-  "atisPhonetic": "ZULU",
-  "atisDisplay": "ZULU",
+  "atisText": "MEM ATIS INFO A 0254Z. 00000KT 10SM FEW038 24/20 A3001 (THREE ZERO ZERO ONE). SIMUL VISUAL APCHS IN USE RY 36L, 36C, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RY 36L ALS OTS, RY 36L PAPI OTS. RWY 18R RAIL OTS. MEM TACAN OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO A",
+  "atisLetter": "A",
+  "atisPhonetic": "ALFA",
+  "atisDisplay": "ALFA",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
-  "atisFetchStatus": "WARN_SOURCE",
+  "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-15T02:54:00Z",
-  "metarAgeMinutes": 19,
-  "atisObservedZ": "2026-06-15T01:54:00Z",
-  "atisAgeMinutes": 79,
+  "metarAgeMinutes": 29,
+  "atisObservedZ": "2026-06-15T02:54:00Z",
+  "atisAgeMinutes": 29,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -24,23 +24,23 @@
   "trendReferenceTimestampZ": "2026-06-15T00:22:48Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
-  "obsSource": "METAR",
+  "obsSource": "ATIS",
   "obsFieldSources": {
-    "wind": "METAR",
-    "tempDp": "METAR",
-    "altimeter": "METAR",
-    "visibility": "METAR",
+    "wind": "ATIS",
+    "tempDp": "ATIS",
+    "altimeter": "ATIS",
+    "visibility": "ATIS",
     "ceiling": "NONE"
   },
   "metarAltimeterRaw": 30.01,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
-  "atisAltimeterRaw": null,
-  "atisVisibilitySm": null,
-  "atisVisibilityDisplay": "",
+  "atisAltimeterRaw": 30.01,
+  "atisVisibilitySm": 10.0,
+  "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
-  "arrRunways": "36L / 36R / 27",
+  "arrRunways": "36L / 36C / 36R / 27",
   "depRunways": "27",
   "closedRunways": "NONE",
   "knownMemRunways": [
@@ -104,7 +104,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-15 03:12:00.000",
+  "bwcUpdatedZ": "2026-06-15 03:18:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-15 03:13:45Z",
+  "milNotamUpdatedZ": "2026-06-15 03:23:45Z",
   "milNotamScrollText": "M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -252,13 +252,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-15 03:12Z",
+  "allFeedsUpdatedZ": "2026-06-15 03:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-15 03:12:47Z"
+    "lastWorkflowTimestampZ": "2026-06-15 03:22:47Z"
   }
 }
