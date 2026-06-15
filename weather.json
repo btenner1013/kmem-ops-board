@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 152054Z 35009KT 10SM FEW050 BKN170 27/15 A2998 RMK AO2 SLP147 T02670150 56011 $",
   "taf": "TAF KMEM 152057Z 1521/1624 36007KT P6SM FEW050 SCT170 \n  FM160100 14003KT P6SM SCT250 \n  FM161500 20006KT P6SM SCT080 BKN250",
-  "atisText": "MEM ATIS INFO C 2054Z. 35009KT 10SM FEW050 BKN170 27/15 A2998 (TWO NINER NINER EIGHT). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RY 36L PAPI OTS, MEM VOR OTS, ELVIS DEPS EXPECT VECTORS TO FILED ROUTE. MEM TACAN OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO C",
-  "atisLetter": "C",
-  "atisPhonetic": "CHARLIE",
-  "atisDisplay": "CHARLIE",
+  "atisText": "MEM ATIS INFO D 2054Z. 35009KT 10SM FEW050 BKN170 27/15 A2998 (TWO NINER NINER EIGHT). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RY 36L PAPI OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO D",
+  "atisLetter": "D",
+  "atisPhonetic": "DELTA",
+  "atisDisplay": "DELTA",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-15T20:54:00Z",
-  "metarAgeMinutes": 39,
+  "metarAgeMinutes": 49,
   "atisObservedZ": "2026-06-15T20:54:00Z",
-  "atisAgeMinutes": 39,
+  "atisAgeMinutes": 49,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-15T18:42:47Z",
+  "trendReferenceTimestampZ": "2026-06-15T18:52:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -104,7 +104,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-15 21:30:00.000",
+  "bwcUpdatedZ": "2026-06-15 21:42:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-15 21:33:38Z",
+  "milNotamUpdatedZ": "2026-06-15 21:43:41Z",
   "milNotamScrollText": "M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -147,8 +147,21 @@
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
-  "runwayClosureNotams": [],
-  "runwayClosureNotamCount": 0,
+  "runwayClosureNotams": [
+    {
+      "number": "06/294",
+      "classification": "RWY_CLOSURE",
+      "severity": "red",
+      "text": "RWY 09/27 CLSD",
+      "displayText": "RWY 09/27 CLSD",
+      "effectiveStart": "202606161300",
+      "effectiveEnd": "202606162200",
+      "lastUpdated": "2026-06-15T21:40:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, A1, V1, V2"
+    }
+  ],
+  "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
     {
       "number": "06/276",
@@ -176,15 +189,28 @@
     }
   ],
   "constructionStatusNotamCount": 2,
-  "taxiRestrictionNotams": [],
-  "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-06-15 21:32Z",
+  "taxiRestrictionNotams": [
+    {
+      "number": "06/294",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "red",
+      "text": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, A1, V1, V2",
+      "displayText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, A1, V1, V2",
+      "effectiveStart": "202606161300",
+      "effectiveEnd": "202606162200",
+      "lastUpdated": "2026-06-15T21:40:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, A1, V1, V2"
+    }
+  ],
+  "taxiRestrictionNotamCount": 1,
+  "allFeedsUpdatedZ": "2026-06-15 21:42Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-15 21:32:47Z"
+    "lastWorkflowTimestampZ": "2026-06-15 21:42:47Z"
   }
 }
