@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-16T20:54:00Z",
-  "metarAgeMinutes": 19,
+  "metarAgeMinutes": 29,
   "atisObservedZ": "2026-06-16T20:54:00Z",
-  "atisAgeMinutes": 19,
+  "atisAgeMinutes": 29,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-16T18:22:47Z",
+  "trendReferenceTimestampZ": "2026-06-16T18:32:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -104,7 +104,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-16 21:12:00.000",
+  "bwcUpdatedZ": "2026-06-16 21:18:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-16 21:13:49Z",
+  "milNotamUpdatedZ": "2026-06-16 21:23:57Z",
   "milNotamScrollText": "M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -176,6 +176,42 @@
   "runwayClosureNotamCount": 2,
   "constructionStatusNotams": [
     {
+      "number": "06/319",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY S BTN TWY S6 AND TWY P WIP PAVEMENT REPAIRS",
+      "displayText": "TWY S BTN TWY S6 AND TWY P WIP PAVEMENT REPAIRS",
+      "effectiveStart": "202606171300",
+      "effectiveEnd": "202606171930",
+      "lastUpdated": "2026-06-16T21:21:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY S BTN TWY S6 AND TWY P WIP PAVEMENT REPAIRS"
+    },
+    {
+      "number": "06/318",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY C WIP SPRAYING AND MOWING",
+      "displayText": "TWY C WIP SPRAYING AND MOWING",
+      "effectiveStart": "202606171300",
+      "effectiveEnd": "202606171930",
+      "lastUpdated": "2026-06-16T21:21:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY C WIP SPRAYING AND MOWING"
+    },
+    {
+      "number": "06/317",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY S WIP SPRAYING AND MOWING",
+      "displayText": "TWY S WIP SPRAYING AND MOWING",
+      "effectiveStart": "202606171300",
+      "effectiveEnd": "202606171930",
+      "lastUpdated": "2026-06-16T21:21:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY S WIP SPRAYING AND MOWING"
+    },
+    {
       "number": "06/276",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -200,8 +236,20 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 2,
+  "constructionStatusNotamCount": 5,
   "taxiRestrictionNotams": [
+    {
+      "number": "06/316",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY V3, A2, TWY N BTN TWY V AND TWY A CLSD",
+      "displayText": "TWY V3, A2, TWY N BTN TWY V AND TWY A CLSD",
+      "effectiveStart": "202606171300",
+      "effectiveEnd": "202606171930",
+      "lastUpdated": "2026-06-16T21:21:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY V3, A2, TWY N BTN TWY V AND TWY A CLSD"
+    },
     {
       "number": "06/315",
       "classification": "TAXI_ROUTE_RESTR",
@@ -239,14 +287,14 @@
       "rawText": "RWY 18C/36C CLSD EXC CROSSING TWY K, P, E"
     }
   ],
-  "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-16 21:12Z",
+  "taxiRestrictionNotamCount": 4,
+  "allFeedsUpdatedZ": "2026-06-16 21:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-16 21:12:47Z"
+    "lastWorkflowTimestampZ": "2026-06-16 21:22:47Z"
   }
 }
