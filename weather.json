@@ -1,5 +1,5 @@
 {
-  "metar": "METAR KMEM 182154Z 14007KT 10SM BKN022 BKN027 BKN060 28/23 A2977 RMK AO2 SLP077 T02780233 $",
+  "metar": "SPECI KMEM 182201Z 16007KT 10SM FEW095 28/23 A2977 RMK AO2 LTG DSNT N T02780233 $",
   "taf": "TAF KMEM 182052Z 1821/1924 18004KT P6SM FEW015 BKN040 \n  PROB30 1821/1823 -SHRA BKN035 \n  FM182300 03006KT P6SM SCT040 \n  PROB30 1823/1902 -TSRA BKN035CB \n  FM190800 03008KT P6SM SCT035 BKN080 \n  PROB30 1908/1912 4SM -TSRA BKN035CB \n  FM191500 05006KT P6SM VCSH BKN050",
   "atisText": "MEM ATIS INFO L 2201Z SPECIAL. 16007KT 10SM FEW095 28/23 A2977 (TWO NINER SEVEN SEVEN) RMK AO2 LTG DSNT N T02780233. ILS APCH IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RY 36L PAPI OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO L",
   "atisLetter": "L",
@@ -8,10 +8,10 @@
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-06-18T21:54:00Z",
-  "metarAgeMinutes": 9,
+  "metarObservedZ": "2026-06-18T22:01:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-06-18T22:01:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,21 +21,21 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-18T19:12:47Z",
+  "trendReferenceTimestampZ": "2026-06-18T19:22:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
-  "obsSource": "MIXED",
+  "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
     "tempDp": "ATIS",
     "altimeter": "ATIS",
     "visibility": "ATIS",
-    "ceiling": "METAR"
+    "ceiling": "NONE"
   },
   "metarAltimeterRaw": 29.77,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
-  "metarCeilingFt": 2200,
+  "metarCeilingFt": null,
   "atisAltimeterRaw": 29.77,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
@@ -60,10 +60,10 @@
   "altimeterRaw": 29.77,
   "altimeterTrend": "\u2192",
   "altimeterTrendText": "STEADY",
-  "ceilingFt": 2200,
-  "ceilingDisplay": "2200 FT",
-  "ceilingTrend": "\u2193",
-  "ceilingTrendText": "FALLING",
+  "ceilingFt": null,
+  "ceilingDisplay": "UNL",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2191",
@@ -75,9 +75,9 @@
   "windGustKt": null,
   "windArrow": "\u2191",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25bc",
-  "windTrendText": "DECREASING",
-  "windTrendClass": "improving",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 28,
   "dewpointC": 23,
   "tempDpDisplay": "28/23",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-23Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-18 22:00:00.000",
+  "bwcUpdatedZ": "2026-06-18 22:12:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-18 22:03:48Z",
+  "milNotamUpdatedZ": "2026-06-18 22:13:48Z",
   "milNotamScrollText": "M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -246,13 +246,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-06-18 22:02Z",
+  "allFeedsUpdatedZ": "2026-06-18 22:12Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-18 22:02:47Z"
+    "lastWorkflowTimestampZ": "2026-06-18 22:12:47Z"
   }
 }
