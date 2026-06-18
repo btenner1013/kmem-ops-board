@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 181254Z 20006KT 10SM BKN043 BKN250 26/23 A2980 RMK AO2 SLP087 T02610228 $",
   "taf": "TAF KMEM 181129Z 1812/1918 18007KT P6SM SCT010 BKN025 \n  PROB30 1814/1818 -SHRA BKN020 \n  FM181800 19007KT P6SM SCT035 BKN060 \n  PROB30 1818/1823 -TSRA BKN035CB \n  FM182300 03006KT P6SM SCT040 \n  PROB30 1823/1902 -TSRA BKN035CB \n  FM191500 05006KT P6SM VCSH BKN050",
-  "atisText": "MEM ATIS INFO T 1254Z. 20006KT 10SM BKN043 BKN250 26/23 A2980 (TWO NINER EIGHT ZERO) RMK AO2 SLP087 T02610228. ILS APCH IN USE RY 18R, 27. DEPG RWYS 18C. NOTICE TO AIRMEN. RWY 18L, 36R CLSD. TWY H CLSD BTN TWY, R1 AND TWY J, TWY Y SOUTH OF MIL RAMP. RY 36L PAPI OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO T",
-  "atisLetter": "T",
-  "atisPhonetic": "TANGO",
-  "atisDisplay": "TANGO",
+  "atisText": "MEM ATIS INFO U 1254Z. 20006KT 10SM BKN043 BKN250 26/23 A2980 (TWO NINER EIGHT ZERO). ILS APCH IN USE RY 18C, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. RWY 18L, 36R CLSD. TWY H CLSD BTN TWY, R1 AND TWY J, TWY Y SOUTH OF MIL RAMP. RY 36L PAPI OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO U",
+  "atisLetter": "U",
+  "atisPhonetic": "UNIFORM",
+  "atisDisplay": "UNIFORM",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-18T12:54:00Z",
-  "metarAgeMinutes": 39,
+  "metarAgeMinutes": 49,
   "atisObservedZ": "2026-06-18T12:54:00Z",
-  "atisAgeMinutes": 39,
+  "atisAgeMinutes": 49,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-18T10:42:47Z",
+  "trendReferenceTimestampZ": "2026-06-18T10:52:48Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -40,7 +40,7 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": 4300,
-  "arrRunways": "18R / 27",
+  "arrRunways": "18C / 18R",
   "depRunways": "18C",
   "closedRunways": "18L / 36R",
   "knownMemRunways": [
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 14-18Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-18 13:30:00.000",
+  "bwcUpdatedZ": "2026-06-18 13:42:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-18 13:34:36Z",
+  "milNotamUpdatedZ": "2026-06-18 13:43:58Z",
   "milNotamScrollText": "M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -294,13 +294,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-18 13:32Z",
+  "allFeedsUpdatedZ": "2026-06-18 13:42Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-18 13:32:47Z"
+    "lastWorkflowTimestampZ": "2026-06-18 13:42:47Z"
   }
 }
