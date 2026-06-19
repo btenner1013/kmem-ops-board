@@ -1,17 +1,17 @@
 {
-  "metar": "SPECI KMEM 190029Z 01005KT 10SM SCT021 BKN037 OVC080 24/22 A2979 RMK AO2 PK WND 04027/0005 RAB04RAEMM TSB11E29 OCNL LTGIC ALQDS TS ALQDS MOV S P0009 T02440217 $",
+  "metar": "SPECI KMEM 190029Z COR 01005KT 10SM SCT021 BKN037 OVC080 24/22 A2979 RMK AO2 PK WND 04027/0005 RAB04RAEMM TSB11E29 OCNL LTGIC ALQDS TS ALQDS MOV S P0009 T02440217 $",
   "taf": "TAF KMEM 182324Z 1900/2006 VRB04KT P6SM VCTS SCT050 BKN250CB \n  FM190200 02004KT P6SM SCT050 BKN250 \n  FM190800 03008KT P6SM SCT025 BKN150 \n  PROB30 1911/1917 -SHRA BKN025 \n  FM192000 04006KT P6SM OVC250 \n  FM200000 06003KT P6SM OVC250",
-  "atisText": "MEM ATIS INFO U 0029Z SPECIAL. 01005KT 10SM SCT021 BKN037 OVC080 24/22 A2979 (TWO NINER SEVEN NINER) RMK AO2 PK WND 04027/0005 RAB04RAEMM TSB11E29 OCNL LTGIC ALQDS TS ALQDS MOV S P0009 T02440217. ILS APCH IN USE RY 36L, 36R, 27. DEPG RWYS 36C, 27. NOTICE TO AIRMEN. RY 36L PAPI OTS. WIND SHEAR ADZYS IN EFCT. RWY 36L CONDITION CODES, , 5 , , 5 , , 5 , AT 0000Z, RWY 36C CONDITION CODES, , 5 , , 5 , , 5 , AT 0000Z, RWY 36R CONDITION CODES, , 5 , , 5 , , 5 , AT 0000Z, RWY 27 CONDITION CODES, , 5 , , 5 , , 5 , AT 0000Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO U",
-  "atisLetter": "U",
-  "atisPhonetic": "UNIFORM",
-  "atisDisplay": "UNIFORM",
+  "atisText": "MEM ATIS INFO W 0040Z SPECIAL. 29006KT 10SM FEW015 24/22 A2979 (TWO NINER SEVEN NINER) RMK AO2 PK WND 04027/0005 RAB04RAEMM TSB11E29 P0009 T02390222. ILS APCH IN USE RY 36L, 36R, 27. DEPG RWYS 36C, 27. NOTICE TO AIRMEN. RY 36L PAPI OTS. WIND SHEAR ADZYS IN EFCT. RWY 36L CONDITION CODES, , 5 , , 5 , , 5 , AT 0000Z, RWY 36C CONDITION CODES, , 5 , , 5 , , 5 , AT 0000Z, RWY 36R CONDITION CODES, , 5 , , 5 , , 5 , AT 0000Z, RWY 27 CONDITION CODES, , 5 , , 5 , , 5 , AT 0000Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO W",
+  "atisLetter": "W",
+  "atisPhonetic": "WHISKEY",
+  "atisDisplay": "WHISKEY",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-19T00:29:00Z",
-  "metarAgeMinutes": 4,
-  "atisObservedZ": "2026-06-19T00:29:00Z",
-  "atisAgeMinutes": 4,
+  "metarAgeMinutes": 14,
+  "atisObservedZ": "2026-06-19T00:40:00Z",
+  "atisAgeMinutes": 3,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,16 +21,16 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-18T21:42:47Z",
+  "trendReferenceTimestampZ": "2026-06-18T21:52:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
-  "obsSource": "ATIS",
+  "obsSource": "MIXED",
   "obsFieldSources": {
     "wind": "ATIS",
     "tempDp": "ATIS",
     "altimeter": "ATIS",
     "visibility": "ATIS",
-    "ceiling": "ATIS"
+    "ceiling": "METAR"
   },
   "metarAltimeterRaw": 29.79,
   "metarVisibilitySm": 10.0,
@@ -39,7 +39,7 @@
   "atisAltimeterRaw": 29.79,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
-  "atisCeilingFt": 3700,
+  "atisCeilingFt": null,
   "arrRunways": "36L / 36R / 27",
   "depRunways": "36C / 27",
   "closedRunways": "NONE",
@@ -68,12 +68,12 @@
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
   "visibilityTrendText": "STEADY",
-  "windRaw": "01005KT",
-  "windDisplay": "01005KT",
-  "windDirDeg": 10,
-  "windSpeedKt": 5,
+  "windRaw": "29006KT",
+  "windDisplay": "29006KT",
+  "windDirDeg": 290,
+  "windSpeedKt": 6,
   "windGustKt": null,
-  "windArrow": "\u2193",
+  "windArrow": "\u2192",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
   "windTrend": "\u25bc",
   "windTrendText": "DECREASING",
@@ -95,11 +95,10 @@
   "wxAlerts": [
     {
       "code": "TS",
-      "label": "THUNDERSTORM / THUNDERSTORM",
+      "label": "THUNDERSTORM",
       "emoji": "\u26c8\ufe0f",
       "category": "thunder",
       "sources": [
-        "ATIS",
         "METAR"
       ],
       "severity": "active",
@@ -107,23 +106,22 @@
       "flash": true,
       "pulse": false,
       "priority": 10,
-      "text": "TS ATIS",
-      "displayText": "\u26c8\ufe0f TS ATIS",
+      "text": "TS OBS",
+      "displayText": "\u26c8\ufe0f TS OBS",
       "tafWindow": "",
       "tafStartKey": -1,
       "tafGroupType": ""
     }
   ],
-  "wxAlertText": "\u26c8\ufe0f TS ATIS",
-  "wxAlertLogText": "TS ATIS",
+  "wxAlertText": "\u26c8\ufe0f TS OBS",
+  "wxAlertLogText": "TS OBS",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
     "code": "TS",
-    "label": "THUNDERSTORM / THUNDERSTORM",
+    "label": "THUNDERSTORM",
     "emoji": "\u26c8\ufe0f",
     "category": "thunder",
     "sources": [
-      "ATIS",
       "METAR"
     ],
     "severity": "active",
@@ -131,8 +129,8 @@
     "flash": true,
     "pulse": false,
     "priority": 10,
-    "text": "TS ATIS",
-    "displayText": "\u26c8\ufe0f TS ATIS",
+    "text": "TS OBS",
+    "displayText": "\u26c8\ufe0f TS OBS",
     "tafWindow": "",
     "tafStartKey": -1,
     "tafGroupType": ""
@@ -141,10 +139,10 @@
   "wxAlertTone": "red",
   "wxAlertFlash": true,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \u26c8\ufe0f TS ATIS",
+  "tafTrend": "WX ALERT | \u26c8\ufe0f TS OBS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-19 00:30:00.000",
+  "bwcUpdatedZ": "2026-06-19 00:36:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -157,7 +155,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-19 00:33:57Z",
+  "milNotamUpdatedZ": "2026-06-19 00:43:58Z",
   "milNotamScrollText": "M0019/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -194,7 +192,7 @@
       "displayText": "APRON ALL FICON WET OBS AT 2606190021.",
       "effectiveStart": "202606190021",
       "effectiveEnd": "202606200021",
-      "lastUpdated": "2026-06-19T00:21:00.000Z",
+      "lastUpdated": "2026-06-19T00:36:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -205,7 +203,7 @@
       "displayText": "TWY ALL FICON WET OBS AT 2606190020.",
       "effectiveStart": "202606190020",
       "effectiveEnd": "202606200020",
-      "lastUpdated": "2026-06-19T00:20:00.000Z",
+      "lastUpdated": "2026-06-19T00:36:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -311,13 +309,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-06-19 00:32Z",
+  "allFeedsUpdatedZ": "2026-06-19 00:42Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-19 00:32:47Z"
+    "lastWorkflowTimestampZ": "2026-06-19 00:42:47Z"
   }
 }
