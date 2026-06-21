@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 210254Z 20006KT 10SM FEW033 25/22 A2993 RMK AO2 SLP132 T02500222 53006 $",
   "taf": "TAF KMEM 202320Z 2100/2206 20004KT P6SM SCT030 BKN100 \n  FM211500 19012G22KT P6SM BKN050 BKN250 \n  FM220200 20010G20KT P6SM VCSH SCT050 SCT100",
-  "atisText": "MEM ATIS INFO A 0254Z. 20006KT 10SM FEW033 25/22 A2993 (TWO NINER NINER THREE) RMK AO2 SLP132 T02500222 53006. SIMUL VISUAL APCHS IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. RY 36L PAPI OTS, FREQ 121.0 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO A",
-  "atisLetter": "A",
-  "atisPhonetic": "ALFA",
-  "atisDisplay": "ALFA",
+  "atisText": "MEM ATIS INFO B 0254Z. 20006KT 10SM FEW033 25/22 A2993 (TWO NINER NINER THREE) RMK AO2 SLP132 T02500222 53006. SIMUL VISUAL APCHS IN USE RY 27. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RY 36L PAPI OTS, FREQ 121.0 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO B",
+  "atisLetter": "B",
+  "atisPhonetic": "BRAVO",
+  "atisDisplay": "BRAVO",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-21T02:54:00Z",
-  "metarAgeMinutes": 39,
+  "metarAgeMinutes": 49,
   "atisObservedZ": "2026-06-21T02:54:00Z",
-  "atisAgeMinutes": 39,
+  "atisAgeMinutes": 49,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-21T00:42:47Z",
+  "trendReferenceTimestampZ": "2026-06-21T00:52:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -40,7 +40,7 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
-  "arrRunways": "18L / 18R / 27",
+  "arrRunways": "27",
   "depRunways": "18R / 18C / 18L",
   "closedRunways": "NONE",
   "knownMemRunways": [
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL 22 JUN 02-06Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-21 03:30:00.000",
+  "bwcUpdatedZ": "2026-06-21 03:42:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-21 03:33:52Z",
+  "milNotamUpdatedZ": "2026-06-21 03:43:50Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -194,6 +194,30 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "06/392",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "RWY 18L LEAD OFF CL MARKINGS AT TWY S1 OBSC",
+      "displayText": "RWY 18L LEAD OFF CL MARKINGS AT TWY S1 OBSC",
+      "effectiveStart": "202606210339",
+      "effectiveEnd": "202607210500",
+      "lastUpdated": "2026-06-21T03:39:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 18L LEAD OFF CL MARKINGS AT TWY S1 OBSC"
+    },
+    {
+      "number": "06/391",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "RWY 36R LEAD OFF CL MARKINGS AT TWY S4 OBSC",
+      "displayText": "RWY 36R LEAD OFF CL MARKINGS AT TWY S4 OBSC",
+      "effectiveStart": "202606210338",
+      "effectiveEnd": "202607210500",
+      "lastUpdated": "2026-06-21T03:38:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 36R LEAD OFF CL MARKINGS AT TWY S4 OBSC"
+    },
     {
       "number": "06/381",
       "classification": "CONST_AFLD_STATUS",
@@ -243,7 +267,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 4,
+  "constructionStatusNotamCount": 6,
   "taxiRestrictionNotams": [
     {
       "number": "06/382",
@@ -283,13 +307,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-21 03:32Z",
+  "allFeedsUpdatedZ": "2026-06-21 03:42Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-21 03:32:47Z"
+    "lastWorkflowTimestampZ": "2026-06-21 03:42:47Z"
   }
 }
