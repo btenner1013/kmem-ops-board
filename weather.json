@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-21T13:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-06-21T13:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-21T11:32:47Z",
+  "trendReferenceTimestampZ": "2026-06-21T11:42:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL 22 JUN 02-18Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-21 14:18:00.000",
+  "bwcUpdatedZ": "2026-06-21 14:30:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-21 14:23:48Z",
+  "milNotamUpdatedZ": "2026-06-21 14:33:50Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -194,6 +194,18 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "06/394",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "APRON CARGO RAMP NORTH EDGE MARKINGS N SIDE REMOVED",
+      "displayText": "APRON CARGO RAMP NORTH EDGE MARKINGS N SIDE REMOVED",
+      "effectiveStart": "202606211422",
+      "effectiveEnd": "202607312359",
+      "lastUpdated": "2026-06-21T14:22:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "APRON CARGO RAMP NORTH EDGE MARKINGS N SIDE REMOVED"
+    },
     {
       "number": "06/392",
       "classification": "CONST_AFLD_STATUS",
@@ -267,7 +279,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 6,
+  "constructionStatusNotamCount": 7,
   "taxiRestrictionNotams": [
     {
       "number": "06/382",
@@ -307,13 +319,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-21 14:22Z",
+  "allFeedsUpdatedZ": "2026-06-21 14:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-21 14:22:47Z"
+    "lastWorkflowTimestampZ": "2026-06-21 14:32:47Z"
   }
 }
