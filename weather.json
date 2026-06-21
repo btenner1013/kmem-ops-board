@@ -1,17 +1,17 @@
 {
-  "metar": "METAR KMEM 211154Z 17005KT 10SM SCT250 22/21 A2991 RMK AO2 SLP124 T02220211 10239 20217 58002 $",
+  "metar": "METAR KMEM 211254Z 20008KT 10SM FEW012 SCT060 SCT250 24/22 A2992 RMK AO2 SLP128 T02390217 $",
   "taf": "TAF KMEM 211123Z 2112/2218 19005KT P6SM SCT030 BKN100 \n  FM211500 19012G22KT P6SM BKN050 BKN250 \n  FM220200 20010G20KT P6SM VCSH SCT050 SCT100 \n  FM220600 21010G20KT P6SM VCSH SCT040 BKN100 \n  PROB30 2208/2213 4SM -TSRA BKN040CB \n  FM221400 24012KT P6SM VCSH BKN025 BKN045",
   "atisText": "MEM ATIS INFO N 1254Z. 20008KT 10SM FEW012 SCT060 SCT250 24/22 A2992 (TWO NINER NINER TWO). ILS APCH IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. RY 36L PAPI OTS, FREQ 121.0 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO N",
   "atisLetter": "N",
   "atisPhonetic": "NOVEMBER",
   "atisDisplay": "NOVEMBER",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-06-21T11:54:00Z",
-  "metarAgeMinutes": 69,
+  "metarObservedZ": "2026-06-21T12:54:00Z",
+  "metarAgeMinutes": 19,
   "atisObservedZ": "2026-06-21T12:54:00Z",
-  "atisAgeMinutes": 9,
+  "atisAgeMinutes": 19,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-21T10:12:47Z",
+  "trendReferenceTimestampZ": "2026-06-21T10:22:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -32,7 +32,7 @@
     "visibility": "ATIS",
     "ceiling": "NONE"
   },
-  "metarAltimeterRaw": 29.91,
+  "metarAltimeterRaw": 29.92,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
@@ -146,12 +146,12 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 22 JUN 08-13Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-21 13:00:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-06-21 13:12:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "9999",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=6&day=21&hour=13&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=6&iDay=21&iHour=13",
@@ -159,7 +159,7 @@
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-21 13:03:49Z",
+  "milNotamUpdatedZ": "2026-06-21 13:13:49Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -307,13 +307,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-21 13:02Z",
+  "allFeedsUpdatedZ": "2026-06-21 13:12Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-21 13:02:47Z"
+    "lastWorkflowTimestampZ": "2026-06-21 13:12:47Z"
   }
 }
