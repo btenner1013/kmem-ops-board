@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-22T20:28:00Z",
-  "metarAgeMinutes": 5,
+  "metarAgeMinutes": 15,
   "atisObservedZ": "2026-06-22T20:28:00Z",
-  "atisAgeMinutes": 5,
+  "atisAgeMinutes": 15,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-22T17:42:47Z",
+  "trendReferenceTimestampZ": "2026-06-22T17:52:48Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -75,9 +75,9 @@
   "windGustKt": 24,
   "windArrow": "\u2197",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25b2",
-  "windTrendText": "INCREASING",
-  "windTrendClass": "worsening",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 23,
   "dewpointC": 22,
   "tempDpDisplay": "23/22",
@@ -144,7 +144,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA ATIS",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-22 20:30:00.000",
+  "bwcUpdatedZ": "2026-06-22 20:42:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -157,7 +157,7 @@
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-22 20:33:57Z",
+  "milNotamUpdatedZ": "2026-06-22 20:44:00Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -243,8 +243,21 @@
     }
   ],
   "ficonNotamCount": 6,
-  "runwayClosureNotams": [],
-  "runwayClosureNotamCount": 0,
+  "runwayClosureNotams": [
+    {
+      "number": "06/422",
+      "classification": "RWY_CLOSURE",
+      "severity": "red",
+      "text": "RWY 09/27 CLSD",
+      "displayText": "RWY 09/27 CLSD",
+      "effectiveStart": "202606231300",
+      "effectiveEnd": "202606231930",
+      "lastUpdated": "2026-06-22T20:41:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 09/27 CLSD EXC XNG TWY C, S, B, Y, V2, V1, A1"
+    }
+  ],
+  "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
     {
       "number": "06/394",
@@ -320,15 +333,28 @@
     }
   ],
   "constructionStatusNotamCount": 6,
-  "taxiRestrictionNotams": [],
-  "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-06-22 20:32Z",
+  "taxiRestrictionNotams": [
+    {
+      "number": "06/422",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "red",
+      "text": "RWY 09/27 CLSD EXC XNG TWY C, S, B, Y, V2, V1, A1",
+      "displayText": "RWY 09/27 CLSD EXC XNG TWY C, S, B, Y, V2, V1, A1",
+      "effectiveStart": "202606231300",
+      "effectiveEnd": "202606231930",
+      "lastUpdated": "2026-06-22T20:41:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 09/27 CLSD EXC XNG TWY C, S, B, Y, V2, V1, A1"
+    }
+  ],
+  "taxiRestrictionNotamCount": 1,
+  "allFeedsUpdatedZ": "2026-06-22 20:42Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-22 20:32:47Z"
+    "lastWorkflowTimestampZ": "2026-06-22 20:42:47Z"
   }
 }
