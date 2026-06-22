@@ -2260,7 +2260,10 @@ def taf_token_end_datetime(window_token, taf_issue_dt=None):
             month = 1
             year += 1
         try:
-            candidates.append(datetime(year, month, end_day, end_hour, tzinfo=timezone.utc))
+            if end_hour == 24:
+                candidates.append(datetime(year, month, end_day, 0, tzinfo=timezone.utc) + timedelta(days=1))
+            else:
+                candidates.append(datetime(year, month, end_day, end_hour, tzinfo=timezone.utc))
         except ValueError:
             pass
 
@@ -2304,6 +2307,17 @@ def taf_window_display_from_datetimes(start_dt, end_dt=None, current_utc_dt=None
     start_hh = f"{start_dt.hour:02d}"
 
     if end_dt and end_dt > start_dt:
+        is_midnight_rollover = (
+            end_dt.hour == 0 and end_dt.minute == 0 and end_dt.second == 0
+            and end_dt.date() == (start_dt + timedelta(days=1)).date()
+        )
+        if is_midnight_rollover:
+            if is_active:
+                return "NOW-24Z"
+            base = f"{start_hh}-24Z"
+            if start_dt.date() != current_utc_dt.date():
+                return f"{start_dt.day:02d} {TAF_MONTHS[start_dt.month - 1]} {base}"
+            return base
         if end_dt.date() != start_dt.date():
             end_str = f"{end_dt.day:02d} {TAF_MONTHS[end_dt.month - 1]} {end_dt.hour:02d}Z"
             if is_active:
@@ -2636,17 +2650,36 @@ def select_taf_alert(taf_alerts, now_z=None):
 
     bucket = min(item["_tafBucket"] for item in candidates)
     bucket_items = [item for item in candidates if item["_tafBucket"] == bucket]
+
+    # If the current best active (bucket-0) alerts are lower-severity than a
+    # near-term candidate starting within 3 hours (bucket 1), promote that
+    # candidate into the pool. This prevents active VCTS from hiding an imminent
+    # -TSRA that starts in under 3 hours.
+    if bucket == 0:
+        best_rank_in_bucket0 = min(item["_tafHazardRank"] for item in bucket_items)
+        near_term_upgrades = [
+            item for item in candidates
+            if item["_tafBucket"] == 1 and item["_tafHazardRank"] < best_rank_in_bucket0
+        ]
+        if near_term_upgrades:
+            bucket_items = bucket_items + near_term_upgrades
+
     earliest = min(bucket_items, key=lambda item: item["_tafStartDt"])
 
-    close_items = [
-        item for item in bucket_items
-        if item is earliest or taf_alerts_overlap_or_close(item, earliest)
-    ]
-
-    if close_items:
-        selected = min(close_items, key=lambda item: (item["_tafHazardRank"], item["_tafStartDt"]))
-    else:
+    if bucket >= 4:
+        # Beyond 12 hours: earliest start wins regardless of hazard level.
+        # A PROB30 thunderstorm at hour 18 should not override shower activity at hour 12
+        # just because it's more severe — show what comes first operationally.
         selected = earliest
+    else:
+        close_items = [
+            item for item in bucket_items
+            if item is earliest or taf_alerts_overlap_or_close(item, earliest)
+        ]
+        if close_items:
+            selected = min(close_items, key=lambda item: (item["_tafHazardRank"], item["_tafStartDt"]))
+        else:
+            selected = earliest
 
     simultaneous = [selected]
     for item in bucket_items:

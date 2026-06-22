@@ -220,7 +220,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 .date{
   color:#ccc;
-  font-size:clamp(.8rem,1.05vw,1.25rem);
+  font-size:var(--clock-date-px,clamp(.8rem,1.05vw,1.25rem));
   margin-top:4px;
   white-space:nowrap;
 }
@@ -404,8 +404,9 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
   #bwc{ font-size:clamp(.88rem,1.55vw,1.08rem) !important; line-height:1.02 !important; }
 }
 
-/* Tablet/iPad keeps NOTAMs fixed; TV, desktop, and explicit Getac still scroll. */
-@media (max-width:1100px) and (min-width:701px){
+/* Touch-only tablets (iPad etc.) keep NOTAMs fixed.
+   Desktop browsers in split-screen have hover:hover/pointer:fine so this won't match them. */
+@media (max-width:1100px) and (min-width:701px) and (hover:none) and (pointer:coarse){
   body:not(.getac-preset) .mil-notam-panel{ grid-template-columns:minmax(250px,34%) minmax(0,1fr); }
   body:not(.getac-preset) .board-qr-phase66{ width:78px !important; height:78px !important; }
   body:not(.getac-preset) .board-qr-label-phase66{ top:calc(50% - 52px) !important; font-size:.56rem !important; }
@@ -695,7 +696,7 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
   }
 }
 
-/* Hide QR and shrink links on smaller screens / Getac */
+/* Shrink quick-link buttons on small/touch screens */
 @media (max-width: 900px), (hover: none) and (pointer: coarse) {
   .board-quick-links-phase66 {
     top: 6px;
@@ -707,15 +708,24 @@ body.getac-preset .footer{ min-height:0 !important; height:100% !important; padd
     height: 30px;
     font-size: 17px;
   }
-  .board-qr-phase66,
-  .board-qr-label-phase66 {
-    display: none !important;
-  }
-  .mil-notam-active #milNotamCrawl,
-  .mil-notam-active .mil-notam-crawl {
-    padding-right: 4px !important;
-  }
 }
+/* QR: hide only on phones; keep on desktop split-screen and Getac */
+@media (max-width: 700px) {
+  .board-qr-phase66,
+  .board-qr-label-phase66 { display: none !important; }
+  .mil-notam-active #milNotamCrawl,
+  .mil-notam-active .mil-notam-crawl { padding-right: 4px !important; }
+}
+/* QR: hide on touch-only narrow screens (iPad etc.) but not Getac or desktop */
+@media (min-width:701px) and (max-width:900px) and (hover:none) and (pointer:coarse) {
+  body:not(.getac-preset) .board-qr-phase66,
+  body:not(.getac-preset) .board-qr-label-phase66 { display: none !important; }
+  body:not(.getac-preset) .mil-notam-active #milNotamCrawl,
+  body:not(.getac-preset) .mil-notam-active .mil-notam-crawl { padding-right: 4px !important; }
+}
+/* Getac always shows QR regardless of viewport width */
+body.getac-preset .board-qr-phase66 { display: flex !important; }
+body.getac-preset .board-qr-label-phase66 { display: block !important; }
 
 /* Phone-first compact board. Keeps raw WX and NOTAMs readable without inner scrolling. */
 @media (max-width:700px){
@@ -1034,7 +1044,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 
     <div class="panel radar-panel">
       <div class="title radar-title-row"><span id="radarTitle">RADAR</span><span id="radarMode" class="radar-mode">NEXRAD</span></div>
-      <img id="radar" class="radarimg" src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif">
+      <img id="radar" class="radarimg" referrerpolicy="no-referrer" src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif">
     </div>
   </div>
 
@@ -2350,9 +2360,14 @@ function restartMilNotamScroll(){
 window.measureMilNotamScroll=measureMilNotamScroll;
 window.restartMilNotamScroll=restartMilNotamScroll;
 
-// Window resizing re-measures the dynamic NOTAM marquee
+// Window resizing re-measures and restarts the NOTAM crawl after layout settles
+let _notamResizeTimer;
 window.addEventListener("resize", () => {
-    requestAnimationFrame(measureMilNotamScroll);
+  clearTimeout(_notamResizeTimer);
+  _notamResizeTimer = setTimeout(() => {
+    if(typeof window.restartMilNotamScroll === "function") window.restartMilNotamScroll();
+    else if(typeof window.measureMilNotamScroll === "function") requestAnimationFrame(window.measureMilNotamScroll);
+  }, 250);
 });
 
 function setDetailValue(id,html,conditionClass){
@@ -2691,7 +2706,7 @@ setInterval(phase45PolishOpsText,1000);
 (function(){
   const STORAGE_KEY="kmemOpsDisplaySettingsV1";
   const DEFAULTS={
-    preset:"Desktop", clockPx:72, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
+    preset:"Desktop", clockPx:72, clockDatePx:14, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
     notamTitlePx:18, notamStatusPx:16, notamCaoPx:14, labelPx:14, footerPx:18, feedPx:14,
     rawLine:1.45, notamLine:1.38, notamScrollSec:55, topRowPx:110, notamRowPx:58, footerRowPx:54,
     weatherColPct:44, strongPulse:true
@@ -2719,6 +2734,7 @@ setInterval(phase45PolishOpsText,1000);
     const root=document.documentElement;
 
     root.style.setProperty("--clock-px", px(s.clockPx,42,128,DEFAULTS.clockPx) + "px");
+    root.style.setProperty("--clock-date-px", px(s.clockDatePx,9,24,DEFAULTS.clockDatePx) + "px");
     root.style.setProperty("--notam-body-px", px(s.notamPx,10,34,DEFAULTS.notamPx) + "px");
     root.style.setProperty("--notam-title-px", px(s.notamTitlePx,10,36,DEFAULTS.notamTitlePx) + "px");
     root.style.setProperty("--notam-status-px", px(s.notamStatusPx,10,32,DEFAULTS.notamStatusPx) + "px");
