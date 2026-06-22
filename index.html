@@ -1044,7 +1044,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 
     <div class="panel radar-panel">
       <div class="title radar-title-row"><span id="radarTitle">RADAR</span><span id="radarMode" class="radar-mode">NEXRAD</span></div>
-      <img id="radar" class="radarimg" referrerpolicy="no-referrer" src="https://radar.weather.gov/ridge/standard/KNQA_loop.gif">
+      <img id="radar" class="radarimg" src="radar.gif">
     </div>
   </div>
 
@@ -2532,7 +2532,7 @@ function updateRefreshCountdown(){
   refreshRemaining--;
 }
 
-const NEXRAD_URL="https://radar.weather.gov/ridge/standard/KNQA_loop.gif";
+const NEXRAD_URL="radar.gif";
 
 function setRadarNexradOnly(){
   const radar=document.getElementById("radar");

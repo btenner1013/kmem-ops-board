@@ -21,6 +21,8 @@ except Exception:
 
 
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+RADAR_GIF_URL = "https://radar.weather.gov/ridge/standard/KNQA_loop.gif"
+RADAR_GIF_PATH = os.path.join(REPO_DIR, "radar.gif")
 LOCAL_CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", REPO_DIR), "KMEMOpsBoard")
 REPO_LAST_GOOD_WEATHER_PATH = os.path.join(REPO_DIR, "weather_last_good.json")
 LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
@@ -4476,15 +4478,35 @@ def build_weather_json():
     print("Trigger:", data["workflowMetadata"]["lastWorkflowEvent"])
 
 
+def download_radar_gif():
+    try:
+        req = urllib.request.Request(
+            RADAR_GIF_URL,
+            headers={"User-Agent": "KMEM-OpsBoard/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = resp.read()
+        if len(data) < 1000:
+            print("Radar GIF unexpectedly small, skipping save.")
+            return
+        with open(RADAR_GIF_PATH, "wb") as f:
+            f.write(data)
+        print(f"Radar GIF saved ({len(data):,} bytes).")
+    except Exception as e:
+        print(f"Radar GIF download failed (keeping previous): {e}")
+
+
 def git_commit_and_push():
-    print("Committing and pushing weather.json...")
+    print("Committing and pushing...")
 
     run_cmd(["git", "add", "weather.json"])
+    if os.path.exists(RADAR_GIF_PATH):
+        run_cmd(["git", "add", "radar.gif"])
 
     diff_result = run_cmd(["git", "diff", "--cached", "--quiet"], allow_fail=True)
 
     if diff_result.returncode == 0:
-        print("No staged weather.json changes to commit.")
+        print("No staged changes to commit.")
         return
 
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
@@ -4499,6 +4521,7 @@ def main():
     try:
         sync_repo_before_update()
         build_weather_json()
+        download_radar_gif()
         git_commit_and_push()
         print("Local update complete.")
 
