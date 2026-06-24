@@ -5,24 +5,24 @@
   "atisLetter": "M",
   "atisPhonetic": "MIKE",
   "atisDisplay": "MIKE",
-  "metarFetchStatus": "USED_LAST_GOOD",
-  "tafFetchStatus": "USED_LAST_GOOD",
+  "metarFetchStatus": "OK",
+  "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-24T22:09:00Z",
-  "metarAgeMinutes": 5,
+  "metarAgeMinutes": 14,
   "atisObservedZ": "2026-06-24T22:09:00Z",
-  "atisAgeMinutes": 5,
+  "atisAgeMinutes": 14,
   "lastKnownGoodUsed": {
-    "metar": true,
-    "taf": true,
+    "metar": false,
+    "taf": false,
     "atis": false,
     "ahas": false
   },
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-24T19:22:47Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-06-24T19:32:47Z",
+  "trendSampleCount": 23,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 25 JUN 05-08Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-24 22:12:00.000",
+  "bwcUpdatedZ": "2026-06-24 22:18:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-24 22:04:43Z",
+  "milNotamUpdatedZ": "2026-06-24 22:24:24Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -185,7 +185,7 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "SCRIPT_FAILED",
+  "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
@@ -342,13 +342,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-06-24 22:13Z",
+  "allFeedsUpdatedZ": "2026-06-24 22:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-24 22:13:51Z"
+    "lastWorkflowTimestampZ": "2026-06-24 22:22:48Z"
   }
 }
