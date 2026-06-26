@@ -1,6 +1,6 @@
 {
   "metar": "METAR KMEM 262254Z 19013KT 10SM SCT039 BKN160 OVC170 29/23 A2999 RMK AO2 SLP152 T02890228 $",
-  "taf": "TAF KMEM 262105Z 2621/2724 21014G18KT P6SM VCSH SCT050 BKN150 \n  FM270100 20011KT P6SM FEW080 BKN150 \n  FM271300 22011G19KT P6SM SCT050 BKN100",
+  "taf": "TAF KMEM 262326Z 2700/2806 21012KT P6SM SCT040 BKN150 \n  FM270100 20009KT P6SM FEW080 BKN150 \n  FM271400 22011G19KT P6SM SCT050 BKN100 \n  FM280100 20007KT P6SM SCT150",
   "atisText": "MEM ATIS INFO L 2254Z. 19013KT 10SM SCT039 BKN160 OVC170 29/23 A2999 (TWO NINER NINER NINER) RMK AO2 SLP152 T02890228. SIMUL VISUAL APCHS IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. MEM TACAN OTS. RWY 18R RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO L",
   "atisLetter": "L",
   "atisPhonetic": "LIMA",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-26T22:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-06-26T22:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-26T20:32:47Z",
+  "trendReferenceTimestampZ": "2026-06-26T20:42:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -92,61 +92,19 @@
   "lightningPulse": false,
   "lightningSource": "NONE",
   "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND.",
-  "wxAlerts": [
-    {
-      "code": "VCSH",
-      "label": "SHOWERS VICINITY",
-      "emoji": "\ud83c\udf27\ufe0f",
-      "category": "shower",
-      "sources": [
-        "TAF"
-      ],
-      "severity": "forecast_info",
-      "displayTone": "blue",
-      "flash": false,
-      "pulse": false,
-      "priority": 70,
-      "text": "VCSH PSBL NOW-27 JUN 01Z",
-      "displayText": "\ud83c\udf27\ufe0f VCSH PSBL NOW-27 JUN 01Z",
-      "tafWindow": "NOW-27 JUN 01Z",
-      "tafStartKey": 645,
-      "tafGroupType": "PREVAILING",
-      "tafStartIso": "2026-06-26T21:00:00Z",
-      "tafEndIso": "2026-06-27T01:00:00Z"
-    }
-  ],
-  "wxAlertText": "\ud83c\udf27\ufe0f VCSH PSBL NOW-27 JUN 01Z",
-  "wxAlertLogText": "VCSH PSBL NOW-27 JUN 01Z",
-  "wxAlertVisible": true,
-  "wxPrimaryAlert": {
-    "code": "VCSH",
-    "label": "SHOWERS VICINITY",
-    "emoji": "\ud83c\udf27\ufe0f",
-    "category": "shower",
-    "sources": [
-      "TAF"
-    ],
-    "severity": "forecast_info",
-    "displayTone": "blue",
-    "flash": false,
-    "pulse": false,
-    "priority": 70,
-    "text": "VCSH PSBL NOW-27 JUN 01Z",
-    "displayText": "\ud83c\udf27\ufe0f VCSH PSBL NOW-27 JUN 01Z",
-    "tafWindow": "NOW-27 JUN 01Z",
-    "tafStartKey": 645,
-    "tafGroupType": "PREVAILING",
-    "tafStartIso": "2026-06-26T21:00:00Z",
-    "tafEndIso": "2026-06-27T01:00:00Z"
-  },
+  "wxAlerts": [],
+  "wxAlertText": "NONE",
+  "wxAlertLogText": "NONE",
+  "wxAlertVisible": false,
+  "wxPrimaryAlert": null,
   "wxSecondaryAlert": null,
-  "wxAlertTone": "blue",
+  "wxAlertTone": "none",
   "wxAlertFlash": false,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL NOW-27 JUN 01Z",
+  "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-26 23:18:00.000",
+  "bwcUpdatedZ": "2026-06-26 23:30:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "LOW",
@@ -159,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-26 23:24:01Z",
+  "milNotamUpdatedZ": "2026-06-26 23:34:03Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -318,13 +276,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-26 23:22Z",
+  "allFeedsUpdatedZ": "2026-06-26 23:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-26 23:22:48Z"
+    "lastWorkflowTimestampZ": "2026-06-26 23:32:47Z"
   }
 }
