@@ -5,13 +5,13 @@
   "atisLetter": "A",
   "atisPhonetic": "ALFA",
   "atisDisplay": "ALFA",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-06-27T12:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-06-27T12:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-06-27T10:52:47Z",
+  "trendReferenceTimestampZ": "2026-06-27T11:02:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -62,8 +62,8 @@
   "altimeterTrendText": "RISING",
   "ceilingFt": 25000,
   "ceilingDisplay": "25000 FT",
-  "ceilingTrend": "\u2191",
-  "ceilingTrendText": "RISING",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
@@ -146,12 +146,12 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-15Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-06-27 13:42:00.000",
-  "bwcNexrad": "NO DATA",
+  "bwcUpdatedZ": "2026-06-27 13:48:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXBAM",
+  "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "9999",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=6&day=27&hour=13&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=6&iDay=27&iHour=13",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-06-27 13:43:58Z",
+  "milNotamUpdatedZ": "2026-06-27 13:53:59Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -266,18 +266,6 @@
       "rawText": "RWY 36R LEAD OFF CL MARKINGS AT TWY S4 OBSC"
     },
     {
-      "number": "06/276",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "RWY 18R LEAD OFF CL MARKINGS AT TWY M4 NOT STD",
-      "displayText": "RWY 18R LEAD OFF CL MARKINGS AT TWY M4 NOT STD",
-      "effectiveStart": "202606140337",
-      "effectiveEnd": "202606290500",
-      "lastUpdated": "2026-06-14T03:37:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 18R LEAD OFF CL MARKINGS AT TWY M4 NOT STD"
-    },
-    {
       "number": "05/515",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -290,7 +278,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 7,
+  "constructionStatusNotamCount": 6,
   "taxiRestrictionNotams": [
     {
       "number": "06/523",
@@ -330,13 +318,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-06-27 13:42Z",
+  "allFeedsUpdatedZ": "2026-06-27 13:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-06-27 13:42:47Z"
+    "lastWorkflowTimestampZ": "2026-06-27 13:52:47Z"
   }
 }
