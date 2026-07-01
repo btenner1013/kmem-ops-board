@@ -5,13 +5,13 @@
   "atisLetter": "Q",
   "atisPhonetic": "QUEBEC",
   "atisDisplay": "QUEBEC",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-01T20:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-01T20:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-01T18:52:47Z",
+  "trendReferenceTimestampZ": "2026-07-01T19:02:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -81,10 +81,10 @@
   "tempC": 35,
   "dewpointC": 23,
   "tempDpDisplay": "35/23",
-  "tempTrend": "\u25b2",
-  "tempTrendText": "RISING",
-  "dewpointTrend": "\u25ba",
-  "dewpointTrendText": "STEADY",
+  "tempTrend": "\u25ba",
+  "tempTrendText": "STEADY",
+  "dewpointTrend": "\u25b2",
+  "dewpointTrendText": "RISING",
   "lightning": "NONE",
   "lightningSeverity": "none",
   "lightningTone": "green",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 01 JUL 23Z-02 JUL 03Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-01 21:42:00.000",
+  "bwcUpdatedZ": "2026-07-01 21:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-01 21:43:41Z",
+  "milNotamUpdatedZ": "2026-07-01 21:53:44Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -198,13 +198,25 @@
       "displayText": "RWY 18L/36R CLSD",
       "effectiveStart": "202607021300",
       "effectiveEnd": "202607021930",
-      "lastUpdated": "2026-07-01T21:40:00.000Z",
+      "lastUpdated": "2026-07-01T21:44:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18L/36R CLSD EXC XNG TWY D"
     }
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "07/014",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY S, Y WIP AIRFIELD MARKINGS",
+      "displayText": "TWY S, Y WIP AIRFIELD MARKINGS",
+      "effectiveStart": "202607021300",
+      "effectiveEnd": "202607021930",
+      "lastUpdated": "2026-07-01T21:50:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY S, Y WIP AIRFIELD MARKINGS"
+    },
     {
       "number": "06/574",
       "classification": "CONST_AFLD_STATUS",
@@ -278,8 +290,20 @@
       "rawText": "RWY 18L LEAD OFF CL MARKINGS AT TWY S1 OBSC"
     }
   ],
-  "constructionStatusNotamCount": 6,
+  "constructionStatusNotamCount": 7,
   "taxiRestrictionNotams": [
+    {
+      "number": "07/013",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "red",
+      "text": "TWY Y1, Y2, Y3, S1, S2, S3, S4, S5, TWY P BTN TWY S AND TWY Y, TWY E BTN TWY S AND RWY 18L/36R, TWY H BTN TWY S AND TWY Y, TWY R BTN TWY S AND TWY Y, TWY Y BTN MIL RAMP AND TWY R CLSD",
+      "displayText": "TWY Y1, Y2, Y3, S1, S2, S3, S4, S5, TWY P BTN TWY S AND TWY Y, TWY E BTN TWY S AND RWY 18L/36R, TWY H BTN TWY S AND TWY Y, TWY R BTN TWY S AND TWY...",
+      "effectiveStart": "202607021300",
+      "effectiveEnd": "202607021930",
+      "lastUpdated": "2026-07-01T21:48:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY Y1, Y2, Y3, S1, S2, S3, S4, S5, TWY P BTN TWY S AND TWY Y, TWY E BTN TWY S AND RWY 18L/36R, TWY H BTN TWY S AND TWY Y, TWY R BTN TWY S AND TWY Y, TWY Y BTN MIL RAMP AND TWY R CLSD"
+    },
     {
       "number": "07/012",
       "classification": "TAXI_ROUTE_RESTR",
@@ -288,19 +312,19 @@
       "displayText": "RWY 18L/36R CLSD EXC XNG TWY D",
       "effectiveStart": "202607021300",
       "effectiveEnd": "202607021930",
-      "lastUpdated": "2026-07-01T21:40:00.000Z",
+      "lastUpdated": "2026-07-01T21:44:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18L/36R CLSD EXC XNG TWY D"
     }
   ],
-  "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-07-01 21:42Z",
+  "taxiRestrictionNotamCount": 2,
+  "allFeedsUpdatedZ": "2026-07-01 21:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-01 21:42:48Z"
+    "lastWorkflowTimestampZ": "2026-07-01 21:52:47Z"
   }
 }
