@@ -5,13 +5,13 @@
   "atisLetter": "K",
   "atisPhonetic": "KILO",
   "atisDisplay": "KILO",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-04T21:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-04T21:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-04T19:52:47Z",
+  "trendReferenceTimestampZ": "2026-07-04T20:02:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -75,9 +75,9 @@
   "windGustKt": null,
   "windArrow": "\u2191",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25ba",
-  "windTrendText": "STEADY",
-  "windTrendClass": "steady",
+  "windTrend": "\u25bc",
+  "windTrendText": "DECREASING",
+  "windTrendClass": "improving",
   "tempC": 28,
   "dewpointC": 21,
   "tempDpDisplay": "28/21",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL 23-24Z",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-04 22:42:00.000",
+  "bwcUpdatedZ": "2026-07-04 22:48:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-04 22:43:54Z",
+  "milNotamUpdatedZ": "2026-07-04 22:53:57Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -242,20 +242,9 @@
       "effectiveEnd": "202607052120",
       "lastUpdated": "2026-07-04T21:24:00.000Z",
       "source": "FAA_NMS_STAGING"
-    },
-    {
-      "number": "07/036",
-      "classification": "DOM",
-      "severity": "green",
-      "text": "RWY 18C/36C FICON 3/3/3 SLIPPERY WHEN WET OBS AT 2607042119.",
-      "displayText": "RWY 18C/36C FICON 3/3/3 SLIPPERY WHEN WET OBS AT 2607042119.",
-      "effectiveStart": "202607042119",
-      "effectiveEnd": "202607052119",
-      "lastUpdated": "2026-07-04T21:24:00.000Z",
-      "source": "FAA_NMS_STAGING"
     }
   ],
-  "ficonNotamCount": 6,
+  "ficonNotamCount": 5,
   "runwayClosureNotams": [
     {
       "number": "07/029",
@@ -385,13 +374,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-04 22:42Z",
+  "allFeedsUpdatedZ": "2026-07-04 22:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-04 22:42:48Z"
+    "lastWorkflowTimestampZ": "2026-07-04 22:52:48Z"
   }
 }
