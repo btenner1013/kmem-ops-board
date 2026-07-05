@@ -2709,7 +2709,7 @@ setInterval(phase45PolishOpsText,1000);
     preset:"Desktop", clockPx:72, clockDatePx:14, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
     notamTitlePx:18, notamStatusPx:16, notamCaoPx:14, labelPx:14, footerPx:18, feedPx:14,
     rawLine:1.45, notamLine:1.38, notamScrollSec:55, topRowPx:110, notamRowPx:58, footerRowPx:54,
-    weatherColPct:44, strongPulse:true
+    weatherColPct:44, strongPulse:true, showRadar:true
   };
 
   function readSettings(){
@@ -2747,6 +2747,9 @@ setInterval(phase45PolishOpsText,1000);
     root.style.setProperty("--notam-row-px", px(s.notamRowPx,42,140,DEFAULTS.notamRowPx) + "px");
     root.style.setProperty("--footer-row-px", px(s.footerRowPx,28,90,DEFAULTS.footerRowPx) + "px");
     root.style.setProperty("--weather-col-pct", num(s.weatherColPct,35,55,DEFAULTS.weatherColPct) + "%");
+
+    const radarPanel=document.querySelector(".radar-panel");
+    if(radarPanel) radarPanel.style.display=s.showRadar!==false?"":"none";
 
     const pulse=s.strongPulse!==false;
     const css=`

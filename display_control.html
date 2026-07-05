@@ -366,6 +366,10 @@ input[type=range]{
       <input id="strongPulse" type="checkbox">
       Strong WX/lightning pulse
     </label>
+    <label class="toggle">
+      <input id="showRadar" type="checkbox">
+      Show NEXRAD radar panel
+    </label>
   </div>
 
   <div class="card">
@@ -406,7 +410,7 @@ const defaults={
   preset:"Desktop", clockPx:72, clockDatePx:14, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
   notamTitlePx:18, notamStatusPx:16, notamCaoPx:14, labelPx:14, footerPx:18, feedPx:14,
   rawLine:1.45, notamLine:1.38, notamScrollSec:55, topRowPx:116, notamRowPx:76, footerRowPx:54,
-  weatherColPct:44, getacScale:90, awake:"1", strongPulse:true
+  weatherColPct:44, getacScale:90, awake:"1", strongPulse:true, showRadar:true
 };
 
 const presets={
