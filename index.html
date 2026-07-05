@@ -320,6 +320,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 }
 
 .radar-panel{ display:flex; flex-direction:column; min-height:0; gap:4px; }
+body.radar-hidden .middle{ grid-template-columns:1fr !important; }
 .radar-title-row{ display:flex; align-items:center; gap:10px; margin-bottom:0; line-height:1; white-space:nowrap; }
 .radar-mode{ color:var(--blue-info); font-size:.82em; letter-spacing:1px; padding-left:10px; border-left:1px solid rgba(230,230,230,.35); }
 .radarimg{ display:block; width:100%; height:100%; flex:1 1 auto; min-height:0; object-fit:contain; object-position:center center; background:black; border:1px solid #333; }
@@ -2749,7 +2750,9 @@ setInterval(phase45PolishOpsText,1000);
     root.style.setProperty("--weather-col-pct", num(s.weatherColPct,35,55,DEFAULTS.weatherColPct) + "%");
 
     const radarPanel=document.querySelector(".radar-panel");
-    if(radarPanel) radarPanel.style.display=s.showRadar!==false?"":"none";
+    const radarOn=s.showRadar!==false;
+    if(radarPanel) radarPanel.style.display=radarOn?"":"none";
+    document.body.classList.toggle("radar-hidden",!radarOn);
 
     const pulse=s.strongPulse!==false;
     const css=`
