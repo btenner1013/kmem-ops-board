@@ -5,13 +5,13 @@
   "atisLetter": "T",
   "atisPhonetic": "TANGO",
   "atisDisplay": "TANGO",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-05T06:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-05T06:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-05T04:52:47Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-07-05T05:02:48Z",
+  "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -66,8 +66,8 @@
   "ceilingTrendText": "RISING",
   "visibilitySm": 6.0,
   "visibilityDisplay": "6 SM",
-  "visibilityTrend": "\u2192",
-  "visibilityTrendText": "STEADY",
+  "visibilityTrend": "\u2191",
+  "visibilityTrendText": "RISING",
   "windRaw": "24003KT",
   "windDisplay": "24003KT",
   "windDirDeg": 240,
@@ -75,9 +75,9 @@
   "windGustKt": null,
   "windArrow": "\u2197",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25ba",
-  "windTrendText": "STEADY",
-  "windTrendClass": "steady",
+  "windTrend": "\u25b2",
+  "windTrendText": "INCREASING",
+  "windTrendClass": "worsening",
   "tempC": 26,
   "dewpointC": 23,
   "tempDpDisplay": "26/23",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83d\udca8 FU PSBL NOW-08Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-05 07:42:00.000",
+  "bwcUpdatedZ": "2026-07-05 07:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-05 07:43:47Z",
+  "milNotamUpdatedZ": "2026-07-05 07:53:45Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -342,13 +342,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-05 07:42Z",
+  "allFeedsUpdatedZ": "2026-07-05 07:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-05 07:42:48Z"
+    "lastWorkflowTimestampZ": "2026-07-05 07:52:47Z"
   }
 }
