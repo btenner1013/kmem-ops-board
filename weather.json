@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-06T16:27:00Z",
-  "metarAgeMinutes": 16,
+  "metarAgeMinutes": 26,
   "atisObservedZ": "2026-07-06T16:27:00Z",
-  "atisAgeMinutes": 16,
+  "atisAgeMinutes": 26,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-06T13:52:47Z",
+  "trendReferenceTimestampZ": "2026-07-06T14:02:47Z",
   "trendSampleCount": 20,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf2b\ufe0f BR PSBL 07 JUL 09-12Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-06 16:42:00.000",
+  "bwcUpdatedZ": "2026-07-06 16:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-06 16:43:44Z",
+  "milNotamUpdatedZ": "2026-07-06 16:53:42Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -205,6 +205,18 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "07/070",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "APRON CARGO RAMP NORTH, CARGO RAMP SOUTH EDGE MARKINGS NOT STD",
+      "displayText": "APRON CARGO RAMP NORTH, CARGO RAMP SOUTH EDGE MARKINGS NOT STD",
+      "effectiveStart": "202607061647",
+      "effectiveEnd": "202607312359",
+      "lastUpdated": "2026-07-06T16:47:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "APRON CARGO RAMP NORTH, CARGO RAMP SOUTH EDGE MARKINGS NOT STD"
+    },
     {
       "number": "07/064",
       "classification": "CONST_AFLD_STATUS",
@@ -276,18 +288,6 @@
       "lastUpdated": "2026-06-28T03:46:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
-    },
-    {
-      "number": "06/394",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "APRON CARGO RAMP NORTH EDGE MARKINGS N SIDE REMOVED",
-      "displayText": "APRON CARGO RAMP NORTH EDGE MARKINGS N SIDE REMOVED",
-      "effectiveStart": "202606211422",
-      "effectiveEnd": "202607312359",
-      "lastUpdated": "2026-06-21T14:22:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "APRON CARGO RAMP NORTH EDGE MARKINGS N SIDE REMOVED"
     }
   ],
   "constructionStatusNotamCount": 7,
@@ -306,13 +306,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-07-06 16:42Z",
+  "allFeedsUpdatedZ": "2026-07-06 16:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-06 16:42:47Z"
+    "lastWorkflowTimestampZ": "2026-07-06 16:52:47Z"
   }
 }
