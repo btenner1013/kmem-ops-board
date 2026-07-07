@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 072154Z 23004KT 10SM BKN130 BKN250 29/20 A3002 RMK AO2 SLP160 T02890200 $",
   "taf": "TAF KMEM 072040Z 0721/0824 33006KT P6SM -SHRA SCT050 BKN070 \n  PROB30 0721/0723 5SM -TSRA BKN045CB \n  FM072300 19003KT P6SM BKN100 \n  FM081500 24006KT P6SM SCT050 \n  PROB30 0820/0824 -TSRA BKN045CB",
-  "atisText": "MEM ATIS INFO F 2154Z. 23004KT 10SM BKN130 BKN250 29/20 A3002 (THREE ZERO ZERO TWO). ILS APCH IN USE RY 36C. SIMUL DEPS IN USE RY 36L 36C 36R. NOTICE TO AIRMEN. MEM TACAN OTS. RWY 18R RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO F",
-  "atisLetter": "F",
-  "atisPhonetic": "FOXTROT",
-  "atisDisplay": "FOXTROT",
+  "atisText": "MEM ATIS INFO G 2154Z. 23004KT 10SM BKN130 BKN250 29/20 A3002 (THREE ZERO ZERO TWO). ILS APCH IN USE RY 36C. SIMUL DEPS IN USE RY 36L 36C 36R. NOTICE TO AIRMEN. TWY M CLSD BTN TWY, M9 AND TWY N. MEM TACAN OTS. RWY 18R RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO G",
+  "atisLetter": "G",
+  "atisPhonetic": "GOLF",
+  "atisDisplay": "GOLF",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-07T21:54:00Z",
-  "metarAgeMinutes": 19,
+  "metarAgeMinutes": 29,
   "atisObservedZ": "2026-07-07T21:54:00Z",
-  "atisAgeMinutes": 19,
+  "atisAgeMinutes": 29,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -22,7 +22,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-07-07T19:22:48Z",
-  "trendSampleCount": 22,
+  "trendSampleCount": 23,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL NOW-23Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-07 22:12:00.000",
+  "bwcUpdatedZ": "2026-07-07 22:18:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-07 22:13:52Z",
+  "milNotamUpdatedZ": "2026-07-07 22:23:52Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -341,6 +341,18 @@
   "constructionStatusNotamCount": 11,
   "taxiRestrictionNotams": [
     {
+      "number": "07/117",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY M BTN TWY M9 AND TWY N CLSD",
+      "displayText": "TWY M BTN TWY M9 AND TWY N CLSD",
+      "effectiveStart": "202607072218",
+      "effectiveEnd": "202607080200",
+      "lastUpdated": "2026-07-07T22:21:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY M BTN TWY M9 AND TWY N CLSD"
+    },
+    {
       "number": "07/116",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "red",
@@ -365,14 +377,14 @@
       "rawText": "TWY V3, A2 CLSD"
     }
   ],
-  "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-07-07 22:12Z",
+  "taxiRestrictionNotamCount": 3,
+  "allFeedsUpdatedZ": "2026-07-07 22:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-07 22:12:47Z"
+    "lastWorkflowTimestampZ": "2026-07-07 22:22:47Z"
   }
 }
