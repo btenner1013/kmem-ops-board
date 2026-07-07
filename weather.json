@@ -1,17 +1,17 @@
 {
-  "metar": "METAR KMEM 071454Z 32005KT 10SM FEW030 SCT130 SCT250 29/23 A3007 RMK AO2 SLP176 TCU DSNT SW T02890228 50008 $",
+  "metar": "SPECI KMEM 071546Z VRB03KT 10SM SCT027 BKN032 BKN210 29/22 A3007 RMK AO2 TCU DSNT S T02940222 $",
   "taf": "TAF KMEM 071453Z 0715/0818 33006KT P6SM SCT040 \n  PROB30 0720/0802 4SM TSRA BKN045CB \n  FM080200 19003KT P6SM SCT150 \n  FM081500 24006KT P6SM SCT050",
-  "atisText": "MEM ATIS INFO J 1454Z. 32005KT 10SM FEW030 SCT130 SCT250 29/23 A3007 (THREE ZERO ZERO SEVEN) RMK AO2 SLP176 TCU DSNT SW T02890228 50008. SIMUL VISUAL APCHS IN USE RY 36L, 36C, 27. SIMUL DEPS IN USE RY 36L 36C, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 18L, 36R CLSD. RY 27 PAPI OTS. MEM TACAN OTS. RWY 18R RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO J",
-  "atisLetter": "J",
-  "atisPhonetic": "JULIETT",
-  "atisDisplay": "JULIETT",
+  "atisText": "MEM ATIS INFO L 1546Z SPECIAL. VRB03KT 10SM SCT027 BKN032 BKN210 29/22 A3007 (THREE ZERO ZERO SEVEN). SIMUL VISUAL APCHS IN USE RY 36L, 36C. SIMUL DEPS IN USE RY 36L 36C. NOTICE TO AIRMEN. RWY 18L, 36R CLSD, RWY 9, 27 CLSD. RY 27 PAPI OTS. MEM TACAN OTS. RWY 18R RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO L",
+  "atisLetter": "L",
+  "atisPhonetic": "LIMA",
+  "atisDisplay": "LIMA",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-07-07T14:54:00Z",
-  "metarAgeMinutes": 49,
-  "atisObservedZ": "2026-07-07T14:54:00Z",
-  "atisAgeMinutes": 49,
+  "metarObservedZ": "2026-07-07T15:46:00Z",
+  "metarAgeMinutes": 7,
+  "atisObservedZ": "2026-07-07T15:46:00Z",
+  "atisAgeMinutes": 7,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-07T12:52:47Z",
+  "trendReferenceTimestampZ": "2026-07-07T13:02:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -30,19 +30,19 @@
     "tempDp": "ATIS",
     "altimeter": "ATIS",
     "visibility": "ATIS",
-    "ceiling": "NONE"
+    "ceiling": "ATIS"
   },
   "metarAltimeterRaw": 30.07,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
-  "metarCeilingFt": null,
+  "metarCeilingFt": 3200,
   "atisAltimeterRaw": 30.07,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
-  "atisCeilingFt": null,
-  "arrRunways": "36L / 36C / 27",
-  "depRunways": "27",
-  "closedRunways": "18L / 36R",
+  "atisCeilingFt": 3200,
+  "arrRunways": "36L / 36C",
+  "depRunways": "36L / 36C",
+  "closedRunways": "18L / 36R / 9 / 27",
   "knownMemRunways": [
     "9/27",
     "18L/36R",
@@ -58,29 +58,29 @@
   "rcrRaw": "--",
   "altimeter": "30.07",
   "altimeterRaw": 30.07,
-  "altimeterTrend": "\u2191",
-  "altimeterTrendText": "RISING",
-  "ceilingFt": null,
-  "ceilingDisplay": "UNL",
+  "altimeterTrend": "\u2192",
+  "altimeterTrendText": "STEADY",
+  "ceilingFt": 3200,
+  "ceilingDisplay": "3200 FT",
   "ceilingTrend": "\u2192",
   "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
   "visibilityTrendText": "STEADY",
-  "windRaw": "32005KT",
-  "windDisplay": "32005KT",
-  "windDirDeg": 320,
-  "windSpeedKt": 5,
+  "windRaw": "VRB03KT",
+  "windDisplay": "VRB03KT",
+  "windDirDeg": null,
+  "windSpeedKt": 3,
   "windGustKt": null,
-  "windArrow": "\u2198",
-  "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
+  "windArrow": "",
+  "windArrowMeaning": "VARIABLE",
   "windTrend": "\u25ba",
   "windTrendText": "STEADY",
   "windTrendClass": "steady",
   "tempC": 29,
-  "dewpointC": 23,
-  "tempDpDisplay": "29/23",
+  "dewpointC": 22,
+  "tempDpDisplay": "29/22",
   "tempTrend": "\u25b2",
   "tempTrendText": "RISING",
   "dewpointTrend": "\u25b2",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL 07 JUL 20Z-08 JUL 02Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-07 15:42:00.000",
+  "bwcUpdatedZ": "2026-07-07 15:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-07 15:43:51Z",
+  "milNotamUpdatedZ": "2026-07-07 15:53:56Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -191,6 +191,18 @@
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
     {
+      "number": "07/099",
+      "classification": "RWY_CLOSURE",
+      "severity": "red",
+      "text": "RWY 09/27 CLSD",
+      "displayText": "RWY 09/27 CLSD",
+      "effectiveStart": "202607071550",
+      "effectiveEnd": "202607071700",
+      "lastUpdated": "2026-07-07T15:51:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, A1, V1, V2"
+    },
+    {
       "number": "07/089",
       "classification": "RWY_CLOSURE",
       "severity": "red",
@@ -203,8 +215,20 @@
       "rawText": "RWY 18R/36L CLSD"
     }
   ],
-  "runwayClosureNotamCount": 1,
+  "runwayClosureNotamCount": 2,
   "constructionStatusNotams": [
+    {
+      "number": "07/098",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "RWY 18L LEAD OFF CL MARKINGS AT TWY S5 NOT STD",
+      "displayText": "RWY 18L LEAD OFF CL MARKINGS AT TWY S5 NOT STD",
+      "effectiveStart": "202607071547",
+      "effectiveEnd": "202607312359",
+      "lastUpdated": "2026-07-07T15:47:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 18L LEAD OFF CL MARKINGS AT TWY S5 NOT STD"
+    },
     {
       "number": "07/097",
       "classification": "CONST_AFLD_STATUS",
@@ -326,8 +350,20 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 10,
+  "constructionStatusNotamCount": 11,
   "taxiRestrictionNotams": [
+    {
+      "number": "07/099",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "red",
+      "text": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, A1, V1, V2",
+      "displayText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, A1, V1, V2",
+      "effectiveStart": "202607071550",
+      "effectiveEnd": "202607071700",
+      "lastUpdated": "2026-07-07T15:51:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, A1, V1, V2"
+    },
     {
       "number": "07/091",
       "classification": "TAXI_ROUTE_RESTR",
@@ -341,14 +377,14 @@
       "rawText": "TWY M1 BTN RWY 18R/36L AND TWY M, TWY M2 BTN RWY 18R/36L AND TWY M, TWY M3 BTN RWY 18R/36L AND TWY M, TWY M4 BTN RWY 18R/36L AND TWY M, TWY M5 BTN RWY 18R/36L AND TWY M, TWY M6 BTN RWY 18R/36L AND TWY M, TWY M7 BTN RWY 18R/36L AND TWY M, TWY M8 BTN RWY 18R/36L AND TWY M, TWY M9 BTN RWY 18R/36L AND TWY M CLSD"
     }
   ],
-  "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-07-07 15:42Z",
+  "taxiRestrictionNotamCount": 2,
+  "allFeedsUpdatedZ": "2026-07-07 15:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-07 15:42:47Z"
+    "lastWorkflowTimestampZ": "2026-07-07 15:52:47Z"
   }
 }
