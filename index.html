@@ -1290,6 +1290,7 @@ function compactLightningDisplay(value){
     const compactDir=String(dir).replace(/\bAND\b/ig,"/").replace(/\s*\/\s*/g,"/").replace(/\s*-\s*/g,"-").replace(/\s+/g," ").trim();
     return "DSNT "+compactDir;
   });
+  text=text.replace(/\s+\d+(?:-\d+)?\s*NM(?:\s*CB)?\b/ig,"");
   text=text.replace(/\s+/g," ").trim();
   return text;
 }
