@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 081854Z 23008KT 10SM SCT044 32/22 A3003 RMK AO2 SLP164 T03170222 $",
   "taf": "TAF KMEM 081738Z 0818/0924 24006KT P6SM VCSH SCT035 BKN070 \n  PROB30 0819/0823 -TSRA BKN045CB \n  FM090200 20003KT P6SM SCT250 \n  FM091500 24008KT P6SM SCT050",
-  "atisText": "MEM ATIS INFO O 1854Z. 23008KT 10SM SCT044 32/22 A3003 (THREE ZERO ZERO THREE). SIMUL VISUAL APCHS IN USE RY 18L, 27. DEPG RWYS 18C. 18L. NOTICE TO AIRMEN. RWY 18R, 36L CLSD. MEM VOR OTS, ELVIS DEPS EXPECT VECTORS TO FILED ROUTE. MEM TACAN OTS. RWY 18R RAILS OTS. WIND SHEAR ADZYS IN EFCT. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO O",
-  "atisLetter": "O",
-  "atisPhonetic": "OSCAR",
-  "atisDisplay": "OSCAR",
+  "atisText": "MEM ATIS INFO Q 1854Z. 23008KT 10SM SCT044 32/22 A3003 (THREE ZERO ZERO THREE). SIMUL VISUAL APCHS IN USE RY 18L, 18R, 27. DEPG RWYS 18L, 18C, 18R. 18L. NOTICE TO AIRMEN. MEM VOR OTS, ELVIS DEPS EXPECT VECTORS TO FILED ROUTE. MEM TACAN OTS. RWY 18R RAILS OTS. WIND SHEAR ADZYS IN EFCT. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO Q",
+  "atisLetter": "Q",
+  "atisPhonetic": "QUEBEC",
+  "atisDisplay": "QUEBEC",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-08T18:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-07-08T18:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-08T16:32:47Z",
+  "trendReferenceTimestampZ": "2026-07-08T16:42:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -40,9 +40,9 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
-  "arrRunways": "18L / 27",
-  "depRunways": "18C",
-  "closedRunways": "18R / 36L",
+  "arrRunways": "18L / 18R / 27",
+  "depRunways": "18L / 18C / 18R",
+  "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
     "18L/36R",
@@ -146,12 +146,12 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL NOW-23Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-08 19:18:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-07-08 19:30:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "9999",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=8&hour=19&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=8&iHour=19",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-08 19:24:03Z",
+  "milNotamUpdatedZ": "2026-07-08 19:33:54Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -189,46 +189,9 @@
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
-  "runwayClosureNotams": [
-    {
-      "number": "07/123",
-      "classification": "RWY_CLOSURE",
-      "severity": "red",
-      "text": "RWY 18R/36L CLSD",
-      "displayText": "RWY 18R/36L CLSD",
-      "effectiveStart": "202607081700",
-      "effectiveEnd": "202607081930",
-      "lastUpdated": "2026-07-08T12:38:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 18R/36L CLSD"
-    }
-  ],
-  "runwayClosureNotamCount": 1,
+  "runwayClosureNotams": [],
+  "runwayClosureNotamCount": 0,
   "constructionStatusNotams": [
-    {
-      "number": "07/124",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY M WIP MAINT",
-      "displayText": "TWY M WIP MAINT",
-      "effectiveStart": "202607081700",
-      "effectiveEnd": "202607081930",
-      "lastUpdated": "2026-07-08T12:40:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY M WIP MAINT"
-    },
-    {
-      "number": "07/115",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY C, A, V, TWY B BTN TWY S AND TWY A WIP SPRAYING, WEEDING, MOWING",
-      "displayText": "TWY C, A, V, TWY B BTN TWY S AND TWY A WIP SPRAYING, WEEDING, MOWING",
-      "effectiveStart": "202607081300",
-      "effectiveEnd": "202607081930",
-      "lastUpdated": "2026-07-07T21:55:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY C, A, V, TWY B BTN TWY S AND TWY A WIP SPRAYING, WEEDING, MOWING"
-    },
     {
       "number": "07/098",
       "classification": "CONST_AFLD_STATUS",
@@ -350,16 +313,16 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 12,
+  "constructionStatusNotamCount": 10,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-07-08 19:22Z",
+  "allFeedsUpdatedZ": "2026-07-08 19:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-08 19:22:47Z"
+    "lastWorkflowTimestampZ": "2026-07-08 19:32:48Z"
   }
 }
