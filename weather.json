@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-08T23:54:00Z",
-  "metarAgeMinutes": 9,
+  "metarAgeMinutes": 19,
   "atisObservedZ": "2026-07-08T23:54:00Z",
-  "atisAgeMinutes": 9,
+  "atisAgeMinutes": 19,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -144,14 +144,14 @@
   "wxAlertFlash": false,
   "wxAlertPulse": true,
   "tafTrend": "WX ALERT | \u26c8\ufe0f VCTS PSBL NOW-02Z",
-  "bwc": "LOW",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-09 00:00:00.000",
-  "bwcNexrad": "LOW",
+  "bwcUpdatedZ": "2026-07-09 00:12:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "LOW",
-  "bwcBasedOn": "NEXRAD",
+  "bwcAhasRisk": "MODERATE",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "9999",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=9&hour=00&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=9&iHour=00",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-09 00:04:03Z",
+  "milNotamUpdatedZ": "2026-07-09 00:14:05Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -341,6 +341,18 @@
   "constructionStatusNotamCount": 11,
   "taxiRestrictionNotams": [
     {
+      "number": "07/143",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY R1, R2, TWY H BTN TWY N AND TWY J, TWY R BTN TWY N AND TWY J, TWY N BTN TWY M1 AND TWY M3, TWY M1 BTN TWY M AND TWY N, TWY M2 BTN TWY M AND TWY N CLSD",
+      "displayText": "TWY R1, R2, TWY H BTN TWY N AND TWY J, TWY R BTN TWY N AND TWY J, TWY N BTN TWY M1 AND TWY M3, TWY M1 BTN TWY M AND TWY N, TWY M2 BTN TWY M AND TWY...",
+      "effectiveStart": "202607091300",
+      "effectiveEnd": "202607091930",
+      "lastUpdated": "2026-07-09T00:09:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY R1, R2, TWY H BTN TWY N AND TWY J, TWY R BTN TWY N AND TWY J, TWY N BTN TWY M1 AND TWY M3, TWY M1 BTN TWY M AND TWY N, TWY M2 BTN TWY M AND TWY N CLSD"
+    },
+    {
       "number": "07/142",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "red",
@@ -348,7 +360,7 @@
       "displayText": "TWY C1, C2, C3, C4, C5, C6, C7, S7, S6, TWY B BTN APCH END RWY 18C AND TWY S, TWY D BTN TWY C AND TWY S, TWY K BTN TWY C AND TWY S, TWY R BTN TWY J...",
       "effectiveStart": "202607091300",
       "effectiveEnd": "202607091930",
-      "lastUpdated": "2026-07-09T00:00:00.000Z",
+      "lastUpdated": "2026-07-09T00:07:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY C1, C2, C3, C4, C5, C6, C7, S7, S6, TWY B BTN APCH END RWY 18C AND TWY S, TWY D BTN TWY C AND TWY S, TWY K BTN TWY C AND TWY S, TWY R BTN TWY J AND TWY S, TWY H BTN TWY J AND TWY S CLSD"
     },
@@ -377,14 +389,14 @@
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY L, P, E"
     }
   ],
-  "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-09 00:02Z",
+  "taxiRestrictionNotamCount": 4,
+  "allFeedsUpdatedZ": "2026-07-09 00:12Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-09 00:02:47Z"
+    "lastWorkflowTimestampZ": "2026-07-09 00:12:47Z"
   }
 }
