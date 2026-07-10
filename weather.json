@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-10T20:54:00Z",
-  "metarAgeMinutes": 39,
+  "metarAgeMinutes": 49,
   "atisObservedZ": "2026-07-10T20:54:00Z",
-  "atisAgeMinutes": 39,
+  "atisAgeMinutes": 49,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-10T18:42:47Z",
+  "trendReferenceTimestampZ": "2026-07-10T18:52:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -75,16 +75,16 @@
   "windGustKt": null,
   "windArrow": "\u2197",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25b2",
-  "windTrendText": "INCREASING",
-  "windTrendClass": "worsening",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 32,
   "dewpointC": 25,
   "tempDpDisplay": "32/25",
   "tempTrend": "\u25b2",
   "tempTrendText": "RISING",
-  "dewpointTrend": "\u25ba",
-  "dewpointTrendText": "STEADY",
+  "dewpointTrend": "\u25b2",
+  "dewpointTrendText": "RISING",
   "lightning": "NONE",
   "lightningSeverity": "none",
   "lightningTone": "green",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL 11 JUL 18-24Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-10 21:30:00.000",
+  "bwcUpdatedZ": "2026-07-10 21:42:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-10 21:33:59Z",
+  "milNotamUpdatedZ": "2026-07-10 21:43:58Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -365,6 +365,18 @@
   "constructionStatusNotamCount": 13,
   "taxiRestrictionNotams": [
     {
+      "number": "07/174",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY S1, TWY S BTN TWY L AND TWY P, TWY S BTN TWY E AND TWY H CLSD",
+      "displayText": "TWY S1, TWY S BTN TWY L AND TWY P, TWY S BTN TWY E AND TWY H CLSD",
+      "effectiveStart": "202607131300",
+      "effectiveEnd": "202607131930",
+      "lastUpdated": "2026-07-10T21:36:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY S1, TWY S BTN TWY L AND TWY P, TWY S BTN TWY E AND TWY H CLSD"
+    },
+    {
       "number": "07/171",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "green",
@@ -377,14 +389,14 @@
       "rawText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY P BTN TWY M AND TWY J, TWY R BTN TWY R2 AND TWY N, TWY H BTN TWY R2 AND TWY N, TWY P1 BTN TWY T AND TWY P, TWY P2 BTN TWY P AND TWY T CLSD"
     }
   ],
-  "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-07-10 21:32Z",
+  "taxiRestrictionNotamCount": 2,
+  "allFeedsUpdatedZ": "2026-07-10 21:42Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-10 21:32:47Z"
+    "lastWorkflowTimestampZ": "2026-07-10 21:42:48Z"
   }
 }
