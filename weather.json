@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-10T17:05:00Z",
-  "metarAgeMinutes": 8,
+  "metarAgeMinutes": 18,
   "atisObservedZ": "2026-07-10T17:05:00Z",
-  "atisAgeMinutes": 8,
+  "atisAgeMinutes": 18,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-10T14:22:47Z",
+  "trendReferenceTimestampZ": "2026-07-10T14:32:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -50,12 +50,12 @@
     "18R/36L"
   ],
   "flow": "SOUTH \u2193",
-  "rcrText": "DRY",
-  "rcrCode": "DRY",
+  "rcrText": "RSC/RCR 5/5/5 WET",
+  "rcrCode": "5/5/5",
   "rcrSeverity": "good",
-  "rcrSource": "NOTAM_FICON_NONE",
+  "rcrSource": "NOTAM_FICON",
   "rcrVisible": true,
-  "rcrRaw": "--",
+  "rcrRaw": "07/161 RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2607101720. RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2607101720.",
   "altimeter": "30.05",
   "altimeterRaw": 30.05,
   "altimeterTrend": "\u2191",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL NOW-18Z",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-10 17:12:00.000",
+  "bwcUpdatedZ": "2026-07-10 17:18:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-10 17:14:07Z",
+  "milNotamUpdatedZ": "2026-07-10 17:24:13Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -188,6 +188,17 @@
   "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
   "ficonNotams": [
+    {
+      "number": "07/161",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2607101720.",
+      "displayText": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2607101720.",
+      "effectiveStart": "202607101720",
+      "effectiveEnd": "202607111720",
+      "lastUpdated": "2026-07-10T17:20:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
     {
       "number": "07/160",
       "classification": "DOM",
@@ -233,20 +244,8 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "ficonNotamCount": 4,
+  "ficonNotamCount": 5,
   "runwayClosureNotams": [
-    {
-      "number": "07/149",
-      "classification": "RWY_CLOSURE",
-      "severity": "red",
-      "text": "RWY 09/27 CLSD",
-      "displayText": "RWY 09/27 CLSD",
-      "effectiveStart": "202607101300",
-      "effectiveEnd": "202607101930",
-      "lastUpdated": "2026-07-09T21:37:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, V2, V1, A1"
-    },
     {
       "number": "07/148",
       "classification": "RWY_CLOSURE",
@@ -260,20 +259,8 @@
       "rawText": "RWY 18R/36L CLSD"
     }
   ],
-  "runwayClosureNotamCount": 2,
+  "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
-    {
-      "number": "07/151",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY A, V WIP SPRAYING, WEEDING, MOWING",
-      "displayText": "TWY A, V WIP SPRAYING, WEEDING, MOWING",
-      "effectiveStart": "202607101300",
-      "effectiveEnd": "202607101930",
-      "lastUpdated": "2026-07-09T21:37:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A, V WIP SPRAYING, WEEDING, MOWING"
-    },
     {
       "number": "07/098",
       "classification": "CONST_AFLD_STATUS",
@@ -395,7 +382,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 11,
+  "constructionStatusNotamCount": 10,
   "taxiRestrictionNotams": [
     {
       "number": "07/153",
@@ -408,40 +395,16 @@
       "lastUpdated": "2026-07-09T21:52:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R2, TWY H BTN TWY N AND TWY R2 CLSD"
-    },
-    {
-      "number": "07/150",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "TWY A2, V3 CLSD",
-      "displayText": "TWY A2, V3 CLSD",
-      "effectiveStart": "202607101300",
-      "effectiveEnd": "202607101930",
-      "lastUpdated": "2026-07-09T21:37:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A2, V3 CLSD"
-    },
-    {
-      "number": "07/149",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "red",
-      "text": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, V2, V1, A1",
-      "displayText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, V2, V1, A1",
-      "effectiveStart": "202607101300",
-      "effectiveEnd": "202607101930",
-      "lastUpdated": "2026-07-09T21:37:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 09/27 CLSD EXC XNG TWY N, C, S, B, Y, V2, V1, A1"
     }
   ],
-  "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-10 17:12Z",
+  "taxiRestrictionNotamCount": 1,
+  "allFeedsUpdatedZ": "2026-07-10 17:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-10 17:12:47Z"
+    "lastWorkflowTimestampZ": "2026-07-10 17:22:48Z"
   }
 }
