@@ -1,6 +1,6 @@
 {
   "metar": "METAR KMEM 120554Z 24003KT 10SM SCT055 22/22 A3006 RMK AO2 SLP173 60008 T02220217 10261 20222 403440222 51009 $",
-  "taf": "TAF KMEM 120520Z 1206/1312 VRB03KT P6SM FEW010 SCT050 OVC090 \n  TEMPO 1206/1209 -SHRA BKN008 \n  FM121000 28005KT P6SM BKN015 \n  FM121500 30007KT P6SM BKN027 \n  FM121800 36008KT P6SM BKN045 \n  FM130200 03005KT P6SM SKC",
+  "taf": "TAF KMEM 120621Z 1206/1312 VRB03KT P6SM FEW010 SCT050 OVC090 \n  FM121000 28005KT P6SM BKN015 \n  FM121500 30007KT P6SM BKN027 \n  FM121800 36008KT P6SM BKN045 \n  FM130200 03005KT P6SM SKC",
   "atisText": "MEM ATIS INFO F 0554Z. 24003KT 10SM SCT055 22/22 A3006 (THREE ZERO ZERO SIX) RMK AO2 SLP173 60008 T02220217 10261 20222 403440222 51009. ILS APCH IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RY 36L PAPI OTS. MEM TACAN OTS. RWY 18R RAILS OTS. WIND SHEAR ADZYS IN EFCT. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO F",
   "atisLetter": "F",
   "atisPhonetic": "FOXTROT",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-12T05:54:00Z",
-  "metarAgeMinutes": 19,
+  "metarAgeMinutes": 29,
   "atisObservedZ": "2026-07-12T05:54:00Z",
-  "atisAgeMinutes": 19,
+  "atisAgeMinutes": 29,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-12T03:22:47Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-07-12T03:32:48Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -92,61 +92,19 @@
   "lightningPulse": false,
   "lightningSource": "NONE",
   "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND.",
-  "wxAlerts": [
-    {
-      "code": "-SHRA",
-      "label": "LIGHT RAIN SHOWERS",
-      "emoji": "\ud83c\udf27\ufe0f",
-      "category": "shower",
-      "sources": [
-        "TAF"
-      ],
-      "severity": "forecast_info",
-      "displayTone": "blue",
-      "flash": false,
-      "pulse": false,
-      "priority": 70,
-      "text": "-SHRA PSBL NOW-09Z",
-      "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL NOW-09Z",
-      "tafWindow": "NOW-09Z",
-      "tafStartKey": 294,
-      "tafGroupType": "TEMPO",
-      "tafStartIso": "2026-07-12T06:00:00Z",
-      "tafEndIso": "2026-07-12T09:00:00Z"
-    }
-  ],
-  "wxAlertText": "\ud83c\udf27\ufe0f -SHRA PSBL NOW-09Z",
-  "wxAlertLogText": "-SHRA PSBL NOW-09Z",
-  "wxAlertVisible": true,
-  "wxPrimaryAlert": {
-    "code": "-SHRA",
-    "label": "LIGHT RAIN SHOWERS",
-    "emoji": "\ud83c\udf27\ufe0f",
-    "category": "shower",
-    "sources": [
-      "TAF"
-    ],
-    "severity": "forecast_info",
-    "displayTone": "blue",
-    "flash": false,
-    "pulse": false,
-    "priority": 70,
-    "text": "-SHRA PSBL NOW-09Z",
-    "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL NOW-09Z",
-    "tafWindow": "NOW-09Z",
-    "tafStartKey": 294,
-    "tafGroupType": "TEMPO",
-    "tafStartIso": "2026-07-12T06:00:00Z",
-    "tafEndIso": "2026-07-12T09:00:00Z"
-  },
+  "wxAlerts": [],
+  "wxAlertText": "NONE",
+  "wxAlertLogText": "NONE",
+  "wxAlertVisible": false,
+  "wxPrimaryAlert": null,
   "wxSecondaryAlert": null,
-  "wxAlertTone": "blue",
+  "wxAlertTone": "none",
   "wxAlertFlash": false,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-09Z",
+  "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-12 06:12:00.000",
+  "bwcUpdatedZ": "2026-07-12 06:18:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-12 06:14:07Z",
+  "milNotamUpdatedZ": "2026-07-12 06:24:05Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -457,13 +415,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-07-12 06:12Z",
+  "allFeedsUpdatedZ": "2026-07-12 06:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-12 06:12:47Z"
+    "lastWorkflowTimestampZ": "2026-07-12 06:22:47Z"
   }
 }
