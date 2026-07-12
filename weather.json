@@ -5,13 +5,13 @@
   "atisLetter": "E",
   "atisPhonetic": "ECHO",
   "atisDisplay": "ECHO",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-12T04:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-12T04:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-12T02:42:48Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-07-12T03:02:48Z",
+  "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -58,8 +58,8 @@
   "rcrRaw": "07/186 RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607120233. RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607120233.",
   "altimeter": "30.06",
   "altimeterRaw": 30.06,
-  "altimeterTrend": "\u2191",
-  "altimeterTrendText": "RISING",
+  "altimeterTrend": "\u2192",
+  "altimeterTrendText": "STEADY",
   "ceilingFt": 25000,
   "ceilingDisplay": "25000 FT",
   "ceilingTrend": "\u2191",
@@ -75,9 +75,9 @@
   "windGustKt": null,
   "windArrow": "",
   "windArrowMeaning": "VARIABLE",
-  "windTrend": "\u25bc",
-  "windTrendText": "DECREASING",
-  "windTrendClass": "improving",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 23,
   "dewpointC": 22,
   "tempDpDisplay": "23/22",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 06-09Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-12 05:42:00.000",
+  "bwcUpdatedZ": "2026-07-12 05:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-12 05:44:06Z",
+  "milNotamUpdatedZ": "2026-07-12 05:54:05Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -457,13 +457,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-07-12 05:42Z",
+  "allFeedsUpdatedZ": "2026-07-12 05:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-12 05:42:47Z"
+    "lastWorkflowTimestampZ": "2026-07-12 05:52:47Z"
   }
 }
