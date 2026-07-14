@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-14T18:54:00Z",
-  "metarAgeMinutes": 19,
+  "metarAgeMinutes": 25,
   "atisObservedZ": "2026-07-14T18:54:00Z",
-  "atisAgeMinutes": 19,
+  "atisAgeMinutes": 25,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -94,55 +94,59 @@
   "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND.",
   "wxAlerts": [
     {
-      "code": "GS",
-      "label": "SMALL HAIL / SNOW PELLETS",
-      "emoji": "\ud83e\uddca",
-      "category": "hail",
+      "code": "TSRA",
+      "label": "THUNDERSTORM RAIN",
+      "emoji": "\u26c8\ufe0f",
+      "category": "thunder",
       "sources": [
-        "ATIS"
+        "TAF"
       ],
-      "severity": "active",
-      "displayTone": "red",
-      "flash": true,
-      "pulse": false,
-      "priority": 10,
-      "text": "GS ATIS",
-      "displayText": "\ud83e\uddca GS ATIS",
-      "tafWindow": "",
-      "tafStartKey": -1,
-      "tafGroupType": ""
+      "severity": "forecast",
+      "displayTone": "yellow",
+      "flash": false,
+      "pulse": true,
+      "priority": 30,
+      "text": "TSRA PSBL NOW-23Z",
+      "displayText": "\u26c8\ufe0f TSRA PSBL NOW-23Z",
+      "tafWindow": "NOW-23Z",
+      "tafStartKey": 355,
+      "tafGroupType": "TEMPO",
+      "tafStartIso": "2026-07-14T19:00:00Z",
+      "tafEndIso": "2026-07-14T23:00:00Z"
     }
   ],
-  "wxAlertText": "\ud83e\uddca GS ATIS",
-  "wxAlertLogText": "GS ATIS",
+  "wxAlertText": "\u26c8\ufe0f TSRA PSBL NOW-23Z",
+  "wxAlertLogText": "TSRA PSBL NOW-23Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
-    "code": "GS",
-    "label": "SMALL HAIL / SNOW PELLETS",
-    "emoji": "\ud83e\uddca",
-    "category": "hail",
+    "code": "TSRA",
+    "label": "THUNDERSTORM RAIN",
+    "emoji": "\u26c8\ufe0f",
+    "category": "thunder",
     "sources": [
-      "ATIS"
+      "TAF"
     ],
-    "severity": "active",
-    "displayTone": "red",
-    "flash": true,
-    "pulse": false,
-    "priority": 10,
-    "text": "GS ATIS",
-    "displayText": "\ud83e\uddca GS ATIS",
-    "tafWindow": "",
-    "tafStartKey": -1,
-    "tafGroupType": ""
+    "severity": "forecast",
+    "displayTone": "yellow",
+    "flash": false,
+    "pulse": true,
+    "priority": 30,
+    "text": "TSRA PSBL NOW-23Z",
+    "displayText": "\u26c8\ufe0f TSRA PSBL NOW-23Z",
+    "tafWindow": "NOW-23Z",
+    "tafStartKey": 355,
+    "tafGroupType": "TEMPO",
+    "tafStartIso": "2026-07-14T19:00:00Z",
+    "tafEndIso": "2026-07-14T23:00:00Z"
   },
   "wxSecondaryAlert": null,
-  "wxAlertTone": "red",
-  "wxAlertFlash": true,
-  "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83e\uddca GS ATIS",
+  "wxAlertTone": "yellow",
+  "wxAlertFlash": false,
+  "wxAlertPulse": true,
+  "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL NOW-23Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-14 19:12:00.000",
+  "bwcUpdatedZ": "2026-07-14 19:18:00.000",
   "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "MODERATE",
   "bwcBamRisk": "MODERATE",
@@ -155,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-14 19:14:06Z",
+  "milNotamUpdatedZ": "2026-07-14 19:20:32Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -362,13 +366,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-07-14 19:12Z",
+  "allFeedsUpdatedZ": "2026-07-14 19:19Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-14 19:12:49Z"
+    "lastWorkflowTimestampZ": "2026-07-14 19:19:20Z"
   }
 }
