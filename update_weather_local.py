@@ -1499,6 +1499,8 @@ def atis_observation_scan_text(atis_text):
 
     stop_markers = [
         " NOTICE: INFO FROM FAA SWIM",
+        " NOTICE TO AIRMEN",
+        " NOTAM ",
         " NOTAMS ",
         " LOADING FREQUENCIES",
         " FREQUENCIES ",
