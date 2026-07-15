@@ -5,13 +5,13 @@
   "atisLetter": "L",
   "atisPhonetic": "LIMA",
   "atisDisplay": "LIMA",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-15T17:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-15T17:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-15T15:42:49Z",
+  "trendReferenceTimestampZ": "2026-07-15T15:52:48Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL 20-24Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-15 18:42:00.000",
+  "bwcUpdatedZ": "2026-07-15 18:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-15 18:43:50Z",
+  "milNotamUpdatedZ": "2026-07-15 18:53:47Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -281,18 +281,6 @@
   "constructionStatusNotamCount": 6,
   "taxiRestrictionNotams": [
     {
-      "number": "07/220",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "red",
-      "text": "TWY A BTN TWY C AND TWY B, TWY S BTN RWY 09/27 AND TWY B CLSD",
-      "displayText": "TWY A BTN TWY C AND TWY B, TWY S BTN RWY 09/27 AND TWY B CLSD",
-      "effectiveStart": "202607151316",
-      "effectiveEnd": "202607151930",
-      "lastUpdated": "2026-07-15T13:20:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A BTN TWY C AND TWY B, TWY S BTN RWY 09/27 AND TWY B CLSD"
-    },
-    {
       "number": "07/213",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "red",
@@ -317,14 +305,14 @@
       "rawText": "RWY 18L/36R CLSD EXC XNG TWY R AND TWY D"
     }
   ],
-  "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-15 18:42Z",
+  "taxiRestrictionNotamCount": 2,
+  "allFeedsUpdatedZ": "2026-07-15 18:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-15 18:42:48Z"
+    "lastWorkflowTimestampZ": "2026-07-15 18:52:47Z"
   }
 }
