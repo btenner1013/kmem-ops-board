@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-15T19:36:00Z",
-  "metarAgeMinutes": 7,
+  "metarAgeMinutes": 17,
   "atisObservedZ": "2026-07-15T18:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-15T16:52:48Z",
+  "trendReferenceTimestampZ": "2026-07-15T17:02:48Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "MIXED",
@@ -55,7 +55,7 @@
   "rcrSeverity": "good",
   "rcrSource": "NOTAM_FICON",
   "rcrVisible": true,
-  "rcrRaw": "07/225 RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607151940. RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607151940.",
+  "rcrRaw": "07/228 RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2607151943. RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2607151943.",
   "altimeter": "30.04",
   "altimeterRaw": 30.04,
   "altimeterTrend": "\u2193",
@@ -75,16 +75,16 @@
   "windGustKt": 24,
   "windArrow": "\u2197",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25b2",
-  "windTrendText": "INCREASING",
-  "windTrendClass": "worsening",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 31,
   "dewpointC": 22,
   "tempDpDisplay": "31/22",
   "tempTrend": "\u25b2",
   "tempTrendText": "RISING",
-  "dewpointTrend": "\u25bc",
-  "dewpointTrendText": "FALLING",
+  "dewpointTrend": "\u25ba",
+  "dewpointTrendText": "STEADY",
   "lightning": "\u26a1 DSNT N/NE 10-30 NM",
   "lightningSeverity": "distant",
   "lightningTone": "yellow",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL 20-24Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-15 19:42:00.000",
+  "bwcUpdatedZ": "2026-07-15 19:48:00.000",
   "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-15 19:43:55Z",
+  "milNotamUpdatedZ": "2026-07-15 19:53:50Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -188,6 +188,17 @@
   "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
   "ficonNotams": [
+    {
+      "number": "07/228",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2607151943.",
+      "displayText": "RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2607151943.",
+      "effectiveStart": "202607151943",
+      "effectiveEnd": "202607161943",
+      "lastUpdated": "2026-07-15T19:46:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
     {
       "number": "07/227",
       "classification": "DOM",
@@ -218,7 +229,7 @@
       "displayText": "RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607151940.",
       "effectiveStart": "202607151940",
       "effectiveEnd": "202607161940",
-      "lastUpdated": "2026-07-15T19:40:00.000Z",
+      "lastUpdated": "2026-07-15T19:51:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -244,7 +255,7 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "ficonNotamCount": 5,
+  "ficonNotamCount": 6,
   "runwayClosureNotams": [],
   "runwayClosureNotamCount": 0,
   "constructionStatusNotams": [
@@ -312,13 +323,13 @@
   "constructionStatusNotamCount": 5,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-07-15 19:42Z",
+  "allFeedsUpdatedZ": "2026-07-15 19:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-15 19:42:51Z"
+    "lastWorkflowTimestampZ": "2026-07-15 19:52:48Z"
   }
 }
