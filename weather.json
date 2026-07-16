@@ -1,6 +1,6 @@
 {
   "metar": "SPECI KMEM 160240Z 00000KT 10SM FEW008 SCT034 BKN250 26/23 A3005 RMK AO2 T02560233 $",
-  "taf": "TAF KMEM 152329Z 1600/1706 23006KT P6SM VCTS FEW045CB BKN060 \n  FM160100 21003KT P6SM SCT060 BKN120 \n  FM161400 25007KT P6SM SCT025 SCT200 \n  FM161800 26012KT P6SM BKN045 \n  FM170000 24005KT P6SM FEW050",
+  "taf": "TAF KMEM 160250Z 1603/1706 21003KT P6SM SCT045 BKN120 \n  FM161200 23004KT P6SM BKN015 \n  FM161500 25005KT P6SM BKN027 \n  FM161700 26010KT P6SM BKN045 \n  FM170000 24005KT P6SM FEW050",
   "atisText": "MEM ATIS INFO M 0240Z SPECIAL. 00000KT 10SM FEW008 SCT034 BKN250 26/23 A3005 (THREE ZERO ZERO FIVE) RMK AO2 T02560233. ILS APCH IN USE RY 36L, 27, RNAV APCH IN USE RY 36R. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 36R GS OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. RWY 18C/36C RVR OTS. RWY 9/27 RVR OTS. RWY 36L CONDITION CODES, , 5 , , 5 , , 5 , AT 2323Z, RWY 36C CONDITION CODES, , 3 , , 3 , , 3 , AT, 1938Z RWY 36C SLIPPERY WHEN WET, RWY 36R CONDITION CODES, , 5 , , 5 , , 5 , AT 2324Z, RWY 27 CONDITION CODES, , 5 , , 5 , , 5 , AT 2329Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO M",
   "atisLetter": "M",
   "atisPhonetic": "MIKE",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-16T02:40:00Z",
-  "metarAgeMinutes": 3,
+  "metarAgeMinutes": 13,
   "atisObservedZ": "2026-07-16T02:40:00Z",
-  "atisAgeMinutes": 3,
+  "atisAgeMinutes": 13,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-15T23:52:47Z",
+  "trendReferenceTimestampZ": "2026-07-16T00:02:48Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -50,12 +50,12 @@
     "18R/36L"
   ],
   "flow": "NORTH \u2191",
-  "rcrText": "RSC/RCR 5/5/5 WET",
-  "rcrCode": "5/5/5",
+  "rcrText": "DRY",
+  "rcrCode": "DRY",
   "rcrSeverity": "good",
-  "rcrSource": "NOTAM_FICON",
+  "rcrSource": "NOTAM_FICON_NONE",
   "rcrVisible": true,
-  "rcrRaw": "07/249 RWY 36R FICON 5/5/5 100 PCT WET OBS AT 2607152324. RWY 36R FICON 5/5/5 100 PCT WET OBS AT 2607152324.",
+  "rcrRaw": "--",
   "altimeter": "30.05",
   "altimeterRaw": 30.05,
   "altimeterTrend": "\u2191",
@@ -81,10 +81,10 @@
   "tempC": 26,
   "dewpointC": 23,
   "tempDpDisplay": "26/23",
-  "tempTrend": "\u25bc",
-  "tempTrendText": "FALLING",
-  "dewpointTrend": "\u25ba",
-  "dewpointTrendText": "STEADY",
+  "tempTrend": "\u25ba",
+  "tempTrendText": "STEADY",
+  "dewpointTrend": "\u25bc",
+  "dewpointTrendText": "FALLING",
   "lightning": "NONE",
   "lightningSeverity": "none",
   "lightningTone": "green",
@@ -104,7 +104,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-16 02:42:00.000",
+  "bwcUpdatedZ": "2026-07-16 02:48:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "MODERATE",
   "bwcBamRisk": "MODERATE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-16 02:44:09Z",
+  "milNotamUpdatedZ": "2026-07-16 02:53:59Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -145,64 +145,8 @@
   ],
   "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
-  "ficonNotams": [
-    {
-      "number": "07/249",
-      "classification": "DOM",
-      "severity": "green",
-      "text": "RWY 36R FICON 5/5/5 100 PCT WET OBS AT 2607152324.",
-      "displayText": "RWY 36R FICON 5/5/5 100 PCT WET OBS AT 2607152324.",
-      "effectiveStart": "202607152324",
-      "effectiveEnd": "202607162324",
-      "lastUpdated": "2026-07-15T23:26:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
-    {
-      "number": "07/248",
-      "classification": "DOM",
-      "severity": "green",
-      "text": "RWY 36L FICON 5/5/5 100 PCT WET OBS AT 2607152323.",
-      "displayText": "RWY 36L FICON 5/5/5 100 PCT WET OBS AT 2607152323.",
-      "effectiveStart": "202607152323",
-      "effectiveEnd": "202607162323",
-      "lastUpdated": "2026-07-15T23:26:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
-    {
-      "number": "07/246",
-      "classification": "DOM",
-      "severity": "green",
-      "text": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2607152319.",
-      "displayText": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2607152319.",
-      "effectiveStart": "202607152319",
-      "effectiveEnd": "202607162319",
-      "lastUpdated": "2026-07-15T23:23:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
-    {
-      "number": "07/227",
-      "classification": "DOM",
-      "severity": "green",
-      "text": "APRON ALL FICON WET OBS AT 2607151941.",
-      "displayText": "APRON ALL FICON WET OBS AT 2607151941.",
-      "effectiveStart": "202607151941",
-      "effectiveEnd": "202607161941",
-      "lastUpdated": "2026-07-15T19:59:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
-    {
-      "number": "07/226",
-      "classification": "DOM",
-      "severity": "green",
-      "text": "TWY ALL FICON WET OBS AT 2607151941.",
-      "displayText": "TWY ALL FICON WET OBS AT 2607151941.",
-      "effectiveStart": "202607151941",
-      "effectiveEnd": "202607161941",
-      "lastUpdated": "2026-07-15T19:53:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    }
-  ],
-  "ficonNotamCount": 5,
+  "ficonNotams": [],
+  "ficonNotamCount": 0,
   "runwayClosureNotams": [
     {
       "number": "07/240",
@@ -344,13 +288,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-07-16 02:42Z",
+  "allFeedsUpdatedZ": "2026-07-16 02:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-16 02:42:49Z"
+    "lastWorkflowTimestampZ": "2026-07-16 02:52:47Z"
   }
 }
