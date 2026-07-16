@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-16T17:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-07-16T17:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-16T15:22:48Z",
+  "trendReferenceTimestampZ": "2026-07-16T15:42:49Z",
   "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -104,7 +104,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-16 18:18:00.000",
+  "bwcUpdatedZ": "2026-07-16 18:30:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-16 18:24:24Z",
+  "milNotamUpdatedZ": "2026-07-16 18:34:13Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -222,9 +222,21 @@
       "lastUpdated": "2026-06-30T18:04:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
+    },
+    {
+      "number": "06/534",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "RWY 36C CHEVRON SFC MARKINGS FADED",
+      "displayText": "RWY 36C CHEVRON SFC MARKINGS FADED",
+      "effectiveStart": "202606280344",
+      "effectiveEnd": "202607310500",
+      "lastUpdated": "2026-06-28T03:46:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 5,
+  "constructionStatusNotamCount": 6,
   "taxiRestrictionNotams": [
     {
       "number": "07/255",
@@ -237,18 +249,6 @@
       "lastUpdated": "2026-07-16T12:14:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY V BTN TWY Y AND GATE 452 CLSD"
-    },
-    {
-      "number": "07/244",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "TWY A BTN SIGNATURE RAMP AND TWY N CLSD",
-      "displayText": "TWY A BTN SIGNATURE RAMP AND TWY N CLSD",
-      "effectiveStart": "202607161300",
-      "effectiveEnd": "202607161930",
-      "lastUpdated": "2026-07-15T22:47:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A BTN SIGNATURE RAMP AND TWY N CLSD"
     },
     {
       "number": "07/242",
@@ -275,14 +275,14 @@
       "rawText": "RWY 18L/36R CLSD EXC XNG TWY R AND TWY D"
     }
   ],
-  "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-07-16 18:22Z",
+  "taxiRestrictionNotamCount": 3,
+  "allFeedsUpdatedZ": "2026-07-16 18:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-16 18:22:47Z"
+    "lastWorkflowTimestampZ": "2026-07-16 18:32:47Z"
   }
 }
