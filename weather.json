@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-17T21:54:00Z",
-  "metarAgeMinutes": 19,
+  "metarAgeMinutes": 29,
   "atisObservedZ": "2026-07-17T21:54:00Z",
-  "atisAgeMinutes": 19,
+  "atisAgeMinutes": 29,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-17T19:22:48Z",
+  "trendReferenceTimestampZ": "2026-07-17T19:32:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -104,12 +104,12 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-17 22:12:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-07-17 22:18:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "99999",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=17&hour=22&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=17&iHour=22",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-17 22:14:14Z",
+  "milNotamUpdatedZ": "2026-07-17 22:24:13Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -187,6 +187,18 @@
   ],
   "runwayClosureNotamCount": 3,
   "constructionStatusNotams": [
+    {
+      "number": "07/303",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY V BTN TWY C AND TWY B WIP PAVEMENT REPAIRS",
+      "displayText": "TWY V BTN TWY C AND TWY B WIP PAVEMENT REPAIRS",
+      "effectiveStart": "202607201300",
+      "effectiveEnd": "202607201930",
+      "lastUpdated": "2026-07-17T22:18:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY V BTN TWY C AND TWY B WIP PAVEMENT REPAIRS"
+    },
     {
       "number": "07/298",
       "classification": "CONST_AFLD_STATUS",
@@ -308,8 +320,20 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 10,
+  "constructionStatusNotamCount": 11,
   "taxiRestrictionNotams": [
+    {
+      "number": "07/302",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R2, TWY H BTN TWY N AND TWY R2 CLSD",
+      "displayText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R2, TWY H BTN TWY N AND TWY R2 CLSD",
+      "effectiveStart": "202607201300",
+      "effectiveEnd": "202607201930",
+      "lastUpdated": "2026-07-17T22:16:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R2, TWY H BTN TWY N AND TWY R2 CLSD"
+    },
     {
       "number": "07/301",
       "classification": "TAXI_ROUTE_RESTR",
@@ -383,14 +407,14 @@
       "rawText": "RWY 18L/36R CLSD EXC XNG TWY R AND TWY D"
     }
   ],
-  "taxiRestrictionNotamCount": 6,
-  "allFeedsUpdatedZ": "2026-07-17 22:12Z",
+  "taxiRestrictionNotamCount": 7,
+  "allFeedsUpdatedZ": "2026-07-17 22:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-17 22:12:48Z"
+    "lastWorkflowTimestampZ": "2026-07-17 22:22:48Z"
   }
 }
