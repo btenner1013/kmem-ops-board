@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 181754Z VRB05KT 10SM FEW045 33/23 A3007 RMK AO2 SLP176 T03330233 10333 20267 58010 $",
   "taf": "TAF KMEM 181720Z 1818/1924 29008KT P6SM FEW060 FEW200 \n  FM190200 VRB03KT P6SM SKC \n  FM191400 28005KT P6SM SCT110",
-  "atisText": "MEM ATIS INFO J 1754Z. VRB05KT 10SM FEW045 33/23 A3007 (THREE ZERO ZERO SEVEN). SIMUL VISUAL APCHS IN USE RY 36L, 36C, 27. SIMUL DEPS IN USE RY 36L 36C, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 18L, 36R CLSD. TWY S CLSD BTN TWY, L AND TWY P, TWY S CLSD BTN TWY, E AND TWY H, TWY P CLSD BTN TWY, S AND TWY Y, TWY H CLSD BTN TWY, S AND TWY Y, TWY S CLSD BTN TWY, S6 AND TWY L, TWY E CLSD BTN RWY, 18L AND TWY S. RWY 36R GS OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. RWY 9/27 RVR OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO J",
-  "atisLetter": "J",
-  "atisPhonetic": "JULIETT",
-  "atisDisplay": "JULIETT",
+  "atisText": "MEM ATIS INFO K 1754Z. VRB05KT 10SM FEW045 33/23 A3007 (THREE ZERO ZERO SEVEN). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 36R GS OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. RWY 9/27 RVR OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO K",
+  "atisLetter": "K",
+  "atisPhonetic": "KILO",
+  "atisDisplay": "KILO",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-18T17:54:00Z",
-  "metarAgeMinutes": 40,
+  "metarAgeMinutes": 49,
   "atisObservedZ": "2026-07-18T17:54:00Z",
-  "atisAgeMinutes": 40,
+  "atisAgeMinutes": 49,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-18T15:34:17Z",
+  "trendReferenceTimestampZ": "2026-07-18T15:44:17Z",
   "trendSampleCount": 43,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -40,9 +40,9 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
-  "arrRunways": "36L / 36C / 27",
+  "arrRunways": "36L / 36R / 27",
   "depRunways": "27",
-  "closedRunways": "18L / 36R",
+  "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
     "18L/36R",
@@ -104,7 +104,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-18 18:30:00.000",
+  "bwcUpdatedZ": "2026-07-18 18:42:00.000",
   "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-18 18:35:38Z",
+  "milNotamUpdatedZ": "2026-07-18 18:44:14Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -372,13 +372,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 5,
-  "allFeedsUpdatedZ": "2026-07-18 18:34Z",
+  "allFeedsUpdatedZ": "2026-07-18 18:42Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-18 18:34:15Z"
+    "lastWorkflowTimestampZ": "2026-07-18 18:42:47Z"
   }
 }
