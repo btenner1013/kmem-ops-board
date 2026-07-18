@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-18T15:54:00Z",
-  "metarAgeMinutes": 10,
+  "metarAgeMinutes": 19,
   "atisObservedZ": "2026-07-18T15:54:00Z",
-  "atisAgeMinutes": 10,
+  "atisAgeMinutes": 19,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-18T13:04:20Z",
-  "trendSampleCount": 43,
+  "trendReferenceTimestampZ": "2026-07-18T13:14:19Z",
+  "trendSampleCount": 42,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -104,12 +104,12 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-18 16:00:00.000",
-  "bwcNexrad": "NO DATA",
+  "bwcUpdatedZ": "2026-07-18 16:12:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXBAM",
+  "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "99999",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=18&hour=16&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=18&iHour=16",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-18 16:05:45Z",
+  "milNotamUpdatedZ": "2026-07-18 16:14:13Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -207,7 +207,7 @@
       "displayText": "TWY R BTN TWY N AND TWY J WIP MAINT",
       "effectiveStart": "202607181700",
       "effectiveEnd": "202607181800",
-      "lastUpdated": "2026-07-18T15:52:00.000Z",
+      "lastUpdated": "2026-07-18T16:05:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY R BTN TWY N AND TWY J WIP MAINT"
     },
@@ -420,13 +420,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 7,
-  "allFeedsUpdatedZ": "2026-07-18 16:04Z",
+  "allFeedsUpdatedZ": "2026-07-18 16:12Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-18 16:04:18Z"
+    "lastWorkflowTimestampZ": "2026-07-18 16:12:47Z"
   }
 }
