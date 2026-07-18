@@ -5,13 +5,13 @@
   "atisLetter": "F",
   "atisPhonetic": "FOXTROT",
   "atisDisplay": "FOXTROT",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-18T14:54:00Z",
-  "metarAgeMinutes": 50,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-18T14:54:00Z",
-  "atisAgeMinutes": 50,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-18T12:52:48Z",
+  "trendReferenceTimestampZ": "2026-07-18T12:54:18Z",
   "trendSampleCount": 42,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -104,7 +104,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-18 15:42:00.000",
+  "bwcUpdatedZ": "2026-07-18 15:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-18 15:46:02Z",
+  "milNotamUpdatedZ": "2026-07-18 15:54:15Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -187,6 +187,18 @@
   ],
   "runwayClosureNotamCount": 3,
   "constructionStatusNotams": [
+    {
+      "number": "07/308",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY R BTN TWY N AND TWY J WIP MAINT",
+      "displayText": "TWY R BTN TWY N AND TWY J WIP MAINT",
+      "effectiveStart": "202607181700",
+      "effectiveEnd": "202607181800",
+      "lastUpdated": "2026-07-18T15:52:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY R BTN TWY N AND TWY J WIP MAINT"
+    },
     {
       "number": "07/303",
       "classification": "CONST_AFLD_STATUS",
@@ -320,7 +332,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 11,
+  "constructionStatusNotamCount": 12,
   "taxiRestrictionNotams": [
     {
       "number": "07/307",
@@ -408,13 +420,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 7,
-  "allFeedsUpdatedZ": "2026-07-18 15:44Z",
+  "allFeedsUpdatedZ": "2026-07-18 15:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-18 15:44:17Z"
+    "lastWorkflowTimestampZ": "2026-07-18 15:52:48Z"
   }
 }
