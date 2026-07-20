@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-20T02:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-07-20T02:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-20T00:22:48Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-07-20T00:42:48Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -146,12 +146,12 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-05Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-20 03:18:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-07-20 03:30:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=20&hour=03&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=20&iHour=03",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-20 03:24:08Z",
+  "milNotamUpdatedZ": "2026-07-20 03:34:19Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -217,6 +217,30 @@
   ],
   "runwayClosureNotamCount": 2,
   "constructionStatusNotams": [
+    {
+      "number": "07/320",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "RWY 36R LEAD OFF CL MARKINGS AT TWY P NOT STD",
+      "displayText": "RWY 36R LEAD OFF CL MARKINGS AT TWY P NOT STD",
+      "effectiveStart": "202607200327",
+      "effectiveEnd": "202608210500",
+      "lastUpdated": "2026-07-20T03:27:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 36R LEAD OFF CL MARKINGS AT TWY P NOT STD"
+    },
+    {
+      "number": "07/319",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "RWY 18L LEAD OFF CL MARKINGS AT TWY P NOT STD",
+      "displayText": "RWY 18L LEAD OFF CL MARKINGS AT TWY P NOT STD",
+      "effectiveStart": "202607200326",
+      "effectiveEnd": "202608210500",
+      "lastUpdated": "2026-07-20T03:27:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 18L LEAD OFF CL MARKINGS AT TWY P NOT STD"
+    },
     {
       "number": "07/303",
       "classification": "CONST_AFLD_STATUS",
@@ -338,7 +362,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 10,
+  "constructionStatusNotamCount": 12,
   "taxiRestrictionNotams": [
     {
       "number": "07/302",
@@ -378,13 +402,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-20 03:22Z",
+  "allFeedsUpdatedZ": "2026-07-20 03:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-20 03:22:47Z"
+    "lastWorkflowTimestampZ": "2026-07-20 03:32:48Z"
   }
 }
