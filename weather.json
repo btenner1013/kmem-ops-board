@@ -5,13 +5,13 @@
   "atisLetter": "J",
   "atisPhonetic": "JULIETT",
   "atisDisplay": "JULIETT",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-21T21:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-21T21:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL NOW-22 JUL 02Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-21 22:42:00.000",
+  "bwcUpdatedZ": "2026-07-21 22:48:00.000",
   "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-21 22:44:08Z",
+  "milNotamUpdatedZ": "2026-07-21 22:53:57Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -240,18 +240,6 @@
       "lastUpdated": "2026-07-21T20:31:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY S, Y WIP MARKINGS"
-    },
-    {
-      "number": "07/363",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY A, V, TWY N BTN TWY M9 AND APCH END RWY 09, TWY C BTN TWY C5 AND TWY A, TWY B BTN TWY S AND TWY A WIP SPRAYING, MOWING, WEEDING",
-      "displayText": "TWY A, V, TWY N BTN TWY M9 AND APCH END RWY 09, TWY C BTN TWY C5 AND TWY A, TWY B BTN TWY S AND TWY A WIP SPRAYING, MOWING, WEEDING",
-      "effectiveStart": "202607211835",
-      "effectiveEnd": "202607212330",
-      "lastUpdated": "2026-07-21T18:38:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A, V, TWY N BTN TWY M9 AND APCH END RWY 09, TWY C BTN TWY C5 AND TWY A, TWY B BTN TWY S AND TWY A WIP SPRAYING, MOWING, WEEDING"
     },
     {
       "number": "07/343",
@@ -338,7 +326,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 11,
+  "constructionStatusNotamCount": 10,
   "taxiRestrictionNotams": [
     {
       "number": "07/367",
@@ -378,13 +366,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-21 22:42Z",
+  "allFeedsUpdatedZ": "2026-07-21 22:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-21 22:42:48Z"
+    "lastWorkflowTimestampZ": "2026-07-21 22:52:48Z"
   }
 }
