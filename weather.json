@@ -5,13 +5,13 @@
   "atisLetter": "I",
   "atisPhonetic": "INDIA",
   "atisDisplay": "INDIA",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-21T20:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-21T20:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL 21 JUL 22Z-22 JUL 02Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-21 21:42:00.000",
+  "bwcUpdatedZ": "2026-07-21 21:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-21 21:43:59Z",
+  "milNotamUpdatedZ": "2026-07-21 21:54:10Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -205,6 +205,18 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "07/369",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY A BTN TWY N AND TWY C WIP SPRAYING, MOWING, WEEDING",
+      "displayText": "TWY A BTN TWY N AND TWY C WIP SPRAYING, MOWING, WEEDING",
+      "effectiveStart": "202607221300",
+      "effectiveEnd": "202607221930",
+      "lastUpdated": "2026-07-21T21:46:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY A BTN TWY N AND TWY C WIP SPRAYING, MOWING, WEEDING"
+    },
     {
       "number": "07/366",
       "classification": "CONST_AFLD_STATUS",
@@ -326,7 +338,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 10,
+  "constructionStatusNotamCount": 11,
   "taxiRestrictionNotams": [
     {
       "number": "07/367",
@@ -366,13 +378,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-21 21:42Z",
+  "allFeedsUpdatedZ": "2026-07-21 21:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-21 21:42:48Z"
+    "lastWorkflowTimestampZ": "2026-07-21 21:52:47Z"
   }
 }
