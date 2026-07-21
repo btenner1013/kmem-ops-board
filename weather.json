@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 210054Z 21004KT 10SM FEW060 BKN250 30/24 A2985 RMK AO2 SLP102 T03000239 $",
   "taf": "TAF KMEM 202327Z 2100/2206 VRB06KT P6SM VCSH SCT050 BKN250 \n  FM210200 19004KT P6SM SCT100 SCT250 \n  FM210600 19003KT P6SM FEW250 \n  FM211500 24004KT P6SM SCT050 \n  PROB30 2200/2206 4SM TSRA BKN050CB",
-  "atisText": "MEM ATIS INFO A 0054Z. 21004KT 10SM FEW060 BKN250 30/24 A2985 (TWO NINER EIGHT FIVE). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 36R GS OTS, MEM ASDE OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. RWY 9/27 RVR OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO A",
-  "atisLetter": "A",
-  "atisPhonetic": "ALFA",
-  "atisDisplay": "ALFA",
-  "metarFetchStatus": "OK",
+  "atisText": "MEM ATIS INFO B 0054Z. 21004KT 10SM FEW060 BKN250 30/24 A2985 (TWO NINER EIGHT FIVE). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. TWY M2 CLSD BTN RWY 36L AND M. RWY 36R GS OTS, MEM ASDE OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. RWY 9/27 RVR OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO B",
+  "atisLetter": "B",
+  "atisPhonetic": "BRAVO",
+  "atisDisplay": "BRAVO",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-21T00:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-21T00:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-20T22:42:48Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-07-20T23:02:47Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL NOW-02Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-21 01:42:00.000",
+  "bwcUpdatedZ": "2026-07-21 01:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-21 01:44:14Z",
+  "milNotamUpdatedZ": "2026-07-21 01:54:14Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -341,6 +341,18 @@
   "constructionStatusNotamCount": 11,
   "taxiRestrictionNotams": [
     {
+      "number": "07/352",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "red",
+      "text": "TWY M2 BTN RWY 18R/36L AND TWY M CLSD",
+      "displayText": "TWY M2 BTN RWY 18R/36L AND TWY M CLSD",
+      "effectiveStart": "202607210145",
+      "effectiveEnd": "202607290500",
+      "lastUpdated": "2026-07-21T01:47:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY M2 BTN RWY 18R/36L AND TWY M CLSD"
+    },
+    {
       "number": "07/348",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "red",
@@ -401,14 +413,14 @@
       "rawText": "RWY 18L/36R CLSD EXC XNG TWY D, R"
     }
   ],
-  "taxiRestrictionNotamCount": 5,
-  "allFeedsUpdatedZ": "2026-07-21 01:42Z",
+  "taxiRestrictionNotamCount": 6,
+  "allFeedsUpdatedZ": "2026-07-21 01:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-21 01:42:47Z"
+    "lastWorkflowTimestampZ": "2026-07-21 01:52:48Z"
   }
 }
