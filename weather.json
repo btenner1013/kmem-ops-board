@@ -1,6 +1,6 @@
 {
   "metar": "METAR KMEM 212054Z 28007KT 10SM BKN055 BKN075 BKN250 36/24 A2982 RMK AO2 SLP091 T03610239 58018 $",
-  "taf": "TAF KMEM 212050Z 2121/2224 25004KT P6SM VCSH SCT050 SCT100 \n  PROB30 2122/2202 VRB10KT 4SM TSRA BKN050CB \n  FM220200 VRB04KT P6SM SCT035 BKN100 \n  PROB30 2202/2205 4SM TSRA BKN050CB \n  FM220800 01006KT P6SM BKN040 \n  FM221300 03011KT P6SM BKN040 \n  FM221900 02012G19KT P6SM SCT050",
+  "taf": "TAF KMEM 212126Z 2121/2224 25004KT P6SM VCTS SCT050CB BKN100 \n  TEMPO 2122/2202 VRB10KT 4SM TSRA \n  FM220200 VRB04KT P6SM SCT035 BKN100 \n  PROB30 2202/2205 4SM TSRA BKN050CB \n  FM220800 01006KT P6SM BKN040 \n  FM221300 03011KT P6SM BKN040 \n  FM221900 02012G19KT P6SM SCT050",
   "atisText": "MEM ATIS INFO H 2054Z. 28007KT 10SM BKN055 BKN075 BKN250 36/24 A2982 (TWO NINER EIGHT TWO). VISUAL APCH IN USE RY 36C. SIMUL DEPS IN USE RY 36L 36C 36R. NOTICE TO AIRMEN. TWY M2 CLSD BTN RWY, 36L AND TWY M. RWY 36R GS OTS, MEM ASDE OTS, FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO H",
   "atisLetter": "H",
   "atisPhonetic": "HOTEL",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-21T20:54:00Z",
-  "metarAgeMinutes": 27,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-07-21T20:54:00Z",
-  "atisAgeMinutes": 27,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-21T18:22:48Z",
-  "trendSampleCount": 20,
+  "trendReferenceTimestampZ": "2026-07-21T18:42:47Z",
+  "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -110,7 +110,7 @@
       "displayText": "\u26c8\ufe0f TSRA PSBL 21 JUL 22Z-22 JUL 02Z",
       "tafWindow": "21 JUL 22Z-22 JUL 02Z",
       "tafStartKey": 526,
-      "tafGroupType": "PROB30",
+      "tafGroupType": "TEMPO",
       "tafStartIso": "2026-07-21T22:00:00Z",
       "tafEndIso": "2026-07-22T02:00:00Z"
     }
@@ -135,7 +135,7 @@
     "displayText": "\u26c8\ufe0f TSRA PSBL 21 JUL 22Z-22 JUL 02Z",
     "tafWindow": "21 JUL 22Z-22 JUL 02Z",
     "tafStartKey": 526,
-    "tafGroupType": "PROB30",
+    "tafGroupType": "TEMPO",
     "tafStartIso": "2026-07-21T22:00:00Z",
     "tafEndIso": "2026-07-22T02:00:00Z"
   },
@@ -144,13 +144,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": true,
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL 21 JUL 22Z-22 JUL 02Z",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-21 21:18:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-07-21 21:30:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "SEVERE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "4667",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=21&hour=21&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-21 20:42:09Z",
+  "milNotamUpdatedZ": "2026-07-21 21:34:03Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -185,7 +185,7 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "TIMEOUT",
+  "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
@@ -366,13 +366,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-21 21:20Z",
+  "allFeedsUpdatedZ": "2026-07-21 21:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-21 21:20:42Z"
+    "lastWorkflowTimestampZ": "2026-07-21 21:32:48Z"
   }
 }
