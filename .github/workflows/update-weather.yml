@@ -1,8 +1,6 @@
-name: KMEM Weather Update (Serverless Cloud Scheduler)
+name: KMEM Weather Update (Manual / Webhook Trigger)
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
