@@ -1,6 +1,8 @@
-name: Update KMEM Weather Manual Backup
+name: KMEM Weather Update (Serverless Cloud Scheduler)
 
 on:
+  schedule:
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -11,184 +13,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Fetch METAR
-        run: |
-          curl -L -s "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false" > metar.txt
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Fetch TAF
-        run: |
-          curl -L -s "https://aviationweather.gov/api/data/taf?ids=KMEM&format=raw" > taf.txt
-
-      - name: Fetch D-ATIS
-        run: |
-          curl -L -s -A "Mozilla/5.0" "https://atisrelay.com/datis/KMEM" > atis.html || true
-
-      - name: Build weather.json
-        run: |
-          python3 - << 'EOF'
-          import json
-          import re
-          import os
-          from datetime import datetime, timezone
-          from html import unescape
-
-          def read_file(path):
-              try:
-                  return open(path, "r", encoding="utf-8", errors="ignore").read()
-              except Exception:
-                  return ""
-
-          def html_to_text(html):
-              html = re.sub(r"(?is)<script.*?</script>", " ", html)
-              html = re.sub(r"(?is)<style.*?</style>", " ", html)
-              html = re.sub(r"(?is)<[^>]+>", " ", html)
-              text = unescape(html)
-              text = re.sub(r"\s+", " ", text)
-              return text.strip()
-
-          def normalize_rwy_list(text):
-              if not text:
-                  return "--"
-              matches = re.findall(r"\b\d{1,2}[LCR]?\b", text.upper())
-              if not matches:
-                  return "--"
-              return " / ".join(matches)
-
-          def parse_atis_letter(atis_text):
-              txt = (atis_text or "").upper()
-              patterns = [
-                  r"\bATIS\s+INFO(?:RMATION)?\s+([A-Z])\b",
-                  r"\bINFO(?:RMATION)?\s+([A-Z])\b",
-                  r"\bADVS YOU HAVE INFO\s+([A-Z])\b"
-              ]
-              for pattern in patterns:
-                  m = re.search(pattern, txt)
-                  if m:
-                      return m.group(1)
-              return "--"
-
-          def parse_arr_runways(atis_text):
-              txt = (atis_text or "").upper()
-              patterns = [
-                  r"SIMUL VISUAL APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
-                  r"VISUAL APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
-                  r"SIMUL ILS APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
-                  r"ILS APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
-                  r"ILS APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
-                  r"APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)",
-                  r"APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY|$)"
-              ]
-              for pattern in patterns:
-                  m = re.search(pattern, txt)
-                  if m:
-                      return normalize_rwy_list(m.group(1))
-              return "--"
-
-          def parse_dep_runways(atis_text):
-              txt = (atis_text or "").upper()
-              patterns = [
-                  r"SIMUL DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)",
-                  r"DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)",
-                  r"DEPARTURES IN USE RY\s+(.+?)(?:\.| NOTICE| RWY|$)"
-              ]
-              for pattern in patterns:
-                  m = re.search(pattern, txt)
-                  if m:
-                      return normalize_rwy_list(m.group(1))
-              return "--"
-
-          def parse_closed_runways(atis_text):
-              txt = (atis_text or "").upper()
-              closed = []
-              for m in re.finditer(r"RWY\s+([\dLRC,\s]+)\s+CLSD", txt):
-                  group = normalize_rwy_list(m.group(1))
-                  if group != "--":
-                      closed.append(group)
-              return ", ".join(closed) if closed else "--"
-
-          def determine_flow(arr, dep):
-              combined = (arr + " " + dep).upper()
-              if re.search(r"\b36[LCR]?\b", combined):
-                  return "NORTH ↑"
-              if re.search(r"\b18[LCR]?\b", combined):
-                  return "SOUTH ↓"
-              if re.search(r"\b09\b", combined):
-                  return "EAST →"
-              if re.search(r"\b27\b", combined):
-                  return "WEST ←"
-              return "--"
-
-          metar = read_file("metar.txt").strip()
-          taf = read_file("taf.txt").strip()
-          atis_raw = html_to_text(read_file("atis.html"))
-
-          if len(atis_raw) < 40 or ("KMEM" not in atis_raw.upper() and "MEM" not in atis_raw.upper()):
-              atis_text = "D-ATIS unavailable"
-          else:
-              atis_text = re.sub(r"\s+", " ", atis_raw).strip()[:1500]
-
-          atis_letter = parse_atis_letter(atis_text)
-          arr_runways = parse_arr_runways(atis_text)
-          dep_runways = parse_dep_runways(atis_text)
-          closed_runways = parse_closed_runways(atis_text)
-          flow = determine_flow(arr_runways, dep_runways)
-
-          event_name = os.environ.get("GITHUB_EVENT_NAME", "unknown")
-          actor = os.environ.get("GITHUB_ACTOR", "unknown")
-          workflow = os.environ.get("GITHUB_WORKFLOW", "unknown")
-          run_number = os.environ.get("GITHUB_RUN_NUMBER", "unknown")
-          run_id = os.environ.get("GITHUB_RUN_ID", "unknown")
-
-          now_z = datetime.now(timezone.utc)
-
-          data = {
-              "metar": metar or "METAR unavailable",
-              "taf": taf or "TAF unavailable",
-              "atisText": atis_text,
-              "atisLetter": atis_letter,
-              "arrRunways": arr_runways,
-              "depRunways": dep_runways,
-              "closedRunways": closed_runways,
-              "flow": flow,
-              "lightning": "NONE",
-              "bwc": "PENDING",
-              "bwcSource": "AHAS",
-              "bwcUpdatedZ": "--",
-              "allFeedsUpdatedZ": now_z.strftime("%Y-%m-%d %H:%MZ"),
-              "workflowMetadata": {
-                  "lastWorkflowEvent": event_name,
-                  "lastWorkflowActor": actor,
-                  "lastWorkflowName": workflow,
-                  "lastWorkflowRunNumber": run_number,
-                  "lastWorkflowRunId": run_id,
-                  "lastWorkflowTimestampZ": now_z.strftime("%Y-%m-%d %H:%M:%SZ")
-              }
-          }
-
-          with open("weather.json", "w", encoding="utf-8") as f:
-              json.dump(data, f, indent=2)
-
-          print("Updated weather.json")
-          print("Workflow event:", event_name)
-          EOF
+      - name: Run Weather Updater
         env:
+          NMS_CLIENT_ID: ${{ secrets.NMS_CLIENT_ID }}
+          NMS_CLIENT_SECRET: ${{ secrets.NMS_CLIENT_SECRET }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_WORKFLOW: ${{ github.workflow }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-
-      - name: Commit weather.json
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-
-          git add weather.json
-
-          git diff --cached --quiet || \
-          git commit -m "Manual backup KMEM weather update"
-
-          git push
+          python update_weather_local.py

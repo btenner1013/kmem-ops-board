@@ -93,43 +93,37 @@ CLEAR MANUAL ALERT
 
 There is no external weather-warning pull, no external lightning verification, and no automatic lightning closure logic in this package. The manual alert remains active until an authorized user clears it through the PIN-protected Cloudflare Worker. Do not commit PINs, tokens, cookies, GitHub tokens, NMS credentials, or local credential files.
 
-## Normal scheduled update flow
+## Automatic & Scheduled Update Flows
 
-Windows Task Scheduler runs:
+The board updates without requiring Windows Task Scheduler using either of the following approaches:
 
-```text
-run_kmem_update.bat
-```
+### Method 1: Serverless GitHub Actions Cloud Scheduler (Recommended - 24/7 Serverless)
 
-That batch file:
+The repository includes a GitHub Actions workflow (`.github/workflows/update-weather.yml`) configured to run automatically every 15 minutes in the cloud.
 
-```text
-1. Changes directory to the repo folder.
-2. Calls nms_credentials_local.bat if present.
-3. Runs update_weather_local.py.
-4. Appends output to local_update_log.txt.
-```
+- **No local PC required:** Runs completely on GitHub's cloud runners.
+- **NMS Credentials:** To enable FAA NMS MIL NOTAM pulls in GitHub Actions:
+  1. Go to your GitHub Repository -> **Settings** -> **Secrets and variables** -> **Actions**.
+  2. Add `NMS_CLIENT_ID` and `NMS_CLIENT_SECRET` as Repository Secrets.
+- **Manual Trigger:** You can also trigger an instant update anytime from the GitHub **Actions** tab by selecting **KMEM Weather Update** -> **Run workflow**.
 
-The Python updater:
+### Method 2: Local Continuous Daemon Script (Non-Task Scheduler)
 
-```text
-1. Pulls/parses weather sources.
-2. Runs the NMS helper for MIL NOTAM/FICON/RWY closure display data.
-3. Builds weather.json.
-4. Saves local and repo last-good backups when data passes quality checks.
-5. Commits and pushes weather.json to GitHub.
-```
+If you prefer to run updates locally from your computer without Windows Task Scheduler:
 
-Production safety note:
-
-```text
-update_weather_local.py should NOT run git reset --hard origin/main.
-Code updates are manual. Scheduled updates should only update weather.json.
-```
+1. Double-click `run_kmem_daemon.bat` or run:
+   ```cmd
+   cd /d C:\Users\btenn\Documents\KMEM-Ops-Board-Local\kmem-ops-board
+   call nms_credentials_local.bat
+   py update_weather_local.py --daemon
+   ```
+2. The process runs continuously in a background loop, executing an update every 10 minutes (or `--interval 300` for 5 minutes).
+3. Stop it anytime by pressing `Ctrl + C`.
 
 ---
 
-## Manual update
+## Single-Pass Manual Update
+
 
 From Command Prompt:
 

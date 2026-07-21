@@ -4501,6 +4501,10 @@ def download_radar_gif():
 def git_commit_and_push():
     print("Committing and pushing...")
 
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        run_cmd(["git", "config", "user.name", "github-actions[bot]"], allow_fail=True)
+        run_cmd(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"], allow_fail=True)
+
     run_cmd(["git", "add", "weather.json"])
     if os.path.exists(RADAR_GIF_PATH):
         run_cmd(["git", "add", "radar.gif"])
@@ -4513,24 +4517,68 @@ def git_commit_and_push():
 
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
 
-    run_cmd(["git", "commit", "-m", f"Local KMEM weather update {timestamp}"])
-    run_cmd(["git", "push", "origin", "main"])
+    commit_res = run_cmd(["git", "commit", "-m", f"KMEM weather update {timestamp}"], allow_fail=True)
+    if commit_res.returncode != 0:
+        print("Git commit skipped or failed.")
+        return
 
-    print("Pushed weather.json to GitHub.")
+    push_res = run_cmd(["git", "push", "origin", "main"], allow_fail=True)
+    if push_res.returncode == 0:
+        print("Pushed weather.json to GitHub.")
+    else:
+        print("Git push failed; will retry on next update cycle.")
+
+
+def run_loop(interval_seconds=600):
+    print(f"Starting continuous KMEM Ops Board updater (interval: {interval_seconds}s)...")
+    while True:
+        cycle_start = time.time()
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+        print(f"\n==================================================")
+        print(f"KMEM UPDATE CYCLE START: {now_str}")
+        print(f"==================================================")
+
+        try:
+            sync_repo_before_update()
+            build_weather_json()
+            download_radar_gif()
+            git_commit_and_push()
+            print("Update cycle complete.")
+        except Exception as error:
+            print("UPDATE CYCLE FAILED:", error)
+
+        elapsed = time.time() - cycle_start
+        sleep_time = max(1.0, float(interval_seconds) - elapsed)
+        print(f"Sleeping {sleep_time:.1f}s until next update cycle (Press Ctrl+C to stop)...")
+        try:
+            time.sleep(sleep_time)
+        except KeyboardInterrupt:
+            print("\nContinuous updater stopped by user.")
+            sys.exit(0)
 
 
 def main():
-    try:
-        sync_repo_before_update()
-        build_weather_json()
-        download_radar_gif()
-        git_commit_and_push()
-        print("Local update complete.")
+    import argparse
+    parser = argparse.ArgumentParser(description="KMEM Ops Board Weather Updater")
+    parser.add_argument("--daemon", "--loop", action="store_true", help="Run continuously in a background loop")
+    parser.add_argument("--interval", type=int, default=600, help="Interval in seconds between update cycles (default: 600)")
+    args = parser.parse_args()
 
-    except Exception as error:
-        print("LOCAL UPDATE FAILED:", error)
-        sys.exit(1)
+    if args.daemon:
+        run_loop(interval_seconds=args.interval)
+    else:
+        try:
+            sync_repo_before_update()
+            build_weather_json()
+            download_radar_gif()
+            git_commit_and_push()
+            print("Local update complete.")
+
+        except Exception as error:
+            print("LOCAL UPDATE FAILED:", error)
+            sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
+
