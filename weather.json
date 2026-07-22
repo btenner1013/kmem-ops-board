@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 220554Z VRB05G17KT 10SM SCT060 BKN075 BKN250 31/24 A2983 RMK AO2 SLP096 CONS LTGICCC DSNT NE CB DSNT NE MOV SE T03060244 10333 20294 403780267 55001 $",
   "taf": "TAF KMEM 220520Z 2206/2312 30005KT P6SM VCTS SCT050CB SCT250 \n  PROB30 2206/2208 4SM TSRA BKN045CB \n  FM220800 VRB04KT P6SM SCT035 \n  FM221300 03009KT P6SM SCT035 \n  FM221800 02012G19KT P6SM SCT050 \n  FM230100 04011KT P6SM FEW250",
-  "atisText": "MEM ATIS INFO T 0554Z. VRB05G17KT 10SM SCT060 BKN075 BKN250 31/24 A2983 (TWO NINER EIGHT THREE) RMK AO2 SLP096 CONS LTGICCC DSNT NE CB DSNT NE MOV SE T03060244 10333 20294 403780267 55001. ILS APCH IN USE RY 18L, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. RWY 36R GS OTS, MEM ASDE OTS, FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. WIND SHEAR ADZYS IN EFCT. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO T",
-  "atisLetter": "T",
-  "atisPhonetic": "TANGO",
-  "atisDisplay": "TANGO",
+  "atisText": "MEM ATIS INFO U 0554Z. VRB05G17KT 10SM SCT060 BKN075 BKN250 31/24 A2983 (TWO NINER EIGHT THREE) RMK AO2 SLP096 CONS LTGICCC DSNT NE CB DSNT NE MOV SE T03060244 10333 20294 403780267 55001. ILS APCH IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 36R GS OTS, MEM ASDE OTS, FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. WIND SHEAR ADZYS IN EFCT. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO U",
+  "atisLetter": "U",
+  "atisPhonetic": "UNIFORM",
+  "atisDisplay": "UNIFORM",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-22T05:54:00Z",
-  "metarAgeMinutes": 9,
+  "metarAgeMinutes": 19,
   "atisObservedZ": "2026-07-22T05:54:00Z",
-  "atisAgeMinutes": 9,
+  "atisAgeMinutes": 19,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-22T03:02:49Z",
-  "trendSampleCount": 23,
+  "trendReferenceTimestampZ": "2026-07-22T03:22:47Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -40,8 +40,8 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": 7500,
-  "arrRunways": "18L / 18R",
-  "depRunways": "18C",
+  "arrRunways": "36L / 36R / 27",
+  "depRunways": "27",
   "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
@@ -49,7 +49,7 @@
     "18C/36C",
     "18R/36L"
   ],
-  "flow": "SOUTH \u2193",
+  "flow": "NORTH \u2191",
   "rcrText": "DRY",
   "rcrCode": "DRY",
   "rcrSeverity": "good",
@@ -62,8 +62,8 @@
   "altimeterTrendText": "STEADY",
   "ceilingFt": 7500,
   "ceilingDisplay": "7500 FT",
-  "ceilingTrend": "\u2191",
-  "ceilingTrendText": "RISING",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
@@ -75,9 +75,9 @@
   "windGustKt": 17,
   "windArrow": "",
   "windArrowMeaning": "VARIABLE",
-  "windTrend": "\u25b2",
-  "windTrendText": "INCREASING",
-  "windTrendClass": "worsening",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 31,
   "dewpointC": 24,
   "tempDpDisplay": "31/24",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL NOW-08Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-22 06:00:00.000",
+  "bwcUpdatedZ": "2026-07-22 06:12:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-22 06:03:53Z",
+  "milNotamUpdatedZ": "2026-07-22 06:13:51Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -354,13 +354,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-07-22 06:02Z",
+  "allFeedsUpdatedZ": "2026-07-22 06:12Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-22 06:02:48Z"
+    "lastWorkflowTimestampZ": "2026-07-22 06:12:48Z"
   }
 }
