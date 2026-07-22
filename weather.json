@@ -1,5 +1,5 @@
 {
-  "metar": "METAR KMEM 221454Z 04012G21KT 10SM BKN025 BKN037 27/20 A2994 RMK AO2 SLP134 T02720200 51020 $",
+  "metar": "SPECI KMEM 221521Z 04010G20KT 10SM SCT028 BKN180 28/21 A2995 RMK AO2 T02830206 $",
   "taf": "TAF KMEM 221459Z 2215/2318 04011G18KT P6SM SCT025 BKN040 \n  FM221630 02012G20KT P6SM SCT050 \n  FM230300 05009KT P6SM SCT100",
   "atisText": "MEM ATIS INFO N 1521Z SPECIAL. 04010G20KT 10SM SCT028 BKN180 28/21 A2995 (TWO NINER NINER FIVE). ILS APCH IN USE RY 36L, 36C, 9. SIMUL DEPS IN USE RY 36L 36C, DEPG RWYS 9. NOTICE TO AIRMEN. RWY 18L, 36R CLSD. RWY 36R GS OTS, MEM ASDE OTS, FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 18C RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO N",
   "atisLetter": "N",
@@ -8,10 +8,10 @@
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-07-22T14:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarObservedZ": "2026-07-22T15:21:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-07-22T15:21:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -24,18 +24,18 @@
   "trendReferenceTimestampZ": "2026-07-22T12:32:48Z",
   "trendSampleCount": 23,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
-  "obsSource": "MIXED",
+  "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
     "tempDp": "ATIS",
     "altimeter": "ATIS",
     "visibility": "ATIS",
-    "ceiling": "METAR"
+    "ceiling": "ATIS"
   },
-  "metarAltimeterRaw": 29.94,
+  "metarAltimeterRaw": 29.95,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
-  "metarCeilingFt": 2500,
+  "metarCeilingFt": 18000,
   "atisAltimeterRaw": 29.95,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
@@ -60,8 +60,8 @@
   "altimeterRaw": 29.95,
   "altimeterTrend": "\u2191",
   "altimeterTrendText": "RISING",
-  "ceilingFt": 2500,
-  "ceilingDisplay": "2500 FT",
+  "ceilingFt": 18000,
+  "ceilingDisplay": "18000 FT",
   "ceilingTrend": "\u2191",
   "ceilingTrendText": "RISING",
   "visibilitySm": 10.0,
@@ -102,14 +102,14 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-22 15:18:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-07-22 15:30:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "SEVERE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcAhasRisk": "MODERATE",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=22&hour=15&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=22&iHour=15",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-22 15:24:31Z",
+  "milNotamUpdatedZ": "2026-07-22 15:34:12Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -336,13 +336,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-07-22 15:22Z",
+  "allFeedsUpdatedZ": "2026-07-22 15:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-22 15:22:47Z"
+    "lastWorkflowTimestampZ": "2026-07-22 15:32:47Z"
   }
 }
