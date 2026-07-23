@@ -5,13 +5,13 @@
   "atisLetter": "N",
   "atisPhonetic": "NOVEMBER",
   "atisDisplay": "NOVEMBER",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-23T11:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-23T11:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -22,7 +22,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-07-23T09:52:48Z",
-  "trendSampleCount": 21,
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -104,12 +104,12 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-23 12:42:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-07-23 12:48:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=23&hour=12&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=23&iHour=12",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-23 12:44:05Z",
+  "milNotamUpdatedZ": "2026-07-23 12:54:06Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -163,6 +163,30 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "07/409",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY H BTN TWY J AND TWY N WIP GRASS CUTTING",
+      "displayText": "TWY H BTN TWY J AND TWY N WIP GRASS CUTTING",
+      "effectiveStart": "202607231300",
+      "effectiveEnd": "202607231930",
+      "lastUpdated": "2026-07-23T12:50:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY H BTN TWY J AND TWY N WIP GRASS CUTTING"
+    },
+    {
+      "number": "07/408",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY R BTN TWY J AND TWY N WIP GRASS CUTTING",
+      "displayText": "TWY R BTN TWY J AND TWY N WIP GRASS CUTTING",
+      "effectiveStart": "202607231300",
+      "effectiveEnd": "202607231930",
+      "lastUpdated": "2026-07-23T12:50:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY R BTN TWY J AND TWY N WIP GRASS CUTTING"
+    },
     {
       "number": "07/395",
       "classification": "CONST_AFLD_STATUS",
@@ -260,7 +284,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 8,
+  "constructionStatusNotamCount": 10,
   "taxiRestrictionNotams": [
     {
       "number": "07/401",
@@ -312,13 +336,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-07-23 12:42Z",
+  "allFeedsUpdatedZ": "2026-07-23 12:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-23 12:42:47Z"
+    "lastWorkflowTimestampZ": "2026-07-23 12:52:47Z"
   }
 }
