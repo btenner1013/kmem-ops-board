@@ -313,12 +313,11 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .raw{
   color:#e6e6e6;
   font-family:Consolas,monospace;
-  font-size:clamp(.78rem,1.4vh,1.20rem);
   line-height:1.24;
   white-space:pre-wrap;
-  overflow:auto;
+  overflow:hidden;
   flex:1 1 auto;
-  min-height:clamp(100px, 22vh, 280px);
+  min-height:0;
   padding-top:4px;
 }
 
@@ -2444,6 +2443,38 @@ function updateDetails(data){
   setMilNotamsDisplay(data);
 }
 
+function fitRawWeatherFontSize(){
+  const el=document.getElementById("weather");
+  if(!el)return;
+
+  const minSize=9;
+  const maxSize=Math.max(16, Math.floor(window.innerHeight * 0.038));
+  let bestSize=minSize;
+
+  let low=minSize;
+  let high=maxSize;
+
+  while(low<=high){
+    let mid=Math.floor((low+high)/2);
+    el.style.fontSize=mid+"px";
+    el.style.lineHeight="1.24";
+
+    if(el.scrollHeight<=el.clientHeight+2 && el.scrollWidth<=el.clientWidth+2){
+      bestSize=mid;
+      low=mid+1;
+    }else{
+      high=mid-1;
+    }
+  }
+
+  el.style.fontSize=bestSize+"px";
+  el.style.lineHeight="1.24";
+}
+
+window.fitRawWeatherFontSize=fitRawWeatherFontSize;
+window.addEventListener("resize",fitRawWeatherFontSize);
+document.addEventListener("DOMContentLoaded",fitRawWeatherFontSize);
+
 async function loadWeatherJson(){
   if(weatherFetchInFlight)return false;
   weatherFetchInFlight=true;
@@ -2460,6 +2491,7 @@ async function loadWeatherJson(){
     const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";
 
     document.getElementById("weather").textContent=formatRawWeatherText(metar,taf,data);
+    fitRawWeatherFontSize();
 
     window.kmemWeatherData=data;
     if(window.kmemRenderLightningClosureOverlay) window.kmemRenderLightningClosureOverlay();
