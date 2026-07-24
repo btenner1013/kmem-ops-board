@@ -2715,8 +2715,12 @@ setInterval(phase45PolishOpsText,1000);
   };
 
   function readSettings(){
-    try{ return Object.assign({},DEFAULTS,JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")||{}); }
-    catch(e){ return Object.assign({},DEFAULTS); }
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return Object.assign({},DEFAULTS,JSON.parse(raw)||"{}")||null;
+    }
+    catch(e){ return null; }
   }
 
   function px(value,min,max,fallback){
@@ -2734,6 +2738,24 @@ setInterval(phase45PolishOpsText,1000);
   function applyDisplaySettings(){
     const s=readSettings();
     const root=document.documentElement;
+
+    if(!s){
+      root.style.removeProperty("--clock-px");
+      root.style.removeProperty("--clock-date-px");
+      root.style.removeProperty("--notam-body-px");
+      root.style.removeProperty("--notam-title-px");
+      root.style.removeProperty("--notam-status-px");
+      root.style.removeProperty("--notam-cao-px");
+      root.style.removeProperty("--footer-px");
+      root.style.removeProperty("--feed-px");
+      root.style.removeProperty("--top-row-px");
+      root.style.removeProperty("--notam-row-px");
+      root.style.removeProperty("--footer-row-px");
+      root.style.removeProperty("--weather-col-pct");
+      let style=document.getElementById("displayTuningStyle");
+      if(style) style.textContent="";
+      return;
+    }
 
     root.style.setProperty("--clock-px", px(s.clockPx,42,128,DEFAULTS.clockPx) + "px");
     root.style.setProperty("--clock-date-px", px(s.clockDatePx,9,24,DEFAULTS.clockDatePx) + "px");
@@ -2766,8 +2788,8 @@ setInterval(phase45PolishOpsText,1000);
         .detail-label, .ops-label, .trend-label, body.getac-preset .detail-label, body.getac-preset .ops-label, body.getac-preset .trend-label{ font-size:clamp(.62rem,2.7vw,.78rem) !important; line-height:1.05 !important; }
         .detail-value, .ops-value, .trend-value, body.getac-preset .detail-value, body.getac-preset .ops-value, body.getac-preset .trend-value{ font-size:clamp(.86rem,4.1vw,1.08rem) !important; line-height:1.06 !important; }
         #rcr, body.getac-preset #rcr{ font-size:clamp(.9rem,4.4vw,1.12rem) !important; }
-        #tafTrend.wx-alert-compact, .wx-alert-compact, body.getac-preset #tafTrend.wx-alert-compact, body.getac-preset .wx-alert-compact{ font-size:clamp(.96rem,4.5vw,1.18rem) !important; white-space:normal !important; overflow:visible !important; }
-        .raw, body.getac-preset .raw{ font-size:clamp(.58rem,2.55vw,.76rem) !important; line-height:1.14 !important; max-height:none !important; overflow:visible !important; }
+        #tafTrend.wx-alert-compact, .wx-alert-compact, body.getac-preset #tafTrend.wx-alert-compact, body.getac-preset .wx-alert-compact{ font-size:clamp(.96rem,4.5vw,1.18rem) !important; white-space:normal !important; }
+        .raw, body.getac-preset .raw{ font-size:clamp(.58rem,2.55vw,.76rem) !important; line-height:1.14 !important; max-height:none !important; }
         .footer, .footer-left, .footer-center, .footer-right, body.getac-preset .footer, body.getac-preset .footer-left, body.getac-preset .footer-center, body.getac-preset .footer-right{ font-size:clamp(.78rem,3.5vw,.95rem) !important; line-height:1.1 !important; }
       }
       ${pulse ? `
