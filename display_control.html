@@ -232,9 +232,10 @@ input[type=range]{
     <h2>Quick Actions</h2>
     <div class="presets">
       <button class="primary" onclick="save()">Save / Broadcast to Board</button>
+      <button onclick="resetToAutoScaling()">Use Auto Dynamic Scaling</button>
       <button onclick="openBoard()">Open Board</button>
       <button onclick="openAwakeBoard()">Open Board + Keep Awake</button>
-      <button onclick="resetDefaults()">Reset Balanced Defaults</button>
+      <button onclick="resetDefaults()">Reset Preset Defaults</button>
       <button class="warn" onclick="saveDefaults()">Save This Device Default</button>
     </div>
     <p class="help">Settings are local to this browser/device. Use the sliders below for TV, desktop, Getac, or iPad. Phone keeps its compact automatic layout.</p>
@@ -470,11 +471,13 @@ function broadcastSettings(settings){
 
 function save(){
   const s=collect();
+  s.isCustomTuned=true;
+  s.userSaved=true;
   try{
     localStorage.setItem(KEY,JSON.stringify(s));
     broadcastSettings(s);
     updatePreview();
-    showToast("Saved successfully",true);
+    showToast("Saved & Broadcasted to Board",true);
     return true;
   }catch(e){
     showToast("Save failed: "+(e.message||e),false);
@@ -482,18 +485,26 @@ function save(){
   }
 }
 
+function resetToAutoScaling(){
+  try{
+    localStorage.removeItem(KEY);
+    broadcastSettings(null);
+    showToast("Switched to Automatic Dynamic Scaling",true);
+  }catch(e){}
+}
+
 function setPreset(name){
   const current=load();
   const p=presets[name]||{};
-  const s=Object.assign({},current,p,{preset:name});
+  const s=Object.assign({},current,p,{preset:name,isCustomTuned:true,userSaved:true});
   localStorage.setItem(KEY,JSON.stringify(s));
   setInputs(s);
   save();
 }
 
 function resetDefaults(){
-  let d=Object.assign({},defaults);
-  try{ d=Object.assign({},defaults,JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}")); }catch(e){}
+  let d=Object.assign({},defaults,{isCustomTuned:true,userSaved:true});
+  try{ d=Object.assign({},defaults,JSON.parse(localStorage.getItem(DEFAULT_KEY)||"{}"),{isCustomTuned:true,userSaved:true}); }catch(e){}
   localStorage.setItem(KEY,JSON.stringify(d));
   setInputs(d);
   save();
@@ -501,12 +512,14 @@ function resetDefaults(){
 
 function saveDefaults(){
   const s=collect();
+  s.isCustomTuned=true;
+  s.userSaved=true;
   try{
     localStorage.setItem(DEFAULT_KEY,JSON.stringify(s));
     localStorage.setItem(KEY,JSON.stringify(s));
     broadcastSettings(s);
     updatePreview();
-    showToast("Defaults saved successfully",true);
+    showToast("Device defaults saved",true);
     return true;
   }catch(e){
     showToast("Save defaults failed: "+(e.message||e),false);
