@@ -21,18 +21,18 @@
   --dim:#aaa;
   
   /* Defaults overridden dynamically by Display Controls or scaled fluidly */
-  --clock-px: clamp(1.4rem, 5.8vh, 5.5rem);
-  --notam-title-px: clamp(10px, 1.6vh, 22px);
-  --notam-status-px: clamp(9px, 1.3vh, 20px);
-  --notam-cao-px: clamp(8px, 1.1vh, 18px);
-  --notam-body-px: clamp(10px, 1.7vh, 26px);
-  --notam-line-height: 1.28;
-  --footer-px: clamp(10px, 1.5vh, 22px);
-  --feed-px: clamp(9px, 1.2vh, 18px);
+  --clock-px: clamp(1.1rem, 5.0vmin, 5.5rem);
+  --notam-title-px: clamp(9px, 1.4vmin, 22px);
+  --notam-status-px: clamp(8px, 1.2vmin, 20px);
+  --notam-cao-px: clamp(7px, 1.0vmin, 18px);
+  --notam-body-px: clamp(9px, 1.5vmin, 26px);
+  --notam-line-height: 1.22;
+  --footer-px: clamp(9px, 1.3vmin, 22px);
+  --feed-px: clamp(8px, 1.1vmin, 18px);
   --notam-scroll-seconds: 55s;
-  --top-row-px: clamp(45px, 10.5vh, 125px);
-  --notam-row-px: clamp(38px, 7.5vh, 85px);
-  --footer-row-px: clamp(20px, 4.0vh, 46px);
+  --top-row-px: clamp(38px, 9.5vh, 125px);
+  --notam-row-px: clamp(32px, 7.0vh, 85px);
+  --footer-row-px: clamp(18px, 3.8vh, 46px);
   --weather-col-pct: 44%;
 }
 
@@ -2718,7 +2718,9 @@ setInterval(phase45PolishOpsText,1000);
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
-      return Object.assign({},DEFAULTS,JSON.parse(raw)||"{}")||null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.isCustomTuned !== true) return null;
+      return Object.assign({},DEFAULTS,parsed);
     }
     catch(e){ return null; }
   }
