@@ -30,9 +30,9 @@
   --footer-px: clamp(12px, 1.7vh, 22px);
   --feed-px: clamp(10px, 1.3vh, 18px);
   --notam-scroll-seconds: 55s;
-  --top-row-px: clamp(75px, 14vh, 140px);
-  --notam-row-px: clamp(50px, 9.5vh, 95px);
-  --footer-row-px: clamp(32px, 5.5vh, 55px);
+  --top-row-px: clamp(60px, 11.5vh, 125px);
+  --notam-row-px: clamp(48px, 8.5vh, 85px);
+  --footer-row-px: clamp(26px, 4.5vh, 46px);
   --weather-col-pct: 44%;
 }
 
@@ -51,8 +51,8 @@ html,body{
   width:100vw;
   display:grid;
   grid-template-rows:var(--top-row-px) minmax(0,1fr) var(--notam-row-px) var(--footer-row-px);
-  gap:clamp(3px, 0.6vh, 8px);
-  padding:clamp(4px, 0.8vh, 10px);
+  gap:clamp(3px, 0.5vh, 8px);
+  padding:clamp(4px, 0.6vh, 10px);
 }
 
 .top{ display:grid; grid-template-columns:1fr 1fr; gap:6px; min-height:0; }
@@ -206,7 +206,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .weather-main{ display:contents; }
 .label,.title{ color:white; font-weight:bold; letter-spacing:1px; }
 .label{ font-size:clamp(1rem,1.3vw,1.6rem); }
-.title{ font-size:clamp(.95rem,1.1vw,1.35rem); margin-bottom:6px; }
+.title{ font-size:clamp(.85rem,1.1vw,1.3rem); margin-bottom:clamp(2px, 0.3vh, 5px); }
 
 .clock{
   font-size:var(--clock-px) !important;
@@ -225,17 +225,17 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
   white-space:nowrap;
 }
 
-.summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; align-items:center; }
+.summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:clamp(2px, 0.4vh, 5px); align-items:center; }
 .flight-category{ font-size:clamp(2.2rem,3.6vw,4.2rem); font-weight:bold; letter-spacing:2px; line-height:.95; }
 .atis-letter{ font-size:clamp(1.5rem,2.2vw,3rem); font-weight:bold; text-align:right; color:white; line-height:1; white-space:nowrap; }
 
-.details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:5px; }
-.ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-bottom:5px; }
-.status-grid{ display:grid; grid-template-columns:1fr; gap:5px; margin-bottom:6px; }
+.details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(2px, 0.35vw, 4px); margin-bottom:clamp(2px, 0.35vh, 4px); }
+.ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(2px, 0.35vw, 4px); margin-bottom:clamp(2px, 0.35vh, 4px); }
+.status-grid{ display:grid; grid-template-columns:1fr; gap:clamp(2px, 0.35vw, 4px); margin-bottom:clamp(2px, 0.4vh, 4px); }
 
-.detail-box,.ops-box,.trend-box{ border:1px solid #333; padding:5px; font-weight:bold; min-height:42px; overflow:hidden; }
-.detail-label,.ops-label,.trend-label{ color:var(--dim); font-size:clamp(.68rem,.78vw,.92rem); line-height:1.05; }
-.detail-value{ color:var(--ops-green); font-size:clamp(.94rem,1.08vw,1.32rem); line-height:1.1; white-space:nowrap; text-align:center;}
+.detail-box,.ops-box,.trend-box{ border:1px solid #333; padding:clamp(2px, 0.3vh, 4px); font-weight:bold; min-height:clamp(28px, 3.8vh, 38px); overflow:hidden; }
+.detail-label,.ops-label,.trend-label{ color:var(--dim); font-size:clamp(.65rem,.75vw,.90rem); line-height:1.05; }
+.detail-value{ color:var(--ops-green); font-size:clamp(.88rem,1.05vw,1.28rem); line-height:1.1; white-space:nowrap; text-align:center;}
 
 .trend-arrow{ font-weight:900; font-size:1.08em; margin-left:5px; display:inline-block; vertical-align:baseline; }
 .trend-up{color:var(--ops-green)}
@@ -310,13 +310,13 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .raw{
   color:#e6e6e6;
   font-family:Consolas,monospace;
-  font-size:clamp(.92rem,1.04vw,1.28rem);
-  line-height:1.35;
+  font-size:clamp(.78rem,1.4vh,1.20rem);
+  line-height:1.24;
   white-space:pre-wrap;
   overflow:auto;
-  flex:1;
-  min-height:0;
-  padding-top:6px;
+  flex:1 1 auto;
+  min-height:clamp(100px, 22vh, 280px);
+  padding-top:4px;
 }
 
 .radar-panel{ display:flex; flex-direction:column; min-height:0; gap:4px; }
