@@ -21,18 +21,18 @@
   --dim:#aaa;
   
   /* Defaults overridden dynamically by Display Controls or scaled fluidly */
-  --clock-px: clamp(2.2rem, 6.2vh, 5.5rem);
-  --notam-title-px: clamp(12px, 1.8vh, 22px);
-  --notam-status-px: clamp(11px, 1.5vh, 20px);
-  --notam-cao-px: clamp(10px, 1.3vh, 18px);
-  --notam-body-px: clamp(12px, 1.9vh, 26px);
-  --notam-line-height: 1.38;
-  --footer-px: clamp(12px, 1.7vh, 22px);
-  --feed-px: clamp(10px, 1.3vh, 18px);
+  --clock-px: clamp(1.4rem, 5.8vh, 5.5rem);
+  --notam-title-px: clamp(10px, 1.6vh, 22px);
+  --notam-status-px: clamp(9px, 1.3vh, 20px);
+  --notam-cao-px: clamp(8px, 1.1vh, 18px);
+  --notam-body-px: clamp(10px, 1.7vh, 26px);
+  --notam-line-height: 1.28;
+  --footer-px: clamp(10px, 1.5vh, 22px);
+  --feed-px: clamp(9px, 1.2vh, 18px);
   --notam-scroll-seconds: 55s;
-  --top-row-px: clamp(60px, 11.5vh, 125px);
-  --notam-row-px: clamp(48px, 8.5vh, 85px);
-  --footer-row-px: clamp(26px, 4.5vh, 46px);
+  --top-row-px: clamp(45px, 10.5vh, 125px);
+  --notam-row-px: clamp(38px, 7.5vh, 85px);
+  --footer-row-px: clamp(20px, 4.0vh, 46px);
   --weather-col-pct: 44%;
 }
 
@@ -51,8 +51,8 @@ html,body{
   width:100vw;
   display:grid;
   grid-template-rows:var(--top-row-px) minmax(0,1fr) var(--notam-row-px) var(--footer-row-px);
-  gap:clamp(3px, 0.5vh, 8px);
-  padding:clamp(4px, 0.6vh, 10px);
+  gap:clamp(2px, 0.4vh, 8px);
+  padding:clamp(2px, 0.5vh, 10px);
 }
 
 .top{ display:grid; grid-template-columns:1fr 1fr; gap:6px; min-height:0; }
@@ -220,22 +220,22 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 .date{
   color:#ccc;
-  font-size:var(--clock-date-px,clamp(.8rem,1.05vw,1.25rem));
-  margin-top:4px;
+  font-size:var(--clock-date-px,clamp(.65rem,1.15vh,1.20rem));
+  margin-top:2px;
   white-space:nowrap;
 }
 
-.summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:clamp(2px, 0.4vh, 5px); align-items:center; }
-.flight-category{ font-size:clamp(2.2rem,3.6vw,4.2rem); font-weight:bold; letter-spacing:2px; line-height:.95; }
-.atis-letter{ font-size:clamp(1.5rem,2.2vw,3rem); font-weight:bold; text-align:right; color:white; line-height:1; white-space:nowrap; }
+.summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:clamp(1px, 0.25vh, 4px); align-items:center; }
+.flight-category{ font-size:clamp(1.6rem,4.2vh,4.0rem); font-weight:bold; letter-spacing:2px; line-height:.92; }
+.atis-letter{ font-size:clamp(1.2rem,2.8vh,2.8rem); font-weight:bold; text-align:right; color:white; line-height:1; white-space:nowrap; }
 
-.details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(2px, 0.35vw, 4px); margin-bottom:clamp(2px, 0.35vh, 4px); }
-.ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(2px, 0.35vw, 4px); margin-bottom:clamp(2px, 0.35vh, 4px); }
-.status-grid{ display:grid; grid-template-columns:1fr; gap:clamp(2px, 0.35vw, 4px); margin-bottom:clamp(2px, 0.4vh, 4px); }
+.details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(1px, 0.25vw, 4px); margin-bottom:clamp(1px, 0.25vh, 3px); }
+.ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(1px, 0.25vw, 4px); margin-bottom:clamp(1px, 0.25vh, 3px); }
+.status-grid{ display:grid; grid-template-columns:1fr; gap:clamp(1px, 0.25vw, 4px); margin-bottom:clamp(1px, 0.25vh, 3px); }
 
-.detail-box,.ops-box,.trend-box{ border:1px solid #333; padding:clamp(2px, 0.3vh, 4px); font-weight:bold; min-height:clamp(28px, 3.8vh, 38px); overflow:hidden; }
-.detail-label,.ops-label,.trend-label{ color:var(--dim); font-size:clamp(.65rem,.75vw,.90rem); line-height:1.05; }
-.detail-value{ color:var(--ops-green); font-size:clamp(.88rem,1.05vw,1.28rem); line-height:1.1; white-space:nowrap; text-align:center;}
+.detail-box,.ops-box,.trend-box{ border:1px solid #333; padding:clamp(1px, 0.2vh, 3px) clamp(2px, 0.3vw, 4px); font-weight:bold; min-height:clamp(20px, 3.2vh, 36px); overflow:hidden; }
+.detail-label,.ops-label,.trend-label{ color:var(--dim); font-size:clamp(.52rem,.70vw,.88rem); line-height:1.0; }
+.detail-value{ color:var(--ops-green); font-size:clamp(.72rem,.98vw,1.25rem); line-height:1.05; white-space:nowrap; text-align:center;}
 
 .trend-arrow{ font-weight:900; font-size:1.08em; margin-left:5px; display:inline-block; vertical-align:baseline; }
 .trend-up{color:var(--ops-green)}
@@ -249,8 +249,8 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .wind-trend-increasing{ color:var(--closed) !important; }
 
 .tempdp-value{ white-space:nowrap; }
-.ops-value{ color:var(--ops-green); font-size:clamp(.88rem,.98vw,1.22rem); line-height:1.12; white-space:normal; overflow:hidden; text-overflow:ellipsis; overflow-wrap:anywhere; text-align:center !important;}
-.trend-value{ font-size:clamp(1rem,1.22vw,1.5rem); letter-spacing:.5px; line-height:1.12; white-space:normal; overflow:hidden; text-overflow:ellipsis; text-align:center !important;}
+.ops-value{ color:var(--ops-green); font-size:clamp(.68rem,.88vw,1.18rem); line-height:1.05; white-space:normal; overflow:hidden; text-overflow:ellipsis; overflow-wrap:anywhere; text-align:center !important;}
+.trend-value{ font-size:clamp(.80rem,1.05vw,1.38rem); letter-spacing:.5px; line-height:1.05; white-space:normal; overflow:hidden; text-overflow:ellipsis; text-align:center !important;}
 
 .closed-none{color:var(--ops-green)}
 .closed-active{color:var(--closed);animation:blink 1s step-start infinite}
@@ -545,10 +545,10 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
 
 /* Desktop Only Bump */
 @media (hover:hover) and (pointer:fine) and (min-width:1200px) and (min-height:761px){
-  .detail-box, .ops-box, .trend-box{ min-height:clamp(28px, 3.6vh, 40px) !important; padding:clamp(2px, 0.3vh, 5px) clamp(4px, 0.4vw, 8px) !important; }
-  .detail-label, .ops-label, .trend-label{ font-size:clamp(.72rem, .78vw, .96rem) !important; line-height:1.0 !important; }
-  .summary-grid{ margin-bottom:clamp(2px, 0.4vh, 6px) !important; }
-  .details-grid, .ops-grid{ gap:clamp(2px, 0.35vw, 4px) !important; margin-bottom:clamp(2px, 0.4vh, 5px) !important; }
+  .detail-box, .ops-box, .trend-box{ min-height:clamp(20px, 3.0vh, 36px) !important; padding:clamp(1px, 0.2vh, 4px) clamp(3px, 0.3vw, 6px) !important; }
+  .detail-label, .ops-label, .trend-label{ font-size:clamp(.55rem, .70vw, .90rem) !important; line-height:1.0 !important; }
+  .summary-grid{ margin-bottom:clamp(1px, 0.25vh, 4px) !important; }
+  .details-grid, .ops-grid{ gap:clamp(1px, 0.25vw, 3px) !important; margin-bottom:clamp(1px, 0.25vh, 4px) !important; }
 }
 
 /* WX Alert Formatting */
