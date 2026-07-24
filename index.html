@@ -20,19 +20,19 @@
   --border:#00ff88;
   --dim:#aaa;
   
-  /* Defaults overridden dynamically by Display Controls */
-  --clock-px: 72px;
-  --notam-title-px: 18px;
-  --notam-status-px: 16px;
-  --notam-cao-px: 14px;
-  --notam-body-px: 20px;
+  /* Defaults overridden dynamically by Display Controls or scaled fluidly */
+  --clock-px: clamp(2.2rem, 6.2vh, 5.5rem);
+  --notam-title-px: clamp(12px, 1.8vh, 22px);
+  --notam-status-px: clamp(11px, 1.5vh, 20px);
+  --notam-cao-px: clamp(10px, 1.3vh, 18px);
+  --notam-body-px: clamp(12px, 1.9vh, 26px);
   --notam-line-height: 1.38;
-  --footer-px: 18px;
-  --feed-px: 14px;
+  --footer-px: clamp(12px, 1.7vh, 22px);
+  --feed-px: clamp(10px, 1.3vh, 18px);
   --notam-scroll-seconds: 55s;
-  --top-row-px: 116px;
-  --notam-row-px: 76px;
-  --footer-row-px: 54px;
+  --top-row-px: clamp(75px, 14vh, 140px);
+  --notam-row-px: clamp(50px, 9.5vh, 95px);
+  --footer-row-px: clamp(32px, 5.5vh, 55px);
   --weather-col-pct: 44%;
 }
 
@@ -51,8 +51,8 @@ html,body{
   width:100vw;
   display:grid;
   grid-template-rows:var(--top-row-px) minmax(0,1fr) var(--notam-row-px) var(--footer-row-px);
-  gap:5px;
-  padding:7px;
+  gap:clamp(3px, 0.6vh, 8px);
+  padding:clamp(4px, 0.8vh, 10px);
 }
 
 .top{ display:grid; grid-template-columns:1fr 1fr; gap:6px; min-height:0; }
