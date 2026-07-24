@@ -20,19 +20,19 @@
   --border:#00ff88;
   --dim:#aaa;
   
-  /* Defaults overridden dynamically by Display Controls or scaled fluidly */
-  --clock-px: clamp(1.1rem, 5.0vmin, 5.5rem);
-  --notam-title-px: clamp(9px, 1.4vmin, 22px);
-  --notam-status-px: clamp(8px, 1.2vmin, 20px);
-  --notam-cao-px: clamp(7px, 1.0vmin, 18px);
-  --notam-body-px: clamp(9px, 1.5vmin, 26px);
-  --notam-line-height: 1.22;
-  --footer-px: clamp(9px, 1.3vmin, 22px);
-  --feed-px: clamp(8px, 1.1vmin, 18px);
+  /* Wide-range fluid scaling for small windows up to 4K displays */
+  --clock-px: clamp(1.4rem, 6.5vh, 10rem);
+  --notam-title-px: clamp(10px, 1.8vh, 32px);
+  --notam-status-px: clamp(9px, 1.5vh, 28px);
+  --notam-cao-px: clamp(8px, 1.3vh, 24px);
+  --notam-body-px: clamp(10px, 2.2vh, 36px);
+  --notam-line-height: 1.25;
+  --footer-px: clamp(10px, 2.0vh, 32px);
+  --feed-px: clamp(9px, 1.6vh, 26px);
   --notam-scroll-seconds: 55s;
-  --top-row-px: clamp(38px, 9.5vh, 125px);
-  --notam-row-px: clamp(32px, 7.0vh, 85px);
-  --footer-row-px: clamp(18px, 3.8vh, 46px);
+  --top-row-px: clamp(48px, 12.5vh, 220px);
+  --notam-row-px: clamp(40px, 10vh, 180px);
+  --footer-row-px: clamp(22px, 5vh, 90px);
   --weather-col-pct: 44%;
 }
 
@@ -51,8 +51,8 @@ html,body{
   width:100vw;
   display:grid;
   grid-template-rows:var(--top-row-px) minmax(0,1fr) var(--notam-row-px) var(--footer-row-px);
-  gap:clamp(2px, 0.4vh, 8px);
-  padding:clamp(2px, 0.5vh, 10px);
+  gap:clamp(2px, 0.6vh, 12px);
+  padding:clamp(2px, 0.8vh, 14px);
 }
 
 .top{ display:grid; grid-template-columns:1fr 1fr; gap:6px; min-height:0; }
@@ -71,12 +71,13 @@ html,body{
 
 .mil-notam-header{
   border-right:2px solid rgba(230,230,230,.45);
-  padding-right:10px;
+  padding-right:8px;
   height:100%;
   display:flex;
   flex-direction:column;
-  justify-content:center;
+  justify-content:space-evenly;
   min-width:0;
+  overflow:hidden;
 }
 
 .mil-notam-title{
@@ -86,28 +87,30 @@ html,body{
   white-space:normal;
   overflow:hidden;
   text-overflow:clip;
-  line-height:1.04;
+  line-height:1.02;
   font-size:var(--notam-title-px) !important;
 }
 
 .mil-notam-status{
   color:#b8c7d9;
   font-weight:900;
-  margin-top:2px;
+  margin-top:1px;
+  margin-bottom:1px;
   white-space:pre-line;
   overflow:hidden;
   text-overflow:clip;
-  line-height:1.08;
+  line-height:1.04;
   font-size:var(--notam-status-px) !important;
 }
 
 .mil-notam-cao{
   color:#9fb0c0;
   font-weight:900;
-  margin-top:2px;
+  margin-top:1px;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:clip;
+  line-height:1.02;
   font-size:var(--notam-cao-px) !important;
 }
 .mil-notam-cao-ok{ color:var(--ops-green) !important; text-shadow:0 0 7px rgba(0,255,136,.35); }
@@ -206,7 +209,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .weather-main{ display:contents; }
 .label,.title{ color:white; font-weight:bold; letter-spacing:1px; }
 .label{ font-size:clamp(1rem,1.3vw,1.6rem); }
-.title{ font-size:clamp(.85rem,1.1vw,1.3rem); margin-bottom:clamp(2px, 0.3vh, 5px); }
+.title{ font-size:clamp(.85rem,1.4vh,2.5rem); margin-bottom:clamp(2px, 0.4vh, 10px); }
 
 .clock{
   font-size:var(--clock-px) !important;
@@ -220,22 +223,22 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 .date{
   color:#ccc;
-  font-size:var(--clock-date-px,clamp(.65rem,1.15vh,1.20rem));
+  font-size:var(--clock-date-px,clamp(.65rem,1.5vh,2.5rem));
   margin-top:2px;
   white-space:nowrap;
 }
 
-.summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:clamp(1px, 0.25vh, 4px); align-items:center; }
-.flight-category{ font-size:clamp(1.6rem,4.2vh,4.0rem); font-weight:bold; letter-spacing:2px; line-height:.92; }
-.atis-letter{ font-size:clamp(1.2rem,2.8vh,2.8rem); font-weight:bold; text-align:right; color:white; line-height:1; white-space:nowrap; }
+.summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:clamp(1px, 0.4vh, 8px); align-items:center; }
+.flight-category{ font-size:clamp(1.6rem,5.5vh,8.5rem); font-weight:bold; letter-spacing:2px; line-height:.92; }
+.atis-letter{ font-size:clamp(1.2rem,3.8vh,6.0rem); font-weight:bold; text-align:right; color:white; line-height:1; white-space:nowrap; }
 
-.details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(1px, 0.25vw, 4px); margin-bottom:clamp(1px, 0.25vh, 3px); }
-.ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(1px, 0.25vw, 4px); margin-bottom:clamp(1px, 0.25vh, 3px); }
-.status-grid{ display:grid; grid-template-columns:1fr; gap:clamp(1px, 0.25vw, 4px); margin-bottom:clamp(1px, 0.25vh, 3px); }
+.details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
+.ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
+.status-grid{ display:grid; grid-template-columns:1fr; gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
 
-.detail-box,.ops-box,.trend-box{ border:1px solid #333; padding:clamp(1px, 0.2vh, 3px) clamp(2px, 0.3vw, 4px); font-weight:bold; min-height:clamp(20px, 3.2vh, 36px); overflow:hidden; }
-.detail-label,.ops-label,.trend-label{ color:var(--dim); font-size:clamp(.52rem,.70vw,.88rem); line-height:1.0; }
-.detail-value{ color:var(--ops-green); font-size:clamp(.72rem,.98vw,1.25rem); line-height:1.05; white-space:nowrap; text-align:center;}
+.detail-box,.ops-box,.trend-box{ border:1px solid #333; padding:clamp(2px, 0.4vh, 8px) clamp(3px, 0.4vw, 10px); font-weight:bold; min-height:clamp(20px, 3.8vh, 65px); flex:1; display:flex; flex-direction:column; justify-content:center; overflow:hidden; }
+.detail-label,.ops-label,.trend-label{ color:var(--dim); font-size:clamp(.52rem,1.2vh,2.0rem); line-height:1.05; }
+.detail-value{ color:var(--ops-green); font-size:clamp(.72rem,2.4vh,4.2rem); line-height:1.05; white-space:nowrap; text-align:center;}
 
 .trend-arrow{ font-weight:900; font-size:1.08em; margin-left:5px; display:inline-block; vertical-align:baseline; }
 .trend-up{color:var(--ops-green)}
@@ -249,8 +252,8 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .wind-trend-increasing{ color:var(--closed) !important; }
 
 .tempdp-value{ white-space:nowrap; }
-.ops-value{ color:var(--ops-green); font-size:clamp(.68rem,.88vw,1.18rem); line-height:1.05; white-space:normal; overflow:hidden; text-overflow:ellipsis; overflow-wrap:anywhere; text-align:center !important;}
-.trend-value{ font-size:clamp(.80rem,1.05vw,1.38rem); letter-spacing:.5px; line-height:1.05; white-space:normal; overflow:hidden; text-overflow:ellipsis; text-align:center !important;}
+.ops-value{ color:var(--ops-green); font-size:clamp(.68rem,2.1vh,3.8rem); line-height:1.05; white-space:normal; overflow:hidden; text-overflow:ellipsis; overflow-wrap:anywhere; text-align:center !important;}
+.trend-value{ font-size:clamp(.80rem,2.3vh,4.0rem); letter-spacing:.5px; line-height:1.05; white-space:normal; overflow:hidden; text-overflow:ellipsis; text-align:center !important;}
 
 .closed-none{color:var(--ops-green)}
 .closed-active{color:var(--closed);animation:blink 1s step-start infinite}
