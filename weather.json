@@ -5,13 +5,13 @@
   "atisLetter": "W",
   "atisPhonetic": "WHISKEY",
   "atisDisplay": "WHISKEY",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-24T12:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-24T12:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-24T10:52:48Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-07-24T11:02:47Z",
+  "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -62,8 +62,8 @@
   "altimeterTrendText": "RISING",
   "ceilingFt": 2300,
   "ceilingDisplay": "2300 FT",
-  "ceilingTrend": "\u2193",
-  "ceilingTrendText": "FALLING",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
@@ -81,8 +81,8 @@
   "tempC": 23,
   "dewpointC": 17,
   "tempDpDisplay": "23/17",
-  "tempTrend": "\u25bc",
-  "tempTrendText": "FALLING",
+  "tempTrend": "\u25ba",
+  "tempTrendText": "STEADY",
   "dewpointTrend": "\u25ba",
   "dewpointTrendText": "STEADY",
   "lightning": "NONE",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL NOW-15Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-24 13:42:00.000",
+  "bwcUpdatedZ": "2026-07-24 13:48:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,20 +159,9 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-24 13:44:18Z",
-  "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
+  "milNotamUpdatedZ": "2026-07-24 13:54:16Z",
+  "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN",
   "milNotams": [
-    {
-      "number": "M0022/26",
-      "classification": "MIL",
-      "severity": "red",
-      "text": "MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UNTIL FURTHER NOTICE",
-      "displayText": "MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN",
-      "effectiveStart": "202606231504",
-      "effectiveEnd": "202609202359",
-      "lastUpdated": "2026-06-23T15:04:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
     {
       "number": "M0021/26",
       "classification": "MIL",
@@ -182,6 +171,17 @@
       "effectiveStart": "202606091221",
       "effectiveEnd": "202609062359",
       "lastUpdated": "2026-06-09T12:21:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "M0022/26",
+      "classification": "MIL",
+      "severity": "red",
+      "text": "MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UNTIL FURTHER NOTICE",
+      "displayText": "MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN",
+      "effectiveStart": "202606231504",
+      "effectiveEnd": "202609202359",
+      "lastUpdated": "2026-06-23T15:04:00.000Z",
       "source": "FAA_NMS_STAGING"
     }
   ],
@@ -205,6 +205,30 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "07/449",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY P BTN TWY P2 AND TWY P1, TWY P1 BTN TWY T AND TWY P WIP MAINT",
+      "displayText": "TWY P BTN TWY P2 AND TWY P1, TWY P1 BTN TWY T AND TWY P WIP MAINT",
+      "effectiveStart": "202607241400",
+      "effectiveEnd": "202607241700",
+      "lastUpdated": "2026-07-24T13:49:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY P BTN TWY P2 AND TWY P1, TWY P1 BTN TWY T AND TWY P WIP MAINT"
+    },
+    {
+      "number": "07/447",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY T BTN TWY N AND TWY P2, TWY P2 BTN TERMINAL RAMP AND TWY T WIP MAINT",
+      "displayText": "TWY T BTN TWY N AND TWY P2, TWY P2 BTN TERMINAL RAMP AND TWY T WIP MAINT",
+      "effectiveStart": "202607241400",
+      "effectiveEnd": "202607241700",
+      "lastUpdated": "2026-07-24T13:49:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY T BTN TWY N AND TWY P2, TWY P2 BTN TERMINAL RAMP AND TWY T WIP MAINT"
+    },
     {
       "number": "07/445",
       "classification": "CONST_AFLD_STATUS",
@@ -300,34 +324,34 @@
       "lastUpdated": "2026-07-04T23:05:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 36C LEAD OFF CL MARKINGS AT TWY D OBSC"
-    },
-    {
-      "number": "07/045",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "RWY 18C LEAD OFF CL MARKINGS AT TWY D OBSC",
-      "displayText": "RWY 18C LEAD OFF CL MARKINGS AT TWY D OBSC",
-      "effectiveStart": "202607042305",
-      "effectiveEnd": "202607312359",
-      "lastUpdated": "2026-07-04T23:05:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 18C LEAD OFF CL MARKINGS AT TWY D OBSC"
-    },
-    {
-      "number": "06/574",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD",
-      "displayText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD",
-      "effectiveStart": "202606301800",
-      "effectiveEnd": "202609302359",
-      "lastUpdated": "2026-06-30T18:04:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
   "constructionStatusNotamCount": 10,
   "taxiRestrictionNotams": [
+    {
+      "number": "07/448",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY P BTN TWY P2 AND TWY P1, TWY P1 BTN TWY T AND TWY P CLSD TO TAX MORE THAN 10 KNOTS",
+      "displayText": "TWY P BTN TWY P2 AND TWY P1, TWY P1 BTN TWY T AND TWY P CLSD TO TAX MORE THAN 10 KNOTS",
+      "effectiveStart": "202607241400",
+      "effectiveEnd": "202607241700",
+      "lastUpdated": "2026-07-24T13:51:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY P BTN TWY P2 AND TWY P1, TWY P1 BTN TWY T AND TWY P CLSD TO TAX MORE THAN 10 KNOTS"
+    },
+    {
+      "number": "07/446",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY T BTN TWY N AND TWY P2, TWY P2 BTN TERMINAL RAMP AND TWY T CLSD TO TAX MORE THAN 10 KNOTS",
+      "displayText": "TWY T BTN TWY N AND TWY P2, TWY P2 BTN TERMINAL RAMP AND TWY T CLSD TO TAX MORE THAN 10 KNOTS",
+      "effectiveStart": "202607241400",
+      "effectiveEnd": "202607241700",
+      "lastUpdated": "2026-07-24T13:51:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY T BTN TWY N AND TWY P2, TWY P2 BTN TERMINAL RAMP AND TWY T CLSD TO TAX MORE THAN 10 KNOTS"
+    },
     {
       "number": "07/444",
       "classification": "TAXI_ROUTE_RESTR",
@@ -389,14 +413,14 @@
       "rawText": "TWY V BTN TWY S AND TWY Y, TWY B BTN RWY 09/27 AND TWY V CLSD"
     }
   ],
-  "taxiRestrictionNotamCount": 5,
-  "allFeedsUpdatedZ": "2026-07-24 13:42Z",
+  "taxiRestrictionNotamCount": 7,
+  "allFeedsUpdatedZ": "2026-07-24 13:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-24 13:42:48Z"
+    "lastWorkflowTimestampZ": "2026-07-24 13:52:48Z"
   }
 }
