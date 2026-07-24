@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-24T14:54:00Z",
-  "metarAgeMinutes": 19,
+  "metarAgeMinutes": 29,
   "atisObservedZ": "2026-07-24T14:54:00Z",
-  "atisAgeMinutes": 19,
+  "atisAgeMinutes": 29,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-24T12:12:48Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-07-24T12:32:48Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL NOW-17Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-24 15:12:00.000",
+  "bwcUpdatedZ": "2026-07-24 15:18:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,20 +159,9 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-24 15:14:18Z",
-  "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN",
+  "milNotamUpdatedZ": "2026-07-24 15:24:15Z",
+  "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
-    {
-      "number": "M0021/26",
-      "classification": "MIL",
-      "severity": "amber",
-      "text": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UNTIL FURTHER NOTICE. ALL OTHER DSN NUMBERS, PLEASE DIAL COMM PREFIX 901-291-XXXX.",
-      "displayText": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
-      "effectiveStart": "202606091221",
-      "effectiveEnd": "202609062359",
-      "lastUpdated": "2026-06-09T12:21:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
     {
       "number": "M0022/26",
       "classification": "MIL",
@@ -182,6 +171,17 @@
       "effectiveStart": "202606231504",
       "effectiveEnd": "202609202359",
       "lastUpdated": "2026-06-23T15:04:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "M0021/26",
+      "classification": "MIL",
+      "severity": "amber",
+      "text": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UNTIL FURTHER NOTICE. ALL OTHER DSN NUMBERS, PLEASE DIAL COMM PREFIX 901-291-XXXX.",
+      "displayText": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
+      "effectiveStart": "202606091221",
+      "effectiveEnd": "202609062359",
+      "lastUpdated": "2026-06-09T12:21:00.000Z",
       "source": "FAA_NMS_STAGING"
     }
   ],
@@ -228,42 +228,6 @@
       "lastUpdated": "2026-07-24T13:49:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY T BTN TWY N AND TWY P2, TWY P2 BTN TERMINAL RAMP AND TWY T WIP MAINT"
-    },
-    {
-      "number": "07/445",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY A BTN TWY N AND SIGNATURE RAMP WIP MAINT",
-      "displayText": "TWY A BTN TWY N AND SIGNATURE RAMP WIP MAINT",
-      "effectiveStart": "202607241300",
-      "effectiveEnd": "202607241700",
-      "lastUpdated": "2026-07-24T12:53:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A BTN TWY N AND SIGNATURE RAMP WIP MAINT"
-    },
-    {
-      "number": "07/443",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "amber",
-      "text": "TWY A BTN TWY Y AND WILSON AIR CENTER RAMP WIP MAINT",
-      "displayText": "TWY A BTN TWY Y AND WILSON AIR CENTER RAMP WIP MAINT",
-      "effectiveStart": "202607241300",
-      "effectiveEnd": "202607241700",
-      "lastUpdated": "2026-07-24T12:49:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A BTN TWY Y AND WILSON AIR CENTER RAMP WIP MAINT"
-    },
-    {
-      "number": "07/441",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "amber",
-      "text": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP WIP MAINT",
-      "displayText": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP WIP MAINT",
-      "effectiveStart": "202607241300",
-      "effectiveEnd": "202607241700",
-      "lastUpdated": "2026-07-24T12:47:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP WIP MAINT"
     },
     {
       "number": "07/426",
@@ -336,9 +300,33 @@
       "lastUpdated": "2026-07-04T23:05:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18C LEAD OFF CL MARKINGS AT TWY D OBSC"
+    },
+    {
+      "number": "06/574",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD",
+      "displayText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD",
+      "effectiveStart": "202606301800",
+      "effectiveEnd": "202609302359",
+      "lastUpdated": "2026-06-30T18:04:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
+    },
+    {
+      "number": "06/534",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "RWY 36C CHEVRON SFC MARKINGS FADED",
+      "displayText": "RWY 36C CHEVRON SFC MARKINGS FADED",
+      "effectiveStart": "202606280344",
+      "effectiveEnd": "202607310500",
+      "lastUpdated": "2026-06-28T03:46:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 11,
+  "constructionStatusNotamCount": 10,
   "taxiRestrictionNotams": [
     {
       "number": "07/448",
@@ -365,42 +353,6 @@
       "rawText": "TWY T BTN TWY N AND TWY P2, TWY P2 BTN TERMINAL RAMP AND TWY T CLSD TO TAX MORE THAN 10 KNOTS"
     },
     {
-      "number": "07/444",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "TWY A BTN TWY N AND SIGNATURE RAMP CLSD TO TAX MORE THAN 10 KNOTS",
-      "displayText": "TWY A BTN TWY N AND SIGNATURE RAMP CLSD TO TAX MORE THAN 10 KNOTS",
-      "effectiveStart": "202607241300",
-      "effectiveEnd": "202607241700",
-      "lastUpdated": "2026-07-24T12:53:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A BTN TWY N AND SIGNATURE RAMP CLSD TO TAX MORE THAN 10 KNOTS"
-    },
-    {
-      "number": "07/442",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "amber",
-      "text": "TWY A BTN TWY Y AND WILSON AIR CENTER RAMP CLSD TO TAX MORE THAN 10 KNOTS",
-      "displayText": "TWY A BTN TWY Y AND WILSON AIR CENTER RAMP CLSD TO TAX MORE THAN 10 KNOTS",
-      "effectiveStart": "202607241300",
-      "effectiveEnd": "202607241700",
-      "lastUpdated": "2026-07-24T12:49:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A BTN TWY Y AND WILSON AIR CENTER RAMP CLSD TO TAX MORE THAN 10 KNOTS"
-    },
-    {
-      "number": "07/440",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "amber",
-      "text": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP CLSD TO TAX MORE THAN 10 KNOTS",
-      "displayText": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP CLSD TO TAX MORE THAN 10 KNOTS",
-      "effectiveStart": "202607241300",
-      "effectiveEnd": "202607241700",
-      "lastUpdated": "2026-07-24T12:45:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP CLSD TO TAX MORE THAN 10 KNOTS"
-    },
-    {
       "number": "07/428",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "green",
@@ -425,14 +377,14 @@
       "rawText": "TWY V BTN TWY S AND TWY Y, TWY B BTN RWY 09/27 AND TWY V CLSD"
     }
   ],
-  "taxiRestrictionNotamCount": 7,
-  "allFeedsUpdatedZ": "2026-07-24 15:12Z",
+  "taxiRestrictionNotamCount": 4,
+  "allFeedsUpdatedZ": "2026-07-24 15:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-24 15:12:47Z"
+    "lastWorkflowTimestampZ": "2026-07-24 15:22:48Z"
   }
 }
