@@ -1,6 +1,6 @@
 {
   "metar": "SPECI KMEM 252113Z 22009KT 8SM SCT024 BKN049 BKN060 32/26 A2999 RMK AO2 LTG DSNT N AND NW T03170256 $",
-  "taf": "TAF KMEM 252110Z 2521/2624 23007KT P6SM VCSH SCT020 BKN030 OVC050 \n  TEMPO 2521/2524 4SM TSRA BKN025CB \n  FM260100 23005KT P6SM FEW060 SCT150 \n  FM261500 28005KT P6SM SCT200",
+  "taf": "TAF KMEM 252130Z 2522/2624 23007KT P6SM VCTS SCT020 SCT035CB OVC050 \n  TEMPO 2522/2523 36010G30KT 1SM +TSRA BKN030CB \n  FM260100 23005KT P6SM FEW060 SCT150 \n  FM261500 28005KT P6SM SCT200",
   "atisText": "MEM ATIS INFO Y 2113Z SPECIAL. 22009KT 8SM SCT024 BKN049 BKN060 32/26 A2999 (TWO NINER NINER NINER). ILS APCH IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RWY 36R GS OTS, FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. RWY 27 GLIDE SLOPE UNMONITORED. RWY 27 CONDITION CODES, , 5 , , 5 , , 5 , AT 1444Z, RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 1444Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 1444Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 1444Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO Y",
   "atisLetter": "Y",
   "atisPhonetic": "YANKEE",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-25T21:13:00Z",
-  "metarAgeMinutes": 10,
+  "metarAgeMinutes": 20,
   "atisObservedZ": "2026-07-25T21:13:00Z",
-  "atisAgeMinutes": 10,
+  "atisAgeMinutes": 20,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-25T18:22:48Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-07-25T18:42:48Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -75,9 +75,9 @@
   "windGustKt": null,
   "windArrow": "\u2197",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25bc",
-  "windTrendText": "DECREASING",
-  "windTrendClass": "improving",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 32,
   "dewpointC": 26,
   "tempDpDisplay": "32/26",
@@ -94,8 +94,8 @@
   "lightningLogText": "METAR LTG DSNT N/NW. 10-30 NM.",
   "wxAlerts": [
     {
-      "code": "TSRA",
-      "label": "THUNDERSTORM RAIN",
+      "code": "+TSRA",
+      "label": "HEAVY THUNDERSTORM RAIN",
       "emoji": "\u26c8\ufe0f",
       "category": "thunder",
       "sources": [
@@ -106,21 +106,21 @@
       "flash": false,
       "pulse": true,
       "priority": 30,
-      "text": "TSRA PSBL NOW-24Z",
-      "displayText": "\u26c8\ufe0f TSRA PSBL NOW-24Z",
-      "tafWindow": "NOW-24Z",
-      "tafStartKey": 621,
+      "text": "+TSRA PSBL 22-23Z",
+      "displayText": "\u26c8\ufe0f +TSRA PSBL 22-23Z",
+      "tafWindow": "22-23Z",
+      "tafStartKey": 622,
       "tafGroupType": "TEMPO",
-      "tafStartIso": "2026-07-25T21:00:00Z",
-      "tafEndIso": "2026-07-26T00:00:00Z"
+      "tafStartIso": "2026-07-25T22:00:00Z",
+      "tafEndIso": "2026-07-25T23:00:00Z"
     }
   ],
-  "wxAlertText": "\u26c8\ufe0f TSRA PSBL NOW-24Z",
-  "wxAlertLogText": "TSRA PSBL NOW-24Z",
+  "wxAlertText": "\u26c8\ufe0f +TSRA PSBL 22-23Z",
+  "wxAlertLogText": "+TSRA PSBL 22-23Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
-    "code": "TSRA",
-    "label": "THUNDERSTORM RAIN",
+    "code": "+TSRA",
+    "label": "HEAVY THUNDERSTORM RAIN",
     "emoji": "\u26c8\ufe0f",
     "category": "thunder",
     "sources": [
@@ -131,22 +131,22 @@
     "flash": false,
     "pulse": true,
     "priority": 30,
-    "text": "TSRA PSBL NOW-24Z",
-    "displayText": "\u26c8\ufe0f TSRA PSBL NOW-24Z",
-    "tafWindow": "NOW-24Z",
-    "tafStartKey": 621,
+    "text": "+TSRA PSBL 22-23Z",
+    "displayText": "\u26c8\ufe0f +TSRA PSBL 22-23Z",
+    "tafWindow": "22-23Z",
+    "tafStartKey": 622,
     "tafGroupType": "TEMPO",
-    "tafStartIso": "2026-07-25T21:00:00Z",
-    "tafEndIso": "2026-07-26T00:00:00Z"
+    "tafStartIso": "2026-07-25T22:00:00Z",
+    "tafEndIso": "2026-07-25T23:00:00Z"
   },
   "wxSecondaryAlert": null,
   "wxAlertTone": "yellow",
   "wxAlertFlash": false,
   "wxAlertPulse": true,
-  "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL NOW-24Z",
+  "tafTrend": "WX ALERT | \u26c8\ufe0f +TSRA PSBL 22-23Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-25 21:18:00.000",
+  "bwcUpdatedZ": "2026-07-25 21:30:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-25 21:23:56Z",
+  "milNotamUpdatedZ": "2026-07-25 21:33:50Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -280,13 +280,13 @@
   "constructionStatusNotamCount": 7,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-07-25 21:22Z",
+  "allFeedsUpdatedZ": "2026-07-25 21:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-25 21:22:47Z"
+    "lastWorkflowTimestampZ": "2026-07-25 21:32:47Z"
   }
 }
