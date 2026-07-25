@@ -1466,7 +1466,14 @@ function wxAlertDisplayHtml(value,data={}){
 
 function formatRawWeatherText(metar,taf,data={}){
   const metarText=(metar||"METAR unavailable").toString().trim();
-  const tafText=(taf||"TAF unavailable").toString().trim();
+  /* Source feeds sometimes insert a newline in the middle of one forecast
+     group. Rebuild the TAF around its actual group markers so continuations
+     such as BKN030CB stay with the TEMPO/FM line they belong to. */
+  const tafText=(taf||"TAF unavailable")
+    .toString()
+    .replace(/\s+/g," ")
+    .trim()
+    .replace(/\s+(PROB\d{2}\s+TEMPO|PROB\d{2}|TEMPO|BECMG|FM\d{6})\b/g,"\n    $1");
   return [metarText,tafText].filter(Boolean).join("\n\n");
 }
 
@@ -2447,8 +2454,22 @@ function fitRawWeatherFontSize(){
   const el=document.getElementById("weather");
   if(!el)return;
 
-  const minSize=9;
-  const maxSize=Math.max(16, Math.floor(window.innerHeight * 0.038));
+  /* Phone layouts grow vertically, so their existing responsive rule is best.
+     Fixed-height boards must fit both short and unusually long METAR/TAFs. */
+  if(window.innerWidth<=700&&!document.body.classList.contains("getac-preset")){
+    el.style.removeProperty("font-size");
+    el.style.removeProperty("line-height");
+    return;
+  }
+
+  if(el.clientHeight<1||el.clientWidth<1)return;
+
+  const minSize=7;
+  const maxSize=Math.max(16,Math.min(40,Math.floor(window.innerHeight*.038)));
+  const rawSections=el.textContent.split(/\n\s*\n/);
+  const tafLines=rawSections.slice(1).join("\n\n").split("\n").filter(Boolean);
+  const measureCanvas=document.createElement("canvas");
+  const measureContext=measureCanvas.getContext("2d");
   let bestSize=minSize;
 
   let low=minSize;
@@ -2456,10 +2477,17 @@ function fitRawWeatherFontSize(){
 
   while(low<=high){
     let mid=Math.floor((low+high)/2);
-    el.style.fontSize=mid+"px";
-    el.style.lineHeight="1.24";
+    el.style.setProperty("font-size",mid+"px","important");
+    el.style.setProperty("line-height","1.24","important");
 
-    if(el.scrollHeight<=el.clientHeight+2 && el.scrollWidth<=el.clientWidth+2){
+    let tafLinesFit=true;
+    if(measureContext&&tafLines.length){
+      const style=getComputedStyle(el);
+      measureContext.font=`${style.fontWeight} ${mid}px ${style.fontFamily}`;
+      tafLinesFit=tafLines.every(line=>measureContext.measureText(line).width<=el.clientWidth-2);
+    }
+
+    if(el.scrollHeight<=el.clientHeight+2 && tafLinesFit){
       bestSize=mid;
       low=mid+1;
     }else{
@@ -2467,13 +2495,27 @@ function fitRawWeatherFontSize(){
     }
   }
 
-  el.style.fontSize=bestSize+"px";
-  el.style.lineHeight="1.24";
+  el.style.setProperty("font-size",bestSize+"px","important");
+  el.style.setProperty("line-height","1.24","important");
 }
 
 window.fitRawWeatherFontSize=fitRawWeatherFontSize;
-window.addEventListener("resize",fitRawWeatherFontSize);
-document.addEventListener("DOMContentLoaded",fitRawWeatherFontSize);
+let rawWeatherFitFrame=0;
+function scheduleRawWeatherFit(){
+  cancelAnimationFrame(rawWeatherFitFrame);
+  rawWeatherFitFrame=requestAnimationFrame(function(){
+    fitRawWeatherFontSize();
+    rawWeatherFitFrame=requestAnimationFrame(fitRawWeatherFontSize);
+  });
+}
+window.addEventListener("resize",scheduleRawWeatherFit);
+document.addEventListener("DOMContentLoaded",function(){
+  scheduleRawWeatherFit();
+  const panel=document.querySelector(".weather-panel");
+  if(panel&&window.ResizeObserver){
+    new ResizeObserver(scheduleRawWeatherFit).observe(panel);
+  }
+});
 
 async function loadWeatherJson(){
   if(weatherFetchInFlight)return false;
@@ -2491,13 +2533,13 @@ async function loadWeatherJson(){
     const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";
 
     document.getElementById("weather").textContent=formatRawWeatherText(metar,taf,data);
-    fitRawWeatherFontSize();
 
     window.kmemWeatherData=data;
     if(window.kmemRenderLightningClosureOverlay) window.kmemRenderLightningClosureOverlay();
 
     setCategoryDisplay(determineFlightCategoryFromData(data,metar));
     updateDetails(data);
+    scheduleRawWeatherFit();
 
     document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);
     updateStaleWarning(updatedZ);
@@ -2772,6 +2814,15 @@ setInterval(phase45PolishOpsText,1000);
     return Math.max(min,Math.min(max,n));
   }
 
+  /* Keep a saved desktop size as the 1518px-wide baseline, then let it
+     shrink/grow with the window instead of freezing the board at that size. */
+  function fluidPx(value,min,max,fallback){
+    const base=px(value,min,max,fallback);
+    const low=Math.max(min,Math.round(base*.72));
+    const high=Math.min(max,Math.round(base*1.45));
+    return `clamp(${low}px, ${(base/15.18).toFixed(4)}vw, ${high}px)`;
+  }
+
   function applyDisplaySettings(){
     const s=readSettings();
     const root=document.documentElement;
@@ -2794,19 +2845,19 @@ setInterval(phase45PolishOpsText,1000);
       return;
     }
 
-    root.style.setProperty("--clock-px", px(s.clockPx,42,128,DEFAULTS.clockPx) + "px");
-    root.style.setProperty("--clock-date-px", px(s.clockDatePx,9,24,DEFAULTS.clockDatePx) + "px");
-    root.style.setProperty("--notam-body-px", px(s.notamPx,10,34,DEFAULTS.notamPx) + "px");
-    root.style.setProperty("--notam-title-px", px(s.notamTitlePx,10,36,DEFAULTS.notamTitlePx) + "px");
-    root.style.setProperty("--notam-status-px", px(s.notamStatusPx,10,32,DEFAULTS.notamStatusPx) + "px");
-    root.style.setProperty("--notam-cao-px", px(s.notamCaoPx,9,28,DEFAULTS.notamCaoPx) + "px");
-    root.style.setProperty("--footer-px", px(s.footerPx,10,28,DEFAULTS.footerPx) + "px");
-    root.style.setProperty("--feed-px", px(s.feedPx,8,28,DEFAULTS.feedPx) + "px");
+    root.style.setProperty("--clock-px", fluidPx(s.clockPx,42,128,DEFAULTS.clockPx));
+    root.style.setProperty("--clock-date-px", fluidPx(s.clockDatePx,9,24,DEFAULTS.clockDatePx));
+    root.style.setProperty("--notam-body-px", fluidPx(s.notamPx,10,34,DEFAULTS.notamPx));
+    root.style.setProperty("--notam-title-px", fluidPx(s.notamTitlePx,10,36,DEFAULTS.notamTitlePx));
+    root.style.setProperty("--notam-status-px", fluidPx(s.notamStatusPx,10,32,DEFAULTS.notamStatusPx));
+    root.style.setProperty("--notam-cao-px", fluidPx(s.notamCaoPx,9,28,DEFAULTS.notamCaoPx));
+    root.style.setProperty("--footer-px", fluidPx(s.footerPx,10,28,DEFAULTS.footerPx));
+    root.style.setProperty("--feed-px", fluidPx(s.feedPx,8,28,DEFAULTS.feedPx));
     root.style.setProperty("--notam-line-height", String(num(s.notamLine,1.10,1.80,DEFAULTS.notamLine)));
     root.style.setProperty("--notam-scroll-seconds", num(s.notamScrollSec,10,180,DEFAULTS.notamScrollSec) + "s");
-    root.style.setProperty("--top-row-px", px(s.topRowPx,54,170,DEFAULTS.topRowPx) + "px");
-    root.style.setProperty("--notam-row-px", px(s.notamRowPx,42,140,DEFAULTS.notamRowPx) + "px");
-    root.style.setProperty("--footer-row-px", px(s.footerRowPx,28,90,DEFAULTS.footerRowPx) + "px");
+    root.style.setProperty("--top-row-px", fluidPx(s.topRowPx,54,170,DEFAULTS.topRowPx));
+    root.style.setProperty("--notam-row-px", `clamp(82px, max(12vh, ${(px(s.notamRowPx,42,140,DEFAULTS.notamRowPx)/15.18).toFixed(4)}vw), 160px)`);
+    root.style.setProperty("--footer-row-px", fluidPx(s.footerRowPx,28,90,DEFAULTS.footerRowPx));
     root.style.setProperty("--weather-col-pct", num(s.weatherColPct,35,55,DEFAULTS.weatherColPct) + "%");
 
     const radarPanel=document.querySelector(".radar-panel");
@@ -2816,11 +2867,11 @@ setInterval(phase45PolishOpsText,1000);
 
     const pulse=s.strongPulse!==false;
     const css=`
-      .detail-value, .ops-value, body.getac-preset .detail-value, body.getac-preset .ops-value{ font-size:${px(s.blockValuePx,14,42,DEFAULTS.blockValuePx)}px !important; }
-      .detail-label, .ops-label, .trend-label, body.getac-preset .detail-label, body.getac-preset .ops-label, body.getac-preset .trend-label{ font-size:${px(s.labelPx,9,24,DEFAULTS.labelPx)}px !important; }
-      #rcr, body.getac-preset #rcr{ font-size:${px(s.rcrPx,14,42,DEFAULTS.rcrPx)}px !important; line-height:1.05 !important; }
-      #tafTrend.wx-alert-compact, .wx-alert-compact, body.getac-preset #tafTrend.wx-alert-compact, body.getac-preset .wx-alert-compact{ font-size:${px(s.wxAlertPx,12,38,DEFAULTS.wxAlertPx)}px !important; line-height:1.05 !important; }
-      .raw, body.getac-preset .raw{ font-size:${px(s.rawWxPx,10,34,DEFAULTS.rawWxPx)}px !important; line-height:${num(s.rawLine,1.10,1.80,DEFAULTS.rawLine)} !important; }
+      .detail-value, .ops-value, body.getac-preset .detail-value, body.getac-preset .ops-value{ font-size:${fluidPx(s.blockValuePx,14,42,DEFAULTS.blockValuePx)} !important; }
+      .detail-label, .ops-label, .trend-label, body.getac-preset .detail-label, body.getac-preset .ops-label, body.getac-preset .trend-label{ font-size:${fluidPx(s.labelPx,9,24,DEFAULTS.labelPx)} !important; }
+      #rcr, body.getac-preset #rcr{ font-size:${fluidPx(s.rcrPx,14,42,DEFAULTS.rcrPx)} !important; line-height:1.05 !important; }
+      #tafTrend.wx-alert-compact, .wx-alert-compact, body.getac-preset #tafTrend.wx-alert-compact, body.getac-preset .wx-alert-compact{ font-size:${fluidPx(s.wxAlertPx,12,38,DEFAULTS.wxAlertPx)} !important; line-height:1.05 !important; }
+      .raw, body.getac-preset .raw{ font-size:${fluidPx(s.rawWxPx,10,34,DEFAULTS.rawWxPx)} !important; line-height:${num(s.rawLine,1.10,1.80,DEFAULTS.rawLine)} !important; }
       @media (max-width:700px){
         .detail-label, .ops-label, .trend-label, body.getac-preset .detail-label, body.getac-preset .ops-label, body.getac-preset .trend-label{ font-size:clamp(.62rem,2.7vw,.78rem) !important; line-height:1.05 !important; }
         .detail-value, .ops-value, .trend-value, body.getac-preset .detail-value, body.getac-preset .ops-value, body.getac-preset .trend-value{ font-size:clamp(.86rem,4.1vw,1.08rem) !important; line-height:1.06 !important; }
