@@ -1,5 +1,5 @@
 {
-  "metar": "METAR KMEM 261054Z 22005KT 10SM RA SCT075 SCT085 BKN120 26/23 A2997 RMK AO2 RAB19E30B46 SLP143 P0000 T02560233 $",
+  "metar": "SPECI KMEM 261146Z 19006KT 9SM -RA BKN031 BKN055 26/24 A2999 RMK AO2 P0002 T02610239 $",
   "taf": "TAF KMEM 261120Z 2612/2718 25005KT P6SM SCT060 BKN100 \n  FM261800 29006KT P6SM SCT050 \n  FM270100 20004KT P6SM FEW100 \n  FM271200 24006KT P6SM FEW130",
   "atisText": "MEM ATIS INFO Z 1054Z. 22005KT 10SM RA SCT075 SCT085 BKN120 26/23 A2997 (TWO NINER NINER SEVEN). SIMUL VISUAL APCHS IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RWY 36R GS OTS, FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. RWY 27 GLIDE SLOPE UNMONITORED. WIND SHEAR ADZYS IN EFCT. RWY 27 CONDITION CODES, , 5 , , 5 , , 5 , AT 2240Z, RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 2338Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 2338Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 2338Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO Z",
   "atisLetter": "Z",
@@ -8,10 +8,10 @@
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-07-26T10:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarObservedZ": "2026-07-26T11:46:00Z",
+  "metarAgeMinutes": 7,
   "atisObservedZ": "2026-07-26T10:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,21 +21,21 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-26T08:52:48Z",
+  "trendReferenceTimestampZ": "2026-07-26T09:02:48Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
-  "obsSource": "ATIS",
+  "obsSource": "MIXED",
   "obsFieldSources": {
     "wind": "ATIS",
     "tempDp": "ATIS",
     "altimeter": "ATIS",
-    "visibility": "ATIS",
-    "ceiling": "ATIS"
+    "visibility": "METAR",
+    "ceiling": "METAR"
   },
-  "metarAltimeterRaw": 29.97,
-  "metarVisibilitySm": 10.0,
-  "metarVisibilityDisplay": "10 SM",
-  "metarCeilingFt": 12000,
+  "metarAltimeterRaw": 29.99,
+  "metarVisibilitySm": 9.0,
+  "metarVisibilityDisplay": "9 SM",
+  "metarCeilingFt": 3100,
   "atisAltimeterRaw": 29.97,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
@@ -60,14 +60,14 @@
   "altimeterRaw": 29.97,
   "altimeterTrend": "\u2192",
   "altimeterTrendText": "STEADY",
-  "ceilingFt": 12000,
-  "ceilingDisplay": "12000 FT",
-  "ceilingTrend": "\u2192",
-  "ceilingTrendText": "STEADY",
-  "visibilitySm": 10.0,
-  "visibilityDisplay": "10 SM",
-  "visibilityTrend": "\u2192",
-  "visibilityTrendText": "STEADY",
+  "ceilingFt": 3100,
+  "ceilingDisplay": "3100 FT",
+  "ceilingTrend": "\u2193",
+  "ceilingTrendText": "FALLING",
+  "visibilitySm": 9.0,
+  "visibilityDisplay": "9 SM",
+  "visibilityTrend": "\u2193",
+  "visibilityTrendText": "FALLING",
   "windRaw": "22005KT",
   "windDisplay": "22005KT",
   "windDirDeg": 220,
@@ -75,14 +75,14 @@
   "windGustKt": null,
   "windArrow": "\u2197",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25ba",
-  "windTrendText": "STEADY",
-  "windTrendClass": "steady",
+  "windTrend": "\u25bc",
+  "windTrendText": "DECREASING",
+  "windTrendClass": "improving",
   "tempC": 26,
   "dewpointC": 23,
   "tempDpDisplay": "26/23",
-  "tempTrend": "\u25ba",
-  "tempTrendText": "STEADY",
+  "tempTrend": "\u25bc",
+  "tempTrendText": "FALLING",
   "dewpointTrend": "\u25bc",
   "dewpointTrendText": "FALLING",
   "lightning": "NONE",
@@ -95,12 +95,11 @@
   "wxAlerts": [
     {
       "code": "RA",
-      "label": "RAIN / RAIN",
+      "label": "RAIN",
       "emoji": "\ud83c\udf27\ufe0f",
       "category": "rain",
       "sources": [
-        "ATIS",
-        "METAR"
+        "ATIS"
       ],
       "severity": "info",
       "displayTone": "blue",
@@ -119,12 +118,11 @@
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
     "code": "RA",
-    "label": "RAIN / RAIN",
+    "label": "RAIN",
     "emoji": "\ud83c\udf27\ufe0f",
     "category": "rain",
     "sources": [
-      "ATIS",
-      "METAR"
+      "ATIS"
     ],
     "severity": "info",
     "displayTone": "blue",
@@ -144,7 +142,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f RA ATIS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-26 11:42:00.000",
+  "bwcUpdatedZ": "2026-07-26 11:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "MODERATE",
   "bwcBamRisk": "MODERATE",
@@ -157,7 +155,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-26 11:43:52Z",
+  "milNotamUpdatedZ": "2026-07-26 11:53:53Z",
   "milNotamScrollText": "M0022/26 MIL RAMP ARFF STATUS RED FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -278,13 +276,13 @@
   "constructionStatusNotamCount": 7,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-07-26 11:42Z",
+  "allFeedsUpdatedZ": "2026-07-26 11:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-26 11:42:48Z"
+    "lastWorkflowTimestampZ": "2026-07-26 11:52:48Z"
   }
 }
