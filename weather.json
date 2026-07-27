@@ -5,18 +5,18 @@
   "atisLetter": "W",
   "atisPhonetic": "WHISKEY",
   "atisDisplay": "WHISKEY",
-  "metarFetchStatus": "OK",
-  "tafFetchStatus": "OK",
-  "atisFetchStatus": "OK",
+  "metarFetchStatus": "USED_LAST_GOOD",
+  "tafFetchStatus": "USED_LAST_GOOD",
+  "atisFetchStatus": "USED_LAST_GOOD",
   "metarObservedZ": "2026-07-27T04:54:00Z",
-  "metarAgeMinutes": 9,
+  "metarAgeMinutes": 19,
   "atisObservedZ": "2026-07-27T04:54:00Z",
-  "atisAgeMinutes": 9,
+  "atisAgeMinutes": 19,
   "lastKnownGoodUsed": {
-    "metar": false,
-    "taf": false,
-    "atis": false,
-    "ahas": false
+    "metar": true,
+    "taf": true,
+    "atis": true,
+    "ahas": true
   },
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
@@ -143,7 +143,7 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "OK",
+  "milNotamFetchStatus": "SCRIPT_FAILED",
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
@@ -238,13 +238,13 @@
   "constructionStatusNotamCount": 7,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-07-27 05:02Z",
+  "allFeedsUpdatedZ": "2026-07-27 05:12Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-27 05:02:48Z"
+    "lastWorkflowTimestampZ": "2026-07-27 05:12:47Z"
   }
 }
