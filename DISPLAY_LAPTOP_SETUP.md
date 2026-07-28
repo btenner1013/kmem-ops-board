@@ -1,0 +1,180 @@
+# KMEM Ops Board — Display Laptop Setup
+
+This package runs the board locally on a Windows display laptop, refreshes its data every 10 minutes, and can open Microsoft Edge in kiosk mode after sign-in.
+
+The updater uses only the Python standard library. No `pip` packages are required.
+
+## 1. Install the required software
+
+Install these applications on the new laptop:
+
+1. **Python 3 for Windows**  
+   Download from <https://www.python.org/downloads/windows/>. During installation, enable **Add python.exe to PATH** and install the Python Launcher (`py`).
+2. **Git for Windows**  
+   Download from <https://git-scm.com/download/win>.
+3. **GitHub CLI**  
+   Download from <https://cli.github.com/>. This securely supplies Git credentials for scheduled pushes.
+4. **Microsoft Edge**  
+   Edge is normally included with Windows and is used for kiosk/full-screen display.
+
+Restart Windows after installing the software so Task Scheduler receives the updated PATH.
+
+## 2. Copy the project
+
+Extract or copy the complete `kmem-ops-board` folder to a permanent location. A recommended location is:
+
+```text
+C:\KMEM-Ops-Board\kmem-ops-board
+```
+
+Do not move or rename the folder after installing the scheduled tasks. If it is moved later, rerun `install_display_tasks.ps1`.
+
+## 3. Add the FAA NMS credentials
+
+The portable package intentionally does **not** contain the working FAA client secret.
+
+1. Copy `nms_credentials_local.example.bat`.
+2. Rename the copy to:
+
+   ```text
+   nms_credentials_local.bat
+   ```
+
+3. Edit it in Notepad and replace both placeholders:
+
+   ```bat
+   set "NMS_CLIENT_ID=YOUR_REAL_CLIENT_ID"
+   set "NMS_CLIENT_SECRET=YOUR_REAL_CLIENT_SECRET"
+   ```
+
+4. Save the file.
+
+`nms_credentials_local.bat` is ignored by Git. Never commit or share it.
+
+## 4. Authenticate GitHub
+
+The updater commits `weather.json` and `radar.gif` and pushes them to GitHub Pages. Open PowerShell and run:
+
+```powershell
+gh auth login -h github.com
+gh auth setup-git
+```
+
+Choose:
+
+- GitHub.com
+- HTTPS
+- Login with a web browser
+
+Then verify:
+
+```powershell
+gh auth status
+```
+
+The authenticated account must have write access to:
+
+```text
+https://github.com/btenner1013/kmem-ops-board
+```
+
+## 5. Test one update manually
+
+Open Command Prompt in the copied project folder and run:
+
+```cmd
+run_kmem_update.bat
+```
+
+Review:
+
+```text
+local_update_log.txt
+```
+
+Confirm the log shows:
+
+- weather data updated
+- radar GIF saved
+- FAA NMS token/pull succeeded
+- Git push succeeded, or there were no new staged changes
+
+If the FAA credentials are wrong or missing, the board will retain previous NOTAM data when available and label the feed status accordingly.
+
+## 6. Install the scheduled tasks
+
+Open **PowerShell as Administrator**, change to the project folder, and run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\install_display_tasks.ps1
+```
+
+This creates:
+
+| Scheduled task | Purpose |
+|---|---|
+| `KMEM Ops Board - Local Server` | Hosts the board at `http://localhost:8765/` after sign-in |
+| `KMEM Ops Board - Weather Update` | Refreshes weather, radar, and FAA NOTAM data every 10 minutes |
+| `KMEM Ops Board - Display` | Opens Edge in kiosk mode 20 seconds after sign-in |
+
+The tasks run as the signed-in Windows user. Keep that user signed in so GitHub credentials and the display session are available.
+
+To install the server and updater without automatically opening Edge:
+
+```powershell
+.\install_display_tasks.ps1 -SkipDisplayLaunch
+```
+
+## 7. Final display setup
+
+1. Restart the laptop.
+2. Sign in to the Windows account used during setup.
+3. Wait about 20 seconds.
+4. Confirm Edge opens the local board full-screen.
+5. Press `F11` if normal browser full screen is preferred over kiosk mode.
+6. Press `Alt+F4` to exit the kiosk display.
+
+Useful local URLs:
+
+```text
+http://localhost:8765/
+http://localhost:8765/display_control.html
+http://localhost:8765/control.html
+```
+
+## Troubleshooting
+
+### The board does not open
+
+Run `run_kmem_server.bat` manually. If `py` is not recognized, reinstall Python with the launcher and PATH options enabled.
+
+### The board opens but data does not refresh
+
+Run `run_kmem_update.bat`, then inspect `local_update_log.txt`. Also confirm internet access and `gh auth status`.
+
+### FAA NOTAM data is missing
+
+Run:
+
+```cmd
+call nms_credentials_local.bat
+py -3 nms_kmem_mil_notams_test.py
+```
+
+Check `nms_kmem_mil_notams_output.json` and the console message. Do not send the credential file or its contents with support logs.
+
+### Task Scheduler shows failures
+
+Open **Task Scheduler Library**, select the corresponding `KMEM Ops Board` task, and review **Last Run Result** and the **History** tab.
+
+### The folder was moved
+
+Run `install_display_tasks.ps1` again from the new location. The installer replaces the tasks with the new paths.
+
+## Security notes
+
+- The FAA client secret stays only in `nms_credentials_local.bat`.
+- GitHub credentials are stored by GitHub CLI/Windows Credential Manager, not in this folder.
+- The local web server listens only on `127.0.0.1`, so other computers on the network cannot browse it.
+- Do not copy `local_update_log.txt` when it may contain operational troubleshooting data.

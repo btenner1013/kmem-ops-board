@@ -1,7 +1,8 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-set "REPO=C:\Users\btenn\Documents\KMEM-Ops-Board-Local\kmem-ops-board"
+set "REPO=%~dp0"
+if "%REPO:~-1%"=="\" set "REPO=%REPO:~0,-1%"
 set "LOG=%REPO%\local_update_log.txt"
 
 cd /d "%REPO%"
@@ -26,7 +27,7 @@ if exist "%REPO%\nms_credentials_local.bat" (
 )
 
 echo Running weather updater...>> "%LOG%"
-py update_weather_local.py >> "%LOG%" 2>&1
+py -3 update_weather_local.py >> "%LOG%" 2>&1
 
 if errorlevel 1 (
   echo FIRST UPDATE RUN FAILED. Attempting git rebase recovery and one retry...>> "%LOG%"
@@ -34,7 +35,7 @@ if errorlevel 1 (
   git pull --rebase origin main >> "%LOG%" 2>&1
 
   echo Retrying weather updater...>> "%LOG%"
-  py update_weather_local.py >> "%LOG%" 2>&1
+  py -3 update_weather_local.py >> "%LOG%" 2>&1
 )
 
 if errorlevel 1 (

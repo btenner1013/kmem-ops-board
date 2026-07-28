@@ -1,7 +1,8 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-set "REPO=C:\Users\btenn\Documents\KMEM-Ops-Board-Local\kmem-ops-board"
+set "REPO=%~dp0"
+if "%REPO:~-1%"=="\" set "REPO=%REPO:~0,-1%"
 
 cd /d "%REPO%"
 
@@ -16,6 +17,6 @@ if exist "%REPO%\nms_credentials_local.bat" (
   echo WARNING: nms_credentials_local.bat not found. Continuing with public feeds.
 )
 
-py update_weather_local.py --daemon --interval 600
+py -3 update_weather_local.py --daemon --interval 600
 
 pause
