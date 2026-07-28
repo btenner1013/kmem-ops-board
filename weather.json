@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 281854Z 30005KT 10SM FEW050 SCT150 SCT250 36/23 A2984 RMK AO2 SLP100 T03610228 $",
   "taf": "TAF KMEM 281735Z 2818/2924 27008KT P6SM FEW050 FEW200 \n  FM290100 25005KT P6SM FEW250 \n  FM290600 35005KT P6SM VCSH SCT050 BKN100 \n  FM291200 05008KT P6SM BKN050 BKN100 \n  PROB30 2912/2915 P6SM -SHRA OVC050 \n  FM291500 05007KT P6SM BKN050",
-  "atisText": "MEM ATIS INFO V 1854Z. 30005KT 10SM FEW050 SCT150 SCT250 36/23 A2984 (TWO NINER EIGHT FOUR). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO V",
-  "atisLetter": "V",
-  "atisPhonetic": "VICTOR",
-  "atisDisplay": "VICTOR",
+  "atisText": "MEM ATIS INFO W 1854Z. 30005KT 10SM FEW050 SCT150 SCT250 36/23 A2984 (TWO NINER EIGHT FOUR). VISUAL APCH IN USE RY 36C. SIMUL DEPS IN USE RY 36L 36C 36R. NOTICE TO AIRMEN. FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO W",
+  "atisLetter": "W",
+  "atisPhonetic": "WHISKEY",
+  "atisDisplay": "WHISKEY",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-28T18:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-07-28T18:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-28T16:32:47Z",
+  "trendReferenceTimestampZ": "2026-07-28T16:42:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -40,8 +40,8 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
-  "arrRunways": "36L / 36R / 27",
-  "depRunways": "27",
+  "arrRunways": "36C",
+  "depRunways": "36L / 36C / 36R",
   "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL 29 JUL 06-12Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-28 19:18:00.000",
+  "bwcUpdatedZ": "2026-07-28 19:30:00.000",
   "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,9 +159,20 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-28 19:23:50Z",
-  "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0023/26 M0023/26 NOTAMC M0022/26 A) KMEM  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
+  "milNotamUpdatedZ": "2026-07-28 19:33:54Z",
+  "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0023/26 M0023/26 NOTAMC M0022/26 A) KMEM",
   "milNotams": [
+    {
+      "number": "M0021/26",
+      "classification": "MIL",
+      "severity": "amber",
+      "text": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UNTIL FURTHER NOTICE. ALL OTHER DSN NUMBERS, PLEASE DIAL COMM PREFIX 901-291-XXXX.",
+      "displayText": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
+      "effectiveStart": "202606091221",
+      "effectiveEnd": "202609062359",
+      "lastUpdated": "2026-06-09T12:21:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
     {
       "number": "M0024/26",
       "classification": "MIL",
@@ -183,17 +194,6 @@
       "effectiveEnd": "202607311418",
       "lastUpdated": "2026-07-28T14:18:00.000Z",
       "source": "FAA_NMS_STAGING"
-    },
-    {
-      "number": "M0021/26",
-      "classification": "MIL",
-      "severity": "amber",
-      "text": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UNTIL FURTHER NOTICE. ALL OTHER DSN NUMBERS, PLEASE DIAL COMM PREFIX 901-291-XXXX.",
-      "displayText": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
-      "effectiveStart": "202606091221",
-      "effectiveEnd": "202609062359",
-      "lastUpdated": "2026-06-09T12:21:00.000Z",
-      "source": "FAA_NMS_STAGING"
     }
   ],
   "milNotamFetchStatus": "OK",
@@ -214,42 +214,6 @@
       "lastUpdated": "2026-07-28T15:50:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY M EDGE MARKINGS BTN TWY M7 AND TWY T EAST SIDE REMOVED"
-    },
-    {
-      "number": "07/522",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY N, M WIP SPRAYING, MOWING, WEEDING",
-      "displayText": "TWY N, M WIP SPRAYING, MOWING, WEEDING",
-      "effectiveStart": "202607281300",
-      "effectiveEnd": "202607281930",
-      "lastUpdated": "2026-07-27T22:03:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY N, M WIP SPRAYING, MOWING, WEEDING"
-    },
-    {
-      "number": "07/521",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY A WIP SPRAYING, MOWING, WEEDING",
-      "displayText": "TWY A WIP SPRAYING, MOWING, WEEDING",
-      "effectiveStart": "202607281300",
-      "effectiveEnd": "202607281930",
-      "lastUpdated": "2026-07-27T22:02:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A WIP SPRAYING, MOWING, WEEDING"
-    },
-    {
-      "number": "07/519",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY Y, S WIP MARKINGS",
-      "displayText": "TWY Y, S WIP MARKINGS",
-      "effectiveStart": "202607281300",
-      "effectiveEnd": "202607281930",
-      "lastUpdated": "2026-07-27T22:00:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY Y, S WIP MARKINGS"
     },
     {
       "number": "07/343",
@@ -324,29 +288,16 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 10,
-  "taxiRestrictionNotams": [
-    {
-      "number": "07/518",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "APRON TXL P BTN CARGO RAMP NORTH AND TWY P CLSD EXC 60MIN PPR 901-922-8117",
-      "displayText": "APRON TXL P BTN CARGO RAMP NORTH AND TWY P CLSD EXC 60MIN PPR 901-922-8117",
-      "effectiveStart": "202607281500",
-      "effectiveEnd": "202607281930",
-      "lastUpdated": "2026-07-27T22:00:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "APRON TXL P BTN CARGO RAMP NORTH AND TWY P CLSD EXC 60MIN PPR 901-922-8117"
-    }
-  ],
-  "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-07-28 19:22Z",
+  "constructionStatusNotamCount": 7,
+  "taxiRestrictionNotams": [],
+  "taxiRestrictionNotamCount": 0,
+  "allFeedsUpdatedZ": "2026-07-28 19:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-28 19:22:48Z"
+    "lastWorkflowTimestampZ": "2026-07-28 19:32:47Z"
   }
 }
