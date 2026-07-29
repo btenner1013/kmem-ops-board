@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-29T11:54:00Z",
-  "metarAgeMinutes": 19,
+  "metarAgeMinutes": 29,
   "atisObservedZ": "2026-07-29T11:54:00Z",
-  "atisAgeMinutes": 19,
+  "atisAgeMinutes": 29,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-29T09:22:48Z",
+  "trendReferenceTimestampZ": "2026-07-29T09:32:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -146,12 +146,12 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-16Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-29 12:12:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-07-29 12:18:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=29&hour=12&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=29&iHour=12",
@@ -159,8 +159,8 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-29 12:13:53Z",
-  "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0023/26 M0023/26 NOTAMC M0022/26 A) KMEM  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
+  "milNotamUpdatedZ": "2026-07-29 12:23:56Z",
+  "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0025/26 M0025/26 NOTAMC M0023/26 A) KMEM",
   "milNotams": [
     {
       "number": "M0024/26",
@@ -174,17 +174,6 @@
       "source": "FAA_NMS_STAGING"
     },
     {
-      "number": "M0023/26",
-      "classification": "MIL",
-      "severity": "green",
-      "text": "M0023/26 NOTAMC M0022/26 A) KMEM",
-      "displayText": "M0023/26 NOTAMC M0022/26 A) KMEM",
-      "effectiveStart": "202607281418",
-      "effectiveEnd": "202607311418",
-      "lastUpdated": "2026-07-28T14:18:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
-    {
       "number": "M0021/26",
       "classification": "MIL",
       "severity": "amber",
@@ -193,6 +182,17 @@
       "effectiveStart": "202606091221",
       "effectiveEnd": "202609062359",
       "lastUpdated": "2026-06-09T12:21:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "M0025/26",
+      "classification": "MIL",
+      "severity": "green",
+      "text": "M0025/26 NOTAMC M0023/26 A) KMEM",
+      "displayText": "M0025/26 NOTAMC M0023/26 A) KMEM",
+      "effectiveStart": "202607291216",
+      "effectiveEnd": "202608011216",
+      "lastUpdated": "2026-07-29T12:16:00.000Z",
       "source": "FAA_NMS_STAGING"
     }
   ],
@@ -365,13 +365,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-29 12:12Z",
+  "allFeedsUpdatedZ": "2026-07-29 12:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-29 12:12:48Z"
+    "lastWorkflowTimestampZ": "2026-07-29 12:22:48Z"
   }
 }
