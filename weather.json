@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 290354Z VRB04KT 10SM FEW070 OVC210 31/24 A2981 RMK AO2 SLP088 T03110239 $",
   "taf": "TAF KMEM 290355Z 2904/3006 25005KT P6SM FEW250 \n  FM290600 32005KT P6SM VCSH SCT050 BKN100 \n  FM291000 04005KT P6SM BKN050 BKN100 \n  PROB30 2910/2916 P6SM -SHRA OVC050 \n  FM291600 36006KT P6SM BKN050 \n  FM292100 36007KT P6SM SCT050 \n  FM300100 05005KT P6SM SCT050",
-  "atisText": "MEM ATIS INFO I 0354Z. VRB04KT 10SM FEW070 OVC210 31/24 A2981 (TWO NINER EIGHT ONE) RMK AO2 SLP088 T03110239. SIMUL VISUAL APCHS IN USE RY 18L, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO I",
-  "atisLetter": "I",
-  "atisPhonetic": "INDIA",
-  "atisDisplay": "INDIA",
+  "atisText": "MEM ATIS INFO J 0354Z. VRB04KT 10SM FEW070 OVC210 31/24 A2981 (TWO NINER EIGHT ONE) RMK AO2 SLP088 T03110239. SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. DEPG RWYS 36C. NOTICE TO AIRMEN. FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO J",
+  "atisLetter": "J",
+  "atisPhonetic": "JULIETT",
+  "atisDisplay": "JULIETT",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-29T03:54:00Z",
-  "metarAgeMinutes": 19,
+  "metarAgeMinutes": 29,
   "atisObservedZ": "2026-07-29T03:54:00Z",
-  "atisAgeMinutes": 19,
+  "atisAgeMinutes": 29,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-29T01:22:48Z",
+  "trendReferenceTimestampZ": "2026-07-29T01:32:53Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -40,8 +40,8 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": 21000,
-  "arrRunways": "18L / 18R",
-  "depRunways": "18C",
+  "arrRunways": "36L / 36R / 27",
+  "depRunways": "36C",
   "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
@@ -49,7 +49,7 @@
     "18C/36C",
     "18R/36L"
   ],
-  "flow": "SOUTH \u2193",
+  "flow": "NORTH \u2191",
   "rcrText": "DRY",
   "rcrCode": "DRY",
   "rcrSeverity": "good",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL 06-10Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-29 04:12:00.000",
+  "bwcUpdatedZ": "2026-07-29 04:18:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-29 04:13:50Z",
+  "milNotamUpdatedZ": "2026-07-29 04:23:48Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0023/26 M0023/26 NOTAMC M0022/26 A) KMEM  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -365,13 +365,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-07-29 04:12Z",
+  "allFeedsUpdatedZ": "2026-07-29 04:22Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-29 04:12:48Z"
+    "lastWorkflowTimestampZ": "2026-07-29 04:22:48Z"
   }
 }
