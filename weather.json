@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 291254Z 05007KT 10SM OVC130 29/24 A2986 RMK AO2 SLP107 T02890244 $",
   "taf": "TAF KMEM 291120Z 2912/3018 04005KT P6SM VCSH SCT050 BKN100 \n  PROB30 2912/2916 P6SM -SHRA BKN050 \n  FM291600 36006KT P6SM BKN050 \n  FM292100 01007KT P6SM SCT050 \n  FM300100 05005KT P6SM SKC",
-  "atisText": "MEM ATIS INFO T 1254Z. 05007KT 10SM OVC130 29/24 A2986 (TWO NINER EIGHT SIX) RMK AO2 SLP107 T02890244. SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 18C, 36C CLSD. TWY C CLSD BTN TWY, C7 AND TWY D. LLWAS OTS, FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO T",
-  "atisLetter": "T",
-  "atisPhonetic": "TANGO",
-  "atisDisplay": "TANGO",
+  "atisText": "MEM ATIS INFO U 1254Z. 05007KT 10SM OVC130 29/24 A2986 (TWO NINER EIGHT SIX) RMK AO2 SLP107 T02890244. SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 18C, 36C CLSD. TWY C CLSD BTN TWY, C7 AND TWY D, TWY E CLSD BTN RWY, 36C AND TWY J, TWY C SOUTH OF TWY P CLSD. LLWAS OTS, FREQ 119.1 OTS. MEM TACAN OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO U",
+  "atisLetter": "U",
+  "atisPhonetic": "UNIFORM",
+  "atisDisplay": "UNIFORM",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-29T12:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-07-29T12:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-29T10:22:48Z",
+  "trendReferenceTimestampZ": "2026-07-29T10:32:50Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -144,13 +144,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-16Z",
-  "bwc": "MODERATE",
+  "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-29 13:18:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-07-29 13:30:00.000",
+  "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "MODERATE",
+  "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=29&hour=13&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -159,7 +159,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-29 13:23:52Z",
+  "milNotamUpdatedZ": "2026-07-29 13:33:57Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0025/26 M0025/26 NOTAMC M0023/26 A) KMEM",
   "milNotams": [
     {
@@ -328,6 +328,18 @@
   "constructionStatusNotamCount": 9,
   "taxiRestrictionNotams": [
     {
+      "number": "07/540",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "red",
+      "text": "TWY E BTN TWY J AND RWY 18C/36C CLSD",
+      "displayText": "TWY E BTN TWY J AND RWY 18C/36C CLSD",
+      "effectiveStart": "202607291327",
+      "effectiveEnd": "202607291930",
+      "lastUpdated": "2026-07-29T13:30:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY E BTN TWY J AND RWY 18C/36C CLSD"
+    },
+    {
       "number": "07/530",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "green",
@@ -352,14 +364,14 @@
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY K, L, H"
     }
   ],
-  "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-07-29 13:22Z",
+  "taxiRestrictionNotamCount": 3,
+  "allFeedsUpdatedZ": "2026-07-29 13:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-29 13:22:47Z"
+    "lastWorkflowTimestampZ": "2026-07-29 13:32:47Z"
   }
 }
