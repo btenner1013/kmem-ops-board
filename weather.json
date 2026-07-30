@@ -5,13 +5,13 @@
   "atisLetter": "M",
   "atisPhonetic": "MIKE",
   "atisDisplay": "MIKE",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-30T20:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-07-30T20:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 31 JUL 20-24Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-30 21:42:00.000",
+  "bwcUpdatedZ": "2026-07-30 21:48:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-30 21:34:01Z",
+  "milNotamUpdatedZ": "2026-07-30 21:54:21Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0026/26 M0026/26 NOTAMC M0025/26 A) KMEM",
   "milNotams": [
     {
@@ -196,7 +196,7 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "SCRIPT_FAILED",
+  "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
@@ -216,6 +216,18 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "07/571",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY A, B, Y WIP SPRAYING, WEEDING, MOWING",
+      "displayText": "TWY A, B, Y WIP SPRAYING, WEEDING, MOWING",
+      "effectiveStart": "202607311300",
+      "effectiveEnd": "202607311930",
+      "lastUpdated": "2026-07-30T21:37:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY A, B, Y WIP SPRAYING, WEEDING, MOWING"
+    },
     {
       "number": "07/527",
       "classification": "CONST_AFLD_STATUS",
@@ -301,7 +313,7 @@
       "rawText": "RWY 36C CHEVRON SFC MARKINGS FADED"
     }
   ],
-  "constructionStatusNotamCount": 7,
+  "constructionStatusNotamCount": 8,
   "taxiRestrictionNotams": [
     {
       "number": "07/570",
@@ -329,13 +341,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-07-30 21:42Z",
+  "allFeedsUpdatedZ": "2026-07-30 21:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-30 21:42:47Z"
+    "lastWorkflowTimestampZ": "2026-07-30 21:52:48Z"
   }
 }
