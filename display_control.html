@@ -371,6 +371,10 @@ input[type=range]{
       <input id="showRadar" type="checkbox">
       Show NEXRAD radar panel
     </label>
+    <label class="toggle">
+      <input id="antiBurnIn" type="checkbox">
+      Screen burn-in protection (small shift every 90 seconds)
+    </label>
   </div>
 
   <div class="card">
@@ -411,14 +415,14 @@ const defaults={
   preset:"Desktop", clockPx:72, clockDatePx:14, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
   notamTitlePx:18, notamStatusPx:16, notamCaoPx:14, labelPx:14, footerPx:18, feedPx:14,
   rawLine:1.45, notamLine:1.38, notamScrollSec:55, topRowPx:116, notamRowPx:76, footerRowPx:54,
-  weatherColPct:44, getacScale:90, awake:"1", strongPulse:true, showRadar:true
+  weatherColPct:44, getacScale:90, awake:"1", strongPulse:true, showRadar:true, antiBurnIn:true
 };
 
 const presets={
-  "TV 100":{clockPx:72,clockDatePx:15,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,topRowPx:116,notamRowPx:76,footerRowPx:54,weatherColPct:44,strongPulse:true},
-  "TV 90":{clockPx:76,clockDatePx:16,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,notamTitlePx:19,notamStatusPx:17,notamCaoPx:15,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:60,topRowPx:122,notamRowPx:82,footerRowPx:56,weatherColPct:44,strongPulse:true},
-  "Desktop":{clockPx:72,clockDatePx:14,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,topRowPx:116,notamRowPx:76,footerRowPx:54,weatherColPct:44,strongPulse:true},
-  "Getac":{clockPx:54,clockDatePx:11,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,notamTitlePx:14,notamStatusPx:12,notamCaoPx:11,labelPx:12,footerPx:14,feedPx:12,rawLine:1.20,notamLine:1.12,notamScrollSec:65,topRowPx:74,notamRowPx:92,footerRowPx:32,weatherColPct:44,getacScale:90,awake:"1",strongPulse:true}
+  "TV 100":{clockPx:72,clockDatePx:15,blockValuePx:24,rcrPx:27,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,topRowPx:116,notamRowPx:76,footerRowPx:54,weatherColPct:44,strongPulse:true,antiBurnIn:true},
+  "TV 90":{clockPx:76,clockDatePx:16,blockValuePx:25,rcrPx:28,rawWxPx:21,wxAlertPx:25,notamPx:21,notamTitlePx:19,notamStatusPx:17,notamCaoPx:15,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:60,topRowPx:122,notamRowPx:82,footerRowPx:56,weatherColPct:44,strongPulse:true,antiBurnIn:true},
+  "Desktop":{clockPx:72,clockDatePx:14,blockValuePx:24,rcrPx:26,rawWxPx:20,wxAlertPx:24,notamPx:20,notamTitlePx:18,notamStatusPx:16,notamCaoPx:14,labelPx:14,footerPx:18,feedPx:14,rawLine:1.45,notamLine:1.38,notamScrollSec:55,topRowPx:116,notamRowPx:76,footerRowPx:54,weatherColPct:44,strongPulse:true,antiBurnIn:true},
+  "Getac":{clockPx:54,clockDatePx:11,blockValuePx:20,rcrPx:22,rawWxPx:16,wxAlertPx:20,notamPx:15,notamTitlePx:14,notamStatusPx:12,notamCaoPx:11,labelPx:12,footerPx:14,feedPx:12,rawLine:1.20,notamLine:1.12,notamScrollSec:65,topRowPx:74,notamRowPx:92,footerRowPx:32,weatherColPct:44,getacScale:90,awake:"1",strongPulse:true,antiBurnIn:true}
 };
 function load(){
   try{

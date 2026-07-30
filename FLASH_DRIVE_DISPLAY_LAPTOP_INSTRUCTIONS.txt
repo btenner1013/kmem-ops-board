@@ -1,0 +1,51 @@
+KMEM OPS BOARD - FLASH DRIVE / DISPLAY LAPTOP INSTRUCTIONS
+===========================================================
+
+WHAT TO COPY
+------------
+1. Copy the entire "KMEM-Ops-Board-Display-Laptop-Portable" folder from the
+   supplied package to a flash drive.
+2. Do NOT copy nms_credentials_local.bat from your personal laptop. It contains
+   the FAA NMS secret. The portable folder only contains a safe template.
+
+ON THE DISPLAY LAPTOP
+---------------------
+1. Install Python 3, Git for Windows, GitHub CLI, and Microsoft Edge.
+   No pip packages are needed.
+2. Copy the entire folder from the flash drive to a permanent location, such as:
+      C:\KMEM-Ops-Board\kmem-ops-board
+3. In that copied folder, make a copy of:
+      nms_credentials_local.example.bat
+   Rename the copy to:
+      nms_credentials_local.bat
+   Then add the FAA NMS client ID and client secret in the copied file.
+4. Open PowerShell and authenticate GitHub:
+      gh auth login -h github.com
+      gh auth setup-git
+5. Test one update from Command Prompt:
+      run_kmem_update.bat
+6. Open PowerShell as Administrator in the project folder and install the
+   automatic tasks:
+      Set-ExecutionPolicy -Scope Process Bypass
+      .\install_display_tasks.ps1
+
+WHAT THE SCHEDULED TASKS DO
+---------------------------
+- Start a local-only board server at http://localhost:8765/ after sign-in.
+- Refresh weather, radar, and FAA NMS NOTAM data every 10 minutes.
+- Open Microsoft Edge in kiosk mode about 20 seconds after sign-in.
+
+ANTI-BURN-IN FEATURE
+--------------------
+The board makes a very small whole-screen shift every 90 seconds to reduce
+static-image burn-in risk. It is enabled by default. To turn it off, open:
+      http://localhost:8765/display_control.html
+and clear "Screen burn-in protection."
+
+IMPORTANT
+---------
+- Keep the display laptop signed in for the local server, browser kiosk, and
+  GitHub credentials to remain available.
+- Do not move the project folder after installing the tasks. If you move it,
+  rerun install_display_tasks.ps1 from the new location.
+- For detailed troubleshooting, read DISPLAY_LAPTOP_SETUP.md in the folder.

@@ -55,6 +55,24 @@ html,body{
   padding:clamp(2px, 0.8vh, 14px);
 }
 
+/* OLED/LCD burn-in protection: make a small, infrequent whole-board move.
+   The scale leaves a safety buffer so the shift never clips dashboard edges. */
+@keyframes antiBurnInShift{
+  0%,15%{transform:translate(0,0) scale(.998)}
+  20%,35%{transform:translate(3px,2px) scale(.998)}
+  40%,55%{transform:translate(-3px,1px) scale(.998)}
+  60%,75%{transform:translate(2px,-3px) scale(.998)}
+  80%,95%{transform:translate(-2px,-2px) scale(.998)}
+  100%{transform:translate(0,0) scale(.998)}
+}
+body.anti-burn-in-enabled .board{
+  animation:antiBurnInShift 720s steps(1,end) infinite;
+  transform-origin:center center;
+}
+@media (max-width:700px), (prefers-reduced-motion:reduce){
+  body.anti-burn-in-enabled .board{ animation:none; transform:none; }
+}
+
 .top{ display:grid; grid-template-columns:1fr 1fr; gap:6px; min-height:0; }
 .middle{ display:grid; grid-template-columns:var(--weather-col-pct) minmax(0,1fr); gap:6px; min-height:0; }
 .bottom{ display:grid; grid-template-columns:1fr; gap:6px; min-height:0; }
@@ -2788,7 +2806,7 @@ setInterval(phase45PolishOpsText,1000);
     preset:"Desktop", clockPx:72, clockDatePx:14, blockValuePx:24, rcrPx:24, rawWxPx:20, wxAlertPx:22, notamPx:20,
     notamTitlePx:18, notamStatusPx:16, notamCaoPx:14, labelPx:14, footerPx:18, feedPx:14,
     rawLine:1.45, notamLine:1.38, notamScrollSec:55, topRowPx:110, notamRowPx:58, footerRowPx:54,
-    weatherColPct:44, strongPulse:true, showRadar:true
+    weatherColPct:44, strongPulse:true, showRadar:true, antiBurnIn:true
   };
 
   function readSettings(){
@@ -2842,6 +2860,7 @@ setInterval(phase45PolishOpsText,1000);
       root.style.removeProperty("--weather-col-pct");
       let style=document.getElementById("displayTuningStyle");
       if(style) style.textContent="";
+      document.body.classList.add("anti-burn-in-enabled");
       return;
     }
 
@@ -2864,6 +2883,7 @@ setInterval(phase45PolishOpsText,1000);
     const radarOn=s.showRadar!==false;
     if(radarPanel) radarPanel.style.display=radarOn?"":"none";
     document.body.classList.toggle("radar-hidden",!radarOn);
+    document.body.classList.toggle("anti-burn-in-enabled",s.antiBurnIn!==false);
 
     const pulse=s.strongPulse!==false;
     const css=`
