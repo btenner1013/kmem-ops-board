@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 311854Z 25006KT 10SM FEW036 BKN170 32/24 A2992 RMK AO2 SLP126 T03220239 $",
   "taf": "TAF KMEM 311720Z 3118/0124 22008KT P6SM BKN040 BKN150 \n  PROB30 3120/3124 -TSRA SCT040CB \n  FM010000 20010KT P6SM VCSH SCT040 BKN100 \n  PROB30 0107/0110 6SM -TSRA BKN050CB \n  FM011500 29011KT P6SM BKN250 \n  FM011900 31012G20KT P6SM BKN200",
-  "atisText": "MEM ATIS INFO P 1854Z. 25006KT 10SM FEW036 BKN170 32/24 A2992 (TWO NINER NINER TWO). ILS APCH IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. FREQ 119.1 OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO P",
-  "atisLetter": "P",
-  "atisPhonetic": "PAPA",
-  "atisDisplay": "PAPA",
+  "atisText": "MEM ATIS INFO R 1854Z. 25006KT 10SM FEW036 BKN170 32/24 A2992 (TWO NINER NINER TWO). ILS APCH IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. FREQ 119.1 OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. WIND SHEAR ADZYS IN EFCT. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO R",
+  "atisLetter": "R",
+  "atisPhonetic": "ROMEO",
+  "atisDisplay": "ROMEO",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-07-31T18:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-07-31T18:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-07-31T16:22:49Z",
+  "trendReferenceTimestampZ": "2026-07-31T16:42:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -50,12 +50,12 @@
     "18R/36L"
   ],
   "flow": "SOUTH \u2193",
-  "rcrText": "DRY",
-  "rcrCode": "DRY",
+  "rcrText": "RSC/RCR 5/5/5 WET",
+  "rcrCode": "5/5/5",
   "rcrSeverity": "good",
-  "rcrSource": "NOTAM_FICON_NONE",
+  "rcrSource": "NOTAM_FICON",
   "rcrVisible": true,
-  "rcrRaw": "--",
+  "rcrRaw": "07/580 RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607311927. RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607311927.",
   "altimeter": "29.92",
   "altimeterRaw": 29.92,
   "altimeterTrend": "\u2193",
@@ -146,12 +146,12 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 20-24Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-07-31 19:18:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-07-31 19:30:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "3778",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=7&day=31&hour=19&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=7&iDay=31&iHour=19",
@@ -159,7 +159,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-07-31 19:23:48Z",
+  "milNotamUpdatedZ": "2026-07-31 19:33:51Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0026/26 M0026/26 NOTAMC M0025/26 A) KMEM",
   "milNotams": [
     {
@@ -198,8 +198,75 @@
   ],
   "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
-  "ficonNotams": [],
-  "ficonNotamCount": 0,
+  "ficonNotams": [
+    {
+      "number": "07/582",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "APRON ALL FICON WET OBS AT 2607311928.",
+      "displayText": "APRON ALL FICON WET OBS AT 2607311928.",
+      "effectiveStart": "202607311928",
+      "effectiveEnd": "202608011928",
+      "lastUpdated": "2026-07-31T19:31:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "07/581",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "TWY ALL FICON WET OBS AT 2607311927.",
+      "displayText": "TWY ALL FICON WET OBS AT 2607311927.",
+      "effectiveStart": "202607311927",
+      "effectiveEnd": "202608011927",
+      "lastUpdated": "2026-07-31T19:31:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "07/580",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607311927.",
+      "displayText": "RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2607311927.",
+      "effectiveStart": "202607311927",
+      "effectiveEnd": "202608011927",
+      "lastUpdated": "2026-07-31T19:31:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "07/579",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2607311926.",
+      "displayText": "RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2607311926.",
+      "effectiveStart": "202607311926",
+      "effectiveEnd": "202608011926",
+      "lastUpdated": "2026-07-31T19:31:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "07/578",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 18C FICON 5/5/5 100 PCT WET OBS AT 2607311926.",
+      "displayText": "RWY 18C FICON 5/5/5 100 PCT WET OBS AT 2607311926.",
+      "effectiveStart": "202607311926",
+      "effectiveEnd": "202608011926",
+      "lastUpdated": "2026-07-31T19:28:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "07/577",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2607311925.",
+      "displayText": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2607311925.",
+      "effectiveStart": "202607311925",
+      "effectiveEnd": "202608011925",
+      "lastUpdated": "2026-07-31T19:31:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    }
+  ],
+  "ficonNotamCount": 6,
   "runwayClosureNotams": [],
   "runwayClosureNotamCount": 0,
   "constructionStatusNotams": [
@@ -214,18 +281,6 @@
       "lastUpdated": "2026-07-31T17:05:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "APRON CARGO RAMP NORTH, CARGO RAMP SOUTH EDGE MARKINGS NOT STD"
-    },
-    {
-      "number": "07/571",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY A, B, Y WIP SPRAYING, WEEDING, MOWING",
-      "displayText": "TWY A, B, Y WIP SPRAYING, WEEDING, MOWING",
-      "effectiveStart": "202607311300",
-      "effectiveEnd": "202607311930",
-      "lastUpdated": "2026-07-30T21:37:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A, B, Y WIP SPRAYING, WEEDING, MOWING"
     },
     {
       "number": "07/527",
@@ -264,7 +319,7 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 5,
+  "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [
     {
       "number": "07/570",
@@ -280,13 +335,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-07-31 19:22Z",
+  "allFeedsUpdatedZ": "2026-07-31 19:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-07-31 19:22:47Z"
+    "lastWorkflowTimestampZ": "2026-07-31 19:32:47Z"
   }
 }
