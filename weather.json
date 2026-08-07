@@ -1,6 +1,6 @@
 {
   "metar": "METAR KMEM 071654Z 22006KT 10SM FEW050 SCT170 SCT200 32/24 A3013 RMK AO2 SLP197 T03220239 $",
-  "taf": "TAF KMEM 071502Z 0715/0818 23006KT P6SM FEW100 \n  FM071600 21007KT P6SM SCT050 BKN120 \n  PROB30 0800/0805 6SM -SHRA BKN050 \n  FM080600 17005KT P6SM VCSH BKN060 \n  FM081500 27005KT P6SM SCT045 BKN070",
+  "taf": "TAF KMEM 071732Z 0718/0824 21007KT P6SM SCT050 BKN120 \n  PROB30 0722/0804 6SM -SHRA BKN050 \n  FM080500 18006KT P6SM VCSH BKN060 \n  FM081500 27005KT P6SM SCT045 BKN070",
   "atisText": "MEM ATIS INFO E 1654Z. 22006KT 10SM FEW050 SCT170 SCT200 32/24 A3013 (THREE ZERO ONE THREE) RMK AO2 SLP197 T03220239. SIMUL VISUAL APCHS IN USE RY 18L, 27. DEPG RWYS 18C. 18L. NOTICE TO AIRMEN. RWY 18R, 36L CLSD. TWY N CLSD BTN TWY, P AND TWY R, TWY H CLSD BTN TWY, N AND TWY R1, TWY R CLSD BTN TWY, N AND TWY R1, TWY M CLSD TWY R2 CLSD. RWY 18R RAILS OTS. RWY 27 RAILS OTS. RWY 18L RAILS OTS. RWY 18R/36L MIDPOINT RVR OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO E",
   "atisLetter": "E",
   "atisPhonetic": "ECHO",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-07T16:54:00Z",
-  "metarAgeMinutes": 39,
+  "metarAgeMinutes": 49,
   "atisObservedZ": "2026-08-07T16:54:00Z",
-  "atisAgeMinutes": 39,
+  "atisAgeMinutes": 49,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-07T14:42:47Z",
+  "trendReferenceTimestampZ": "2026-08-07T14:52:47Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -106,17 +106,17 @@
       "flash": false,
       "pulse": false,
       "priority": 70,
-      "text": "-SHRA PSBL 08 AUG 00-05Z",
-      "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL 08 AUG 00-05Z",
-      "tafWindow": "08 AUG 00-05Z",
-      "tafStartKey": 192,
+      "text": "-SHRA PSBL 07 AUG 22Z-08 AUG 04Z",
+      "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL 07 AUG 22Z-08 AUG 04Z",
+      "tafWindow": "07 AUG 22Z-08 AUG 04Z",
+      "tafStartKey": 190,
       "tafGroupType": "PROB30",
-      "tafStartIso": "2026-08-08T00:00:00Z",
-      "tafEndIso": "2026-08-08T05:00:00Z"
+      "tafStartIso": "2026-08-07T22:00:00Z",
+      "tafEndIso": "2026-08-08T04:00:00Z"
     }
   ],
-  "wxAlertText": "\ud83c\udf27\ufe0f -SHRA PSBL 08 AUG 00-05Z",
-  "wxAlertLogText": "-SHRA PSBL 08 AUG 00-05Z",
+  "wxAlertText": "\ud83c\udf27\ufe0f -SHRA PSBL 07 AUG 22Z-08 AUG 04Z",
+  "wxAlertLogText": "-SHRA PSBL 07 AUG 22Z-08 AUG 04Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
     "code": "-SHRA",
@@ -131,22 +131,22 @@
     "flash": false,
     "pulse": false,
     "priority": 70,
-    "text": "-SHRA PSBL 08 AUG 00-05Z",
-    "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL 08 AUG 00-05Z",
-    "tafWindow": "08 AUG 00-05Z",
-    "tafStartKey": 192,
+    "text": "-SHRA PSBL 07 AUG 22Z-08 AUG 04Z",
+    "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL 07 AUG 22Z-08 AUG 04Z",
+    "tafWindow": "07 AUG 22Z-08 AUG 04Z",
+    "tafStartKey": 190,
     "tafGroupType": "PROB30",
-    "tafStartIso": "2026-08-08T00:00:00Z",
-    "tafEndIso": "2026-08-08T05:00:00Z"
+    "tafStartIso": "2026-08-07T22:00:00Z",
+    "tafEndIso": "2026-08-08T04:00:00Z"
   },
   "wxSecondaryAlert": null,
   "wxAlertTone": "blue",
   "wxAlertFlash": false,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 08 AUG 00-05Z",
+  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 07 AUG 22Z-08 AUG 04Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-07 17:30:00.000",
+  "bwcUpdatedZ": "2026-08-07 17:42:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-07 17:33:52Z",
+  "milNotamUpdatedZ": "2026-08-07 17:43:50Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0028/26 M0028/26 NOTAMC M0027/26 A) KMEM",
   "milNotams": [
     {
@@ -269,13 +269,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-08-07 17:32Z",
+  "allFeedsUpdatedZ": "2026-08-07 17:42Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-07 17:32:47Z"
+    "lastWorkflowTimestampZ": "2026-08-07 17:42:47Z"
   }
 }
