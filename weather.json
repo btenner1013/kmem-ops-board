@@ -5,24 +5,24 @@
   "atisLetter": "X",
   "atisPhonetic": "XRAY",
   "atisDisplay": "XRAY",
-  "metarFetchStatus": "OK",
-  "tafFetchStatus": "OK",
-  "atisFetchStatus": "OK",
+  "metarFetchStatus": "WARN_LAST_GOOD",
+  "tafFetchStatus": "USED_LAST_GOOD",
+  "atisFetchStatus": "USED_LAST_GOOD",
   "metarObservedZ": "2026-08-08T18:54:00Z",
-  "metarAgeMinutes": 49,
+  "metarAgeMinutes": 59,
   "atisObservedZ": "2026-08-08T18:54:00Z",
-  "atisAgeMinutes": 49,
+  "atisAgeMinutes": 59,
   "lastKnownGoodUsed": {
-    "metar": false,
-    "taf": false,
-    "atis": false,
-    "ahas": false
+    "metar": true,
+    "taf": true,
+    "atis": true,
+    "ahas": true
   },
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-08T16:52:47Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-08-08T17:02:47Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -62,8 +62,8 @@
   "altimeterTrendText": "FALLING",
   "ceilingFt": null,
   "ceilingDisplay": "UNL",
-  "ceilingTrend": "\u2191",
-  "ceilingTrendText": "RISING",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
@@ -81,10 +81,10 @@
   "tempC": 30,
   "dewpointC": 21,
   "tempDpDisplay": "30/21",
-  "tempTrend": "\u25ba",
-  "tempTrendText": "STEADY",
-  "dewpointTrend": "\u25bc",
-  "dewpointTrendText": "FALLING",
+  "tempTrend": "\u25b2",
+  "tempTrendText": "RISING",
+  "dewpointTrend": "\u25ba",
+  "dewpointTrendText": "STEADY",
   "lightning": "\u26a1 DSNT NE/S 10-30 NM",
   "lightningSeverity": "distant",
   "lightningTone": "yellow",
@@ -196,7 +196,7 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "OK",
+  "milNotamFetchStatus": "SCRIPT_FAILED",
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
@@ -281,13 +281,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-08-08 19:42Z",
+  "allFeedsUpdatedZ": "2026-08-08 19:52Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-08 19:42:47Z"
+    "lastWorkflowTimestampZ": "2026-08-08 19:52:48Z"
   }
 }
