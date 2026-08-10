@@ -1,6 +1,6 @@
 {
   "metar": "METAR KMEM 101954Z 25008KT 10SM FEW060 SCT080 SCT090 36/21 A3007 RMK AO2 SLP177 T03560211 $",
-  "taf": "TAF KMEM 101720Z 1018/1124 22008KT P6SM SCT045 \n  PROB30 1020/1023 4SM TSRA BKN050CB \n  FM110100 18007KT P6SM SKC \n  FM111500 23009KT P6SM SCT045",
+  "taf": "TAF KMEM 102026Z 1020/1124 25008KT P6SM SCT060 \n  FM110100 18007KT P6SM SKC \n  FM111500 23009KT P6SM SCT045",
   "atisText": "MEM ATIS INFO F 1954Z. 25008KT 10SM FEW060 SCT080 SCT090 36/21 A3007 (THREE ZERO ZERO SEVEN) RMK AO2 SLP177 T03560211. SIMUL VISUAL APCHS IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO F",
   "atisLetter": "F",
   "atisPhonetic": "FOXTROT",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-10T19:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 39,
   "atisObservedZ": "2026-08-10T19:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 39,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-10T17:32:47Z",
+  "trendReferenceTimestampZ": "2026-08-10T17:42:49Z",
   "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -92,61 +92,19 @@
   "lightningPulse": false,
   "lightningSource": "NONE",
   "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND.",
-  "wxAlerts": [
-    {
-      "code": "TSRA",
-      "label": "THUNDERSTORM RAIN",
-      "emoji": "\u26c8\ufe0f",
-      "category": "thunder",
-      "sources": [
-        "TAF"
-      ],
-      "severity": "forecast",
-      "displayTone": "yellow",
-      "flash": false,
-      "pulse": true,
-      "priority": 30,
-      "text": "TSRA PSBL NOW-23Z",
-      "displayText": "\u26c8\ufe0f TSRA PSBL NOW-23Z",
-      "tafWindow": "NOW-23Z",
-      "tafStartKey": 260,
-      "tafGroupType": "PROB30",
-      "tafStartIso": "2026-08-10T20:00:00Z",
-      "tafEndIso": "2026-08-10T23:00:00Z"
-    }
-  ],
-  "wxAlertText": "\u26c8\ufe0f TSRA PSBL NOW-23Z",
-  "wxAlertLogText": "TSRA PSBL NOW-23Z",
-  "wxAlertVisible": true,
-  "wxPrimaryAlert": {
-    "code": "TSRA",
-    "label": "THUNDERSTORM RAIN",
-    "emoji": "\u26c8\ufe0f",
-    "category": "thunder",
-    "sources": [
-      "TAF"
-    ],
-    "severity": "forecast",
-    "displayTone": "yellow",
-    "flash": false,
-    "pulse": true,
-    "priority": 30,
-    "text": "TSRA PSBL NOW-23Z",
-    "displayText": "\u26c8\ufe0f TSRA PSBL NOW-23Z",
-    "tafWindow": "NOW-23Z",
-    "tafStartKey": 260,
-    "tafGroupType": "PROB30",
-    "tafStartIso": "2026-08-10T20:00:00Z",
-    "tafEndIso": "2026-08-10T23:00:00Z"
-  },
+  "wxAlerts": [],
+  "wxAlertText": "NONE",
+  "wxAlertLogText": "NONE",
+  "wxAlertVisible": false,
+  "wxPrimaryAlert": null,
   "wxSecondaryAlert": null,
-  "wxAlertTone": "yellow",
+  "wxAlertTone": "none",
   "wxAlertFlash": false,
-  "wxAlertPulse": true,
-  "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL NOW-23Z",
+  "wxAlertPulse": false,
+  "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-10 20:18:00.000",
+  "bwcUpdatedZ": "2026-08-10 20:30:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-10 20:23:43Z",
+  "milNotamUpdatedZ": "2026-08-10 20:33:43Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
   "milNotams": [
     {
@@ -232,13 +190,13 @@
   "constructionStatusNotamCount": 3,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-08-10 20:22Z",
+  "allFeedsUpdatedZ": "2026-08-10 20:32Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-10 20:22:47Z"
+    "lastWorkflowTimestampZ": "2026-08-10 20:32:47Z"
   }
 }
