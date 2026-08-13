@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-13T20:54:00Z",
-  "metarAgeMinutes": 9,
+  "metarAgeMinutes": 19,
   "atisObservedZ": "2026-08-13T20:54:00Z",
-  "atisAgeMinutes": 9,
+  "atisAgeMinutes": 19,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-13T18:12:47Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-08-13T18:22:48Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -104,7 +104,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-13 21:00:00.000",
+  "bwcUpdatedZ": "2026-08-13 21:12:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-13 21:03:40Z",
+  "milNotamUpdatedZ": "2026-08-13 21:13:47Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -156,13 +156,49 @@
       "displayText": "RWY 18C/36C CLSD",
       "effectiveStart": "202608141300",
       "effectiveEnd": "202608141930",
-      "lastUpdated": "2026-08-13T20:51:00.000Z",
+      "lastUpdated": "2026-08-13T21:07:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY D, K, P, R"
     }
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "08/203",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY N BTN TWY M9 AND TWY A, TWY C BTN TWY C5 AND TWY A WIP SPRAYING, WEEDING, MOWING",
+      "displayText": "TWY N BTN TWY M9 AND TWY A, TWY C BTN TWY C5 AND TWY A WIP SPRAYING, WEEDING, MOWING",
+      "effectiveStart": "202608141300",
+      "effectiveEnd": "202608141930",
+      "lastUpdated": "2026-08-13T21:09:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY N BTN TWY M9 AND TWY A, TWY C BTN TWY C5 AND TWY A WIP SPRAYING, WEEDING, MOWING"
+    },
+    {
+      "number": "08/202",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY A, V WIP SPRAYING, MOWING, WEEDING",
+      "displayText": "TWY A, V WIP SPRAYING, MOWING, WEEDING",
+      "effectiveStart": "202608141300",
+      "effectiveEnd": "202608141930",
+      "lastUpdated": "2026-08-13T21:11:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY A, V WIP SPRAYING, MOWING, WEEDING"
+    },
+    {
+      "number": "08/201",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY C, S WIP MARKINGS",
+      "displayText": "TWY C, S WIP MARKINGS",
+      "effectiveStart": "202608141300",
+      "effectiveEnd": "202608141930",
+      "lastUpdated": "2026-08-13T21:11:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY C, S WIP MARKINGS"
+    },
     {
       "number": "07/576",
       "classification": "CONST_AFLD_STATUS",
@@ -200,8 +236,32 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 3,
+  "constructionStatusNotamCount": 6,
   "taxiRestrictionNotams": [
+    {
+      "number": "08/200",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY N BTN TWY T AND TWY M6, TWY M6 BTN TWY M AND TWY N CLSD",
+      "displayText": "TWY N BTN TWY T AND TWY M6, TWY M6 BTN TWY M AND TWY N CLSD",
+      "effectiveStart": "202608141300",
+      "effectiveEnd": "202608141930",
+      "lastUpdated": "2026-08-13T21:11:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY N BTN TWY T AND TWY M6, TWY M6 BTN TWY M AND TWY N CLSD"
+    },
+    {
+      "number": "08/199",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "red",
+      "text": "TWY C1, C2, C3, C4, C5, C6, C7, S6, S7, TWY B BTN APCH END RWY 18C AND TWY S, TWY L BTN TWY C AND TWY S, TWY E BTN TWY C AND TWY S, TWY H BTN TWY J AND TWY S CLSD",
+      "displayText": "TWY C1, C2, C3, C4, C5, C6, C7, S6, S7, TWY B BTN APCH END RWY 18C AND TWY S, TWY L BTN TWY C AND TWY S, TWY E BTN TWY C AND TWY S, TWY H BTN TWY J...",
+      "effectiveStart": "202608141300",
+      "effectiveEnd": "202608141930",
+      "lastUpdated": "2026-08-13T21:03:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY C1, C2, C3, C4, C5, C6, C7, S6, S7, TWY B BTN APCH END RWY 18C AND TWY S, TWY L BTN TWY C AND TWY S, TWY E BTN TWY C AND TWY S, TWY H BTN TWY J AND TWY S CLSD"
+    },
     {
       "number": "08/198",
       "classification": "TAXI_ROUTE_RESTR",
@@ -210,19 +270,19 @@
       "displayText": "RWY 18C/36C CLSD EXC XNG TWY D, K, P, R",
       "effectiveStart": "202608141300",
       "effectiveEnd": "202608141930",
-      "lastUpdated": "2026-08-13T20:51:00.000Z",
+      "lastUpdated": "2026-08-13T21:07:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY D, K, P, R"
     }
   ],
-  "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-08-13 21:02Z",
+  "taxiRestrictionNotamCount": 3,
+  "allFeedsUpdatedZ": "2026-08-13 21:12Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-13 21:02:48Z"
+    "lastWorkflowTimestampZ": "2026-08-13 21:12:47Z"
   }
 }
