@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-14T04:54:00Z",
-  "metarAgeMinutes": 7,
+  "metarAgeMinutes": 9,
   "atisObservedZ": "2026-08-14T04:54:00Z",
-  "atisAgeMinutes": 7,
+  "atisAgeMinutes": 9,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -20,9 +20,9 @@
   },
   "lastKnownGoodCachePath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
-  "trendReferenceSource": "LAST_GOOD_FALLBACK",
-  "trendReferenceTimestampZ": "LAST_GOOD_FALLBACK",
-  "trendSampleCount": 22,
+  "trendReferenceSource": "3HR_HISTORY",
+  "trendReferenceTimestampZ": "2026-08-14T05:00:52Z",
+  "trendSampleCount": 1,
   "trendHistoryPath": "C:\\Users\\btenn\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -58,8 +58,8 @@
   "rcrRaw": "--",
   "altimeter": "29.99",
   "altimeterRaw": 29.99,
-  "altimeterTrend": "\u2191",
-  "altimeterTrendText": "RISING",
+  "altimeterTrend": "\u2192",
+  "altimeterTrendText": "STEADY",
   "ceilingFt": null,
   "ceilingDisplay": "UNL",
   "ceilingTrend": "\u2192",
@@ -75,14 +75,14 @@
   "windGustKt": 19,
   "windArrow": "\u2191",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25b2",
-  "windTrendText": "INCREASING",
-  "windTrendClass": "worsening",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 31,
   "dewpointC": 21,
   "tempDpDisplay": "31/21",
-  "tempTrend": "\u25bc",
-  "tempTrendText": "FALLING",
+  "tempTrend": "\u25ba",
+  "tempTrendText": "STEADY",
   "dewpointTrend": "\u25ba",
   "dewpointTrendText": "STEADY",
   "lightning": "NONE",
@@ -117,7 +117,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-14 05:01:49Z",
+  "milNotamUpdatedZ": "2026-08-14 05:03:45Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -276,13 +276,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-08-14 05:00Z",
+  "allFeedsUpdatedZ": "2026-08-14 05:02Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "btenn",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-14 05:00:52Z"
+    "lastWorkflowTimestampZ": "2026-08-14 05:02:48Z"
   }
 }
