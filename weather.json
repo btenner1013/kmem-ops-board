@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-17T20:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-08-17T20:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-17T18:15:30Z",
+  "trendReferenceTimestampZ": "2026-08-17T18:25:30Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL NOW-23Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-17 21:00:00.000",
+  "bwcUpdatedZ": "2026-08-17 21:12:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-17 21:06:44Z",
+  "milNotamUpdatedZ": "2026-08-17 21:16:42Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
   "milNotams": [
     {
@@ -206,6 +206,30 @@
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
     {
+      "number": "08/224",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY M, N, TWY P BTN TWY N AND TWY J, TWY T BTN TWY N AND TWY J WIP SPRAYING AND MOWING",
+      "displayText": "TWY M, N, TWY P BTN TWY N AND TWY J, TWY T BTN TWY N AND TWY J WIP SPRAYING AND MOWING",
+      "effectiveStart": "202608181300",
+      "effectiveEnd": "202608181930",
+      "lastUpdated": "2026-08-17T21:14:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY M, N, TWY P BTN TWY N AND TWY J, TWY T BTN TWY N AND TWY J WIP SPRAYING AND MOWING"
+    },
+    {
+      "number": "08/223",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY C, S WIP MARKINGS",
+      "displayText": "TWY C, S WIP MARKINGS",
+      "effectiveStart": "202608181300",
+      "effectiveEnd": "202608181930",
+      "lastUpdated": "2026-08-17T21:06:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY C, S WIP MARKINGS"
+    },
+    {
       "number": "07/576",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -242,7 +266,7 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 3,
+  "constructionStatusNotamCount": 5,
   "taxiRestrictionNotams": [
     {
       "number": "08/222",
@@ -252,7 +276,7 @@
       "displayText": "TWY H BTN TWY R2 AND TWY J, TWY R1 BTN TWY H AND TWY R CLSD",
       "effectiveStart": "202608181300",
       "effectiveEnd": "202608181930",
-      "lastUpdated": "2026-08-17T21:04:00.000Z",
+      "lastUpdated": "2026-08-17T21:06:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY H BTN TWY R2 AND TWY J, TWY R1 BTN TWY H AND TWY R CLSD"
     },
@@ -264,7 +288,7 @@
       "displayText": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP CLSD",
       "effectiveStart": "202608181300",
       "effectiveEnd": "202608181930",
-      "lastUpdated": "2026-08-17T21:03:00.000Z",
+      "lastUpdated": "2026-08-17T21:08:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP CLSD"
     },
@@ -294,13 +318,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-08-17 21:05Z",
+  "allFeedsUpdatedZ": "2026-08-17 21:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-17 21:05:30Z"
+    "lastWorkflowTimestampZ": "2026-08-17 21:15:31Z"
   }
 }
