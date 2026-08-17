@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 171854Z 31010G18KT 10SM FEW041 SCT044 SCT130 36/24 A3000 RMK AO2 SLP154 T03560239 $",
   "taf": "TAF KMEM 171920Z 1719/1824 32010G17KT P6SM SCT045 \n  FM172130 35010KT P6SM VCTS FEW045CB BKN050 \n  FM180000 02006KT P6SM FEW080 BKN150 \n  FM180200 07005KT P6SM FEW200 \n  FM181700 33005KT P6SM FEW045",
-  "atisText": "MEM ATIS INFO G 1854Z. 31010G18KT 10SM FEW041 SCT044 SCT130 36/24 A3000 (THREE ZERO ZERO ZERO). SIMUL VISUAL APCHS IN USE RY 36R, 27. DEPG RWYS 36C, 36R. NOTICE TO AIRMEN. RWY 18R, 36L CLSD. TWY N CLSD BTN TWY, P AND TWY R, TWY H CLSD BTN TWY, N AND TWY R2, TWY R CLSD BTN TWY, N AND TWY R2, TWY M CLSD. RY 27 ALS OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO G",
-  "atisLetter": "G",
-  "atisPhonetic": "GOLF",
-  "atisDisplay": "GOLF",
+  "atisText": "MEM ATIS INFO H 1854Z. 31010G18KT 10SM FEW041 SCT044 SCT130 36/24 A3000 (THREE ZERO ZERO ZERO). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RY 27 ALS OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO H",
+  "atisLetter": "H",
+  "atisPhonetic": "HOTEL",
+  "atisDisplay": "HOTEL",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-17T18:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 42,
   "atisObservedZ": "2026-08-17T18:54:00Z",
-  "atisAgeMinutes": 32,
+  "atisAgeMinutes": 42,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,8 +21,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-17T16:25:31Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-08-17T16:45:30Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -40,9 +40,9 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
-  "arrRunways": "36R / 27",
-  "depRunways": "36C / 36R",
-  "closedRunways": "18R / 36L",
+  "arrRunways": "36L / 36R / 27",
+  "depRunways": "27",
+  "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
     "18L/36R",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f VCTS PSBL 21-24Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-17 19:24:00.000",
+  "bwcUpdatedZ": "2026-08-17 19:30:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-17 19:26:38Z",
+  "milNotamUpdatedZ": "2026-08-17 19:36:27Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
   "milNotams": [
     {
@@ -189,34 +189,9 @@
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
-  "runwayClosureNotams": [
-    {
-      "number": "08/208",
-      "classification": "RWY_CLOSURE",
-      "severity": "red",
-      "text": "RWY 18R/36L CLSD",
-      "displayText": "RWY 18R/36L CLSD",
-      "effectiveStart": "202608171300",
-      "effectiveEnd": "202608171930",
-      "lastUpdated": "2026-08-14T20:35:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 18R/36L CLSD"
-    }
-  ],
-  "runwayClosureNotamCount": 1,
+  "runwayClosureNotams": [],
+  "runwayClosureNotamCount": 0,
   "constructionStatusNotams": [
-    {
-      "number": "08/210",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY M, N WIP SPRAYING, WEEDING, MOWING",
-      "displayText": "TWY M, N WIP SPRAYING, WEEDING, MOWING",
-      "effectiveStart": "202608171300",
-      "effectiveEnd": "202608171930",
-      "lastUpdated": "2026-08-14T20:45:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY M, N WIP SPRAYING, WEEDING, MOWING"
-    },
     {
       "number": "07/576",
       "classification": "CONST_AFLD_STATUS",
@@ -254,29 +229,16 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 4,
-  "taxiRestrictionNotams": [
-    {
-      "number": "08/209",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "TWY M6, M5, M4, M3, M1, M2, M, M9, M8, M7, TWY H BTN TWY N AND TWY R2, TWY R BTN TWY N AND TWY R2, TWY N BTN TWY P AND TWY R CLSD",
-      "displayText": "TWY M6, M5, M4, M3, M1, M2, M, M9, M8, M7, TWY H BTN TWY N AND TWY R2, TWY R BTN TWY N AND TWY R2, TWY N BTN TWY P AND TWY R CLSD",
-      "effectiveStart": "202608171300",
-      "effectiveEnd": "202608171930",
-      "lastUpdated": "2026-08-14T20:37:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY M6, M5, M4, M3, M1, M2, M, M9, M8, M7, TWY H BTN TWY N AND TWY R2, TWY R BTN TWY N AND TWY R2, TWY N BTN TWY P AND TWY R CLSD"
-    }
-  ],
-  "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-08-17 19:25Z",
+  "constructionStatusNotamCount": 3,
+  "taxiRestrictionNotams": [],
+  "taxiRestrictionNotamCount": 0,
+  "allFeedsUpdatedZ": "2026-08-17 19:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-17 19:25:30Z"
+    "lastWorkflowTimestampZ": "2026-08-17 19:35:31Z"
   }
 }
