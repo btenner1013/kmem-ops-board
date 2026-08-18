@@ -5,13 +5,13 @@
   "atisLetter": "K",
   "atisPhonetic": "KILO",
   "atisDisplay": "KILO",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
-  "atisFetchStatus": "OK",
+  "atisFetchStatus": "WARN_SOURCE",
   "metarObservedZ": "2026-08-18T12:54:00Z",
-  "metarAgeMinutes": 52,
+  "metarAgeMinutes": 62,
   "atisObservedZ": "2026-08-18T12:54:00Z",
-  "atisAgeMinutes": 52,
+  "atisAgeMinutes": 62,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -24,22 +24,22 @@
   "trendReferenceTimestampZ": "2026-08-18T11:36:08Z",
   "trendSampleCount": 17,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
-  "obsSource": "ATIS",
+  "obsSource": "METAR",
   "obsFieldSources": {
-    "wind": "ATIS",
-    "tempDp": "ATIS",
-    "altimeter": "ATIS",
-    "visibility": "ATIS",
-    "ceiling": "ATIS"
+    "wind": "METAR",
+    "tempDp": "METAR",
+    "altimeter": "METAR",
+    "visibility": "METAR",
+    "ceiling": "METAR"
   },
   "metarAltimeterRaw": 30.07,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": 10000,
-  "atisAltimeterRaw": 30.07,
-  "atisVisibilitySm": 10.0,
-  "atisVisibilityDisplay": "10 SM",
-  "atisCeilingFt": 10000,
+  "atisAltimeterRaw": null,
+  "atisVisibilitySm": null,
+  "atisVisibilityDisplay": "",
+  "atisCeilingFt": null,
   "arrRunways": "36L / 36R / 27",
   "depRunways": "27",
   "closedRunways": "18C / 36C",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL 14-16Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-18 13:42:00.000",
+  "bwcUpdatedZ": "2026-08-18 13:54:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,7 +159,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-18 13:46:52Z",
+  "milNotamUpdatedZ": "2026-08-18 13:56:49Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
   "milNotams": [
     {
@@ -342,13 +342,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-08-18 13:45Z",
+  "allFeedsUpdatedZ": "2026-08-18 13:55Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-18 13:45:31Z"
+    "lastWorkflowTimestampZ": "2026-08-18 13:55:34Z"
   }
 }
