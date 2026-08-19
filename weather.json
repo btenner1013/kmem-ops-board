@@ -1,17 +1,17 @@
 {
   "metar": "METAR KMEM 191754Z 03010KT 10SM FEW045 FEW250 36/23 A2998 RMK AO2 SLP145 T03560233 10361 20261 50000 $",
   "taf": "TAF KMEM 191720Z 1918/2024 01007KT P6SM SCT060 BKN120 \n  FM192100 21006KT P6SM SCT080 \n  FM200600 19005KT P6SM SCT080 BKN100 \n  PROB30 2008/2014 -TSRA BKN060CB \n  FM201400 16005KT P6SM SCT050 SCT120",
-  "atisText": "MEM ATIS INFO W 1754Z. 03010KT 10SM FEW045 FEW250 36/23 A2998 (TWO NINER NINER EIGHT). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 18C, 36C CLSD. TWY Y CLSD BTN TWY, P AND TWY H, TWY C CLSD BTN TWY, U AND TWY E, TWY P CLSD BTN TWY, J AND TWY C, TWY T CLSD BTN TWY, J AND TWY C, TWY Y BTN UPS RAMP AND WISON AIR CLSD. RY 27 ALS OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO W",
-  "atisLetter": "W",
-  "atisPhonetic": "WHISKEY",
-  "atisDisplay": "WHISKEY",
+  "atisText": "MEM ATIS INFO X 1754Z. 03010KT 10SM FEW045 FEW250 36/23 A2998 (TWO NINER NINER EIGHT). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 18C, 36C CLSD. TWY Y CLSD BTN TWY, P AND TWY H, TWY C CLSD BTN TWY, U AND TWY E, TWY P CLSD BTN TWY, J AND TWY C, TWY T CLSD BTN TWY, J AND TWY C. RY 27 ALS OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO X",
+  "atisLetter": "X",
+  "atisPhonetic": "XRAY",
+  "atisDisplay": "XRAY",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-19T17:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-08-19T17:54:00Z",
-  "atisAgeMinutes": 22,
+  "atisAgeMinutes": 32,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-19T15:25:31Z",
+  "trendReferenceTimestampZ": "2026-08-19T15:35:32Z",
   "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -146,7 +146,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 20 AUG 08-14Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-19 18:12:00.000",
+  "bwcUpdatedZ": "2026-08-19 18:24:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -159,20 +159,9 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-19 18:16:54Z",
-  "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
+  "milNotamUpdatedZ": "2026-08-19 18:27:01Z",
+  "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
-    {
-      "number": "M0021/26",
-      "classification": "MIL",
-      "severity": "amber",
-      "text": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UNTIL FURTHER NOTICE. ALL OTHER DSN NUMBERS, PLEASE DIAL COMM PREFIX 901-291-XXXX.",
-      "displayText": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
-      "effectiveStart": "202606091221",
-      "effectiveEnd": "202609062359",
-      "lastUpdated": "2026-06-09T12:21:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
     {
       "number": "M0024/26",
       "classification": "MIL",
@@ -182,6 +171,17 @@
       "effectiveStart": "202607281423",
       "effectiveEnd": "202610252359",
       "lastUpdated": "2026-07-28T14:23:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "M0021/26",
+      "classification": "MIL",
+      "severity": "amber",
+      "text": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UNTIL FURTHER NOTICE. ALL OTHER DSN NUMBERS, PLEASE DIAL COMM PREFIX 901-291-XXXX.",
+      "displayText": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
+      "effectiveStart": "202606091221",
+      "effectiveEnd": "202609062359",
+      "lastUpdated": "2026-06-09T12:21:00.000Z",
       "source": "FAA_NMS_STAGING"
     }
   ],
@@ -305,18 +305,6 @@
       "rawText": "TWY C BTN TWY E AND TWY U, TWY P BTN TWY J AND TWY C, TWY T BTN TWY J AND TWY C CLSD"
     },
     {
-      "number": "08/241",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "amber",
-      "text": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP CLSD",
-      "displayText": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP CLSD",
-      "effectiveStart": "202608191300",
-      "effectiveEnd": "202608191930",
-      "lastUpdated": "2026-08-18T21:21:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY Y BTN WILSON AIR CENTER RAMP AND UPS RAMP CLSD"
-    },
-    {
       "number": "08/240",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "red",
@@ -341,14 +329,14 @@
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY D, L, E"
     }
   ],
-  "taxiRestrictionNotamCount": 6,
-  "allFeedsUpdatedZ": "2026-08-19 18:15Z",
+  "taxiRestrictionNotamCount": 5,
+  "allFeedsUpdatedZ": "2026-08-19 18:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-19 18:15:31Z"
+    "lastWorkflowTimestampZ": "2026-08-19 18:25:32Z"
   }
 }
