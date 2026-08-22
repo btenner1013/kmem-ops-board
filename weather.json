@@ -1,17 +1,17 @@
 {
-  "metar": "METAR KMEM 221654Z 26007KT 10SM FEW200 35/15 A3003 RMK AO2 SLP162 T03500150 $",
+  "metar": "METAR KMEM 221754Z 27008KT 10SM FEW200 36/18 A3000 RMK AO2 SLP155 T03610178 10361 20239 58007 $",
   "taf": "TAF KMEM 221732Z 2218/2324 31008KT P6SM FEW060 SCT150 \n  FM222100 34009KT P6SM VCTS SCT060CB \n  PROB30 2221/2302 4SM TSRA BKN050CB \n  FM230200 05004KT P6SM SCT100 \n  FM231400 08008KT P6SM SCT040",
   "atisText": "MEM ATIS INFO P 1754Z. 27008KT 10SM FEW200 36/18 A3000 (THREE ZERO ZERO ZERO). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RY 27 ALS OTS, RY 36L PAPI OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO P",
   "atisLetter": "P",
   "atisPhonetic": "PAPA",
   "atisDisplay": "PAPA",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-08-22T16:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarObservedZ": "2026-08-22T17:54:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-08-22T17:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -21,7 +21,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-22T14:55:31Z",
+  "trendReferenceTimestampZ": "2026-08-22T15:05:31Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -32,7 +32,7 @@
     "visibility": "ATIS",
     "ceiling": "NONE"
   },
-  "metarAltimeterRaw": 30.03,
+  "metarAltimeterRaw": 30.0,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
@@ -146,20 +146,20 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f TSRA PSBL 22 AUG 21Z-23 AUG 02Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-22 17:54:00.000",
+  "bwcUpdatedZ": "2026-08-22 18:00:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=8&day=22&hour=17&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=8&iDay=22&iHour=17",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=8&day=22&hour=18&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=8&iDay=22&iHour=18",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-22 17:56:31Z",
+  "milNotamUpdatedZ": "2026-08-22 18:06:32Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -282,13 +282,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-08-22 17:55Z",
+  "allFeedsUpdatedZ": "2026-08-22 18:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-22 17:55:30Z"
+    "lastWorkflowTimestampZ": "2026-08-22 18:05:30Z"
   }
 }
