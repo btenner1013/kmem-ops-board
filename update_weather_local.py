@@ -103,7 +103,7 @@ def run_cmd(command, allow_fail=False):
     return result
 
 
-def fetch_url(url, attempts=2, retry_delay_seconds=1.0):
+def fetch_url(url, attempts=2, retry_delay_seconds=1.0, timeout_seconds=30):
     """Fetch text with a light retry so one transient HTTP 500/network hiccup does not
     immediately force the board into last-known-good weather.
     """
@@ -122,7 +122,7 @@ def fetch_url(url, attempts=2, retry_delay_seconds=1.0):
                 }
             )
 
-            with urllib.request.urlopen(request, timeout=30) as response:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
                 return response.read().decode("utf-8", errors="ignore")
 
         except Exception as error:
@@ -276,10 +276,34 @@ def atis_text_from_html(atis_html):
     return extract_atis_text(atis_html)
 
 
-def fetch_atis_info_api(icao="KMEM"):
-    """Try D-ATIS JSON API sources that return structured data directly.
-    datis.clowd.io returns [{"airport":..., "datis":"...full text..."}].
-    atis.info/KMEM is JS-rendered and has no public API; omitted here.
+def _atis_candidates_from_json(data):
+    """Return every valid ATIS string found in a structured API response."""
+    fields = {"atis", "datis", "text", "atistext", "message", "body", "data", "report"}
+    candidates = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if str(key).lower() in fields and isinstance(child, str):
+                    candidate = extract_atis_text(child)
+                    if is_good_atis(candidate) and candidate not in candidates:
+                        candidates.append(candidate)
+                elif isinstance(child, (dict, list)):
+                    walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk(data)
+    return candidates
+
+
+def fetch_atis_info_api_candidates(icao="KMEM"):
+    """Fetch all parseable reports from structured D-ATIS API sources.
+
+    A provider can briefly return more than one report or regress to an older
+    cached report.  Returning all candidates lets the caller compare the ATIS
+    header timestamps instead of accepting the first parseable string.
     """
     candidates = [
         f"https://datis.clowd.io/api/{icao}",
@@ -290,6 +314,7 @@ def fetch_atis_info_api(icao="KMEM"):
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
     }
+    reports = []
     for url in candidates:
         try:
             request = urllib.request.Request(url, headers=headers)
@@ -307,54 +332,63 @@ def fetch_atis_info_api(icao="KMEM"):
         except Exception:
             data = None
         if data is not None:
-            for field in ("atis", "datis", "text", "atisText", "message", "body", "data", "report"):
-                value = data.get(field) if isinstance(data, dict) else None
-                if not value and isinstance(data, list) and data:
-                    value = (data[0] or {}).get(field)
-                if value and isinstance(value, str):
-                    candidate = extract_atis_text(value)
-                    if is_good_atis(candidate):
-                        print(f"D-ATIS fetch OK from D-ATIS JSON API ({url}, field={field})")
-                        return candidate
-            if isinstance(data, dict):
-                for key in (icao, icao.upper(), icao.lower(), "airport", "station"):
-                    sub = data.get(key)
-                    if isinstance(sub, dict):
-                        for field in ("atis", "datis", "text", "atisText", "message", "body"):
-                            value = sub.get(field)
-                            if value and isinstance(value, str):
-                                candidate = extract_atis_text(value)
-                                if is_good_atis(candidate):
-                                    print(f"D-ATIS fetch OK from D-ATIS JSON API ({url}, key={key}, field={field})")
-                                    return candidate
-            print(f"D-ATIS D-ATIS JSON API JSON at {url} had no recognized ATIS field; trying next.")
+            found = _atis_candidates_from_json(data)
+            if found:
+                print(f"D-ATIS fetch found {len(found)} report(s) in D-ATIS JSON API ({url})")
+                for candidate in found:
+                    if candidate not in reports:
+                        reports.append(candidate)
+            else:
+                print(f"D-ATIS D-ATIS JSON API JSON at {url} had no recognized ATIS field; trying next.")
             continue
         candidate = extract_atis_text(raw)
         if is_good_atis(candidate):
             print(f"D-ATIS fetch OK from D-ATIS JSON API plain-text ({url})")
-            return candidate
-        print(f"D-ATIS D-ATIS JSON API plain-text at {url} did not contain valid ATIS; trying next.")
-    return ""
+            if candidate not in reports:
+                reports.append(candidate)
+        else:
+            print(f"D-ATIS D-ATIS JSON API plain-text at {url} did not contain valid ATIS; trying next.")
+    return reports
 
 
-def fetch_current_atis(urls):
-    """Try ATIS sources until one returns a parseable current ATIS text."""
-    api_result = fetch_atis_info_api("KMEM")
-    if is_good_atis(api_result):
-        return api_result
-    print("D-ATIS D-ATIS JSON API: no valid ATIS returned; trying remaining sources.")
+def fetch_atis_info_api(icao="KMEM", now_z=None):
+    """Compatibility wrapper returning the newest structured API report."""
+    return choose_latest_atis_report(fetch_atis_info_api_candidates(icao), now_z, default="")
+
+
+def fetch_current_atis(urls, now_z=None, known_observed_times=None):
+    """Fetch every configured ATIS source and return the newest valid report."""
+    reports = fetch_atis_info_api_candidates("KMEM")
+    if not reports:
+        print("D-ATIS D-ATIS JSON API: no valid ATIS returned; trying remaining sources.")
+
     for url in urls:
         if "atis.info" in url:
             print(f"D-ATIS skipping JS-rendered page {url} (use API instead).")
             continue
-        raw = fetch_url(url)
+        # ATIS has multiple independent sources; one unavailable relay must not
+        # stall the entire ten-minute update cycle for repeated 30-second waits.
+        raw = fetch_url(url, attempts=1, timeout_seconds=10)
         if not raw or not raw.strip():
             continue
         atis_text = atis_text_from_html(raw)
         if is_good_atis(atis_text):
             print(f"D-ATIS fetch OK from {url}")
-            return atis_text
-        print(f"D-ATIS fetch from {url} did not contain valid ATIS text; trying next source.")
+            if atis_text not in reports:
+                reports.append(atis_text)
+        else:
+            print(f"D-ATIS fetch from {url} did not contain valid ATIS text; trying next source.")
+
+    selected = choose_latest_atis_report(
+        reports,
+        now_z,
+        known_observed_times=known_observed_times,
+    )
+    if is_good_atis(selected):
+        observed = resolve_atis_observed_datetime(selected, now_z, known_observed_times)
+        print(f"D-ATIS selected newest of {len(reports)} report(s): {zulu_iso(observed) or 'TIME UNKNOWN'}")
+        return selected
+
     print("D-ATIS fetch failed for all configured URLs.")
     return "D-ATIS unavailable"
 
@@ -704,10 +738,13 @@ def parse_atis_datetime_utc(atis_text, now_z=None):
     now_z = now_z or datetime.now(timezone.utc)
     text = str(atis_text).upper()
 
-    # Prefer ATIS-specific timestamp wording when present, otherwise any HHMMZ token.
+    # Only accept a time tied to the ATIS header/update wording.  A generic HHMMZ
+    # fallback can mistake a NOTAM or laser-event time later in the broadcast for
+    # the report time and make an old ATIS look current.
     patterns = [
-        r"(?:ATIS|INFO|INFORMATION|OBS|OBSERVATION|UPDATED|TIME)\D{0,25}\b(\d{2})(\d{2})Z\b",
-        r"\b(\d{2})(\d{2})Z\b",
+        r"\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{2})(\d{2})Z\b",
+        r"\bINFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{2})(\d{2})Z\b",
+        r"\b(?:ATIS\s+)?(?:UPDATED|UPDATE|OBS|OBSERVATION|TIME)\D{0,12}\b(\d{2})(\d{2})Z\b",
     ]
 
     candidates = []
@@ -735,6 +772,85 @@ def parse_atis_datetime_utc(atis_text, now_z=None):
     if plausible:
         return max(plausible)
     return min(candidates, key=lambda c: abs((c - now_z).total_seconds()))
+
+
+def atis_report_identity(atis_text):
+    """Return a stable letter/header-time identity across source formatting changes."""
+    text = str(atis_text or "").upper()
+    letter = parse_atis_letter(text)
+    if letter == "--":
+        return ""
+
+    patterns = [
+        r"\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{4})Z\b",
+        r"\bINFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{4})Z\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return f"{letter}:{match.group(1)}Z"
+    return ""
+
+
+def _known_atis_observed_times(known_observed_times):
+    """Normalize report-text keys and persisted full UTC timestamps."""
+    normalized = {}
+    for raw_report, raw_observed in (known_observed_times or {}).items():
+        report = extract_atis_text(raw_report)
+        if not is_good_atis(report):
+            continue
+        observed = raw_observed if isinstance(raw_observed, datetime) else parse_z_datetime(raw_observed)
+        if observed:
+            identity = atis_report_identity(report)
+            normalized[identity or report] = observed.astimezone(timezone.utc)
+    return normalized
+
+
+def resolve_atis_observed_datetime(atis_text, now_z=None, known_observed_times=None):
+    """Resolve an ATIS time without re-dating an unchanged cached report."""
+    report = extract_atis_text(atis_text)
+    known = _known_atis_observed_times(known_observed_times)
+    identity = atis_report_identity(report)
+    known_key = identity or report
+    if known_key in known:
+        return known[known_key]
+    return parse_atis_datetime_utc(report, now_z)
+
+
+def choose_latest_atis_report(
+    candidates,
+    now_z=None,
+    default="D-ATIS unavailable",
+    known_observed_times=None,
+):
+    """Choose the newest valid ATIS by its header timestamp.
+
+    Candidate order is only a tie-breaker.  A report with a known header time
+    always outranks one whose only times appear in operational notices.
+    """
+    now_z = now_z or datetime.now(timezone.utc)
+    valid = []
+    seen = set()
+    known = _known_atis_observed_times(known_observed_times)
+
+    for source_order, raw_candidate in enumerate(candidates or []):
+        candidate = extract_atis_text(raw_candidate)
+        if not is_good_atis(candidate) or candidate in seen:
+            continue
+        seen.add(candidate)
+        identity = atis_report_identity(candidate)
+        observed = known.get(identity or candidate) or parse_atis_datetime_utc(candidate, now_z)
+        valid.append((observed, source_order, candidate))
+
+    if not valid:
+        return default
+
+    timed = [item for item in valid if item[0] is not None]
+    if timed:
+        # Prefer the earliest configured source only when timestamps tie.
+        return max(timed, key=lambda item: (item[0], -item[1]))[2]
+
+    return min(valid, key=lambda item: item[1])[2]
 
 
 def load_trend_history():
@@ -915,6 +1031,29 @@ def normalize_rwy_list(text):
     return " / ".join(matches)
 
 
+def parse_runway_clauses(atis_text, patterns):
+    """Collect and de-duplicate runways from every matching ATIS clause.
+
+    Memphis broadcasts can state a simultaneous departure set and then append a
+    separate departure-runway clause.  Returning after the first regex match
+    silently dropped one of those sets.
+    """
+    text = (atis_text or "").upper()
+    matches = []
+
+    for pattern_order, pattern in enumerate(patterns):
+        for match in re.finditer(pattern, text):
+            matches.append((match.start(), pattern_order, match.group(1)))
+
+    runways = []
+    for _start, _pattern_order, clause in sorted(matches):
+        for runway in re.findall(r"\b\d{1,2}[LCR]?\b", clause.upper()):
+            if runway not in runways:
+                runways.append(runway)
+
+    return " / ".join(runways) if runways else "--"
+
+
 def parse_atis_letter(atis_text):
     txt = (atis_text or "").upper()
 
@@ -940,10 +1079,10 @@ def phonetic_for_letter(letter):
 
 
 def parse_arr_runways(atis_text):
-    txt = (atis_text or "").upper()
-
     patterns = [
+        r"SIMUL VISUAL APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY| RY |$)",
         r"SIMUL VISUAL APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY| RY |$)",
+        r"VISUAL APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY| RY |$)",
         r"VISUAL APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY| RY |$)",
         r"SIMUL ILS APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY| RY |$)",
         r"ILS APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY| RY |$)",
@@ -951,18 +1090,10 @@ def parse_arr_runways(atis_text):
         r"APCHS IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY| RY |$)",
         r"APCH IN USE RY\s+(.+?)(?:\.| SIMUL| NOTICE| RWY| RY |$)"
     ]
-
-    for pattern in patterns:
-        match = re.search(pattern, txt)
-        if match:
-            return normalize_rwy_list(match.group(1))
-
-    return "--"
+    return parse_runway_clauses(atis_text, patterns)
 
 
 def parse_dep_runways(atis_text):
-    txt = (atis_text or "").upper()
-
     patterns = [
         r"DEPG RWYS?\s+(.+?)(?:\.| NOTICE| RWY| RY |$)",
         r"DEPG RYS?\s+(.+?)(?:\.| NOTICE| RWY| RY |$)",
@@ -972,13 +1103,7 @@ def parse_dep_runways(atis_text):
         r"DEPS IN USE RY\s+(.+?)(?:\.| NOTICE| RWY| RY |$)",
         r"DEPARTURES IN USE RY\s+(.+?)(?:\.| NOTICE| RWY| RY |$)"
     ]
-
-    for pattern in patterns:
-        match = re.search(pattern, txt)
-        if match:
-            return normalize_rwy_list(match.group(1))
-
-    return "--"
+    return parse_runway_clauses(atis_text, patterns)
 
 
 def parse_closed_runways(atis_text):
@@ -1247,20 +1372,53 @@ def parse_rcr_rcc_from_ficon_notams(ficon_notams):
 
 def determine_flow(arr, dep):
     combined = (arr + " " + dep).upper()
+    flow_families = []
 
-    if re.search(r"\b36[LCR]?\b", combined):
-        return "NORTH ↑"
+    for pattern, display in [
+        (r"\b36[LCR]?\b", "NORTH ↑"),
+        (r"\b18[LCR]?\b", "SOUTH ↓"),
+        (r"\b0?9[LCR]?\b", "EAST →"),
+        (r"\b27[LCR]?\b", "WEST ←"),
+    ]:
+        if re.search(pattern, combined):
+            flow_families.append(display)
 
-    if re.search(r"\b18[LCR]?\b", combined):
-        return "SOUTH ↓"
+    if not flow_families:
+        return "--"
+    if len(flow_families) > 1:
+        return "MIXED"
+    return flow_families[0]
 
-    if re.search(r"\b09\b", combined):
-        return "EAST →"
 
-    if re.search(r"\b27\b", combined):
-        return "WEST ←"
+def parse_atis_operations(atis_text, atis_fetch_status="OK"):
+    """Parse ATIS operational fields and suppress them when source age is unsafe."""
+    reported_letter = parse_atis_letter(atis_text)
+    reported_phonetic = phonetic_for_letter(reported_letter)
+    reported_arr_runways = parse_arr_runways(atis_text)
+    reported_dep_runways = parse_dep_runways(atis_text)
+    reported_closed_runways = parse_closed_runways(atis_text)
+    reported_flow = determine_flow(reported_arr_runways, reported_dep_runways)
 
-    return "--"
+    status = (atis_fetch_status or "FAILED").upper()
+    source_is_current = status in {"OK", "USED_LAST_GOOD"}
+    stale_closed_display = "ATIS STALE" if is_good_atis(atis_text) else "--"
+
+    return {
+        "atisLetter": reported_letter if source_is_current else "--",
+        "atisPhonetic": reported_phonetic if source_is_current else "--",
+        "atisDisplay": reported_phonetic if source_is_current and reported_phonetic != "--" else "--",
+        "arrRunways": reported_arr_runways if source_is_current else "--",
+        "depRunways": reported_dep_runways if source_is_current else "--",
+        "closedRunways": reported_closed_runways if source_is_current else stale_closed_display,
+        "flow": reported_flow if source_is_current else "--",
+        "reportedLetter": reported_letter,
+        "reportedPhonetic": reported_phonetic,
+        "reportedArrRunways": reported_arr_runways,
+        "reportedDepRunways": reported_dep_runways,
+        "reportedClosedRunways": reported_closed_runways,
+        "reportedFlow": reported_flow,
+        "sourceIsCurrent": source_is_current,
+    }
 
 
 def parse_altimeter(metar):
@@ -4145,11 +4303,21 @@ def build_weather_json():
         "TAF"
     ).strip()
 
+    previous_atis = previous_data.get("atisText", "")
+    previous_atis_observed = parse_z_datetime(previous_data.get("atisObservedZ", ""))
+    known_atis_observed_times = (
+        {previous_atis: previous_atis_observed}
+        if is_good_atis(previous_atis) and previous_atis_observed
+        else {}
+    )
+
     atis_current = fetch_current_atis(
         [
-            "https://atisrelay.com/datis/KMEM",
-            f"https://atisrelay.com/datis/KMEM?_={cache_buster}"
-        ]
+            f"https://atisrelay.com/datis/KMEM?_={cache_buster}",
+            "https://atisrelay.com/datis/KMEM"
+        ],
+        now_z=now_z,
+        known_observed_times=known_atis_observed_times,
     )
 
     if is_good_metar(metar_current):
@@ -4176,13 +4344,21 @@ def build_weather_json():
         taf_fetch_status = "FAILED_NO_LAST_GOOD"
         print("TAF fetch failed; no valid last-known-good TAF available.")
 
-    if is_good_atis(atis_current):
-        atis_text = atis_current
-    elif is_good_atis(previous_data.get("atisText", "")):
-        atis_text = previous_data.get("atisText", "")
+    atis_text = choose_latest_atis_report(
+        [atis_current, previous_atis],
+        now_z,
+        known_observed_times=known_atis_observed_times,
+    )
+
+    if is_good_atis(atis_text) and atis_text == atis_current:
+        pass
+    elif is_good_atis(atis_text) and is_good_atis(previous_atis):
         atis_fetch_status = "USED_LAST_GOOD"
         last_known_good_used["atis"] = True
-        print("D-ATIS fetch failed; using last-known-good D-ATIS.")
+        if is_good_atis(atis_current):
+            print("D-ATIS provider report regressed; keeping newer last-known-good D-ATIS.")
+        else:
+            print("D-ATIS fetch failed; using last-known-good D-ATIS.")
     else:
         atis_text = "D-ATIS unavailable"
         atis_fetch_status = "FAILED_NO_LAST_GOOD"
@@ -4196,7 +4372,11 @@ def build_weather_json():
     if metar_fetch_status != original_metar_fetch_status:
         print(f"METAR freshness warning: status {metar_fetch_status}; age {metar_age_minutes} min; observed {zulu_iso(metar_observed_dt) or 'UNKNOWN'}.")
 
-    atis_observed_dt = parse_atis_datetime_utc(atis_text, now_z)
+    atis_observed_dt = resolve_atis_observed_datetime(
+        atis_text,
+        now_z,
+        known_atis_observed_times,
+    )
     atis_age_minutes = source_age_minutes(atis_observed_dt, now_z)
     original_atis_fetch_status = atis_fetch_status
     atis_fetch_status = freshness_status(atis_fetch_status, atis_age_minutes, 60, 90)
@@ -4204,14 +4384,15 @@ def build_weather_json():
     if atis_fetch_status != original_atis_fetch_status:
         print(f"D-ATIS freshness warning: status {atis_fetch_status}; age {atis_age_minutes} min; observed {zulu_iso(atis_observed_dt) or 'UNKNOWN'}.")
 
-    atis_letter = parse_atis_letter(atis_text)
-    atis_phonetic = phonetic_for_letter(atis_letter)
-    atis_display = atis_phonetic if atis_phonetic != "--" else atis_letter
-
-    arr_runways = parse_arr_runways(atis_text)
-    dep_runways = parse_dep_runways(atis_text)
-    closed_runways = parse_closed_runways(atis_text)
-    flow = determine_flow(arr_runways, dep_runways)
+    atis_ops = parse_atis_operations(atis_text, atis_fetch_status)
+    atis_letter = atis_ops["atisLetter"]
+    atis_phonetic = atis_ops["atisPhonetic"]
+    atis_display = atis_ops["atisDisplay"]
+    arr_runways = atis_ops["arrRunways"]
+    dep_runways = atis_ops["depRunways"]
+    closed_runways = atis_ops["closedRunways"]
+    flow = atis_ops["flow"]
+    current_atis_text = atis_text if atis_ops["sourceIsCurrent"] else ""
     rcr_data = default_rcr_rcc("NOTAM_FICON_PENDING")
 
     best_obs = parse_best_observation_values(metar, atis_text, atis_fetch_status)
@@ -4249,9 +4430,9 @@ def build_weather_json():
     trend_reference_timestamp = trend_reference_sample.get("timestampZ") if trend_reference_sample else "LAST_GOOD_FALLBACK"
     trend_reference_source = "3HR_HISTORY" if trend_reference_sample else "LAST_GOOD_FALLBACK"
 
-    wx_alerts = detect_weather_alerts(metar, taf, atis_text)
+    wx_alerts = detect_weather_alerts(metar, taf, current_atis_text)
     wx_summary = summarize_weather_alerts(wx_alerts)
-    lightning_summary = build_lightning_summary(metar, taf, atis_text)
+    lightning_summary = build_lightning_summary(metar, taf, current_atis_text)
 
     ahas_data = fetch_ahas_bwc(now_z)
 
@@ -4296,6 +4477,14 @@ def build_weather_json():
         "metarAgeMinutes": metar_age_minutes,
         "atisObservedZ": zulu_iso(atis_observed_dt),
         "atisAgeMinutes": atis_age_minutes,
+        "atisReportIdentity": atis_report_identity(atis_text),
+        "atisSourceIsCurrent": atis_ops["sourceIsCurrent"],
+        "atisReportedLetter": atis_ops["reportedLetter"],
+        "atisReportedPhonetic": atis_ops["reportedPhonetic"],
+        "atisReportedArrRunways": atis_ops["reportedArrRunways"],
+        "atisReportedDepRunways": atis_ops["reportedDepRunways"],
+        "atisReportedClosedRunways": atis_ops["reportedClosedRunways"],
+        "atisReportedFlow": atis_ops["reportedFlow"],
         "lastKnownGoodUsed": last_known_good_used,
         "lastKnownGoodCachePath": LAST_GOOD_WEATHER_PATH,
         "trendLookbackHours": TREND_LOOKBACK_HOURS,
