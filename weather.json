@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-25T22:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 42,
   "atisObservedZ": "2026-08-25T22:54:00Z",
-  "atisAgeMinutes": 32,
+  "atisAgeMinutes": 42,
   "atisReportIdentity": "E:2254Z",
   "atisSourceIsCurrent": true,
   "atisReportedLetter": "E",
@@ -154,12 +154,12 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 26 AUG 11-17Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-25 23:24:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-08-25 23:30:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "3556",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=8&day=25&hour=23&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=8&iDay=25&iHour=23",
@@ -167,7 +167,7 @@
   "milNotamCount": 4,
   "milNotamStatus": "4 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-25 23:26:28Z",
+  "milNotamUpdatedZ": "2026-08-25 23:36:31Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0032/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM",
   "milNotams": [
     {
@@ -274,13 +274,13 @@
   "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-08-25 23:25Z",
+  "allFeedsUpdatedZ": "2026-08-25 23:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-25 23:25:30Z"
+    "lastWorkflowTimestampZ": "2026-08-25 23:35:30Z"
   }
 }
