@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-26T14:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-08-26T14:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "Z:1454Z",
   "atisSourceIsCurrent": true,
   "atisReportedLetter": "Z",
@@ -29,7 +29,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-26T12:15:30Z",
+  "trendReferenceTimestampZ": "2026-08-26T12:25:30Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -70,8 +70,8 @@
   "altimeterTrendText": "STEADY",
   "ceilingFt": 8000,
   "ceilingDisplay": "8000 FT",
-  "ceilingTrend": "\u2193",
-  "ceilingTrendText": "FALLING",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
@@ -154,7 +154,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL NOW-18Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-26 15:00:00.000",
+  "bwcUpdatedZ": "2026-08-26 15:12:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -164,12 +164,34 @@
   "bwcUrl": "https://www.usahas.com/print.aspx?month=8&day=26&hour=15&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=8&iDay=26&iHour=15",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
-  "milNotamCount": 4,
-  "milNotamStatus": "4 ACTIVE",
+  "milNotamCount": 5,
+  "milNotamStatus": "5 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-26 15:06:33Z",
-  "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0032/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM",
+  "milNotamUpdatedZ": "2026-08-26 15:16:26Z",
+  "milNotamScrollText": "M0033/26 M0033/26 NOTAMC M0032/26 A) KMEM  |  M0034/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM",
   "milNotams": [
+    {
+      "number": "M0033/26",
+      "classification": "MIL",
+      "severity": "green",
+      "text": "M0033/26 NOTAMC M0032/26 A) KMEM",
+      "displayText": "M0033/26 NOTAMC M0032/26 A) KMEM",
+      "effectiveStart": "202608261512",
+      "effectiveEnd": "202608291512",
+      "lastUpdated": "2026-08-26T15:12:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "M0034/26",
+      "classification": "MIL",
+      "severity": "amber",
+      "text": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UNTIL FURTHER NOTICE",
+      "displayText": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN",
+      "effectiveStart": "202608261513",
+      "effectiveEnd": "202609042359",
+      "lastUpdated": "2026-08-26T15:13:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
     {
       "number": "M0024/26",
       "classification": "MIL",
@@ -179,17 +201,6 @@
       "effectiveStart": "202607281423",
       "effectiveEnd": "202610252359",
       "lastUpdated": "2026-07-28T14:23:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
-    {
-      "number": "M0032/26",
-      "classification": "MIL",
-      "severity": "amber",
-      "text": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UNTIL FURTHER NOTICE",
-      "displayText": "MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN",
-      "effectiveStart": "202608251237",
-      "effectiveEnd": "202608262000",
-      "lastUpdated": "2026-08-25T12:37:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -274,13 +285,13 @@
   "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-08-26 15:05Z",
+  "allFeedsUpdatedZ": "2026-08-26 15:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-26 15:05:30Z"
+    "lastWorkflowTimestampZ": "2026-08-26 15:15:30Z"
   }
 }
