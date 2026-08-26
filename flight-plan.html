@@ -314,32 +314,35 @@
 
               <label class="field-control item19-cell item19-radio-frequency" for="radioFrequencies">
                 <span>RADIO FREQUENCY</span>
-                <input id="radioFrequencies" type="text" data-path="item19.radioFrequencies" autocomplete="off" spellcheck="false" placeholder="Applicable supplementary frequency">
+                <input id="radioFrequencies" type="text" data-path="item19.radioFrequencies" autocomplete="off" spellcheck="false">
               </label>
             </div>
 
             <div class="item19-band item19-dinghy-band">
-              <section class="item19-cell" aria-labelledby="dinghyHeading">
-                <h3 id="dinghyHeading" class="item19-row-heading">DINGHIES</h3>
-                <label class="check-control"><input type="checkbox" data-path="item19.dinghies.carried"><span>DINGHIES</span></label>
-              </section>
+              <label class="check-control item19-cell item19-dinghy-check-field">
+                <span class="item19-row-heading">DINGHIES</span>
+                <input type="checkbox" data-path="item19.dinghies.carried">
+              </label>
 
-              <section class="item19-cell" aria-labelledby="dinghyCoverColorHeading">
-                <h3 id="dinghyCoverColorHeading" class="item19-row-heading">COVER / COLOR</h3>
-                <div class="item19-cover-color-controls">
-                  <label class="check-control"><input type="checkbox" data-path="item19.dinghies.cover"><span>COVER</span></label>
-                  <label class="field-control item19-inline-field" for="dinghyColor"><span class="visually-hidden">COLOR</span><input id="dinghyColor" type="text" data-path="item19.dinghies.color" autocomplete="off" spellcheck="false"></label>
-                </div>
-              </section>
+              <label class="check-control item19-cell item19-dinghy-check-field">
+                <span class="item19-row-heading">COVER</span>
+                <input type="checkbox" data-path="item19.dinghies.cover">
+              </label>
 
-              <section class="item19-cell" aria-labelledby="dinghyNumberCapacityHeading">
-                <h3 id="dinghyNumberCapacityHeading" class="item19-row-heading">NUMBER / CAPACITY</h3>
-                <div class="item19-number-capacity-controls">
-                  <label class="field-control item19-inline-field" for="dinghyNumber"><span class="visually-hidden">NUMBER</span><input id="dinghyNumber" type="text" inputmode="numeric" data-path="item19.dinghies.number" autocomplete="off"></label>
-                  <span class="item19-divider" aria-hidden="true">/</span>
-                  <label class="field-control item19-inline-field" for="dinghyCapacity"><span class="visually-hidden">CAPACITY</span><input id="dinghyCapacity" type="text" inputmode="numeric" data-path="item19.dinghies.capacity" autocomplete="off"></label>
-                </div>
-              </section>
+              <label class="field-control item19-cell" for="dinghyColor">
+                <span>COLOR</span>
+                <input id="dinghyColor" type="text" data-path="item19.dinghies.color" autocomplete="off" spellcheck="false">
+              </label>
+
+              <label class="field-control item19-cell" for="dinghyNumber">
+                <span>NUMBER</span>
+                <input id="dinghyNumber" type="text" inputmode="numeric" data-path="item19.dinghies.number" autocomplete="off">
+              </label>
+
+              <label class="field-control item19-cell" for="dinghyCapacity">
+                <span>CAPACITY</span>
+                <input id="dinghyCapacity" type="text" inputmode="numeric" data-path="item19.dinghies.capacity" autocomplete="off">
+              </label>
 
               <div class="item19-cell item19-rmk-lead" aria-hidden="true">
                 <span class="item19-row-heading">RMK/</span>

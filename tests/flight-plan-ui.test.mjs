@@ -99,12 +99,15 @@ test("Item 19 preserves the authoritative DD1801 row order without UX cards", ()
   );
   assert.match(
     item19Html,
-    /class="item19-band item19-dinghy-band"[\s\S]*DINGHIES[\s\S]*COVER \/ COLOR[\s\S]*NUMBER \/ CAPACITY[\s\S]*RMK\/[\s\S]*class="item19-band item19-lower-band"/,
+    /class="item19-band item19-dinghy-band"[\s\S]*>DINGHIES<[\s\S]*>COVER<[\s\S]*>COLOR<[\s\S]*>NUMBER<[\s\S]*>CAPACITY<[\s\S]*>RMK\/<[\s\S]*class="item19-band item19-lower-band"/,
   );
+  assert.doesNotMatch(item19Html, />\s*(?:COVER \/ COLOR|NUMBER \/ CAPACITY)\s*</);
   assert.match(
     item19Html,
     /class="item19-band item19-lower-band"[\s\S]*REMARKS[\s\S]*AIRCRAFT SERIAL NUMBERS AND TYPE OF AIRCRAFT IN FLIGHT/,
   );
+  const radioFrequencyInput = item19Html.match(/<input id="radioFrequencies"[^>]*>/)?.[0] ?? "";
+  assert.doesNotMatch(radioFrequencyInput, /\splaceholder=/);
 
   for (const label of [
     "TYPE OF EQUIPMENT",
@@ -127,19 +130,19 @@ test("Item 19 preserves the authoritative DD1801 row order without UX cards", ()
 
   assert.match(
     toolCss,
-    /\.item19-summary-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 23fr\) minmax\(0, 24fr\) minmax\(0, 53fr\)/,
+    /\.item19-summary-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 20fr\) minmax\(0, 21fr\) minmax\(0, 59fr\)/,
   );
   assert.match(
     toolCss,
-    /\.item19-equipment-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 42fr\) minmax\(0, 30fr\) minmax\(0, 28fr\)/,
+    /\.item19-equipment-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 50fr\) minmax\(0, 29fr\) minmax\(0, 21fr\)/,
   );
   assert.match(
     toolCss,
-    /\.item19-dinghy-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 18fr\) minmax\(0, 35fr\) minmax\(0, 34fr\) minmax\(0, 13fr\)/,
+    /\.item19-dinghy-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 16fr\)\s*minmax\(0, 10fr\)\s*minmax\(0, 18fr\)\s*minmax\(0, 10fr\)\s*minmax\(0, 15fr\)\s*minmax\(0, 31fr\)/,
   );
   assert.match(
     toolCss,
-    /\.item19-lower-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 60fr\) minmax\(0, 40fr\)/,
+    /\.item19-lower-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 65fr\) minmax\(0, 35fr\)/,
   );
   assert.match(
     toolCss,

@@ -797,7 +797,7 @@ select option[value=""] {
 }
 
 .item19-cell {
-  padding: 14px 13px;
+  padding: 10px 9px;
 }
 
 .item19-cell + .item19-cell {
@@ -805,25 +805,36 @@ select option[value=""] {
 }
 
 .item19-summary-row {
-  grid-template-columns: minmax(0, 23fr) minmax(0, 24fr) minmax(0, 53fr);
+  grid-template-columns: minmax(0, 20fr) minmax(0, 21fr) minmax(0, 59fr);
   align-items: stretch;
 }
 
 .item19-equipment-band {
-  grid-template-columns: minmax(0, 42fr) minmax(0, 30fr) minmax(0, 28fr);
+  grid-template-columns: minmax(0, 50fr) minmax(0, 29fr) minmax(0, 21fr);
 }
 
 .item19-dinghy-band {
-  grid-template-columns: minmax(0, 18fr) minmax(0, 35fr) minmax(0, 34fr) minmax(0, 13fr);
+  grid-template-columns:
+    minmax(0, 16fr)
+    minmax(0, 10fr)
+    minmax(0, 18fr)
+    minmax(0, 10fr)
+    minmax(0, 15fr)
+    minmax(0, 31fr);
 }
 
 .item19-lower-band {
-  grid-template-columns: minmax(0, 60fr) minmax(0, 40fr);
+  grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+}
+
+.item19-equipment-band > .item19-cell,
+.item19-dinghy-band > .item19-cell {
+  padding: 8px 7px;
 }
 
 .item19-row-heading {
   display: block;
-  margin: 0 0 9px;
+  margin: 0 0 5px;
   color: #fff;
   font-size: .68rem;
   font-weight: 900;
@@ -835,7 +846,7 @@ select option[value=""] {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
 }
 
 .item19-value-line,
@@ -900,28 +911,20 @@ select option[value=""] {
   padding: 8px 9px;
 }
 
-.item19-cover-color-controls,
-.item19-number-capacity-controls {
-  display: grid;
-  align-items: center;
-  gap: 8px;
+.item19-dinghy-check-field {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.item19-cover-color-controls {
-  grid-template-columns: max-content minmax(0, 1fr);
+.item19-dinghy-check-field .item19-row-heading {
+  margin: 0;
 }
 
-.item19-number-capacity-controls {
-  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
-}
-
-.item19-inline-field {
-  min-width: 0;
-}
-
-.item19-divider {
-  color: var(--ops-green);
-  font-weight: 1000;
+.item19-dinghy-band .field-control > span:first-child {
+  font-size: .68rem;
+  letter-spacing: .055em;
+  line-height: 1.25;
 }
 
 .item19-rmk-lead {
@@ -1176,11 +1179,16 @@ pre:focus-visible {
 
 @media (min-width: 761px) and (max-width: 900px) {
   .item19-cell {
-    padding: 10px 5px;
+    padding: 7px 4px;
+  }
+
+  .item19-equipment-band > .item19-cell,
+  .item19-dinghy-band > .item19-cell {
+    padding: 7px 4px;
   }
 
   .item19-equipment-band {
-    grid-template-columns: minmax(0, 46fr) minmax(0, 31fr) minmax(0, 23fr);
+    grid-template-columns: minmax(0, 49fr) minmax(0, 31fr) minmax(0, 20fr);
   }
 
   .item19-row-heading,
@@ -1192,7 +1200,7 @@ pre:focus-visible {
 
   .item19-sheet .check-control {
     gap: 2px;
-    font-size: .51rem;
+    font-size: .52rem;
   }
 
   .item19-sheet .check-control input {
@@ -1202,11 +1210,6 @@ pre:focus-visible {
 
   .item19-option-row {
     gap: 2px;
-  }
-
-  .item19-cover-color-controls,
-  .item19-number-capacity-controls {
-    gap: 5px;
   }
 
   .item19-sheet input[type="text"] {
