@@ -148,6 +148,18 @@ test("dotted SID and STAR transition tokens from electronic DD1801 routes remain
   assert.equal(validation.status, "LOCAL CHECKS PASSED");
 });
 
+test("normalized DD1801 SID and STAR boundary envelopes do not gain speculative DCT", () => {
+  const route =
+    "SUDB1L SUDBY DCS L612 BARTN MCT M16 DOLAS LAMSO PETIK PAM L620 OMELO PEPIK BERVA ERGOM TEGRI TOSVI TOSV1E";
+  const result = validateRoute(route);
+  assert.equal(
+    result.route,
+    "SUDB1L SUDBY DCS L612 BARTN DCT MCT M16 DOLAS DCT LAMSO DCT PETIK DCT PAM L620 OMELO DCT PEPIK DCT BERVA DCT ERGOM DCT TEGRI TOSVI TOSV1E",
+  );
+  assert.equal(result.insertedCount, 8);
+  assert.doesNotMatch(result.route, /SUDBY DCT DCS|TEGRI DCT TOSVI/);
+});
+
 test("unknown route tokens and their surrounding sections are left unchanged", () => {
   const result = validateRoute("ABC ??? DEF");
   assert.equal(result.route, "ABC ??? DEF");

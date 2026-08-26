@@ -110,7 +110,8 @@
       </section>
 
       <form id="flightPlanForm" novalidate>
-        <fieldset id="item7Section" class="dd-section first-section">
+        <div class="dd1801-layout">
+        <fieldset id="item7Section" class="dd-section item7-section">
           <legend><span>ITEM 7</span> AIRCRAFT IDENTIFICATION</legend>
           <div class="field-grid one-column">
             <label class="field-control" for="aircraftIdentification">
@@ -120,7 +121,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="dd-section">
+        <fieldset class="dd-section item8-section">
           <legend><span>ITEM 8</span> FLIGHT RULES / TYPE OF FLIGHT</legend>
           <div class="field-grid two-column">
             <label class="field-control" for="flightRules">
@@ -147,7 +148,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="dd-section">
+        <fieldset class="dd-section item9-section">
           <legend><span>ITEM 9</span> NUMBER / TYPE OF AIRCRAFT / WAKE</legend>
           <div class="field-grid item9-grid">
             <label class="field-control" for="aircraftNumber">
@@ -171,7 +172,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="dd-section emphasized-section">
+        <fieldset class="dd-section emphasized-section item10-section">
           <legend><span>ITEM 10</span> EQUIPMENT AND CAPABILITIES</legend>
           <div class="field-grid item10-grid">
             <label class="field-control" for="equipment">
@@ -187,7 +188,7 @@
           <p id="item10Help" class="field-help">Enter 10a and 10b separately. The generator inserts exactly one slash between them.</p>
         </fieldset>
 
-        <fieldset class="dd-section">
+        <fieldset class="dd-section item13-section">
           <legend><span>ITEM 13</span> DEPARTURE AERODROME / TIME</legend>
           <div class="field-grid item13-grid">
             <label class="field-control" for="departure">
@@ -201,9 +202,9 @@
           </div>
         </fieldset>
 
-        <fieldset class="dd-section route-section">
+        <fieldset class="dd-section route-section item15-section">
           <legend><span>ITEM 15</span> CRUISING SPEED / LEVEL / ROUTE</legend>
-          <div class="field-grid item15-grid">
+          <div class="field-grid item15-layout">
             <label class="field-control" for="cruisingSpeed">
               <span>CRUISING SPEED</span>
               <input id="cruisingSpeed" type="text" data-path="item15.speed" autocomplete="off" spellcheck="false" placeholder="e.g. N0450">
@@ -212,11 +213,11 @@
               <span>LEVEL</span>
               <input id="level" type="text" data-path="item15.level" autocomplete="off" spellcheck="false" placeholder="e.g. F350">
             </label>
+            <label class="field-control textarea-control item15-route-control" for="route">
+              <span>ROUTE</span>
+              <textarea id="route" data-path="item15.route" rows="6" autocomplete="off" spellcheck="false" placeholder="Enter or paste the Item 15 route" aria-describedby="routeDisclaimer routeStatus"></textarea>
+            </label>
           </div>
-          <label class="field-control textarea-control" for="route">
-            <span>ROUTE</span>
-            <textarea id="route" data-path="item15.route" rows="8" autocomplete="off" spellcheck="false" placeholder="Enter or paste the Item 15 route" aria-describedby="routeDisclaimer routeStatus"></textarea>
-          </label>
 
           <div class="route-tools">
             <div class="route-button-row">
@@ -228,7 +229,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="dd-section">
+        <fieldset class="dd-section item16-section">
           <legend><span>ITEM 16</span> DESTINATION / TOTAL EET / ALTERNATES</legend>
           <div class="field-grid item16-grid">
             <label class="field-control" for="destination">
@@ -250,7 +251,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="dd-section">
+        <fieldset class="dd-section item18-section">
           <legend><span>ITEM 18</span> OTHER INFORMATION</legend>
           <label class="field-control textarea-control" for="otherInformation">
             <span>OTHER INFORMATION</span>
@@ -262,7 +263,7 @@
           <legend><span>ITEM 19</span> SUPPLEMENTARY INFORMATION</legend>
           <p class="item19-note">Retained with this working form for review. Item 19 is not appended to the normal transmitted (FPL-...) message.</p>
 
-          <div class="field-grid two-column">
+          <div class="field-grid two-column item19-primary-grid">
             <label class="field-control" for="endurance">
               <span>ENDURANCE / FUEL</span>
               <input id="endurance" type="text" data-path="item19.endurance" autocomplete="off" spellcheck="false" placeholder="HHMM or form value">
@@ -341,6 +342,7 @@
             <textarea id="item19Remarks" data-path="item19.remarks" rows="4" autocomplete="off" spellcheck="false"></textarea>
           </label>
         </fieldset>
+        </div>
 
         <fieldset class="dd-section rejection-section">
           <legend>REJECTION / VALIDATION RESPONSE</legend>

@@ -8,6 +8,7 @@ import {
   mapAcroFormFields,
   parseDd1801TextPages,
 } from "../flight-plan-pdf.js";
+import { buildFplMessage, setFieldValue, validateRoute } from "../flight-plan-core.js";
 
 // The vendored browser build expects this browser geometry primitive at module
 // initialization. Text extraction never renders, so an identity-capable shim is
@@ -127,7 +128,7 @@ test("positioned DD1801 text maps exact values and splits wrapped Item 10 once",
   assert.equal(result.data.item15.level, "F350");
   assert.equal(
     result.data.item15.route,
-    "SUDB1L.SUDBY DCS L612 BARTN LAMSO PETIK PAM L620 OMELO",
+    "SUDB1L SUDBY DCS L612 BARTN LAMSO PETIK PAM L620 OMELO",
   );
   assert.deepEqual(result.data.item16, {
     destination: "LROP",
@@ -204,6 +205,19 @@ test("AcroForm mapping recognizes semantic names and keeps Item 10a/10b separate
   assert.equal(result.data.item10.surveillance, "B1D1L");
   assert.equal(result.data.item13.departure, "EGPK");
   assert.equal(result.data.item19.dinghies.cover, true);
+});
+
+test("AcroForm import normalizes periods and whitespace only in Item 15 route", () => {
+  const result = mapAcroFormFields({
+    Route: [{ value: "  SUDB1L.SUDBY\t DCS   L612 BARTN TOSVI.TOSV1E  " }],
+    "Other Information": [{ value: "RMK/KEEP.THIS  SPACING" }],
+  });
+
+  assert.equal(
+    result.data.item15.route,
+    "SUDB1L SUDBY DCS L612 BARTN TOSVI TOSV1E",
+  );
+  assert.equal(result.data.item18.otherInformation, "RMK/KEEP.THIS  SPACING");
 });
 
 test("blank duplicate Item 10 widgets cannot erase a populated combined value", () => {
@@ -283,7 +297,7 @@ test(
     assert.equal(result.data.item15.level, "F350");
     assert.equal(
       result.data.item15.route,
-      "SUDB1L.SUDBY DCS L612 BARTN MCT M16 DOLAS LAMSO PETIK PAM L620 OMELO PEPIK BERVA ERGOM TEGRI TOSVI.TOSV1E",
+      "SUDB1L SUDBY DCS L612 BARTN MCT M16 DOLAS LAMSO PETIK PAM L620 OMELO PEPIK BERVA ERGOM TEGRI TOSVI TOSV1E",
     );
     assert.deepEqual(result.data.item16, {
       destination: "LROP",
@@ -308,5 +322,16 @@ test(
     assert.ok(result.unreliableFields.includes("item19.survivalEquipment.global"));
     assert.ok(result.unreliableFields.includes("item19.lifeJackets.fluorescein"));
     assert.ok(result.unreliableFields.includes("item19.dinghies.carried"));
+
+    const routeValidation = validateRoute(result.data.item15.route);
+    assert.equal(
+      routeValidation.route,
+      "SUDB1L SUDBY DCS L612 BARTN DCT MCT M16 DOLAS DCT LAMSO DCT PETIK DCT PAM L620 OMELO DCT PEPIK DCT BERVA DCT ERGOM DCT TEGRI TOSVI TOSV1E",
+    );
+    setFieldValue(result.data, "item15.route", routeValidation.route);
+    assert.match(
+      buildFplMessage(result.data).message,
+      /\n-N0444F350 SUDB1L SUDBY DCS L612 BARTN DCT MCT M16 DOLAS DCT LAMSO DCT PETIK DCT PAM L620 OMELO DCT PEPIK DCT BERVA DCT ERGOM DCT TEGRI TOSVI TOSV1E\n/,
+    );
   },
 );

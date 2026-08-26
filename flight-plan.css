@@ -516,6 +516,24 @@ h1 {
   padding: 0 clamp(18px, 4vw, 34px) clamp(28px, 5vw, 42px);
 }
 
+.dd1801-layout {
+  display: grid;
+  grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+  grid-template-areas:
+    "item7 item8"
+    "item9 item10"
+    "item13 item13"
+    "item15 item15"
+    "item16 item16"
+    "item18 item18"
+    "item19 item19";
+  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .012);
+}
+
 .dd-section {
   min-width: 0;
   margin: 0;
@@ -524,9 +542,54 @@ h1 {
   border-top: 1px solid var(--line);
 }
 
-.dd-section.first-section {
-  margin-top: 5px;
+.dd1801-layout .dd-section {
+  padding: 23px clamp(18px, 2.5vw, 28px);
+}
+
+.item7-section {
+  grid-area: item7;
+}
+
+.item8-section {
+  grid-area: item8;
+}
+
+.item9-section {
+  grid-area: item9;
+}
+
+.item10-section {
+  grid-area: item10;
+}
+
+.item13-section {
+  grid-area: item13;
+}
+
+.item15-section {
+  grid-area: item15;
+}
+
+.item16-section {
+  grid-area: item16;
+}
+
+.item18-section {
+  grid-area: item18;
+}
+
+.item19-section {
+  grid-area: item19;
+}
+
+.item7-section,
+.item8-section {
   border-top: 0;
+}
+
+.item7-section,
+.item9-section {
+  border-right: 1px solid var(--line);
 }
 
 .dd-section legend {
@@ -561,6 +624,10 @@ h1 {
   content: "";
 }
 
+.item10-section.emphasized-section::before {
+  left: 8px;
+}
+
 .field-grid {
   display: grid;
   gap: 16px;
@@ -575,7 +642,8 @@ h1 {
 }
 
 .item9-grid {
-  grid-template-columns: minmax(100px, .55fr) minmax(180px, 1.35fr) minmax(180px, 1fr);
+  grid-template-columns: minmax(0, .58fr) minmax(0, 1.12fr) minmax(0, .92fr);
+  gap: 10px;
 }
 
 .item10-grid {
@@ -584,16 +652,20 @@ h1 {
 }
 
 .item13-grid {
-  grid-template-columns: minmax(0, 1.65fr) minmax(140px, .65fr);
+  grid-template-columns: minmax(180px, 1.25fr) minmax(120px, .55fr) minmax(0, 1fr);
 }
 
-.item15-grid {
-  grid-template-columns: repeat(2, minmax(160px, 260px));
-  margin-bottom: 16px;
+.item15-layout {
+  grid-template-columns: minmax(120px, .55fr) minmax(120px, .55fr) minmax(0, 2.15fr);
+  align-items: start;
 }
 
 .item16-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1.15fr .8fr 1fr 1fr;
+}
+
+.item19-primary-grid {
+  grid-template-columns: minmax(160px, 240px) minmax(140px, 210px);
 }
 
 .field-control {
@@ -635,9 +707,14 @@ textarea {
 }
 
 #route {
-  min-height: 190px;
+  min-height: 166px;
   font-family: Consolas, "Courier New", monospace;
   font-size: 1rem;
+}
+
+.item15-route-control {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 input::placeholder,
@@ -700,9 +777,15 @@ select option[value=""] {
 
 .supplement-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-top: 18px;
+}
+
+@media (max-width: 1000px) {
+  .supplement-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .supplement-card {
@@ -757,6 +840,7 @@ select option[value=""] {
 }
 
 .rejection-section {
+  margin-top: 24px;
   border-top-color: #555;
 }
 
@@ -959,11 +1043,6 @@ pre:focus-visible {
 }
 
 @media (max-width: 860px) {
-  .item9-grid,
-  .item16-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .workspace-bar {
     display: block;
   }
@@ -1005,15 +1084,47 @@ pre:focus-visible {
   }
 
   .choice-grid,
+  .dd1801-layout,
   .two-column,
   .item9-grid,
   .item10-grid,
   .item13-grid,
-  .item15-grid,
+  .item15-layout,
   .item16-grid,
   .supplement-grid,
   .import-flags {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dd1801-layout {
+    grid-template-areas:
+      "item7"
+      "item8"
+      "item9"
+      "item10"
+      "item13"
+      "item15"
+      "item16"
+      "item18"
+      "item19";
+  }
+
+  .item7-section,
+  .item9-section {
+    border-right: 0;
+  }
+
+  .item8-section {
+    border-top: 1px solid var(--line);
+  }
+
+  .item15-route-control {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  #route {
+    min-height: 190px;
   }
 
   .choice-card {

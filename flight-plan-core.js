@@ -250,6 +250,19 @@ function isPointLike(category) {
   return category === "point" || category === "coordinate";
 }
 
+function isBoundaryProcedureEnvelope(classified, pairIndex) {
+  // Import-time cleanup expands dotted electronic-DD1801 procedure notation
+  // such as SID.TRANSITION and TRANSITION.STAR into separate visible tokens.
+  // Preserve the one point-to-point leg immediately inside a leading SID or
+  // trailing STAR envelope instead of guessing that it requires DCT.
+  const protectsLeadingProcedure =
+    pairIndex === 1 && classified[0] === "procedure";
+  const protectsTrailingProcedure =
+    pairIndex === classified.length - 3 &&
+    classified[classified.length - 1] === "procedure";
+  return protectsLeadingProcedure || protectsTrailingProcedure;
+}
+
 /**
  * Conservatively insert DCT only between two confidently point-like tokens.
  * Original characters and whitespace remain byte-for-byte present; each change
@@ -287,7 +300,11 @@ export function validateRoute(route) {
     }
 
     const nextMatch = matches[index + 1];
-    if (isPointLike(classified[index]) && isPointLike(classified[index + 1])) {
+    if (
+      isPointLike(classified[index]) &&
+      isPointLike(classified[index + 1]) &&
+      !isBoundaryProcedureEnvelope(classified, index)
+    ) {
       formatted += " DCT";
       insertedCount += 1;
     }

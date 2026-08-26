@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const toolHtml = readFileSync(new URL("../flight-plan.html", import.meta.url), "utf8");
+const toolCss = readFileSync(new URL("../flight-plan.css", import.meta.url), "utf8");
 const appJs = readFileSync(new URL("../flight-plan-app.js", import.meta.url), "utf8");
 
 test("board preserves both existing controls and adds globe between them", () => {
@@ -40,6 +41,31 @@ test("manual form includes only operational DD1801 Items 7 through 19", () => {
   assert.doesNotMatch(toolHtml, /pilot in command|approving authority|home station|filing official/i);
 });
 
+test("desktop form follows the DD1801 row hierarchy and stacks on phones", () => {
+  assert.match(toolHtml, /<div class="dd1801-layout">/);
+  for (const item of [7, 8, 9, 10, 13, 15, 16, 18, 19]) {
+    assert.match(toolHtml, new RegExp(`class="[^"]*item${item}-section[^"]*"`));
+  }
+  assert.match(
+    toolCss,
+    /grid-template-areas:\s*"item7 item8"\s*"item9 item10"\s*"item13 item13"\s*"item15 item15"\s*"item16 item16"\s*"item18 item18"\s*"item19 item19"/,
+  );
+  assert.match(
+    toolCss,
+    /@media \(max-width: 680px\)[\s\S]*grid-template-areas:\s*"item7"\s*"item8"\s*"item9"\s*"item10"\s*"item13"\s*"item15"\s*"item16"\s*"item18"\s*"item19"/,
+  );
+});
+
+test("Item 15 presents speed, level, and route in one DD1801 row", () => {
+  const item15Start = toolHtml.indexOf('<fieldset class="dd-section route-section item15-section">');
+  const item15End = toolHtml.indexOf("</fieldset>", item15Start);
+  const item15Html = toolHtml.slice(item15Start, item15End);
+
+  assert.match(item15Html, /class="field-grid item15-layout"/);
+  assert.ok(item15Html.indexOf('id="cruisingSpeed"') < item15Html.indexOf('id="level"'));
+  assert.ok(item15Html.indexOf('id="level"') < item15Html.indexOf('id="route"'));
+});
+
 test("Item 10a and 10b are separate blank controls", () => {
   assert.equal((toolHtml.match(/data-path="item10\.equipment"/g) || []).length, 1);
   assert.equal((toolHtml.match(/data-path="item10\.surveillance"/g) || []).length, 1);
@@ -48,6 +74,10 @@ test("Item 10a and 10b are separate blank controls", () => {
     /data-path="item10\.(?:equipment|surveillance)"[^>]*\svalue="[^"]+"/,
   );
   assert.match(toolHtml, /generator inserts exactly one slash/i);
+  assert.match(
+    toolHtml,
+    /data-path="item10\.equipment"[\s\S]*<span class="item10-divider" aria-hidden="true">\/<\/span>[\s\S]*data-path="item10\.surveillance"/,
+  );
 });
 
 test("route, output, rejection, and reset controls are present", () => {

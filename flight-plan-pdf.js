@@ -418,6 +418,16 @@ function normalizeCompact(value) {
     .trim();
 }
 
+function normalizeImportedItem15Route(value) {
+  // Electronic DD1801 generators use periods to join procedure/transition
+  // route components. The editable import deliberately presents those as ATS
+  // route tokens; no other imported field receives this punctuation cleanup.
+  return String(value ?? "")
+    .replace(/\./g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function isPopulated(value) {
   return typeof value === "boolean" ? value : String(value ?? "").trim() !== "";
 }
@@ -636,6 +646,7 @@ export function parseDd1801TextPages(pages) {
 
   for (const region of TEXT_REGIONS) {
     let value = extractBoxes(page, region.boxes, region.mode);
+    if (region.path === "item15.route") value = normalizeImportedItem15Route(value);
     if (region.path === "item18.otherInformation") value = value.replace(/\)+$/, "").trim();
     addMappedValue(result, region.path, value);
   }
@@ -753,6 +764,7 @@ function coerceBoolean(value) {
 function normalizeAcroValue(path, value) {
   if (BOOLEAN_PATHS.has(path)) return coerceBoolean(value);
   const text = String(value ?? "").trim();
+  if (path === "item15.route") return normalizeImportedItem15Route(text);
   return COMPACT_ACRO_FIELDS.has(path) ? normalizeCompact(text) : text;
 }
 
