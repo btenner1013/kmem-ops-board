@@ -47,6 +47,43 @@ Local:
 http://localhost:8765/display_control.html
 ```
 
+### Flight Plan Tool
+
+```text
+https://btenner1013.github.io/kmem-ops-board/flight-plan.html
+```
+
+Local:
+
+```text
+http://localhost:8765/flight-plan.html
+```
+
+The globe control on the main board opens the tool in a separate tab. Manual
+entry always starts blank. DD Form 1801 imports are parsed in the browser from
+AcroForm data or the embedded PDF text layer; the PDF and flight-plan data are
+not uploaded or persisted. V1 has no OCR, filing, EUROCONTROL, IFPS, RAD, or
+live-airspace integration. Route validation is a conservative local formatting
+helper only.
+
+The browser importer uses a locally vendored Apache-2.0 PDF.js distribution in
+`vendor/pdfjs/`, so the tool remains compatible with static GitHub Pages
+hosting and does not need a third-party PDF-processing service.
+
+Run the dependency-free flight-plan tests with Node.js:
+
+```powershell
+npm run test:flight-plan
+```
+
+To include the private real-PDF integration fixture without committing it to
+the public repository:
+
+```powershell
+$env:DD1801_TEST_PDF = "C:\path\to\electronic-dd1801.pdf"
+npm run test:flight-plan
+```
+
 ---
 
 ## Production file map

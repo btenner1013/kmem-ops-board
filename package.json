@@ -1,0 +1,8 @@
+{
+  "name": "kmem-ops-board",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:flight-plan": "node --test tests/flight-plan-core.test.mjs tests/dd1801-import.test.mjs tests/flight-plan-ui.test.mjs"
+  }
+}
