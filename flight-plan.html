@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#050505">
+  <title>Flight Plan Tool | KMEM Ops Board</title>
+  <link rel="stylesheet" href="./flight-plan.css">
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">Skip to flight plan tool</a>
+
+  <main id="mainContent" class="app-shell">
+    <header class="tool-header">
+      <div>
+        <p class="eyebrow">KMEM OPS BOARD</p>
+        <h1>FLIGHT PLAN TOOL</h1>
+        <p class="header-copy">DD Form 1801 review, local route formatting, and ICAO FPL message construction.</p>
+      </div>
+      <a class="board-link" href="./index.html" aria-label="Return to KMEM Ops Board">
+        <span aria-hidden="true">&#8592;</span> RETURN TO BOARD
+      </a>
+    </header>
+
+    <aside class="privacy-banner" aria-label="Local processing notice">
+      <strong>LOCAL BROWSER TOOL</strong>
+      <span>Flight-plan data stays in this page. No PDF or flight-plan data is uploaded, transmitted, or saved by this tool.</span>
+    </aside>
+
+    <section id="landingScreen" class="landing-card" aria-labelledby="landingTitle">
+      <div class="landing-intro">
+        <p class="section-kicker">START A FLIGHT PLAN</p>
+        <h2 id="landingTitle">Choose an entry method</h2>
+        <p>Import an electronically generated DD1801 for review, or begin with a completely blank form.</p>
+      </div>
+
+      <div class="choice-grid">
+        <button id="landingUploadButton" class="choice-card" type="button">
+          <span class="choice-icon" aria-hidden="true">&#8679;</span>
+          <span class="choice-title">UPLOAD DD1801</span>
+          <span class="choice-copy">Read AcroForm fields or the embedded text layer from a local electronic PDF.</span>
+        </button>
+
+        <button id="landingManualButton" class="choice-card" type="button">
+          <span class="choice-icon" aria-hidden="true">&#9998;</span>
+          <span class="choice-title">MANUAL ENTRY</span>
+          <span class="choice-copy">Open a new DD1801-style form with every operational field blank.</span>
+        </button>
+      </div>
+
+      <p class="landing-footnote">Electronic PDFs only in V1. Scanned or handwritten forms require manual entry; OCR is not used.</p>
+    </section>
+
+    <section id="uploadScreen" class="workflow-card" aria-labelledby="uploadTitle" hidden>
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">UPLOAD WORKFLOW</p>
+          <h2 id="uploadTitle">Select an electronic DD1801</h2>
+        </div>
+        <button id="uploadBackButton" class="text-button" type="button">BACK</button>
+      </div>
+
+      <div class="upload-dropzone">
+        <p class="upload-mark" aria-hidden="true">PDF</p>
+        <p id="uploadInstruction">The file is processed locally in this browser and is never sent to a server.</p>
+        <button id="choosePdfButton" class="primary-button compact-button" type="button">CHOOSE PDF</button>
+        <input id="pdfFileInput" class="visually-hidden" type="file" accept="application/pdf,.pdf" aria-describedby="uploadInstruction uploadStatus">
+      </div>
+
+      <div id="uploadProgress" class="progress-panel" hidden>
+        <progress aria-label="Reading DD1801 PDF"></progress>
+        <strong id="uploadProgressLabel">Reading electronic PDF...</strong>
+        <span>Checking AcroForm data first, then the embedded text layer.</span>
+      </div>
+
+      <div id="uploadStatus" class="upload-status" role="status" aria-live="polite" tabindex="-1"></div>
+
+      <div id="uploadFailureActions" class="failure-actions" hidden>
+        <button id="retryUploadButton" class="secondary-button" type="button">CHOOSE ANOTHER PDF</button>
+        <button id="failureManualButton" class="secondary-button" type="button">MANUAL ENTRY</button>
+      </div>
+    </section>
+
+    <section id="workspace" class="workspace" aria-labelledby="workspaceTitle" hidden>
+      <div class="workspace-bar">
+        <div>
+          <p class="section-kicker">ACTIVE WORKING PLAN</p>
+          <h2 id="workspaceTitle">DD1801 ENTRY</h2>
+          <p id="modeDescription" class="mode-description"></p>
+        </div>
+        <div class="workspace-actions" aria-label="Entry mode controls">
+          <button id="workspaceUploadButton" class="secondary-button compact-button" type="button">UPLOAD DD1801</button>
+          <button id="workspaceManualButton" class="secondary-button compact-button" type="button">MANUAL ENTRY</button>
+        </div>
+        <div id="workspaceFileStatus" class="workspace-file-status" role="status" aria-live="polite"></div>
+      </div>
+
+      <section id="importReview" class="import-review" aria-labelledby="importReviewTitle" tabindex="-1" hidden>
+        <div class="review-header">
+          <div>
+            <p class="section-kicker">IMPORT REVIEW</p>
+            <h3 id="importReviewTitle">Review every extracted value</h3>
+          </div>
+          <span id="importSourceBadge" class="source-badge"></span>
+        </div>
+        <p class="review-lead">The values below are exactly what the importer mapped into the editable form. Correct any errors and review every flagged field before generation.</p>
+        <div id="importSummary" class="import-summary"></div>
+        <div id="importFlags" class="import-flags"></div>
+      </section>
+
+      <form id="flightPlanForm" novalidate>
+        <fieldset id="item7Section" class="dd-section first-section">
+          <legend><span>ITEM 7</span> AIRCRAFT IDENTIFICATION</legend>
+          <div class="field-grid one-column">
+            <label class="field-control" for="aircraftIdentification">
+              <span>AIRCRAFT IDENTIFICATION</span>
+              <input id="aircraftIdentification" type="text" data-path="item7.aircraftIdentification" autocomplete="off" spellcheck="false" placeholder="e.g. callsign or registration">
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="dd-section">
+          <legend><span>ITEM 8</span> FLIGHT RULES / TYPE OF FLIGHT</legend>
+          <div class="field-grid two-column">
+            <label class="field-control" for="flightRules">
+              <span>FLIGHT RULES</span>
+              <select id="flightRules" data-path="item8.flightRules">
+                <option value="">Select only when known</option>
+                <option value="I">I — IFR</option>
+                <option value="V">V — VFR</option>
+                <option value="Y">Y — IFR then VFR</option>
+                <option value="Z">Z — VFR then IFR</option>
+              </select>
+            </label>
+            <label class="field-control" for="typeOfFlight">
+              <span>TYPE OF FLIGHT</span>
+              <select id="typeOfFlight" data-path="item8.typeOfFlight">
+                <option value="">Select only when known</option>
+                <option value="S">S — Scheduled</option>
+                <option value="N">N — Non-scheduled</option>
+                <option value="G">G — General aviation</option>
+                <option value="M">M — Military</option>
+                <option value="X">X — Other</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="dd-section">
+          <legend><span>ITEM 9</span> NUMBER / TYPE OF AIRCRAFT / WAKE</legend>
+          <div class="field-grid item9-grid">
+            <label class="field-control" for="aircraftNumber">
+              <span>NUMBER</span>
+              <input id="aircraftNumber" type="text" inputmode="numeric" data-path="item9.number" autocomplete="off" spellcheck="false" placeholder="Blank for one aircraft">
+            </label>
+            <label class="field-control" for="aircraftType">
+              <span>TYPE OF AIRCRAFT</span>
+              <input id="aircraftType" type="text" data-path="item9.aircraftType" autocomplete="off" spellcheck="false" placeholder="e.g. C17">
+            </label>
+            <label class="field-control" for="wakeCategory">
+              <span>WAKE TURBULENCE CATEGORY</span>
+              <select id="wakeCategory" data-path="item9.wakeCategory">
+                <option value="">Select only when known</option>
+                <option value="L">L — Light</option>
+                <option value="M">M — Medium</option>
+                <option value="H">H — Heavy</option>
+                <option value="J">J — Super</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="dd-section emphasized-section">
+          <legend><span>ITEM 10</span> EQUIPMENT AND CAPABILITIES</legend>
+          <div class="field-grid item10-grid">
+            <label class="field-control" for="equipment">
+              <span>10a — EQUIPMENT</span>
+              <input id="equipment" type="text" data-path="item10.equipment" autocomplete="off" spellcheck="false" placeholder="e.g. DE1E2FGHIJ5RSTUWXYZ" aria-describedby="item10Help">
+            </label>
+            <span class="item10-divider" aria-hidden="true">/</span>
+            <label class="field-control" for="surveillance">
+              <span>10b — SURVEILLANCE</span>
+              <input id="surveillance" type="text" data-path="item10.surveillance" autocomplete="off" spellcheck="false" placeholder="e.g. B1D1L" aria-describedby="item10Help">
+            </label>
+          </div>
+          <p id="item10Help" class="field-help">Enter 10a and 10b separately. The generator inserts exactly one slash between them.</p>
+        </fieldset>
+
+        <fieldset class="dd-section">
+          <legend><span>ITEM 13</span> DEPARTURE AERODROME / TIME</legend>
+          <div class="field-grid item13-grid">
+            <label class="field-control" for="departure">
+              <span>DEPARTURE AERODROME</span>
+              <input id="departure" type="text" data-path="item13.departure" autocomplete="off" spellcheck="false" maxlength="4" placeholder="ICAO location indicator">
+            </label>
+            <label class="field-control" for="departureTime">
+              <span>TIME (HHMM)</span>
+              <input id="departureTime" type="text" inputmode="numeric" data-path="item13.time" autocomplete="off" spellcheck="false" maxlength="4" placeholder="HHMM">
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="dd-section route-section">
+          <legend><span>ITEM 15</span> CRUISING SPEED / LEVEL / ROUTE</legend>
+          <div class="field-grid item15-grid">
+            <label class="field-control" for="cruisingSpeed">
+              <span>CRUISING SPEED</span>
+              <input id="cruisingSpeed" type="text" data-path="item15.speed" autocomplete="off" spellcheck="false" placeholder="e.g. N0450">
+            </label>
+            <label class="field-control" for="level">
+              <span>LEVEL</span>
+              <input id="level" type="text" data-path="item15.level" autocomplete="off" spellcheck="false" placeholder="e.g. F350">
+            </label>
+          </div>
+          <label class="field-control textarea-control" for="route">
+            <span>ROUTE</span>
+            <textarea id="route" data-path="item15.route" rows="8" autocomplete="off" spellcheck="false" placeholder="Enter or paste the Item 15 route" aria-describedby="routeDisclaimer routeStatus"></textarea>
+          </label>
+
+          <div class="route-tools">
+            <div class="route-button-row">
+              <button id="validateRouteButton" class="primary-button" type="button">VALIDATE ROUTE</button>
+              <button id="undoRouteButton" class="secondary-button" type="button" disabled>UNDO VALIDATION</button>
+            </div>
+            <p id="routeDisclaimer" class="route-disclaimer"><strong>LOCAL ROUTE FORMAT CHECK ONLY</strong> — DOES NOT VERIFY AIRSPACE, RAD, IFPS, OR EUROCONTROL RESTRICTIONS.</p>
+            <div id="routeStatus" class="route-status" role="status" aria-live="polite"></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="dd-section">
+          <legend><span>ITEM 16</span> DESTINATION / TOTAL EET / ALTERNATES</legend>
+          <div class="field-grid item16-grid">
+            <label class="field-control" for="destination">
+              <span>DESTINATION AERODROME</span>
+              <input id="destination" type="text" data-path="item16.destination" autocomplete="off" spellcheck="false" maxlength="4" placeholder="ICAO location indicator">
+            </label>
+            <label class="field-control" for="totalEet">
+              <span>TOTAL EET (HHMM)</span>
+              <input id="totalEet" type="text" inputmode="numeric" data-path="item16.totalEet" autocomplete="off" spellcheck="false" maxlength="4" placeholder="HHMM">
+            </label>
+            <label class="field-control" for="alternate">
+              <span>ALTERNATE AERODROME</span>
+              <input id="alternate" type="text" data-path="item16.alternate" autocomplete="off" spellcheck="false" maxlength="4" placeholder="Optional">
+            </label>
+            <label class="field-control" for="secondAlternate">
+              <span>SECOND ALTERNATE</span>
+              <input id="secondAlternate" type="text" data-path="item16.secondAlternate" autocomplete="off" spellcheck="false" maxlength="4" placeholder="Optional">
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="dd-section">
+          <legend><span>ITEM 18</span> OTHER INFORMATION</legend>
+          <label class="field-control textarea-control" for="otherInformation">
+            <span>OTHER INFORMATION</span>
+            <textarea id="otherInformation" data-path="item18.otherInformation" rows="7" autocomplete="off" spellcheck="false" placeholder="Enter Item 18 indicators exactly as required, or enter 0 when none apply"></textarea>
+          </label>
+        </fieldset>
+
+        <fieldset class="dd-section item19-section">
+          <legend><span>ITEM 19</span> SUPPLEMENTARY INFORMATION</legend>
+          <p class="item19-note">Retained with this working form for review. Item 19 is not appended to the normal transmitted (FPL-...) message.</p>
+
+          <div class="field-grid two-column">
+            <label class="field-control" for="endurance">
+              <span>ENDURANCE / FUEL</span>
+              <input id="endurance" type="text" data-path="item19.endurance" autocomplete="off" spellcheck="false" placeholder="HHMM or form value">
+            </label>
+            <label class="field-control" for="personsOnBoard">
+              <span>PERSONS ON BOARD</span>
+              <input id="personsOnBoard" type="text" data-path="item19.personsOnBoard" autocomplete="off" spellcheck="false" placeholder="Number or TBN">
+            </label>
+          </div>
+
+          <div class="supplement-grid">
+            <section class="supplement-card" aria-labelledby="radioHeading">
+              <h3 id="radioHeading">EMERGENCY RADIO</h3>
+              <div class="check-grid">
+                <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency1215"><span>121.5 MHz</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency243"><span>243.0 MHz</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency500"><span>500 kHz</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency8364"><span>8364 kHz</span></label>
+              </div>
+              <label class="field-control inline-field" for="emergencyRadioOther">
+                <span>OTHER</span>
+                <input id="emergencyRadioOther" type="text" data-path="item19.emergencyRadio.other" autocomplete="off" spellcheck="false" placeholder="Other emergency radio">
+              </label>
+            </section>
+
+            <section class="supplement-card" aria-labelledby="survivalHeading">
+              <h3 id="survivalHeading">SURVIVAL EQUIPMENT</h3>
+              <div class="check-grid">
+                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.polar"><span>Polar</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.desert"><span>Desert</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.maritime"><span>Maritime</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.jungle"><span>Jungle</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.global"><span>Global</span></label>
+              </div>
+            </section>
+
+            <section class="supplement-card" aria-labelledby="jacketsHeading">
+              <h3 id="jacketsHeading">LIFE JACKETS</h3>
+              <div class="check-grid">
+                <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.carried"><span>Carried</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.lights"><span>Lights</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.fluorescein"><span>Fluorescein</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.uhf"><span>UHF</span></label>
+                <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.vhf"><span>VHF</span></label>
+              </div>
+            </section>
+
+            <section class="supplement-card" aria-labelledby="dinghyHeading">
+              <h3 id="dinghyHeading">DINGHIES</h3>
+              <label class="check-control single-check"><input type="checkbox" data-path="item19.dinghies.carried"><span>Carried</span></label>
+              <div class="mini-field-grid">
+                <label class="field-control" for="dinghyNumber"><span>NUMBER</span><input id="dinghyNumber" type="text" inputmode="numeric" data-path="item19.dinghies.number" autocomplete="off"></label>
+                <label class="field-control" for="dinghyCapacity"><span>CAPACITY</span><input id="dinghyCapacity" type="text" inputmode="numeric" data-path="item19.dinghies.capacity" autocomplete="off"></label>
+              </div>
+              <label class="check-control single-check"><input type="checkbox" data-path="item19.dinghies.cover"><span>Cover</span></label>
+              <label class="field-control inline-field" for="dinghyColor"><span>COVER / DINGHY COLOR</span><input id="dinghyColor" type="text" data-path="item19.dinghies.color" autocomplete="off" spellcheck="false"></label>
+            </section>
+          </div>
+
+          <div class="field-grid two-column item19-detail-grid">
+            <label class="field-control" for="radioFrequencies">
+              <span>RADIO FREQUENCIES</span>
+              <input id="radioFrequencies" type="text" data-path="item19.radioFrequencies" autocomplete="off" spellcheck="false" placeholder="Applicable supplementary frequencies">
+            </label>
+            <label class="field-control" for="aircraftSerial">
+              <span>AIRCRAFT SERIAL NUMBER</span>
+              <input id="aircraftSerial" type="text" data-path="item19.aircraftSerial" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="field-control" for="item19AircraftType">
+              <span>AIRCRAFT TYPE INFORMATION</span>
+              <input id="item19AircraftType" type="text" data-path="item19.aircraftType" autocomplete="off" spellcheck="false">
+            </label>
+          </div>
+          <label class="field-control textarea-control" for="item19Remarks">
+            <span>SUPPLEMENTARY REMARKS</span>
+            <textarea id="item19Remarks" data-path="item19.remarks" rows="4" autocomplete="off" spellcheck="false"></textarea>
+          </label>
+        </fieldset>
+
+        <fieldset class="dd-section rejection-section">
+          <legend>REJECTION / VALIDATION RESPONSE</legend>
+          <p class="field-help">Optional reference area. Pasted text remains local and does not change or submit this flight plan.</p>
+          <label class="field-control textarea-control" for="rejectionResponse">
+            <span>EXTERNAL RESPONSE TEXT</span>
+            <textarea id="rejectionResponse" rows="6" autocomplete="off" spellcheck="false" placeholder="Paste a REJ, ERROR, PROF, or ROUTE response here while you edit the plan"></textarea>
+          </label>
+        </fieldset>
+
+        <section id="structuralStatus" class="structural-status" aria-labelledby="structuralStatusTitle" role="status" aria-live="polite" tabindex="-1" hidden>
+          <div class="status-heading">
+            <span id="structuralStatusBadge" class="status-badge"></span>
+            <h3 id="structuralStatusTitle">LOCAL STRUCTURAL CHECK</h3>
+          </div>
+          <div id="structuralStatusDetails"></div>
+        </section>
+
+        <div class="form-actions">
+          <button id="generateButton" class="primary-button generate-button" type="button">GENERATE FPL</button>
+          <button id="resetButton" class="danger-button" type="button">NEW / RESET</button>
+        </div>
+      </form>
+
+      <section id="outputPanel" class="output-panel" aria-labelledby="outputTitle" hidden>
+        <div class="output-heading">
+          <div>
+            <p class="section-kicker">TRANSMITTED FLIGHT PLAN</p>
+            <h2 id="outputTitle">GENERATED FPL</h2>
+          </div>
+          <span id="outputFreshness" class="freshness-badge">CURRENT</span>
+        </div>
+        <pre id="fplOutput" tabindex="0" aria-label="Generated FPL message"></pre>
+        <p class="output-note">Item 19 supplementary information is intentionally excluded from this transmitted FPL message.</p>
+        <div class="output-actions">
+          <button id="copyButton" class="primary-button" type="button" disabled>COPY FPL</button>
+          <button id="editButton" class="secondary-button" type="button">EDIT</button>
+          <button id="outputResetButton" class="danger-button" type="button">NEW / RESET</button>
+        </div>
+        <div id="copyStatus" class="copy-status" role="status" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./flight-plan-app.js"></script>
+</body>
+</html>

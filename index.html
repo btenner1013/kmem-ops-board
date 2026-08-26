@@ -2943,6 +2943,7 @@ setInterval(phase45PolishOpsText,1000);
 (function(){
   const DISPLAY_CONTROL_URL="./display_control.html";
   const HAZARD_CONTROL_URL="./control.html";
+  const FLIGHT_PLAN_URL="./flight-plan.html";
   const BOARD_URL="https://btenner1013.github.io/kmem-ops-board/";
   const QR_DATA_URI="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJQAAACUCAIAAAD6XpeDAAADs0lEQVR4nO2dQa7bMAwFm6L3v/LvVl0QIEtS8SQzS8eRBT8QD5RI+fXz8/NLmPx+9wTk/1E8MIoHRvHAKB4YxQOjeGD+RD+8Xq/xh3VyynM+U+NERONn5nDzvRl5YBQPjOKBCT3vZNtjMvdn5lD973k9+m/kcxn/235vRh4YxQOjeGBSnnfSyZMy40S+UvWe6viZuXVyzan3dmLkgVE8MIoHpux5N6l6WOZ6dX2y6sE3MfLAKB4YxQPzCM+rrhl29sxu7sNtY+SBUTwwigem7HnbOU1n/HetqU7NrYqRB0bxwCgemJTn3cyBqrUhnb23zr5ghu33ZuSBUTwwigcm9Lybe1Sd2sgqnRqWaJzM9Q2MPDCKB0bxwKT686bynnOcTm1I1ZM6fQWdHoYq1m1+EYoHRvHAtGpYtmtPpvrHq8/q1HxGVH0x8ywjD4zigVE8MK9q3cfN3OsJZ8F08rmpPsIIIw+M4oFRPDBjnpd62EI/+0YdSqdvb8q/9bwPR/HAKB6Ylf28qg/dvH7SqWGZuqfjzUYeGMUDo3hgUnleaqBi31tnfW/K527mcxvvwcgDo3hgFA9M6HnvWq+L6JyfubF+u53Dubb54SgeGMUD09rP21hvjJ57spEjZu7ZPvPMXoUvQvHAKB6YVJ538q4c6KbXZnhC3mnkgVE8MIoHZv37eZne8+p/p65nnpWZ28m2F54YeWAUD4zigSnneRmm1gMzY07VsEz5UPSsaEz7874UxQOjeGBW9vMy45xsnFH5Lv/b8PgIIw+M4oFRPDCp/ryIKb+sPjczh6make1zajrnjhp5YBQPjOKBKfcqTOVqU/tqVbb7LrZ7BE+MPDCKB0bxwDyuP297/bPTM9551lSNzImRB0bxwCgemNZ3FTI8uQ8vM4ftsz07GHlgFA+M4oEpe17HS6bWSDPes/1Ng5Pq2ZsZn3Zt88NRPDCKB6b8nfSqH3Q87CadfHE7j4ww8sAoHhjFA9Oq26wS5WGZ+0+meiemzo/OzC1D9b9GHhjFA6N4YFo1LKkHXOyB2zhHbWqcjbM6jTwwigdG8cC09vMiNtY/M975rjNCt8+ejjDywCgeGMUDs163mSHjVRvnYVZrXjJsnOUWYeSBUTwwigfmEZ5XpVP3OLVXV73H/jz5B8UDo3hgyp431Rs+daZXZ/zo/o39wmrdZgYjD4zigVE8MCnP21iXu3k+9cZ5YBm2v/Nn5IFRPDCKByb1XQV5JkYeGMUDo3hgFA+M4oFRPDCKB+YvUpQHTuOdJukAAAAASUVORK5CYII=";
 
@@ -2977,8 +2978,17 @@ setInterval(phase45PolishOpsText,1000);
     hazard.title="Hazard / lightning control panel";
     hazard.textContent="⚡";
 
-    wrap.appendChild(display);
+    const flightPlan=document.createElement("a");
+    flightPlan.className="board-quick-link-phase66";
+    flightPlan.href=FLIGHT_PLAN_URL;
+    flightPlan.target="_blank";
+    flightPlan.title="Flight Plan Tool";
+    flightPlan.setAttribute("aria-label","Open Flight Plan Tool");
+    flightPlan.textContent="🌐";
+
     wrap.appendChild(hazard);
+    wrap.appendChild(flightPlan);
+    wrap.appendChild(display);
     target.appendChild(wrap);
   }
 
