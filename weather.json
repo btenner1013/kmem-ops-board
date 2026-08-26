@@ -1,21 +1,21 @@
 {
   "metar": "METAR KMEM 261854Z 09014KT 10SM FEW025 FEW040 SCT060 SCT220 31/22 A2997 RMK AO2 PK WND 04033/1807 LTG DSNT SE-SW SLP144 T03110222 $",
   "taf": "TAF KMEM 261723Z 2618/2724 24007KT P6SM FEW050 BKN200 \n  PROB30 2618/2624 5SM -TSRA BKN060CB \n  FM270000 12005KT P6SM VCTS BKN050CB \n  PROB30 2700/2704 4SM -TSRA BKN050CB \n  FM270500 20004KT P6SM SCT250 \n  FM271600 03007KT P6SM SCT250",
-  "atisText": "MEM ATIS INFO G 1854Z. 09014KT 10SM FEW025 FEW040 SCT060 SCT220 31/22 A2997 (TWO NINER NINER SEVEN) RMK AO2 PK WND 04033/1807 LTG DSNT SE-SW SLP144 T03110222. SIMUL VISUAL APCHS IN USE RY 36L, 36R, 9. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 9. NOTICE TO AIRMEN. FREQ 121.0 OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. RWY 36R PAPI OTS. RWY 36L PAPI OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO G",
-  "atisLetter": "G",
-  "atisPhonetic": "GOLF",
-  "atisDisplay": "GOLF",
+  "atisText": "MEM ATIS INFO H 1854Z. 09014KT 10SM FEW025 FEW040 SCT060 SCT220 31/22 A2997 (TWO NINER NINER SEVEN) RMK AO2 PK WND 04033/1807 LTG DSNT SE-SW SLP144 T03110222. SIMUL VISUAL APCHS IN USE RY 36L, 36R, 9. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 9. NOTICE TO AIRMEN. FREQ 121.0 OTS. RWY 18R RAILS OTS. RWY 27 RAILS OTS. RWY 36R PAPI OTS. RWY 36L PAPI OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO H",
+  "atisLetter": "H",
+  "atisPhonetic": "HOTEL",
+  "atisDisplay": "HOTEL",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-26T18:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 42,
   "atisObservedZ": "2026-08-26T18:54:00Z",
-  "atisAgeMinutes": 32,
-  "atisReportIdentity": "G:1854Z",
+  "atisAgeMinutes": 42,
+  "atisReportIdentity": "H:1854Z",
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "G",
-  "atisReportedPhonetic": "GOLF",
+  "atisReportedLetter": "H",
+  "atisReportedPhonetic": "HOTEL",
   "atisReportedArrRunways": "36L / 36R / 9",
   "atisReportedDepRunways": "36L / 36C / 36R / 9",
   "atisReportedClosedRunways": "NONE",
@@ -30,7 +30,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-08-26T16:35:31Z",
-  "trendSampleCount": 22,
+  "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -154,7 +154,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL NOW-24Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-26 19:24:00.000",
+  "bwcUpdatedZ": "2026-08-26 19:30:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -167,7 +167,7 @@
   "milNotamCount": 5,
   "milNotamStatus": "5 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-26 19:26:25Z",
+  "milNotamUpdatedZ": "2026-08-26 19:36:45Z",
   "milNotamScrollText": "M0033/26 M0033/26 NOTAMC M0032/26 A) KMEM  |  M0034/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM",
   "milNotams": [
     {
@@ -234,18 +234,6 @@
   "runwayClosureNotamCount": 0,
   "constructionStatusNotams": [
     {
-      "number": "08/343",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY P BTN TWY N AND TWY J, TWY T BTN TWY N AND TWY J WIP SPRAYING, WEEDING, MOWING",
-      "displayText": "TWY P BTN TWY N AND TWY J, TWY T BTN TWY N AND TWY J WIP SPRAYING, WEEDING, MOWING",
-      "effectiveStart": "202608261400",
-      "effectiveEnd": "202608261930",
-      "lastUpdated": "2026-08-25T20:35:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY P BTN TWY N AND TWY J, TWY T BTN TWY N AND TWY J WIP SPRAYING, WEEDING, MOWING"
-    },
-    {
       "number": "08/327",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -282,16 +270,16 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 4,
+  "constructionStatusNotamCount": 3,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-08-26 19:25Z",
+  "allFeedsUpdatedZ": "2026-08-26 19:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-26 19:25:30Z"
+    "lastWorkflowTimestampZ": "2026-08-26 19:35:30Z"
   }
 }
