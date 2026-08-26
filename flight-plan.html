@@ -262,80 +262,110 @@
         <fieldset class="dd-section item19-section">
           <legend><span>ITEM 19</span> SUPPLEMENTARY INFORMATION</legend>
           <div class="item19-sheet">
-            <div class="item19-row item19-summary-row">
-              <label class="field-control" for="endurance">
+            <div class="item19-band item19-summary-row">
+              <label class="field-control item19-cell" for="endurance">
                 <span>ENDURANCE / FUEL</span>
-                <input id="endurance" type="text" data-path="item19.endurance" autocomplete="off" spellcheck="false" placeholder="HHMM or form value">
+                <span class="item19-value-line">
+                  <span class="item19-form-prefix" aria-hidden="true">FUEL</span>
+                  <input id="endurance" type="text" data-path="item19.endurance" autocomplete="off" spellcheck="false" placeholder="HHMM or form value">
+                </span>
               </label>
-              <label class="field-control" for="personsOnBoard">
+              <label class="field-control item19-cell" for="personsOnBoard">
                 <span>PERSONS ON BOARD</span>
-                <input id="personsOnBoard" type="text" data-path="item19.personsOnBoard" autocomplete="off" spellcheck="false" placeholder="Number or TBN">
+                <span class="item19-value-line">
+                  <span class="item19-form-prefix" aria-hidden="true">POB</span>
+                  <input id="personsOnBoard" type="text" data-path="item19.personsOnBoard" autocomplete="off" spellcheck="false" placeholder="Number or TBN">
+                </span>
               </label>
-              <section class="item19-inline-group" aria-labelledby="radioHeading">
-                <h3 id="radioHeading" class="item19-row-heading">EMERGENCY RADIO</h3>
-                <div class="item19-option-row item19-radio-options">
-                  <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency1215"><span>121.5</span></label>
-                  <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency243"><span>243</span></label>
-                  <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency500"><span>500</span></label>
-                  <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency8364"><span>8364</span></label>
+              <section class="item19-cell item19-inline-group" aria-labelledby="radioHeading">
+                <h3 id="radioHeading" class="item19-row-heading">EMERGENCY AND SURVIVAL EQUIPMENT</h3>
+                <div class="item19-rdo-line">
+                  <span class="item19-form-prefix" aria-hidden="true">RDO</span>
+                  <div class="item19-option-row item19-radio-options">
+                    <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency1215"><span>121.5</span></label>
+                    <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency243"><span>243</span></label>
+                    <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency500"><span>500</span></label>
+                    <label class="check-control"><input type="checkbox" data-path="item19.emergencyRadio.frequency8364"><span>8364</span></label>
+                  </div>
                 </div>
               </section>
             </div>
 
-            <section class="item19-row" aria-labelledby="equipmentHeading">
-              <h3 id="equipmentHeading" class="item19-row-heading">TYPE OF EQUIPMENT</h3>
-              <div class="item19-option-row item19-equipment-options">
-                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.polar"><span>POLAR</span></label>
-                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.desert"><span>DESERT</span></label>
-                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.maritime"><span>MARITIME</span></label>
-                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.jungle"><span>JUNGLE</span></label>
-                <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.global"><span>GLOBAL</span></label>
-              </div>
-            </section>
+            <div class="item19-band item19-equipment-band">
+              <section class="item19-cell" aria-labelledby="equipmentHeading">
+                <h3 id="equipmentHeading" class="item19-row-heading">TYPE OF EQUIPMENT</h3>
+                <div class="item19-option-row item19-equipment-options">
+                  <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.polar"><span>POLAR</span></label>
+                  <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.desert"><span>DESERT</span></label>
+                  <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.maritime"><span>MARITIME</span></label>
+                  <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.jungle"><span>JUNGLE</span></label>
+                  <label class="check-control"><input type="checkbox" data-path="item19.survivalEquipment.global"><span>GLOBAL</span></label>
+                </div>
+              </section>
 
-            <section class="item19-row" aria-labelledby="jacketsHeading">
-              <h3 id="jacketsHeading" class="item19-row-heading">LIFE JACKETS</h3>
-              <div class="item19-option-row item19-jacket-options">
-                <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.carried"><span>JACKETS</span></label>
-                <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.lights"><span>LIGHT</span></label>
-                <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.fluorescein"><span>FLUORESCEIN</span></label>
-              </div>
-            </section>
+              <section class="item19-cell" aria-labelledby="jacketsHeading">
+                <h3 id="jacketsHeading" class="item19-row-heading">LIFE JACKETS</h3>
+                <div class="item19-option-row item19-jacket-options">
+                  <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.carried"><span>JACKETS</span></label>
+                  <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.lights"><span>LIGHT</span></label>
+                  <label class="check-control"><input type="checkbox" data-path="item19.lifeJackets.fluorescein"><span>FLUORESCEIN</span></label>
+                </div>
+              </section>
 
-            <div class="item19-row">
-              <label class="field-control item19-radio-frequency" for="radioFrequencies">
+              <label class="field-control item19-cell item19-radio-frequency" for="radioFrequencies">
                 <span>RADIO FREQUENCY</span>
                 <input id="radioFrequencies" type="text" data-path="item19.radioFrequencies" autocomplete="off" spellcheck="false" placeholder="Applicable supplementary frequency">
               </label>
             </div>
 
-            <section class="item19-row" aria-labelledby="dinghyHeading">
-              <h3 id="dinghyHeading" class="item19-row-heading">DINGHIES</h3>
-              <div class="item19-dinghy-row">
+            <div class="item19-band item19-dinghy-band">
+              <section class="item19-cell" aria-labelledby="dinghyHeading">
+                <h3 id="dinghyHeading" class="item19-row-heading">DINGHIES</h3>
                 <label class="check-control"><input type="checkbox" data-path="item19.dinghies.carried"><span>DINGHIES</span></label>
-                <label class="check-control"><input type="checkbox" data-path="item19.dinghies.cover"><span>COVER</span></label>
-                <label class="field-control" for="dinghyNumber"><span>NUMBER</span><input id="dinghyNumber" type="text" inputmode="numeric" data-path="item19.dinghies.number" autocomplete="off"></label>
-                <label class="field-control" for="dinghyCapacity"><span>CAPACITY</span><input id="dinghyCapacity" type="text" inputmode="numeric" data-path="item19.dinghies.capacity" autocomplete="off"></label>
-              </div>
-              <label class="field-control item19-dinghy-color" for="dinghyColor"><span>COLOR</span><input id="dinghyColor" type="text" data-path="item19.dinghies.color" autocomplete="off" spellcheck="false"></label>
-            </section>
+              </section>
 
-            <div class="item19-row">
-              <label class="field-control textarea-control item19-remarks" for="item19Remarks">
-                <span>RMK/</span>
-                <textarea id="item19Remarks" data-path="item19.remarks" rows="3" autocomplete="off" spellcheck="false"></textarea>
-              </label>
+              <section class="item19-cell" aria-labelledby="dinghyCoverColorHeading">
+                <h3 id="dinghyCoverColorHeading" class="item19-row-heading">COVER / COLOR</h3>
+                <div class="item19-cover-color-controls">
+                  <label class="check-control"><input type="checkbox" data-path="item19.dinghies.cover"><span>COVER</span></label>
+                  <label class="field-control item19-inline-field" for="dinghyColor"><span class="visually-hidden">COLOR</span><input id="dinghyColor" type="text" data-path="item19.dinghies.color" autocomplete="off" spellcheck="false"></label>
+                </div>
+              </section>
+
+              <section class="item19-cell" aria-labelledby="dinghyNumberCapacityHeading">
+                <h3 id="dinghyNumberCapacityHeading" class="item19-row-heading">NUMBER / CAPACITY</h3>
+                <div class="item19-number-capacity-controls">
+                  <label class="field-control item19-inline-field" for="dinghyNumber"><span class="visually-hidden">NUMBER</span><input id="dinghyNumber" type="text" inputmode="numeric" data-path="item19.dinghies.number" autocomplete="off"></label>
+                  <span class="item19-divider" aria-hidden="true">/</span>
+                  <label class="field-control item19-inline-field" for="dinghyCapacity"><span class="visually-hidden">CAPACITY</span><input id="dinghyCapacity" type="text" inputmode="numeric" data-path="item19.dinghies.capacity" autocomplete="off"></label>
+                </div>
+              </section>
+
+              <div class="item19-cell item19-rmk-lead" aria-hidden="true">
+                <span class="item19-row-heading">RMK/</span>
+                <span class="item19-rmk-line"></span>
+              </div>
             </div>
 
-            <div class="item19-row item19-aircraft-row">
-              <label class="field-control" for="aircraftSerial">
-                <span>AIRCRAFT SERIAL NUMBER</span>
-                <input id="aircraftSerial" type="text" data-path="item19.aircraftSerial" autocomplete="off" spellcheck="false">
+            <div class="item19-band item19-lower-band">
+              <label class="field-control textarea-control item19-cell item19-remarks" for="item19Remarks">
+                <span>REMARKS</span>
+                <textarea id="item19Remarks" data-path="item19.remarks" rows="3" autocomplete="off" spellcheck="false"></textarea>
               </label>
-              <label class="field-control" for="item19AircraftType">
-                <span>AIRCRAFT TYPE</span>
-                <input id="item19AircraftType" type="text" data-path="item19.aircraftType" autocomplete="off" spellcheck="false">
-              </label>
+
+              <section class="item19-cell item19-aircraft-in-flight" aria-labelledby="aircraftInFlightHeading">
+                <h3 id="aircraftInFlightHeading" class="item19-row-heading">AIRCRAFT SERIAL NUMBERS AND TYPE OF AIRCRAFT IN FLIGHT</h3>
+                <div class="item19-aircraft-fields">
+                  <label class="field-control" for="aircraftSerial">
+                    <span>AIRCRAFT SERIAL NUMBER</span>
+                    <input id="aircraftSerial" type="text" data-path="item19.aircraftSerial" autocomplete="off" spellcheck="false">
+                  </label>
+                  <label class="field-control" for="item19AircraftType">
+                    <span>AIRCRAFT TYPE</span>
+                    <input id="item19AircraftType" type="text" data-path="item19.aircraftType" autocomplete="off" spellcheck="false">
+                  </label>
+                </div>
+              </section>
             </div>
           </div>
           <p class="item19-note">Retained with this working form for review. Item 19 is not appended to the normal transmitted (FPL-...) message.</p>

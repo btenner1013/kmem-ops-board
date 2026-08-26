@@ -75,7 +75,8 @@ test("Item 19 preserves the authoritative DD1801 row order without UX cards", ()
     .map(match => match[1]);
   const item19ModelPaths = FIELD_PATHS.filter(path => path.startsWith("item19."));
 
-  assert.deepEqual(item19UiPaths, item19ModelPaths);
+  assert.equal(item19UiPaths.length, item19ModelPaths.length);
+  assert.deepEqual([...new Set(item19UiPaths)].sort(), [...item19ModelPaths].sort());
   assert.doesNotMatch(item19Html, /supplement-(?:grid|card)/);
   assert.doesNotMatch(item19Html, />\s*(?:Carried|UHF|VHF|OTHER)\s*</i);
   assert.doesNotMatch(toolCss, /\.supplement-card\b/);
@@ -83,9 +84,26 @@ test("Item 19 preserves the authoritative DD1801 row order without UX cards", ()
     appJs,
     /Life-jacket (?:UHF|VHF)|Other emergency radio|Life jackets carried|Dinghies carried/,
   );
+  const summaryBand = item19Html.indexOf('class="item19-band item19-summary-row"');
+  const equipmentBand = item19Html.indexOf('class="item19-band item19-equipment-band"');
+  const dinghyBand = item19Html.indexOf('class="item19-band item19-dinghy-band"');
+  const lowerBand = item19Html.indexOf('class="item19-band item19-lower-band"');
+  assert.ok(summaryBand < equipmentBand && equipmentBand < dinghyBand && dinghyBand < lowerBand);
   assert.match(
     item19Html,
-    /class="item19-dinghy-row"[\s\S]*data-path="item19\.dinghies\.capacity"[\s\S]*<\/div>\s*<label class="field-control item19-dinghy-color"[^>]*>[\s\S]*data-path="item19\.dinghies\.color"/,
+    /class="item19-band item19-summary-row"[\s\S]*ENDURANCE \/ FUEL[\s\S]*PERSONS ON BOARD[\s\S]*EMERGENCY AND SURVIVAL EQUIPMENT[\s\S]*class="item19-band item19-equipment-band"/,
+  );
+  assert.match(
+    item19Html,
+    /class="item19-band item19-equipment-band"[\s\S]*TYPE OF EQUIPMENT[\s\S]*LIFE JACKETS[\s\S]*RADIO FREQUENCY[\s\S]*class="item19-band item19-dinghy-band"/,
+  );
+  assert.match(
+    item19Html,
+    /class="item19-band item19-dinghy-band"[\s\S]*DINGHIES[\s\S]*COVER \/ COLOR[\s\S]*NUMBER \/ CAPACITY[\s\S]*RMK\/[\s\S]*class="item19-band item19-lower-band"/,
+  );
+  assert.match(
+    item19Html,
+    /class="item19-band item19-lower-band"[\s\S]*REMARKS[\s\S]*AIRCRAFT SERIAL NUMBERS AND TYPE OF AIRCRAFT IN FLIGHT/,
   );
 
   for (const label of [
@@ -100,6 +118,7 @@ test("Item 19 preserves the authoritative DD1801 row order without UX cards", ()
     "CAPACITY",
     "COLOR",
     "RMK/",
+    "REMARKS",
     "AIRCRAFT SERIAL NUMBER",
     "AIRCRAFT TYPE",
   ]) {
@@ -108,7 +127,23 @@ test("Item 19 preserves the authoritative DD1801 row order without UX cards", ()
 
   assert.match(
     toolCss,
-    /@media \(max-width: 680px\)[\s\S]*\.item19-summary-row,[\s\S]*\.item19-option-row,[\s\S]*\.item19-dinghy-row,[\s\S]*\.item19-aircraft-row/,
+    /\.item19-summary-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 23fr\) minmax\(0, 24fr\) minmax\(0, 53fr\)/,
+  );
+  assert.match(
+    toolCss,
+    /\.item19-equipment-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 42fr\) minmax\(0, 30fr\) minmax\(0, 28fr\)/,
+  );
+  assert.match(
+    toolCss,
+    /\.item19-dinghy-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 18fr\) minmax\(0, 35fr\) minmax\(0, 34fr\) minmax\(0, 13fr\)/,
+  );
+  assert.match(
+    toolCss,
+    /\.item19-lower-band\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 60fr\) minmax\(0, 40fr\)/,
+  );
+  assert.match(
+    toolCss,
+    /@media \(max-width: 760px\)[\s\S]*\.item19-summary-row,[\s\S]*\.item19-equipment-band,[\s\S]*\.item19-dinghy-band,[\s\S]*\.item19-lower-band[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/,
   );
 });
 
