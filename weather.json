@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-26T03:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-08-26T03:54:00Z",
-  "atisAgeMinutes": 22,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "K:0354Z",
   "atisSourceIsCurrent": true,
   "atisReportedLetter": "K",
@@ -30,7 +30,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-08-26T01:25:31Z",
-  "trendSampleCount": 21,
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -154,12 +154,12 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 13-18Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-26 04:12:00.000",
-  "bwcNexrad": "NO DATA",
+  "bwcUpdatedZ": "2026-08-26 04:24:00.000",
+  "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "SEVERE",
   "bwcAhasRisk": "SEVERE",
-  "bwcBasedOn": "NEXBAM",
+  "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=8&day=26&hour=04&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=8&iDay=26&iHour=04",
@@ -167,7 +167,7 @@
   "milNotamCount": 4,
   "milNotamStatus": "4 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-26 04:16:27Z",
+  "milNotamUpdatedZ": "2026-08-26 04:26:29Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0032/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM",
   "milNotams": [
     {
@@ -274,13 +274,13 @@
   "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-08-26 04:15Z",
+  "allFeedsUpdatedZ": "2026-08-26 04:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-26 04:15:30Z"
+    "lastWorkflowTimestampZ": "2026-08-26 04:25:30Z"
   }
 }
