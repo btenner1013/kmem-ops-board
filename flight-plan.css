@@ -664,10 +664,6 @@ h1 {
   grid-template-columns: 1.15fr .8fr 1fr 1fr;
 }
 
-.item19-primary-grid {
-  grid-template-columns: minmax(160px, 240px) minmax(140px, 210px);
-}
-
 .field-control {
   display: flex;
   min-width: 0;
@@ -678,7 +674,7 @@ h1 {
 }
 
 .field-control > span,
-.supplement-card h3 {
+.item19-row-heading {
   font-size: .77rem;
   letter-spacing: .07em;
 }
@@ -775,36 +771,47 @@ select option[value=""] {
   color: var(--ops-yellow);
 }
 
-.supplement-grid {
+.item19-sheet {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 18px;
+  gap: 26px;
+  margin-top: 8px;
 }
 
-@media (max-width: 1000px) {
-  .supplement-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.supplement-card {
+.item19-row,
+.item19-inline-group {
   min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-soft);
 }
 
-.supplement-card h3 {
-  margin: 0 0 12px;
-  color: var(--ops-green);
-}
-
-.check-grid {
+.item19-summary-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 13px;
+  grid-template-columns: minmax(135px, .75fr) minmax(125px, .7fr) minmax(280px, 1.55fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.item19-row-heading {
+  margin: 0 0 12px;
+  color: #fff;
+  font-weight: 900;
+}
+
+.item19-option-row {
+  display: grid;
+  gap: 10px 16px;
+}
+
+.item19-radio-options {
+  grid-template-columns: repeat(4, minmax(58px, 1fr));
+}
+
+.item19-equipment-options {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  max-width: 760px;
+}
+
+.item19-jacket-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 560px;
 }
 
 .check-control {
@@ -823,20 +830,46 @@ select option[value=""] {
   accent-color: var(--ops-green);
 }
 
-.inline-field,
-.single-check {
+.item19-radio-frequency {
+  max-width: 680px;
+}
+
+.item19-dinghy-row {
+  display: grid;
+  grid-template-columns:
+    max-content
+    max-content
+    minmax(95px, 130px)
+    minmax(110px, 150px);
+  gap: 14px;
+  align-items: end;
+}
+
+.item19-dinghy-row .check-control {
+  min-height: 48px;
+}
+
+.item19-dinghy-color {
+  max-width: 240px;
   margin-top: 12px;
 }
 
-.mini-field-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 8px;
+.item19-remarks {
+  max-width: 820px;
 }
 
-.item19-detail-grid {
-  margin-top: 16px;
+.item19-remarks textarea {
+  min-height: 92px;
+}
+
+.item19-aircraft-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(150px, 220px);
+  gap: 18px;
+}
+
+.item19-section .item19-note {
+  margin-top: 26px;
 }
 
 .rejection-section {
@@ -1091,7 +1124,10 @@ pre:focus-visible {
   .item13-grid,
   .item15-layout,
   .item16-grid,
-  .supplement-grid,
+  .item19-summary-row,
+  .item19-option-row,
+  .item19-dinghy-row,
+  .item19-aircraft-row,
   .import-flags {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1125,6 +1161,18 @@ pre:focus-visible {
 
   #route {
     min-height: 190px;
+  }
+
+  .item19-radio-frequency,
+  .item19-equipment-options,
+  .item19-jacket-options,
+  .item19-dinghy-color,
+  .item19-remarks {
+    max-width: none;
+  }
+
+  .item19-dinghy-row .check-control {
+    min-height: 34px;
   }
 
   .choice-card {
@@ -1163,10 +1211,6 @@ pre:focus-visible {
     left: -8px;
   }
 
-  .check-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .workspace-actions,
   .route-button-row,
   .form-actions,
@@ -1186,10 +1230,6 @@ pre:focus-visible {
 }
 
 @media (max-width: 390px) {
-  .mini-field-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .dd-section legend span {
     display: block;
     margin: 0 0 4px;

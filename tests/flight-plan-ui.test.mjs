@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { FIELD_PATHS } from "../flight-plan-core.js";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const toolHtml = readFileSync(new URL("../flight-plan.html", import.meta.url), "utf8");
@@ -64,6 +65,51 @@ test("Item 15 presents speed, level, and route in one DD1801 row", () => {
   assert.match(item15Html, /class="field-grid item15-layout"/);
   assert.ok(item15Html.indexOf('id="cruisingSpeed"') < item15Html.indexOf('id="level"'));
   assert.ok(item15Html.indexOf('id="level"') < item15Html.indexOf('id="route"'));
+});
+
+test("Item 19 preserves the authoritative DD1801 row order without UX cards", () => {
+  const item19Start = toolHtml.indexOf('<fieldset class="dd-section item19-section">');
+  const item19End = toolHtml.indexOf("</fieldset>", item19Start);
+  const item19Html = toolHtml.slice(item19Start, item19End);
+  const item19UiPaths = [...item19Html.matchAll(/data-path="(item19\.[^"]+)"/g)]
+    .map(match => match[1]);
+  const item19ModelPaths = FIELD_PATHS.filter(path => path.startsWith("item19."));
+
+  assert.deepEqual(item19UiPaths, item19ModelPaths);
+  assert.doesNotMatch(item19Html, /supplement-(?:grid|card)/);
+  assert.doesNotMatch(item19Html, />\s*(?:Carried|UHF|VHF|OTHER)\s*</i);
+  assert.doesNotMatch(toolCss, /\.supplement-card\b/);
+  assert.doesNotMatch(
+    appJs,
+    /Life-jacket (?:UHF|VHF)|Other emergency radio|Life jackets carried|Dinghies carried/,
+  );
+  assert.match(
+    item19Html,
+    /class="item19-dinghy-row"[\s\S]*data-path="item19\.dinghies\.capacity"[\s\S]*<\/div>\s*<label class="field-control item19-dinghy-color"[^>]*>[\s\S]*data-path="item19\.dinghies\.color"/,
+  );
+
+  for (const label of [
+    "TYPE OF EQUIPMENT",
+    "JACKETS",
+    "LIGHT",
+    "FLUORESCEIN",
+    "RADIO FREQUENCY",
+    "DINGHIES",
+    "COVER",
+    "NUMBER",
+    "CAPACITY",
+    "COLOR",
+    "RMK/",
+    "AIRCRAFT SERIAL NUMBER",
+    "AIRCRAFT TYPE",
+  ]) {
+    assert.match(item19Html, new RegExp(`>${label.replace("/", "\\/")}<`));
+  }
+
+  assert.match(
+    toolCss,
+    /@media \(max-width: 680px\)[\s\S]*\.item19-summary-row,[\s\S]*\.item19-option-row,[\s\S]*\.item19-dinghy-row,[\s\S]*\.item19-aircraft-row/,
+  );
 });
 
 test("Item 10a and 10b are separate blank controls", () => {

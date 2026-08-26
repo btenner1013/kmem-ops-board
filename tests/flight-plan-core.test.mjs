@@ -53,6 +53,14 @@ test("blank model exposes every operational leaf with no defaults", () => {
   assert.equal(first.item10.surveillance, "");
   assert.notStrictEqual(first.item19.emergencyRadio, second.item19.emergencyRadio);
   assert.notStrictEqual(first.item19.dinghies, second.item19.dinghies);
+  for (const obsoletePath of [
+    "item19.emergencyRadio.other",
+    "item19.lifeJackets.uhf",
+    "item19.lifeJackets.vhf",
+  ]) {
+    assert.ok(!FIELD_PATHS.includes(obsoletePath));
+    assert.equal(getFieldValue(first, obsoletePath), undefined);
+  }
   assert.equal(hasWorkingData(first), false);
 
   const validation = validateFlightPlan(first);

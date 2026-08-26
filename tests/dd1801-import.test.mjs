@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  CORE_IMPORT_FIELDS,
   extractDd1801Pdf,
   hasReliableDd1801AcroCoverage,
   mapAcroFormFields,
@@ -152,6 +153,8 @@ test("positioned DD1801 text maps exact values and splits wrapped Item 10 once",
   assert.ok(result.unreliableFields.includes("item19.survivalEquipment.polar"));
   assert.ok(result.unreliableFields.includes("item19.lifeJackets.carried"));
   assert.ok(result.unreliableFields.includes("item19.dinghies.cover"));
+  assert.ok(!result.unreliableFields.includes("item19.lifeJackets.uhf"));
+  assert.ok(!result.unreliableFields.includes("item19.lifeJackets.vhf"));
 });
 
 test("adjacent text runs are rejoined without splitting one Item 18 token", () => {
@@ -205,6 +208,34 @@ test("AcroForm mapping recognizes semantic names and keeps Item 10a/10b separate
   assert.equal(result.data.item10.surveillance, "B1D1L");
   assert.equal(result.data.item13.departure, "EGPK");
   assert.equal(result.data.item19.dinghies.cover, true);
+});
+
+test("Item 19 AcroForm mapping keeps paper labels and ignores obsolete jacket fields", () => {
+  const result = mapAcroFormFields({
+    "Item 19 Life Jackets": [{ value: "Yes" }],
+    "Item 19 Jacket Lights": [{ value: "Yes" }],
+    "Item 19 Jacket Fluorescein": [{ value: "Yes" }],
+    "Item 19 Dinghies": [{ value: "Yes" }],
+    "Emergency Radio Other": [{ value: "123.45" }],
+    "Item 19 Jacket UHF": [{ value: "Yes" }],
+    "Item 19 Jacket VHF": [{ value: "Yes" }],
+  });
+
+  assert.equal(result.data.item19.lifeJackets.carried, true);
+  assert.equal(result.data.item19.lifeJackets.lights, true);
+  assert.equal(result.data.item19.lifeJackets.fluorescein, true);
+  assert.equal(result.data.item19.dinghies.carried, true);
+  assert.equal(result.data.item19.radioFrequencies, "123.45");
+
+  for (const obsoletePath of [
+    "item19.emergencyRadio.other",
+    "item19.lifeJackets.uhf",
+    "item19.lifeJackets.vhf",
+  ]) {
+    assert.ok(!CORE_IMPORT_FIELDS.includes(obsoletePath));
+    assert.ok(!result.extractedFields.includes(obsoletePath));
+    assert.ok(!result.unreliableFields.includes(obsoletePath));
+  }
 });
 
 test("AcroForm import normalizes periods and whitespace only in Item 15 route", () => {
@@ -322,6 +353,8 @@ test(
     assert.ok(result.unreliableFields.includes("item19.survivalEquipment.global"));
     assert.ok(result.unreliableFields.includes("item19.lifeJackets.fluorescein"));
     assert.ok(result.unreliableFields.includes("item19.dinghies.carried"));
+    assert.ok(!result.unreliableFields.includes("item19.lifeJackets.uhf"));
+    assert.ok(!result.unreliableFields.includes("item19.lifeJackets.vhf"));
 
     const routeValidation = validateRoute(result.data.item15.route);
     assert.equal(

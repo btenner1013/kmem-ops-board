@@ -33,15 +33,10 @@ export const CORE_IMPORT_FIELDS = Object.freeze([
   "item18.otherInformation",
   "item19.endurance",
   "item19.personsOnBoard",
-  "item19.radioFrequencies",
-  "item19.remarks",
-  "item19.aircraftSerial",
-  "item19.aircraftType",
   "item19.emergencyRadio.frequency1215",
   "item19.emergencyRadio.frequency243",
   "item19.emergencyRadio.frequency500",
   "item19.emergencyRadio.frequency8364",
-  "item19.emergencyRadio.other",
   "item19.survivalEquipment.polar",
   "item19.survivalEquipment.desert",
   "item19.survivalEquipment.maritime",
@@ -50,13 +45,15 @@ export const CORE_IMPORT_FIELDS = Object.freeze([
   "item19.lifeJackets.carried",
   "item19.lifeJackets.lights",
   "item19.lifeJackets.fluorescein",
-  "item19.lifeJackets.uhf",
-  "item19.lifeJackets.vhf",
+  "item19.radioFrequencies",
   "item19.dinghies.carried",
+  "item19.dinghies.cover",
   "item19.dinghies.number",
   "item19.dinghies.capacity",
-  "item19.dinghies.cover",
   "item19.dinghies.color",
+  "item19.remarks",
+  "item19.aircraftSerial",
+  "item19.aircraftType",
 ]);
 
 // This flattened DD1801 uses strike-through graphics to indicate several Item
@@ -68,7 +65,6 @@ const GRAPHICAL_ITEM19_FIELDS = Object.freeze([
   "item19.emergencyRadio.frequency243",
   "item19.emergencyRadio.frequency500",
   "item19.emergencyRadio.frequency8364",
-  "item19.emergencyRadio.other",
   "item19.survivalEquipment.polar",
   "item19.survivalEquipment.desert",
   "item19.survivalEquipment.maritime",
@@ -77,8 +73,6 @@ const GRAPHICAL_ITEM19_FIELDS = Object.freeze([
   "item19.lifeJackets.carried",
   "item19.lifeJackets.lights",
   "item19.lifeJackets.fluorescein",
-  "item19.lifeJackets.uhf",
-  "item19.lifeJackets.vhf",
   "item19.dinghies.carried",
   "item19.dinghies.cover",
 ]);
@@ -320,6 +314,9 @@ const ACROFORM_ALIASES = Object.freeze({
     "item19radiofrequencies",
     "19radiofrequencies",
     "radiofrequencies",
+    "item19rdoother",
+    "rdoother",
+    "emergencyradioother",
   ],
   "item19.remarks": ["item19remarks", "19remarks", "supplementaryremarks"],
   "item19.aircraftSerial": [
@@ -337,7 +334,6 @@ const ACROFORM_ALIASES = Object.freeze({
   "item19.emergencyRadio.frequency243": ["item19rdo243", "rdo243", "radio243"],
   "item19.emergencyRadio.frequency500": ["item19rdo500", "rdo500", "radio500"],
   "item19.emergencyRadio.frequency8364": ["item19rdo8364", "rdo8364", "radio8364"],
-  "item19.emergencyRadio.other": ["item19rdoother", "rdoother", "emergencyradioother"],
   "item19.survivalEquipment.polar": ["item19survivalpolar", "survivalpolar"],
   "item19.survivalEquipment.desert": ["item19survivaldesert", "survivaldesert"],
   "item19.survivalEquipment.maritime": ["item19survivalmaritime", "survivalmaritime"],
@@ -350,8 +346,6 @@ const ACROFORM_ALIASES = Object.freeze({
     "lifejacketfluorescein",
     "jacketfluorescein",
   ],
-  "item19.lifeJackets.uhf": ["item19jacketuhf", "lifejacketuhf", "jacketuhf"],
-  "item19.lifeJackets.vhf": ["item19jacketvhf", "lifejacketvhf", "jacketvhf"],
   "item19.dinghies.carried": ["item19dinghies", "dinghiescarried", "dinghies"],
   "item19.dinghies.number": ["item19dinghynumber", "dinghynumber", "numberofdinghies"],
   "item19.dinghies.capacity": [
@@ -696,7 +690,7 @@ export function parseDd1801TextPages(pages) {
 
   result.unreliableFields.push(...GRAPHICAL_ITEM19_FIELDS);
   result.warnings.push(
-    "Flattened Item 19 radio, survival-equipment, life-jacket, dinghy-carried, and dinghy-cover selections are graphical and were not guessed.",
+    "Flattened Item 19 emergency-radio, type-of-equipment, life-jacket, dinghy, and cover selections are graphical and were not guessed.",
   );
   result.extractedFields = uniqueSorted(result.extractedFields);
   result.reliableBlankFields = uniqueSorted(
