@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-27T18:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-08-27T18:54:00Z",
-  "atisAgeMinutes": 22,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "M:1854Z",
   "atisSourceIsCurrent": true,
   "atisReportedLetter": "M",
@@ -29,7 +29,7 @@
   "lastKnownGoodCachePath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-27T16:25:30Z",
+  "trendReferenceTimestampZ": "2026-08-27T16:35:30Z",
   "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
@@ -112,12 +112,12 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-27 19:12:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-08-27 19:24:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
-  "bwcBasedOn": "NEXRAD",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "4222",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=8&day=27&hour=19&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=8&iDay=27&iHour=19",
@@ -125,7 +125,7 @@
   "milNotamCount": 6,
   "milNotamStatus": "6 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-27 19:16:59Z",
+  "milNotamUpdatedZ": "2026-08-27 19:26:57Z",
   "milNotamScrollText": "M0033/26 M0033/26 NOTAMC M0032/26 A) KMEM  |  M0034/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM  |  M0036/26 M0036/26 NOTAMC M0035/26 A) KMEM",
   "milNotams": [
     {
@@ -211,21 +211,9 @@
       "lastUpdated": "2026-08-26T21:41:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY D, L, E"
-    },
-    {
-      "number": "08/366",
-      "classification": "RWY_CLOSURE",
-      "severity": "red",
-      "text": "RWY 09/27 CLSD",
-      "displayText": "RWY 09/27 CLSD",
-      "effectiveStart": "202608271300",
-      "effectiveEnd": "202608271930",
-      "lastUpdated": "2026-08-26T21:19:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 09/27 CLSD EXC XNG TWY S, B, Y"
     }
   ],
-  "runwayClosureNotamCount": 2,
+  "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
     {
       "number": "08/371",
@@ -301,40 +289,16 @@
       "lastUpdated": "2026-08-26T21:41:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY D, L, E"
-    },
-    {
-      "number": "08/367",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "TWY V3, V2, V1, A1, A2, TWY N BTN TWY V AND TWY A, TWY C BTN TWY V AND TWY A CLSD",
-      "displayText": "TWY V3, V2, V1, A1, A2, TWY N BTN TWY V AND TWY A, TWY C BTN TWY V AND TWY A CLSD",
-      "effectiveStart": "202608271300",
-      "effectiveEnd": "202608271930",
-      "lastUpdated": "2026-08-26T21:23:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY V3, V2, V1, A1, A2, TWY N BTN TWY V AND TWY A, TWY C BTN TWY V AND TWY A CLSD"
-    },
-    {
-      "number": "08/366",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "red",
-      "text": "RWY 09/27 CLSD EXC XNG TWY S, B, Y",
-      "displayText": "RWY 09/27 CLSD EXC XNG TWY S, B, Y",
-      "effectiveStart": "202608271300",
-      "effectiveEnd": "202608271930",
-      "lastUpdated": "2026-08-26T21:19:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 09/27 CLSD EXC XNG TWY S, B, Y"
     }
   ],
-  "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-08-27 19:15Z",
+  "taxiRestrictionNotamCount": 2,
+  "allFeedsUpdatedZ": "2026-08-27 19:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-27 19:15:30Z"
+    "lastWorkflowTimestampZ": "2026-08-27 19:25:30Z"
   }
 }
