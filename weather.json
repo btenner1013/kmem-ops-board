@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-27T18:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-08-27T18:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "M:1854Z",
   "atisSourceIsCurrent": true,
   "atisReportedLetter": "M",
@@ -29,8 +29,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-27T16:15:30Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-08-27T16:25:30Z",
+  "trendSampleCount": 21,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -112,7 +112,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-27 19:00:00.000",
+  "bwcUpdatedZ": "2026-08-27 19:12:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -125,8 +125,8 @@
   "milNotamCount": 6,
   "milNotamStatus": "6 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-27 18:47:15Z",
-  "milNotamScrollText": "M0033/26 M0033/26 NOTAMC M0032/26 A) KMEM  |  M0034/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM  |  M0035/26 MIL RAMP OBST LGT U/S ON 120FT AGL POLE LOCATED 350149N0895713W, APRX 1.4NM ESE MEM. TOP ELEV 461FT MSL. UFN",
+  "milNotamUpdatedZ": "2026-08-27 19:16:59Z",
+  "milNotamScrollText": "M0033/26 M0033/26 NOTAMC M0032/26 A) KMEM  |  M0034/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM  |  M0036/26 M0036/26 NOTAMC M0035/26 A) KMEM",
   "milNotams": [
     {
       "number": "M0033/26",
@@ -184,18 +184,18 @@
       "source": "FAA_NMS_STAGING"
     },
     {
-      "number": "M0035/26",
+      "number": "M0036/26",
       "classification": "MIL",
-      "severity": "amber",
-      "text": "MIL RAMP OBST LGT U/S ON 120FT AGL POLE LOCATED 350149N0895713W, APRX 1.4NM ESE MEM. TOP ELEV 461FT MSL. UNTIL FURTHER NOTICE",
-      "displayText": "MIL RAMP OBST LGT U/S ON 120FT AGL POLE LOCATED 350149N0895713W, APRX 1.4NM ESE MEM. TOP ELEV 461FT MSL. UFN",
-      "effectiveStart": "202608271458",
-      "effectiveEnd": "202611242359",
-      "lastUpdated": "2026-08-27T14:58:00.000Z",
+      "severity": "green",
+      "text": "M0036/26 NOTAMC M0035/26 A) KMEM",
+      "displayText": "M0036/26 NOTAMC M0035/26 A) KMEM",
+      "effectiveStart": "202608271910",
+      "effectiveEnd": "202608301910",
+      "lastUpdated": "2026-08-27T19:10:00.000Z",
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "SCRIPT_FAILED",
+  "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
@@ -279,18 +279,6 @@
   "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [
     {
-      "number": "08/370",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "TWY P BTN TWY P2 AND TWY J, TWY P1 BTN TWY T AND TWY P CLSD",
-      "displayText": "TWY P BTN TWY P2 AND TWY J, TWY P1 BTN TWY T AND TWY P CLSD",
-      "effectiveStart": "202608271300",
-      "effectiveEnd": "202608271930",
-      "lastUpdated": "2026-08-26T21:41:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY P BTN TWY P2 AND TWY J, TWY P1 BTN TWY T AND TWY P CLSD"
-    },
-    {
       "number": "08/369",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "red",
@@ -339,14 +327,14 @@
       "rawText": "RWY 09/27 CLSD EXC XNG TWY S, B, Y"
     }
   ],
-  "taxiRestrictionNotamCount": 5,
-  "allFeedsUpdatedZ": "2026-08-27 19:05Z",
+  "taxiRestrictionNotamCount": 4,
+  "allFeedsUpdatedZ": "2026-08-27 19:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-27 19:05:31Z"
+    "lastWorkflowTimestampZ": "2026-08-27 19:15:30Z"
   }
 }
