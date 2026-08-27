@@ -2084,6 +2084,107 @@ function notamNumberFromItem(item){
   return String(item.number||item.id||item.notamNumber||item.accountId||item.notamId||"").trim();
 }
 
+const NOTAM_ACTION_KEYS=[
+  "milNotams","items","ficonNotams","runwayClosureNotams","rwyClosureNotams",
+  "closureNotams","constructionStatusNotams","constructionNotams",
+  "airfieldStatusNotams","taxiRestrictionNotams","taxiRouteRestrictionNotams",
+  "taxiRouteNotams","airportNotams","allNotams","notams"
+];
+
+function canonicalNotamNumber(value){
+  const text=String(value||"").toUpperCase();
+  let match=text.match(/\b([A-Z])\s*(\d{1,4})\s*\/\s*(\d{2})\b/);
+  if(match)return `${match[1]}${String(Number(match[2])).padStart(4,"0")}/${match[3]}`;
+  match=text.match(/\b(\d{1,2})\s*\/\s*(\d{3})\b/);
+  return match?`${String(Number(match[1])).padStart(2,"0")}/${match[2]}`:"";
+}
+
+function notamActionText(item){
+  if(!item)return "";
+  if(typeof item==="string")return item;
+  return [
+    item.rawText,item.fullText,item.notamText,item.text,item.displayText,
+    item.message,item.body,item.description,item.plainLanguage
+  ].filter(Boolean).join(" ");
+}
+
+function isNotamCancellation(item){
+  const typeValue=item&&typeof item==="object"
+    ? String(item.notamType||item.action||item.operation||"").trim().toUpperCase()
+    : "";
+  if(["C","NOTAMC","CANCEL","CANCELED","CANCELLED","CANCELLATION"].includes(typeValue))return true;
+  return /\bNOTAM\s*C\b/i.test(notamActionText(item));
+}
+
+function notamCancellationTarget(item){
+  if(item&&typeof item==="object"){
+    for(const key of ["cancelsNotam","cancelledNotam","canceledNotam","cancellationTarget","cancelTarget"]){
+      const explicit=canonicalNotamNumber(item[key]);
+      if(explicit)return explicit;
+    }
+  }
+  const match=notamActionText(item).match(/\bNOTAM\s*C\b\s*(?:OF\s+)?((?:[A-Z]\s*\d{1,4}\s*\/\s*\d{2})|(?:\d{1,2}\s*\/\s*\d{3}))\b/i);
+  return match?canonicalNotamNumber(match[1]):"";
+}
+
+function isNotamReplacement(item){
+  const typeValue=item&&typeof item==="object"
+    ? String(item.notamType||item.action||item.operation||"").trim().toUpperCase()
+    : "";
+  if(["R","NOTAMR","REPLACE","REPLACED","REPLACEMENT"].includes(typeValue))return true;
+  return /\bNOTAM\s*R\b/i.test(notamActionText(item));
+}
+
+function notamReplacementTarget(item){
+  if(item&&typeof item==="object"){
+    for(const key of ["replacesNotam","replacedNotam","replacementTarget","replaceTarget","previousNotam"]){
+      const explicit=canonicalNotamNumber(item[key]);
+      if(explicit)return explicit;
+    }
+  }
+  const match=notamActionText(item).match(/\bNOTAM\s*R\b\s*(?:OF\s+)?((?:[A-Z]\s*\d{1,4}\s*\/\s*\d{2})|(?:\d{1,2}\s*\/\s*\d{3}))\b/i);
+  return match?canonicalNotamNumber(match[1]):"";
+}
+
+function notamInactiveTarget(item){
+  return notamCancellationTarget(item)||notamReplacementTarget(item);
+}
+
+function collectInactiveNotamTargets(data){
+  const targets=new Set();
+  const groups=[];
+  const addGroups=source=>{
+    if(!source||typeof source!=="object")return;
+    NOTAM_ACTION_KEYS.forEach(key=>{
+      if(Array.isArray(source[key]))groups.push(source[key]);
+    });
+  };
+
+  addGroups(data);
+  ["notamData","faa","nms","daip"].forEach(key=>addGroups(data&&data[key]));
+  groups.flat().forEach(item=>{
+    const target=notamInactiveTarget(item);
+    if(target)targets.add(target);
+  });
+  return targets;
+}
+
+function filterInactiveNotamRecords(value,inactiveNumbers=new Set()){
+  const records=normalizeNotamList(value);
+  const inactive=new Set(inactiveNumbers||[]);
+
+  records.forEach(item=>{
+    const target=notamInactiveTarget(item);
+    if(target)inactive.add(target);
+  });
+
+  return records.filter(item=>{
+    if(isNotamCancellation(item))return false;
+    const number=canonicalNotamNumber(notamNumberFromItem(item));
+    return !number||!inactive.has(number);
+  });
+}
+
 function collectPotentialNotamItems(data){
   const keys=[ "runwayClosureNotams", "rwyClosureNotams", "closureNotams", "domesticNotams", "civilNotams", "faaNotams", "airportNotams", "allNotams", "notams", "nmsNotams", "notamRecords", "daipNotams" ];
   const found=[];
@@ -2263,8 +2364,8 @@ function formatCaoFull(updated){
   return `CAO ${String(d.getUTCDate()).padStart(2,"0")} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`;
 }
 
-function currentRunwayFiconWorseThanDry(data){
-  const items=normalizeNotamList(data.ficonNotams);
+function currentRunwayFiconWorseThanDry(data,inactiveNumbers=new Set()){
+  const items=filterInactiveNotamRecords(data.ficonNotams,inactiveNumbers);
   return items.filter(item=>{
     if(notamState(item)!=="current")return false;
     const text=notamFullTextFromItem(item).toUpperCase();
@@ -2290,11 +2391,12 @@ function setMilNotamsDisplay(data){
 
   setCaoStatusDisplay(cao,updated,fetchStatus,rawStatus);
 
-  const mil=splitNotamsByState(normalizeNotamList(data.milNotams));
-  const rwy=splitNotamsByState(normalizeNotamList(data.runwayClosureNotams));
-  const construction=splitNotamsByState(normalizeNotamList(data.constructionStatusNotams));
-  const taxi=splitNotamsByState(normalizeNotamList(data.taxiRestrictionNotams));
-  const ficonNow=currentRunwayFiconWorseThanDry(data);
+  const inactiveNumbers=collectInactiveNotamTargets(data);
+  const mil=splitNotamsByState(filterInactiveNotamRecords(data.milNotams,inactiveNumbers));
+  const rwy=splitNotamsByState(filterInactiveNotamRecords(data.runwayClosureNotams,inactiveNumbers));
+  const construction=splitNotamsByState(filterInactiveNotamRecords(data.constructionStatusNotams,inactiveNumbers));
+  const taxi=splitNotamsByState(filterInactiveNotamRecords(data.taxiRestrictionNotams,inactiveNumbers));
+  const ficonNow=currentRunwayFiconWorseThanDry(data,inactiveNumbers);
   const futureCount=rwy.future.length+construction.future.length+taxi.future.length+mil.future.length;
 
   const currentMilCount=mil.current.length;

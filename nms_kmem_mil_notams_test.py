@@ -224,6 +224,163 @@ def display_text(text):
     return t if len(t) <= 150 else t[:147].rstrip() + "..."
 
 
+NOTAMC_RE = re.compile(r"\bNOTAM\s*C\b", re.IGNORECASE)
+NOTAMC_TARGET_RE = re.compile(
+    r"\bNOTAM\s*C\b\s*(?:OF\s+)?"
+    r"((?:[A-Z]\s*\d{1,4}\s*/\s*\d{2})|(?:\d{1,2}\s*/\s*\d{3}))\b",
+    re.IGNORECASE,
+)
+NOTAMR_RE = re.compile(r"\bNOTAM\s*R\b", re.IGNORECASE)
+NOTAMR_TARGET_RE = re.compile(
+    r"\bNOTAM\s*R\b\s*(?:OF\s+)?"
+    r"((?:[A-Z]\s*\d{1,4}\s*/\s*\d{2})|(?:\d{1,2}\s*/\s*\d{3}))\b",
+    re.IGNORECASE,
+)
+NOTAM_SERIES_NUMBER_RE = re.compile(
+    r"\b([A-Z])\s*(\d{1,4})\s*/\s*(\d{2})\b",
+    re.IGNORECASE,
+)
+NOTAM_LOCAL_NUMBER_RE = re.compile(r"\b(\d{1,2})\s*/\s*(\d{3})\b")
+
+
+def canonical_notam_number(value):
+    """Return a comparable M0030/26 or local 08/368 identifier."""
+    text = str(value or "").upper()
+    match = NOTAM_SERIES_NUMBER_RE.search(text)
+
+    if match:
+        return f"{match.group(1).upper()}{int(match.group(2)):04d}/{match.group(3)}"
+
+    match = NOTAM_LOCAL_NUMBER_RE.search(text)
+
+    if not match:
+        return ""
+
+    return f"{int(match.group(1)):02d}/{match.group(2)}"
+
+
+def notam_record_text(record):
+    if not isinstance(record, dict):
+        return str(record or "")
+
+    return " ".join(
+        str(record.get(key) or "")
+        for key in (
+            "rawText", "fullText", "notamText", "text", "displayText",
+            "message", "body", "description", "plainLanguage",
+        )
+    ).strip()
+
+
+def is_notam_cancellation(record):
+    """True when the record is a NOTAMC cancellation message."""
+    if isinstance(record, dict):
+        type_value = str(
+            record.get("notamType")
+            or record.get("action")
+            or record.get("operation")
+            or ""
+        ).strip().upper()
+
+        if type_value in {"C", "NOTAMC", "CANCEL", "CANCELED", "CANCELLED", "CANCELLATION"}:
+            return True
+
+    return bool(NOTAMC_RE.search(notam_record_text(record)))
+
+
+def notam_cancellation_target(record):
+    """Return the NOTAM identifier named immediately after NOTAMC, if present."""
+    if isinstance(record, dict):
+        for key in (
+            "cancelsNotam", "cancelledNotam", "canceledNotam",
+            "cancellationTarget", "cancelTarget",
+        ):
+            target = canonical_notam_number(record.get(key))
+            if target:
+                return target
+
+    match = NOTAMC_TARGET_RE.search(notam_record_text(record))
+
+    if not match:
+        return ""
+
+    return canonical_notam_number(match.group(1))
+
+
+def is_notam_replacement(record):
+    """True when the record is a NOTAMR replacement message."""
+    if isinstance(record, dict):
+        type_value = str(
+            record.get("notamType")
+            or record.get("action")
+            or record.get("operation")
+            or ""
+        ).strip().upper()
+
+        if type_value in {"R", "NOTAMR", "REPLACE", "REPLACED", "REPLACEMENT"}:
+            return True
+
+    return bool(NOTAMR_RE.search(notam_record_text(record)))
+
+
+def notam_replacement_target(record):
+    """Return the NOTAM identifier named immediately after NOTAMR, if present."""
+    if isinstance(record, dict):
+        for key in (
+            "replacesNotam", "replacedNotam", "replacementTarget",
+            "replaceTarget", "previousNotam",
+        ):
+            target = canonical_notam_number(record.get(key))
+            if target:
+                return target
+
+    match = NOTAMR_TARGET_RE.search(notam_record_text(record))
+
+    if not match:
+        return ""
+
+    return canonical_notam_number(match.group(1))
+
+
+def notam_inactive_target(record):
+    """Return the target made inactive by a NOTAMC or NOTAMR action."""
+    return notam_cancellation_target(record) or notam_replacement_target(record)
+
+
+def filter_inactive_notam_records(records, inactive_numbers=None):
+    """Hide NOTAMC actions plus every cancelled or superseded record."""
+    records = list(records or [])
+    inactive = {
+        canonical_notam_number(value)
+        for value in (inactive_numbers or [])
+        if canonical_notam_number(value)
+    }
+
+    for record in records:
+        target = notam_inactive_target(record)
+        if target:
+            inactive.add(target)
+
+    filtered = []
+
+    for record in records:
+        if is_notam_cancellation(record):
+            continue
+
+        number = canonical_notam_number(
+            record.get("number") or record.get("id") or record.get("notamNumber")
+            if isinstance(record, dict)
+            else record
+        )
+
+        if number and number in inactive:
+            continue
+
+        filtered.append(record)
+
+    return filtered
+
+
 
 
 def is_runway_closure_text(text):
@@ -532,6 +689,7 @@ def main():
     runway_closure_notams = []
     construction_status_notams = []
     taxi_restriction_notams = []
+    inactive_notam_numbers = set()
 
     for item in sorted(candidates, key=local_number_key, reverse=True):
         time.sleep(REQUEST_DELAY_SECONDS)
@@ -571,6 +729,23 @@ def main():
 
         record = apply_effective_fallback(record, txt)
 
+        if is_notam_cancellation(record):
+            cancellation_target = notam_cancellation_target(record)
+
+            if cancellation_target:
+                inactive_notam_numbers.add(cancellation_target)
+                print(f"  Cancellation: {record['number']} cancels {cancellation_target}")
+            else:
+                print(f"  Cancellation: {record['number']} has no parseable target")
+        elif is_notam_replacement(record):
+            replacement_target = notam_replacement_target(record)
+
+            if replacement_target:
+                inactive_notam_numbers.add(replacement_target)
+                print(f"  Replacement: {record['number']} replaces {replacement_target}")
+            else:
+                print(f"  Replacement: {record['number']} has no parseable target")
+
         txt_upper = txt.upper()
 
         # Keep runway/taxiway/apron FICON in the separate FICON list for RSC/RCR parsing.
@@ -600,6 +775,15 @@ def main():
 
         if str(record.get("classification", "")).upper() in ("MIL", "MILITARY") or record["number"].upper().startswith("M"):
             notams.append(record)
+
+    # Apply every NOTAMC/NOTAMR target after the scan so action chains are
+    # order-independent. NOTAMC action records are hidden; NOTAMR replacements
+    # remain active unless a later action targets them.
+    notams = filter_inactive_notam_records(notams, inactive_notam_numbers)
+    ficon_notams = filter_inactive_notam_records(ficon_notams, inactive_notam_numbers)
+    runway_closure_notams = filter_inactive_notam_records(runway_closure_notams, inactive_notam_numbers)
+    construction_status_notams = filter_inactive_notam_records(construction_status_notams, inactive_notam_numbers)
+    taxi_restriction_notams = filter_inactive_notam_records(taxi_restriction_notams, inactive_notam_numbers)
 
     result = {
         "status": "Success",

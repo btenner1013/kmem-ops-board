@@ -3811,12 +3811,188 @@ def notam_text_blob(item):
         return str(item or "")
 
     return " ".join([
+        str(item.get("fullText") or ""),
+        str(item.get("notamText") or ""),
         str(item.get("text") or ""),
         str(item.get("displayText") or ""),
         str(item.get("rawText") or ""),
+        str(item.get("message") or ""),
+        str(item.get("body") or ""),
         str(item.get("plainLanguage") or ""),
         str(item.get("description") or "")
     ]).strip()
+
+
+NOTAMC_RE = re.compile(r"\bNOTAM\s*C\b", re.IGNORECASE)
+NOTAMC_TARGET_RE = re.compile(
+    r"\bNOTAM\s*C\b\s*(?:OF\s+)?"
+    r"((?:[A-Z]\s*\d{1,4}\s*/\s*\d{2})|(?:\d{1,2}\s*/\s*\d{3}))\b",
+    re.IGNORECASE
+)
+NOTAMR_RE = re.compile(r"\bNOTAM\s*R\b", re.IGNORECASE)
+NOTAMR_TARGET_RE = re.compile(
+    r"\bNOTAM\s*R\b\s*(?:OF\s+)?"
+    r"((?:[A-Z]\s*\d{1,4}\s*/\s*\d{2})|(?:\d{1,2}\s*/\s*\d{3}))\b",
+    re.IGNORECASE
+)
+NOTAM_SERIES_NUMBER_RE = re.compile(
+    r"\b([A-Z])\s*(\d{1,4})\s*/\s*(\d{2})\b",
+    re.IGNORECASE
+)
+NOTAM_LOCAL_NUMBER_RE = re.compile(r"\b(\d{1,2})\s*/\s*(\d{3})\b")
+NOTAM_COLLECTION_KEYS = (
+    "milNotams", "items", "ficonNotams", "runwayClosureNotams",
+    "rwyClosureNotams", "closureNotams", "constructionStatusNotams",
+    "constructionNotams", "airfieldStatusNotams", "taxiRestrictionNotams",
+    "taxiRouteRestrictionNotams", "taxiRouteNotams", "airportNotams",
+    "allNotams", "notams"
+)
+
+
+def canonical_notam_number(value):
+    """Return a comparable M0030/26 or local 08/368 identifier."""
+    text = str(value or "").upper()
+    match = NOTAM_SERIES_NUMBER_RE.search(text)
+
+    if match:
+        return f"{match.group(1).upper()}{int(match.group(2)):04d}/{match.group(3)}"
+
+    match = NOTAM_LOCAL_NUMBER_RE.search(text)
+
+    if not match:
+        return ""
+
+    return f"{int(match.group(1)):02d}/{match.group(2)}"
+
+
+def notam_record_number(item):
+    if not isinstance(item, dict):
+        return canonical_notam_number(item)
+
+    return canonical_notam_number(
+        item.get("number")
+        or item.get("id")
+        or item.get("notamNumber")
+        or item.get("accountId")
+        or item.get("notamId")
+    )
+
+
+def is_notam_cancellation(item):
+    """True when the record is a NOTAMC cancellation message."""
+    if isinstance(item, dict):
+        type_value = str(
+            item.get("notamType")
+            or item.get("action")
+            or item.get("operation")
+            or ""
+        ).strip().upper()
+
+        if type_value in {"C", "NOTAMC", "CANCEL", "CANCELED", "CANCELLED", "CANCELLATION"}:
+            return True
+
+    return bool(NOTAMC_RE.search(notam_text_blob(item)))
+
+
+def notam_cancellation_target(item):
+    """Return the NOTAM identifier named immediately after NOTAMC, if present."""
+    if isinstance(item, dict):
+        for key in (
+            "cancelsNotam", "cancelledNotam", "canceledNotam",
+            "cancellationTarget", "cancelTarget"
+        ):
+            target = canonical_notam_number(item.get(key))
+            if target:
+                return target
+
+    match = NOTAMC_TARGET_RE.search(notam_text_blob(item))
+
+    if not match:
+        return ""
+
+    return canonical_notam_number(match.group(1))
+
+
+def is_notam_replacement(item):
+    """True when the record is a NOTAMR replacement message."""
+    if isinstance(item, dict):
+        type_value = str(
+            item.get("notamType")
+            or item.get("action")
+            or item.get("operation")
+            or ""
+        ).strip().upper()
+
+        if type_value in {"R", "NOTAMR", "REPLACE", "REPLACED", "REPLACEMENT"}:
+            return True
+
+    return bool(NOTAMR_RE.search(notam_text_blob(item)))
+
+
+def notam_replacement_target(item):
+    """Return the NOTAM identifier named immediately after NOTAMR, if present."""
+    if isinstance(item, dict):
+        for key in (
+            "replacesNotam", "replacedNotam", "replacementTarget",
+            "replaceTarget", "previousNotam"
+        ):
+            target = canonical_notam_number(item.get(key))
+            if target:
+                return target
+
+    match = NOTAMR_TARGET_RE.search(notam_text_blob(item))
+
+    if not match:
+        return ""
+
+    return canonical_notam_number(match.group(1))
+
+
+def notam_inactive_target(item):
+    """Return the target made inactive by a NOTAMC or NOTAMR action."""
+    return notam_cancellation_target(item) or notam_replacement_target(item)
+
+
+def collect_inactive_notam_targets(raw):
+    targets = set()
+
+    if not isinstance(raw, dict):
+        return targets
+
+    for key in NOTAM_COLLECTION_KEYS:
+        items = raw.get(key)
+
+        if not isinstance(items, list):
+            continue
+
+        for item in items:
+            target = notam_inactive_target(item)
+            if target:
+                targets.add(target)
+
+    return targets
+
+
+def filter_inactive_notam_records(items, inactive_numbers=None):
+    """Hide NOTAMC actions plus every cancelled or superseded record."""
+    records = list(items or []) if isinstance(items, list) else []
+    inactive = {
+        canonical_notam_number(value)
+        for value in (inactive_numbers or [])
+        if canonical_notam_number(value)
+    }
+
+    for item in records:
+        target = notam_inactive_target(item)
+        if target:
+            inactive.add(target)
+
+    return [
+        item
+        for item in records
+        if not is_notam_cancellation(item)
+        and (not notam_record_number(item) or notam_record_number(item) not in inactive)
+    ]
 
 
 def is_runway_closure_notam_text(text):
@@ -3879,7 +4055,7 @@ def compact_runway_closure_text_for_export(text):
 
     return ""
 
-def normalize_runway_closure_notams(raw, previous_data=None):
+def normalize_runway_closure_notams(raw, previous_data=None, inactive_numbers=None):
     """
     Normalizes runway-closure NOTAMs exported by the NMS script.
 
@@ -3897,6 +4073,7 @@ def normalize_runway_closure_notams(raw, previous_data=None):
         raw.get("items")
     ]
 
+    inactive_numbers = set(inactive_numbers or collect_inactive_notam_targets(raw))
     normalized = []
     seen = set()
 
@@ -3906,6 +4083,9 @@ def normalize_runway_closure_notams(raw, previous_data=None):
 
         for item in items:
             if not isinstance(item, dict):
+                continue
+
+            if is_notam_cancellation(item) or notam_record_number(item) in inactive_numbers:
                 continue
 
             text_blob = notam_text_blob(item)
@@ -3965,13 +4145,20 @@ def normalize_runway_closure_notams(raw, previous_data=None):
     previous = previous_data.get("runwayClosureNotams")
 
     if isinstance(previous, list):
-        return previous
+        return filter_inactive_notam_records(previous, inactive_numbers)
 
     return []
 
 
-def normalize_status_notams(raw, key_names, classification, fallback_predicate=None):
+def normalize_status_notams(
+    raw,
+    key_names,
+    classification,
+    fallback_predicate=None,
+    inactive_numbers=None
+):
     raw = raw or {}
+    inactive_numbers = set(inactive_numbers or collect_inactive_notam_targets(raw))
     normalized = []
     seen = set()
 
@@ -3991,6 +4178,9 @@ def normalize_status_notams(raw, key_names, classification, fallback_predicate=N
 
         for item in items:
             if not isinstance(item, dict):
+                continue
+
+            if is_notam_cancellation(item) or notam_record_number(item) in inactive_numbers:
                 continue
 
             text_blob = notam_text_blob(item)
@@ -4065,10 +4255,13 @@ def is_taxi_restriction_notam_text(text):
 
 def normalize_mil_notams_output(raw, fetch_status="OK"):
     raw = raw or {}
+    inactive_numbers = collect_inactive_notam_targets(raw)
     items = raw.get("milNotams") or raw.get("items") or []
 
     if not isinstance(items, list):
         items = []
+
+    items = filter_inactive_notam_records(items, inactive_numbers)
 
     normalized_items = []
 
@@ -4093,38 +4286,30 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
             "source": item.get("source") or raw.get("source") or "FAA_NMS_STAGING"
         })
 
-    count = raw.get("milNotamCount")
+    # The source totals and prebuilt crawl can still include inactive records.
+    # Recompute all three from the sanitized records instead of trusting them.
+    count = len(normalized_items)
+    scroll_text = summarize_mil_notams_for_scroll(normalized_items)
+    status = f"{count} ACTIVE" if count else "NONE ACTIVE"
 
-    if count is None:
-        count = raw.get("count")
-
-    try:
-        count = int(count)
-    except Exception:
-        count = len(normalized_items)
-
-    scroll_text = str(raw.get("milNotamScrollText") or "").strip()
-
-    if not scroll_text:
-        scroll_text = summarize_mil_notams_for_scroll(normalized_items)
-
-    if count > 0:
-        status = raw.get("milNotamStatus") or f"{count} ACTIVE"
-    else:
-        status = raw.get("milNotamStatus") or "NONE ACTIVE"
-
-    runway_closure_notams = normalize_runway_closure_notams(raw)
+    ficon_notams = filter_inactive_notam_records(raw.get("ficonNotams") or [], inactive_numbers)
+    runway_closure_notams = normalize_runway_closure_notams(
+        raw,
+        inactive_numbers=inactive_numbers
+    )
     construction_status_notams = normalize_status_notams(
         raw,
         ["constructionStatusNotams", "constructionNotams", "airfieldStatusNotams"],
         "CONST_AFLD_STATUS",
-        is_construction_status_notam_text
+        is_construction_status_notam_text,
+        inactive_numbers
     )
     taxi_restriction_notams = normalize_status_notams(
         raw,
         ["taxiRestrictionNotams", "taxiRouteRestrictionNotams", "taxiRouteNotams"],
         "TAXI_ROUTE_RESTR",
-        is_taxi_restriction_notam_text
+        is_taxi_restriction_notam_text,
+        inactive_numbers
     )
 
     return {
@@ -4136,8 +4321,8 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         "milNotams": normalized_items,
         "milNotamFetchStatus": fetch_status,
         "milNotamRawStatus": raw.get("status") or "UNKNOWN",
-        "ficonNotams": raw.get("ficonNotams") or [],
-        "ficonNotamCount": raw.get("ficonNotamCount") or len(raw.get("ficonNotams") or []),
+        "ficonNotams": ficon_notams,
+        "ficonNotamCount": len(ficon_notams),
         "runwayClosureNotams": runway_closure_notams,
         "runwayClosureNotamCount": len(runway_closure_notams),
         "constructionStatusNotams": construction_status_notams,
@@ -4151,24 +4336,17 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
     previous_data = previous_data or {}
 
     if "milNotams" in previous_data or "milNotamCount" in previous_data:
-        return {
-            "milNotamCount": use_previous_field(previous_data, "milNotamCount", 0),
-            "milNotamStatus": use_previous_field(previous_data, "milNotamStatus", "LAST KNOWN"),
-            "milNotamSource": use_previous_field(previous_data, "milNotamSource", "FAA_NMS_STAGING"),
-            "milNotamUpdatedZ": use_previous_field(previous_data, "milNotamUpdatedZ", "--"),
-            "milNotamScrollText": use_previous_field(previous_data, "milNotamScrollText", ""),
+        previous_raw = {
+            "source": use_previous_field(previous_data, "milNotamSource", "FAA_NMS_STAGING"),
+            "generatedZ": use_previous_field(previous_data, "milNotamUpdatedZ", "--"),
+            "status": use_previous_field(previous_data, "milNotamRawStatus", "LAST_GOOD"),
             "milNotams": use_previous_field(previous_data, "milNotams", []),
-            "milNotamFetchStatus": fetch_status,
-            "milNotamRawStatus": use_previous_field(previous_data, "milNotamRawStatus", "LAST_GOOD"),
             "ficonNotams": use_previous_field(previous_data, "ficonNotams", []),
-            "ficonNotamCount": use_previous_field(previous_data, "ficonNotamCount", 0),
             "runwayClosureNotams": use_previous_field(previous_data, "runwayClosureNotams", []),
-            "runwayClosureNotamCount": use_previous_field(previous_data, "runwayClosureNotamCount", 0),
             "constructionStatusNotams": use_previous_field(previous_data, "constructionStatusNotams", []),
-            "constructionStatusNotamCount": use_previous_field(previous_data, "constructionStatusNotamCount", 0),
-            "taxiRestrictionNotams": use_previous_field(previous_data, "taxiRestrictionNotams", []),
-            "taxiRestrictionNotamCount": use_previous_field(previous_data, "taxiRestrictionNotamCount", 0)
+            "taxiRestrictionNotams": use_previous_field(previous_data, "taxiRestrictionNotams", [])
         }
+        return normalize_mil_notams_output(previous_raw, fetch_status)
 
     return {
         "milNotamCount": 0,
