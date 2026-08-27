@@ -33,6 +33,15 @@ NMS_MIL_NOTAMS_SCRIPT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_test.py
 NMS_MIL_NOTAMS_OUTPUT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_output.json")
 NMS_MIL_NOTAMS_TIMEOUT_SECONDS = 120
 
+# ATIS.info is the direct API. DATIS Clowd currently mirrors/redirects to that
+# same provider and remains as an endpoint fallback. ATIS Relay is fetched
+# separately below and supplies the independent second provider family.
+ATIS_JSON_API_URL_TEMPLATES = (
+    "https://atis.info/api/{icao}",
+    "https://datis.clowd.io/api/{icao}",
+)
+ATIS_PROVIDER_NAMES = ("ATIS_INFO_API", "ATIS_RELAY")
+
 
 MEM_RUNWAY_PAIRS = [
     "9/27",
@@ -305,9 +314,7 @@ def fetch_atis_info_api_candidates(icao="KMEM"):
     cached report.  Returning all candidates lets the caller compare the ATIS
     header timestamps instead of accepting the first parseable string.
     """
-    candidates = [
-        f"https://datis.clowd.io/api/{icao}",
-    ]
+    candidates = [template.format(icao=icao) for template in ATIS_JSON_API_URL_TEMPLATES]
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
@@ -321,12 +328,12 @@ def fetch_atis_info_api_candidates(icao="KMEM"):
             with urllib.request.urlopen(request, timeout=15) as response:
                 raw = response.read().decode("utf-8", errors="ignore")
         except Exception as err:
-            print(f"D-ATIS D-ATIS JSON API miss {url}: {err}")
+            print(f"D-ATIS JSON API miss {url}: {err}")
             continue
         if not raw or not raw.strip():
-            print(f"D-ATIS D-ATIS JSON API empty response from {url}; trying next.")
+            print(f"D-ATIS JSON API empty response from {url}; trying next.")
             continue
-        print(f"D-ATIS D-ATIS JSON API response from {url}: {raw[:200]}")
+        print(f"D-ATIS JSON API response from {url}: {raw[:200]}")
         try:
             data = json.loads(raw)
         except Exception:
@@ -339,7 +346,7 @@ def fetch_atis_info_api_candidates(icao="KMEM"):
                     if candidate not in reports:
                         reports.append(candidate)
             else:
-                print(f"D-ATIS D-ATIS JSON API JSON at {url} had no recognized ATIS field; trying next.")
+                print(f"D-ATIS JSON API JSON at {url} had no recognized ATIS field; trying next.")
             continue
         candidate = extract_atis_text(raw)
         if is_good_atis(candidate):
@@ -347,7 +354,7 @@ def fetch_atis_info_api_candidates(icao="KMEM"):
             if candidate not in reports:
                 reports.append(candidate)
         else:
-            print(f"D-ATIS D-ATIS JSON API plain-text at {url} did not contain valid ATIS; trying next.")
+            print(f"D-ATIS JSON API plain-text at {url} did not contain valid ATIS; trying next.")
     return reports
 
 
@@ -356,11 +363,31 @@ def fetch_atis_info_api(icao="KMEM", now_z=None):
     return choose_latest_atis_report(fetch_atis_info_api_candidates(icao), now_z, default="")
 
 
-def fetch_current_atis(urls, now_z=None, known_observed_times=None):
+def fetch_current_atis(urls, now_z=None, known_observed_times=None, diagnostics=None):
     """Fetch every configured ATIS source and return the newest valid report."""
-    reports = fetch_atis_info_api_candidates("KMEM")
-    if not reports:
-        print("D-ATIS D-ATIS JSON API: no valid ATIS returned; trying remaining sources.")
+    reports = []
+    report_sources = {}
+
+    def add_report(report, source):
+        report = extract_atis_text(report)
+        if not is_good_atis(report):
+            return
+        if report not in reports:
+            reports.append(report)
+        report_sources.setdefault(report, set()).add(source)
+
+    try:
+        api_reports = fetch_atis_info_api_candidates("KMEM")
+    except Exception as err:
+        # Each provider family is independent. A timeout or parser failure in one
+        # must not prevent a current report from the other family from winning.
+        print(f"D-ATIS JSON API provider failed: {err}")
+        api_reports = []
+    for report in api_reports:
+        add_report(report, "ATIS_INFO_API")
+
+    if not api_reports:
+        print("D-ATIS JSON API: no valid ATIS returned; trying remaining sources.")
 
     for url in urls:
         if "atis.info" in url:
@@ -368,14 +395,17 @@ def fetch_current_atis(urls, now_z=None, known_observed_times=None):
             continue
         # ATIS has multiple independent sources; one unavailable relay must not
         # stall the entire ten-minute update cycle for repeated 30-second waits.
-        raw = fetch_url(url, attempts=1, timeout_seconds=10)
+        try:
+            raw = fetch_url(url, attempts=1, timeout_seconds=10)
+        except Exception as err:
+            print(f"D-ATIS relay provider failed for {url}: {err}")
+            continue
         if not raw or not raw.strip():
             continue
         atis_text = atis_text_from_html(raw)
         if is_good_atis(atis_text):
             print(f"D-ATIS fetch OK from {url}")
-            if atis_text not in reports:
-                reports.append(atis_text)
+            add_report(atis_text, "ATIS_RELAY")
         else:
             print(f"D-ATIS fetch from {url} did not contain valid ATIS text; trying next source.")
 
@@ -384,9 +414,36 @@ def fetch_current_atis(urls, now_z=None, known_observed_times=None):
         now_z,
         known_observed_times=known_observed_times,
     )
+
+    if diagnostics is not None:
+        candidate_details = []
+        for report in reports:
+            observed = resolve_atis_observed_datetime(report, now_z, known_observed_times)
+            candidate_details.append({
+                "identity": atis_report_identity(report),
+                "observedZ": zulu_iso(observed),
+                "sources": sorted(report_sources.get(report, set())),
+            })
+        diagnostics.clear()
+        diagnostics.update({
+            "policy": "NEWEST_HEADER_TIME",
+            "sourcesChecked": list(ATIS_PROVIDER_NAMES),
+            "endpointsChecked": [
+                template.format(icao="KMEM")
+                for template in ATIS_JSON_API_URL_TEMPLATES
+            ] + list(urls),
+            "candidateCount": len(reports),
+            "candidates": candidate_details,
+            "selectedSources": sorted(report_sources.get(selected, set())),
+        })
+
     if is_good_atis(selected):
         observed = resolve_atis_observed_datetime(selected, now_z, known_observed_times)
-        print(f"D-ATIS selected newest of {len(reports)} report(s): {zulu_iso(observed) or 'TIME UNKNOWN'}")
+        selected_sources = "+".join(sorted(report_sources.get(selected, set()))) or "UNKNOWN"
+        print(
+            f"D-ATIS selected newest of {len(reports)} report(s): "
+            f"{zulu_iso(observed) or 'TIME UNKNOWN'} via {selected_sources}"
+        )
         return selected
 
     print("D-ATIS fetch failed for all configured URLs.")
@@ -435,32 +492,87 @@ def load_json_file(path):
         return {}
 
 
+def cached_atis_observed_datetime(data):
+    """Return a cache's persisted ATIS time without re-dating an old report."""
+    if not isinstance(data, dict):
+        return None
+
+    report = data.get("atisText", "")
+    if not is_good_atis(report):
+        return None
+
+    observed = parse_z_datetime(data.get("atisObservedZ", ""))
+    if observed:
+        return observed
+
+    # Older cache files may predate atisObservedZ. Anchor their HHMMZ header to
+    # the file's own update time, never to today's date.
+    cache_updated = parse_z_datetime(
+        data.get("allFeedsUpdatedZ", "") or data.get("lastUpdatedZ", "")
+    )
+    if cache_updated:
+        return parse_atis_datetime_utc(report, cache_updated)
+    return None
+
+
 def load_previous_weather():
     """
-    Prefer the local last-known-good cache over repo weather.json.
+    Load the preferred weather cache, then overlay the newest cached ATIS.
 
     This prevents a weak GitHub/manual fallback weather.json from becoming the only
-    backup source after git reset --hard origin/main.
+    backup source after git reset --hard origin/main. Location priority continues
+    to govern the other weather fields, but it must not make an older cached ATIS
+    beat a newer one with a persisted observation time.
     """
-    cached = load_json_file(LAST_GOOD_WEATHER_PATH)
-
-    if cached:
-        print(f"Loaded last-known-good cache: {LAST_GOOD_WEATHER_PATH}")
-        return cached
-
-    repo_last_good = load_json_file(REPO_LAST_GOOD_WEATHER_PATH)
-
-    if repo_last_good:
-        print(f"Loaded repo last-known-good backup: {REPO_LAST_GOOD_WEATHER_PATH}")
-        return repo_last_good
-
     weather_path = os.path.join(REPO_DIR, "weather.json")
-    repo_weather = load_json_file(weather_path)
+    sources = [
+        ("LOCAL_LAST_GOOD", LAST_GOOD_WEATHER_PATH),
+        ("REPO_LAST_GOOD", REPO_LAST_GOOD_WEATHER_PATH),
+        ("REPO_WEATHER", weather_path),
+    ]
+    loaded = []
 
-    if repo_weather:
-        print("Loaded previous weather.json from repo.")
+    for priority, (source_name, path) in enumerate(sources):
+        data = load_json_file(path)
+        if data:
+            loaded.append((priority, source_name, path, data))
 
-    return repo_weather
+    if not loaded:
+        return {}
+
+    _, base_source, base_path, base_data = loaded[0]
+    previous = dict(base_data)
+    print(f"Loaded preferred previous weather cache ({base_source}): {base_path}")
+
+    atis_candidates = []
+    for priority, source_name, path, data in loaded:
+        report = data.get("atisText", "")
+        if not is_good_atis(report):
+            continue
+        observed = cached_atis_observed_datetime(data)
+        atis_candidates.append((observed, priority, source_name, path, data))
+
+    if atis_candidates:
+        # A known full timestamp beats an unknown one; time beats location
+        # priority; location priority is retained only as the final tie-break.
+        oldest = datetime.min.replace(tzinfo=timezone.utc)
+        selected = max(
+            atis_candidates,
+            key=lambda item: (item[0] is not None, item[0] or oldest, -item[1]),
+        )
+        observed, _, atis_source, atis_path, atis_data = selected
+        previous["atisText"] = atis_data.get("atisText", "")
+        previous["atisObservedZ"] = zulu_iso(observed) or atis_data.get("atisObservedZ", "")
+        previous["atisReportIdentity"] = (
+            atis_data.get("atisReportIdentity")
+            or atis_report_identity(previous["atisText"])
+        )
+        print(
+            f"Selected newest cached D-ATIS from {atis_source}: {atis_path} "
+            f"({previous['atisObservedZ'] or 'TIME UNKNOWN'})"
+        )
+
+    return previous
 
 
 def save_last_good_weather(data):
@@ -825,13 +937,42 @@ def choose_latest_atis_report(
 ):
     """Choose the newest valid ATIS by its header timestamp.
 
-    Candidate order is only a tie-breaker.  A report with a known header time
-    always outranks one whose only times appear in operational notices.
+    A report with a known header time always outranks one whose only times
+    appear in operational notices. At equal header times, advance through the
+    ATIS information-letter sequence relative to the persisted report before
+    using source order as the final tie-breaker.
     """
     now_z = now_z or datetime.now(timezone.utc)
     valid = []
     seen = set()
     known = _known_atis_observed_times(known_observed_times)
+
+    known_letters = []
+    for known_identity, known_observed in known.items():
+        match = re.match(r"^([A-Z]):\d{4}Z$", str(known_identity).upper())
+        if match:
+            known_letters.append((known_observed, match.group(1)))
+    reference_observed, reference_letter = max(
+        known_letters,
+        default=(None, ""),
+        key=lambda item: item[0] or datetime.min.replace(tzinfo=timezone.utc),
+    )
+
+    def letter_progress_score(candidate, observed):
+        if not reference_letter or not reference_observed or not observed:
+            return None
+        # The alphabet wraps every 26 revisions. A persisted report that is many
+        # hours old cannot reliably establish whether an equal-time letter moved
+        # forward or wrapped, so use provider priority instead in that case.
+        if abs(observed - reference_observed) > timedelta(hours=6):
+            return None
+        letter = parse_atis_letter(candidate)
+        if letter == "--":
+            return None
+        distance = (ord(letter) - ord(reference_letter)) % 26
+        # Treat up to half the alphabet as forward progress; values beyond that
+        # are more plausibly an older provider lagging one or more revisions.
+        return distance if distance <= 13 else distance - 26
 
     for source_order, raw_candidate in enumerate(candidates or []):
         candidate = extract_atis_text(raw_candidate)
@@ -847,8 +988,36 @@ def choose_latest_atis_report(
 
     timed = [item for item in valid if item[0] is not None]
     if timed:
-        # Prefer the earliest configured source only when timestamps tie.
-        return max(timed, key=lambda item: (item[0], -item[1]))[2]
+        newest_observed = max(item[0] for item in timed)
+        newest_letters = {
+            parse_atis_letter(item[2])
+            for item in timed
+            if item[0] == newest_observed and parse_atis_letter(item[2]) != "--"
+        }
+
+        def unanchored_letter_score(candidate):
+            """Order a small equal-time revision cluster without a cache anchor."""
+            letter = parse_atis_letter(candidate)
+            if letter == "--" or len(newest_letters) < 2:
+                return 0
+            score = 0
+            for other in newest_letters:
+                if other == letter:
+                    continue
+                distance = (ord(letter) - ord(other)) % 26
+                score += distance if distance <= 13 else distance - 26
+            return score
+
+        def revision_score(item):
+            anchored = letter_progress_score(item[2], item[0])
+            return anchored if anchored is not None else unanchored_letter_score(item[2])
+
+        # Prefer the earliest configured source only when time and letter
+        # progression both tie.
+        return max(
+            timed,
+            key=lambda item: (item[0], revision_score(item), -item[1]),
+        )[2]
 
     return min(valid, key=lambda item: item[1])[2]
 
@@ -3708,7 +3877,35 @@ def is_good_atis(atis_text):
     if "KMEM" not in text and "MEM" not in text:
         return False
 
-    return parse_atis_letter(text) != "--"
+    identity = atis_report_identity(text)
+    if not identity:
+        return False
+
+    header_letter = identity[0]
+    handoff_letters = re.findall(
+        r"\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+([A-Z])\b",
+        text,
+    )
+    if handoff_letters and handoff_letters[-1] != header_letter:
+        return False
+
+    # A plausible header alone is not a usable observation. Require enough
+    # weather/operations structure to prevent a newer corrupt provider payload
+    # from displacing an older, complete ATIS.
+    weather_signals = [
+        re.search(r"\b(?:\d{3}|VRB)\d{2}(?:G\d{2})?KT\b", text),
+        re.search(r"\b(?:P?\d+(?:\s+\d+/\d+)?|\d+/\d+)SM\b", text),
+        re.search(r"\bA\d{4}\b", text),
+        re.search(r"\b(?:SKC|CLR|FEW|SCT|BKN|OVC|VV)\d{3}\b", text),
+        re.search(r"\bM?\d{2}/M?\d{2}\b", text),
+    ]
+    weather_count = sum(signal is not None for signal in weather_signals)
+    operations_present = re.search(
+        r"\b(?:APCH|APPROACH|LANDING|DEPARTING|DEPG|RWY|RY)\b",
+        text,
+    ) is not None
+
+    return weather_count >= 2 or (weather_count >= 1 and operations_present)
 
 
 def is_good_bwc(data):
@@ -4489,13 +4686,14 @@ def build_weather_json():
         else {}
     )
 
+    atis_live_diagnostics = {}
     atis_current = fetch_current_atis(
         [
             f"https://atisrelay.com/datis/KMEM?_={cache_buster}",
-            "https://atisrelay.com/datis/KMEM"
         ],
         now_z=now_z,
         known_observed_times=known_atis_observed_times,
+        diagnostics=atis_live_diagnostics,
     )
 
     if is_good_metar(metar_current):
@@ -4529,8 +4727,9 @@ def build_weather_json():
     )
 
     if is_good_atis(atis_text) and atis_text == atis_current:
-        pass
+        atis_selected_source = "+".join(atis_live_diagnostics.get("selectedSources") or []) or "LIVE_ATIS"
     elif is_good_atis(atis_text) and is_good_atis(previous_atis):
+        atis_selected_source = "LAST_KNOWN_GOOD"
         atis_fetch_status = "USED_LAST_GOOD"
         last_known_good_used["atis"] = True
         if is_good_atis(atis_current):
@@ -4539,6 +4738,7 @@ def build_weather_json():
             print("D-ATIS fetch failed; using last-known-good D-ATIS.")
     else:
         atis_text = "D-ATIS unavailable"
+        atis_selected_source = "NONE"
         atis_fetch_status = "FAILED_NO_LAST_GOOD"
         print("D-ATIS fetch failed; no valid last-known-good D-ATIS available.")
 
@@ -4656,6 +4856,11 @@ def build_weather_json():
         "atisObservedZ": zulu_iso(atis_observed_dt),
         "atisAgeMinutes": atis_age_minutes,
         "atisReportIdentity": atis_report_identity(atis_text),
+        "atisSelectedSource": atis_selected_source,
+        "atisSourcePolicy": atis_live_diagnostics.get("policy") or "NEWEST_HEADER_TIME",
+        "atisSourcesChecked": atis_live_diagnostics.get("sourcesChecked") or list(ATIS_PROVIDER_NAMES),
+        "atisLiveCandidateCount": atis_live_diagnostics.get("candidateCount", 0),
+        "atisLiveCandidates": atis_live_diagnostics.get("candidates") or [],
         "atisSourceIsCurrent": atis_ops["sourceIsCurrent"],
         "atisReportedLetter": atis_ops["reportedLetter"],
         "atisReportedPhonetic": atis_ops["reportedPhonetic"],

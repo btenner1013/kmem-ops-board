@@ -165,6 +165,25 @@ The Python updater:
 5. Commits and pushes weather.json to GitHub.
 ```
 
+### D-ATIS source selection
+
+The updater checks two provider families on every cycle:
+
+- ATIS.info's direct JSON API, with DATIS Clowd retained as a mirror/endpoint fallback.
+- ATIS Relay's public KMEM page, requested with a cache-busting query value.
+
+Every parseable report is compared before selection. The newest ATIS header time wins;
+when two providers publish revisions with the same header time, forward information-letter
+progression (for example `Z` to `A`) wins before configured source order. A persisted
+last-known-good report is also compared by its full resolved UTC timestamp so an old cached
+report cannot outrank a current report merely because its `HHMMZ` value is later on the clock.
+If the local, repository backup, and current `weather.json` caches disagree, the newest
+persisted ATIS timestamp wins while other fields retain their normal cache priority.
+
+`weather.json` records the selection policy, providers checked, candidate identities/times,
+and selected provider in the `atisSource*`, `atisLiveCandidate*`, and `atisSelectedSource`
+fields for troubleshooting.
+
 Production safety note:
 
 ```text
