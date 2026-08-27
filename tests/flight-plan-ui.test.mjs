@@ -2,11 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { FIELD_PATHS } from "../flight-plan-core.js";
+import {
+  ONE_PDF_ERROR,
+  PDF_ONLY_ERROR,
+  isPdfFile,
+  validatePdfFileSelection,
+} from "../flight-plan-upload.js";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const toolHtml = readFileSync(new URL("../flight-plan.html", import.meta.url), "utf8");
 const toolCss = readFileSync(new URL("../flight-plan.css", import.meta.url), "utf8");
 const appJs = readFileSync(new URL("../flight-plan-app.js", import.meta.url), "utf8");
+const uploadJs = readFileSync(new URL("../flight-plan-upload.js", import.meta.url), "utf8");
 
 test("board preserves both existing controls and adds globe between them", () => {
   assert.match(indexHtml, /const DISPLAY_CONTROL_URL="\.\/display_control\.html"/);
@@ -31,6 +38,69 @@ test("landing page initially chooses neither workflow", () => {
   assert.match(toolHtml, />MANUAL ENTRY</);
   assert.match(appJs, /mode:\s*null/);
   assert.match(appJs, /plan:\s*createBlankFlightPlan\(\)/);
+});
+
+test("picker and drag-and-drop share one validated DD1801 import path", () => {
+  assert.match(toolHtml, /id="pdfDropZone"[^>]*role="group"[^>]*aria-labelledby="uploadDropTitle"/);
+  assert.match(toolHtml, /id="choosePdfButton"[^>]*type="button"/);
+  assert.match(toolHtml, /id="pdfFileInput"[^>]*type="file"[^>]*accept="application\/pdf,\.pdf"/);
+  const fileInput = toolHtml.match(/<input id="pdfFileInput"[^>]*>/)?.[0] ?? "";
+  assert.doesNotMatch(fileInput, /\smultiple(?:\s|=|>)/);
+  assert.match(fileInput, /tabindex="-1"/);
+  assert.match(fileInput, /aria-hidden="true"/);
+  assert.match(appJs, /dom\.choosePdfButton\.addEventListener\("click", requestPdfSelection\)/);
+  assert.match(appJs, /requestPdfSelection\(\)[\s\S]*?dom\.pdfFileInput\.click\(\)/);
+  assert.match(appJs, /dom\.pdfFileInput\.addEventListener\("change", \(\) => void handlePdfFiles\(dom\.pdfFileInput\.files\)\)/);
+  assert.match(appJs, /dom\.pdfDropZone\.addEventListener\("drop"[\s\S]*?handlePdfFiles\(event\.dataTransfer\?\.files\)/);
+  assert.match(appJs, /async function handlePdfFiles\(files\)[\s\S]*?validatePdfFileSelection\(files\)[\s\S]*?await handlePdfSelection\(file\)/);
+  assert.equal((appJs.match(/\bextractDd1801Pdf\s*\(/g) || []).length, 1);
+});
+
+test("PDF selection validation rejects multiple and unsupported files", () => {
+  const pdf = { name: "flight-plan.pdf", type: "application/pdf" };
+  const blankMimePdf = { name: "flight-plan.PDF", type: "" };
+  const renamedImage = { name: "photo.pdf", type: "image/png" };
+  const textFile = { name: "flight-plan.txt", type: "text/plain" };
+  const wordFile = { name: "flight-plan.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" };
+  const multipleResult = validatePdfFileSelection([pdf, pdf]);
+  const textResult = validatePdfFileSelection([textFile]);
+
+  assert.equal(ONE_PDF_ERROR, "Please select one PDF DD1801 at a time.");
+  assert.equal(PDF_ONLY_ERROR, "Please select an electronic PDF DD1801. Other file types are not supported.");
+  assert.equal(validatePdfFileSelection([pdf]).file, pdf);
+  assert.equal(validatePdfFileSelection([blankMimePdf]).file, blankMimePdf);
+  assert.equal(validatePdfFileSelection([]).error, "");
+  assert.equal(multipleResult.file, null);
+  assert.equal(multipleResult.error, "Please select one PDF DD1801 at a time.");
+  assert.equal(textResult.file, null);
+  assert.equal(textResult.error, "Please select an electronic PDF DD1801. Other file types are not supported.");
+  assert.equal(validatePdfFileSelection([wordFile]).file, null);
+  assert.equal(validatePdfFileSelection([wordFile]).error, PDF_ONLY_ERROR);
+  assert.equal(isPdfFile(renamedImage), false);
+  assert.match(appJs, /if \(error\)[\s\S]*?showFileSelectionError\(error\)[\s\S]*?return;/);
+});
+
+test("drop-zone visual state is subtle, announced, and cleared by reset", () => {
+  assert.match(toolHtml, /id="pdfDropZone"[^>]*aria-busy="false"/);
+  assert.match(toolHtml, /id="choosePdfButton"[^>]*aria-describedby="uploadInstruction uploadStatus"/);
+  assert.match(toolCss, /\.upload-dropzone\.is-drag-over\s*{/);
+  assert.match(toolCss, /\.upload-dropzone\.is-processing\s*{/);
+  assert.match(appJs, /addEventListener\("dragenter"[\s\S]*?classList\.add\("is-drag-over"\)/);
+  assert.match(appJs, /addEventListener\("dragleave"[\s\S]*?event\.relatedTarget instanceof Node[\s\S]*?pdfDropZone\.contains\(event\.relatedTarget\)[\s\S]*?clearDropZoneState\(\)/);
+  assert.match(appJs, /addEventListener\("drop"[\s\S]*?clearDropZoneState\(\)/);
+  assert.doesNotMatch(appJs, /\bdragDepth\b/);
+  assert.match(appJs, /function setUploadBusy\(isBusy[\s\S]*?classList\.toggle\("is-processing", isBusy\)[\s\S]*?setAttribute\("aria-busy", String\(isBusy\)\)/);
+  assert.match(appJs, /function blankWorkingState\(\)[\s\S]*?state\.importedFileName = ""[\s\S]*?state\.importResult = null[\s\S]*?dom\.pdfFileInput\.value = ""[\s\S]*?dom\.uploadProgress\.hidden = true[\s\S]*?dom\.uploadStatus\.textContent = ""[\s\S]*?clearDropZoneState\(\)[\s\S]*?classList\.remove\("is-processing"\)[\s\S]*?setAttribute\("aria-busy", "false"\)/);
+});
+
+test("generated output offers only an external official EUROCONTROL validator launch", () => {
+  const validatorLink = toolHtml.match(/<a id="eurocontrolValidatorLink"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "";
+  assert.match(validatorLink, /href="https:\/\/www\.public\.nm\.eurocontrol\.int\/PUBPORTAL\/gateway\/spec\/"/);
+  assert.match(validatorLink, /target="_blank"/);
+  assert.match(validatorLink, /rel="noopener noreferrer"/);
+  assert.match(validatorLink, /title="Open Flight Planning Tools, then choose Free Text Editor"/);
+  assert.match(validatorLink, />OPEN EUROCONTROL VALIDATOR<\/a>/);
+  assert.doesNotMatch(appJs, /eurocontrolValidatorLink|auto.?submit|postMessage/i);
 });
 
 test("manual form includes only operational DD1801 Items 7 through 19", () => {
@@ -198,9 +268,10 @@ test("destructive state is cleared and navigation receives an unload warning", (
 });
 
 test("flight-plan code has no persistence or external submission path", () => {
-  const combined = `${toolHtml}\n${appJs}`;
+  const combined = `${toolHtml}\n${appJs}\n${uploadJs}`;
   assert.doesNotMatch(combined, /localStorage|sessionStorage|indexedDB/);
   assert.doesNotMatch(combined, /<form[^>]+action=|fetch\(|XMLHttpRequest|WebSocket/);
+  assert.doesNotMatch(combined, /addressee/i);
   assert.match(toolHtml, /No PDF or flight-plan data is uploaded, transmitted, or saved/);
   assert.match(toolHtml, /OCR is not used/);
 });

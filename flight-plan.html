@@ -61,11 +61,14 @@
         <button id="uploadBackButton" class="text-button" type="button">BACK</button>
       </div>
 
-      <div class="upload-dropzone">
+      <div id="pdfDropZone" class="upload-dropzone" role="group" aria-labelledby="uploadDropTitle" aria-describedby="uploadInstruction uploadStatus" aria-busy="false">
         <p class="upload-mark" aria-hidden="true">PDF</p>
-        <p id="uploadInstruction">The file is processed locally in this browser and is never sent to a server.</p>
-        <button id="choosePdfButton" class="primary-button compact-button" type="button">CHOOSE PDF</button>
-        <input id="pdfFileInput" class="visually-hidden" type="file" accept="application/pdf,.pdf" aria-describedby="uploadInstruction uploadStatus">
+        <strong id="uploadDropTitle" class="upload-drop-title">DD1801 PDF</strong>
+        <p class="upload-drop-copy">Drag &amp; drop an electronic PDF here</p>
+        <span class="upload-drop-or" aria-hidden="true">OR</span>
+        <button id="choosePdfButton" class="primary-button compact-button" type="button" aria-describedby="uploadInstruction uploadStatus">CHOOSE PDF</button>
+        <input id="pdfFileInput" class="visually-hidden" type="file" accept="application/pdf,.pdf" tabindex="-1" aria-hidden="true">
+        <p id="uploadInstruction" class="upload-instruction">Processed locally in this browser. The PDF is never sent to a server.</p>
       </div>
 
       <div id="uploadProgress" class="progress-panel" hidden>
@@ -410,6 +413,7 @@
         <p class="output-note">Item 19 supplementary information is intentionally excluded from this transmitted FPL message.</p>
         <div class="output-actions">
           <button id="copyButton" class="primary-button" type="button" disabled>COPY FPL</button>
+          <a id="eurocontrolValidatorLink" class="secondary-button external-button" href="https://www.public.nm.eurocontrol.int/PUBPORTAL/gateway/spec/" target="_blank" rel="noopener noreferrer" aria-label="Open EUROCONTROL Flight Planning Tools in a new tab" title="Open Flight Planning Tools, then choose Free Text Editor">OPEN EUROCONTROL VALIDATOR</a>
           <button id="editButton" class="secondary-button" type="button">EDIT</button>
           <button id="outputResetButton" class="danger-button" type="button">NEW / RESET</button>
         </div>

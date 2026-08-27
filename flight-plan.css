@@ -275,19 +275,31 @@ h1 {
   flex-direction: column;
   align-items: center;
   margin-top: 26px;
-  padding: clamp(25px, 5vw, 48px) 18px;
+  padding: clamp(22px, 4vw, 34px) 18px;
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
   background: #080808;
   text-align: center;
+  transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.upload-dropzone.is-drag-over {
+  border-color: var(--ops-green);
+  background: rgba(0, 255, 136, .07);
+  box-shadow: inset 0 0 0 2px rgba(0, 255, 136, .16);
+}
+
+.upload-dropzone.is-processing {
+  border-style: solid;
+  border-color: rgba(0, 255, 136, .48);
 }
 
 .upload-mark {
   display: grid;
-  width: 64px;
-  height: 76px;
+  width: 52px;
+  height: 62px;
   place-items: center;
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   border: 2px solid var(--ops-green);
   border-radius: 6px;
   color: var(--ops-green);
@@ -296,10 +308,31 @@ h1 {
   letter-spacing: .08em;
 }
 
-.upload-dropzone > p:not(.upload-mark) {
+.upload-drop-title {
+  color: #fff;
+  font-size: 1rem;
+  letter-spacing: .055em;
+}
+
+.upload-drop-copy {
   max-width: 560px;
-  margin: 0 0 19px;
+  margin: 7px 0 0;
   color: var(--muted);
+}
+
+.upload-drop-or {
+  margin: 8px 0;
+  color: var(--dim);
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.upload-instruction {
+  max-width: 560px;
+  margin: 13px 0 0;
+  color: var(--muted);
+  font-size: .84rem;
 }
 
 .visually-hidden {
@@ -1040,7 +1073,8 @@ select option[value=""] {
   padding-top: 5px;
 }
 
-button {
+button,
+.external-button {
   border-radius: 8px;
   font-weight: 1000;
   letter-spacing: .035em;
@@ -1052,6 +1086,13 @@ button {
   min-height: 48px;
   padding: 11px 17px;
   cursor: pointer;
+}
+
+.external-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .primary-button {
@@ -1357,6 +1398,7 @@ pre:focus-visible {
   .route-button-row button,
   .form-actions button,
   .output-actions button,
+  .output-actions .external-button,
   .failure-actions button {
     width: 100%;
   }

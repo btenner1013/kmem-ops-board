@@ -9,6 +9,7 @@ import {
   validateRoute
 } from "./flight-plan-core.js";
 import { extractDd1801Pdf } from "./flight-plan-pdf.js";
+import { validatePdfFileSelection } from "./flight-plan-upload.js";
 
 const FIELD_LABELS = {
   "item7.aircraftIdentification": "Item 7 — Aircraft identification",
@@ -60,6 +61,7 @@ const dom = {
   landingManualButton: document.querySelector("#landingManualButton"),
   uploadScreen: document.querySelector("#uploadScreen"),
   uploadBackButton: document.querySelector("#uploadBackButton"),
+  pdfDropZone: document.querySelector("#pdfDropZone"),
   choosePdfButton: document.querySelector("#choosePdfButton"),
   retryUploadButton: document.querySelector("#retryUploadButton"),
   failureManualButton: document.querySelector("#failureManualButton"),
@@ -159,6 +161,9 @@ function blankWorkingState() {
   dom.uploadStatus.textContent = "";
   dom.uploadStatus.className = "upload-status";
   dom.uploadFailureActions.hidden = true;
+  clearDropZoneState();
+  dom.pdfDropZone.classList.remove("is-processing");
+  dom.pdfDropZone.setAttribute("aria-busy", "false");
   state.uploadBusy = false;
   dom.choosePdfButton.disabled = false;
   dom.retryUploadButton.disabled = false;
@@ -181,6 +186,7 @@ function showLanding() {
 
 function showUploadScreen({ openPicker = false } = {}) {
   showOnly("upload");
+  clearDropZoneState();
   dom.uploadStatus.textContent = "";
   dom.uploadStatus.className = "upload-status";
   dom.uploadFailureActions.hidden = true;
@@ -219,7 +225,7 @@ function beginUploadWorkflow() {
   }
 
   state.mode = "upload";
-  showUploadScreen({ openPicker: true });
+  showUploadScreen();
 }
 
 function renderPlan() {
@@ -264,6 +270,9 @@ function writeControlToState(control) {
 
 function setUploadBusy(isBusy, fileName = "") {
   state.uploadBusy = isBusy;
+  clearDropZoneState();
+  dom.pdfDropZone.classList.toggle("is-processing", isBusy);
+  dom.pdfDropZone.setAttribute("aria-busy", String(isBusy));
   dom.uploadProgress.hidden = !isBusy;
   dom.choosePdfButton.disabled = isBusy;
   dom.retryUploadButton.disabled = isBusy;
@@ -274,24 +283,8 @@ function setUploadBusy(isBusy, fileName = "") {
     : "Reading electronic PDF...";
 }
 
-function isPdf(file) {
-  return file && (file.type === "application/pdf" || /\.pdf$/i.test(file.name));
-}
-
 async function handlePdfSelection(file) {
   if (!file) return;
-
-  if (!isPdf(file)) {
-    dom.pdfFileInput.value = "";
-    if (!dom.workspace.hidden) {
-      dom.workspaceFileStatus.textContent = "File not selected: choose an electronic PDF. The current working plan was preserved.";
-      dom.workspaceUploadButton.focus();
-    } else {
-      showUploadScreen();
-      showUploadFailure("Choose an electronic PDF file. Other file types are not supported.");
-    }
-    return;
-  }
 
   if (hasCurrentData()) {
     const replace = window.confirm("Import this DD1801 and replace the current working plan? This clears all current fields, generated output, route undo, and rejection text.");
@@ -331,6 +324,40 @@ async function handlePdfSelection(file) {
     setUploadBusy(false);
     dom.pdfFileInput.value = "";
   }
+}
+
+async function handlePdfFiles(files) {
+  if (state.uploadBusy) return;
+
+  const { file, error } = validatePdfFileSelection(files);
+  if (error) {
+    showFileSelectionError(error);
+    return;
+  }
+  if (!file) return;
+
+  await handlePdfSelection(file);
+}
+
+function showFileSelectionError(message) {
+  dom.pdfFileInput.value = "";
+  clearDropZoneState();
+
+  if (!dom.workspace.hidden) {
+    dom.workspaceFileStatus.textContent = `${message} The current working plan was preserved.`;
+    dom.workspaceUploadButton.focus();
+    return;
+  }
+
+  showUploadScreen();
+  dom.uploadStatus.textContent = message;
+  dom.uploadStatus.className = "upload-status is-error";
+  dom.uploadFailureActions.hidden = false;
+  dom.uploadStatus.focus?.();
+}
+
+function clearDropZoneState() {
+  dom.pdfDropZone.classList.remove("is-drag-over");
 }
 
 function showUploadFailure(message) {
@@ -615,7 +642,34 @@ dom.uploadBackButton.addEventListener("click", () => {
   blankWorkingState();
   showLanding();
 });
-dom.pdfFileInput.addEventListener("change", () => handlePdfSelection(dom.pdfFileInput.files?.[0]));
+dom.pdfFileInput.addEventListener("change", () => void handlePdfFiles(dom.pdfFileInput.files));
+dom.pdfDropZone.addEventListener("dragenter", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (state.uploadBusy) return;
+  dom.pdfDropZone.classList.add("is-drag-over");
+});
+dom.pdfDropZone.addEventListener("dragover", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (state.uploadBusy) return;
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  dom.pdfDropZone.classList.add("is-drag-over");
+});
+dom.pdfDropZone.addEventListener("dragleave", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (state.uploadBusy) return;
+  if (event.relatedTarget instanceof Node && dom.pdfDropZone.contains(event.relatedTarget)) return;
+  clearDropZoneState();
+});
+dom.pdfDropZone.addEventListener("drop", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  clearDropZoneState();
+  if (state.uploadBusy) return;
+  void handlePdfFiles(event.dataTransfer?.files);
+});
 dom.validateRouteButton.addEventListener("click", handleRouteValidation);
 dom.undoRouteButton.addEventListener("click", undoRouteValidation);
 dom.generateButton.addEventListener("click", generateFpl);
