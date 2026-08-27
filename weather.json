@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-08-26T23:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-08-26T23:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "O:2354Z",
   "atisSourceIsCurrent": true,
   "atisReportedLetter": "O",
@@ -29,8 +29,8 @@
   "lastKnownGoodCachePath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_last_good.json",
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-26T21:15:30Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-08-26T21:25:30Z",
+  "trendSampleCount": 22,
   "trendHistoryPath": "C:\\Users\\164os\\AppData\\Local\\KMEMOpsBoard\\weather_trend_history.json",
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -70,8 +70,8 @@
   "altimeterTrendText": "STEADY",
   "ceilingFt": 24000,
   "ceilingDisplay": "24000 FT",
-  "ceilingTrend": "\u2193",
-  "ceilingTrendText": "FALLING",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
@@ -152,14 +152,14 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 01-04Z",
-  "bwc": "LOW",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-27 00:00:00.000",
-  "bwcNexrad": "LOW",
+  "bwcUpdatedZ": "2026-08-27 00:12:00.000",
+  "bwcNexrad": "NO DATA",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "LOW",
-  "bwcBasedOn": "NEXRAD",
+  "bwcAhasRisk": "MODERATE",
+  "bwcBasedOn": "NEXBAM",
   "bwcHeight100FtAgl": "3111",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=8&day=27&hour=00&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=8&iDay=27&iHour=00",
@@ -167,7 +167,7 @@
   "milNotamCount": 5,
   "milNotamStatus": "5 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-27 00:06:44Z",
+  "milNotamUpdatedZ": "2026-08-27 00:16:45Z",
   "milNotamScrollText": "M0033/26 M0033/26 NOTAMC M0032/26 A) KMEM  |  M0034/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0031/26 M0031/26 NOTAMC M0030/26 A) KMEM",
   "milNotams": [
     {
@@ -383,13 +383,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 5,
-  "allFeedsUpdatedZ": "2026-08-27 00:05Z",
+  "allFeedsUpdatedZ": "2026-08-27 00:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "164os",
     "lastWorkflowName": "Local Windows KMEM Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-27 00:05:30Z"
+    "lastWorkflowTimestampZ": "2026-08-27 00:15:30Z"
   }
 }
