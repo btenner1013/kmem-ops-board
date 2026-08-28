@@ -49,6 +49,11 @@
         </button>
       </div>
 
+      <div class="landing-aisr-row" aria-label="AISR Assistant availability">
+        <button id="landingAisrButton" class="secondary-button" type="button" disabled>AISR ASSISTANT</button>
+        <p>Import or enter a working flight plan to review its AISR mapping.</p>
+      </div>
+
       <p class="landing-footnote">Electronic PDFs only in V1. Scanned or handwritten forms require manual entry; OCR is not used.</p>
     </section>
 
@@ -93,6 +98,7 @@
           <p id="modeDescription" class="mode-description"></p>
         </div>
         <div class="workspace-actions" aria-label="Entry mode controls">
+          <button id="aisrAssistantButton" class="primary-button compact-button" type="button" disabled>AISR ASSISTANT</button>
           <button id="workspaceUploadButton" class="secondary-button compact-button" type="button">UPLOAD DD1801</button>
           <button id="workspaceManualButton" class="secondary-button compact-button" type="button">MANUAL ENTRY</button>
         </div>
@@ -110,6 +116,58 @@
         <p class="review-lead">The values below are exactly what the importer mapped into the editable form. Correct any errors and review every flagged field before generation.</p>
         <div id="importSummary" class="import-summary"></div>
         <div id="importFlags" class="import-flags"></div>
+      </section>
+
+      <section id="aisrAssistantPanel" class="aisr-panel" aria-labelledby="aisrAssistantTitle" tabindex="-1" hidden>
+        <div class="aisr-panel-header">
+          <div>
+            <p class="section-kicker">AISR ASSISTANT</p>
+            <h3 id="aisrAssistantTitle">AISR review / mapping</h3>
+          </div>
+          <div class="aisr-panel-heading-actions">
+            <span id="aisrReadinessBadge" class="status-badge"></span>
+            <button id="closeAisrButton" class="text-button" type="button">CLOSE</button>
+          </div>
+        </div>
+
+        <div class="aisr-preset-card">
+          <strong>C-17 MIL IFR PRESET</strong>
+          <span>FPL · I — IFR · M — Military · C17 · H — Heavy</span>
+          <p>Explicit working-plan values remain authoritative and are never silently replaced by this preset.</p>
+        </div>
+
+        <div id="aisrReadinessSummary" class="aisr-readiness-summary" role="status" aria-live="polite"></div>
+        <div id="aisrWarnings" class="aisr-warnings"></div>
+
+        <div class="aisr-table-wrap">
+          <table id="aisrReviewTable" class="aisr-review-table">
+            <thead>
+              <tr>
+                <th scope="col">AISR FIELD</th>
+                <th scope="col">VALUE</th>
+                <th scope="col">SOURCE</th>
+                <th scope="col">STATUS</th>
+                <th scope="col">COPY</th>
+              </tr>
+            </thead>
+            <tbody id="aisrReviewBody"></tbody>
+          </table>
+        </div>
+
+        <div class="aisr-copy-actions" aria-label="AISR copy controls">
+          <button id="copyAisrRouteButton" class="secondary-button compact-button" type="button">COPY ROUTE</button>
+          <button id="copyAisrField10Button" class="secondary-button compact-button" type="button">COPY FIELD 10</button>
+          <button id="copyAisrField18Button" class="secondary-button compact-button" type="button">COPY FIELD 18</button>
+          <button id="copyAisrDataButton" class="primary-button compact-button" type="button">COPY AISR DATA</button>
+          <button id="copyAisrPayloadButton" class="secondary-button compact-button" type="button">COPY AUTOFILL PAYLOAD</button>
+        </div>
+        <div id="aisrCopyStatus" class="copy-status" role="status" aria-live="polite"></div>
+
+        <aside class="aisr-autofill-note" aria-label="AISR autofill status">
+          <strong>AISR DOM NOT YET VERIFIED — AUTOFILL NOT CLAIMED</strong>
+          <p>The transfer payload is populate-only. It contains no filing action, selector guesses, credentials, cookies, tokens, or session data. The user must review AISR and manually file.</p>
+          <a class="secondary-button compact-button external-button" href="./aisr-dom-probe.js" target="_blank" rel="noopener noreferrer">OPEN READ-ONLY DOM PROBE SOURCE</a>
+        </aside>
       </section>
 
       <form id="flightPlanForm" novalidate>

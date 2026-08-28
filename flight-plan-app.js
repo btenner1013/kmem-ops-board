@@ -8,6 +8,11 @@ import {
   validateFlightPlan,
   validateRoute
 } from "./flight-plan-core.js";
+import {
+  formatAisrSummary,
+  normalizeAisrPlan,
+  serializeAisrTransferPayload
+} from "./flight-plan-aisr.js";
 import { extractDd1801Pdf } from "./flight-plan-pdf.js";
 import { validatePdfFileSelection } from "./flight-plan-upload.js";
 
@@ -75,11 +80,24 @@ const dom = {
   modeDescription: document.querySelector("#modeDescription"),
   workspaceUploadButton: document.querySelector("#workspaceUploadButton"),
   workspaceManualButton: document.querySelector("#workspaceManualButton"),
+  aisrAssistantButton: document.querySelector("#aisrAssistantButton"),
   workspaceFileStatus: document.querySelector("#workspaceFileStatus"),
   importReview: document.querySelector("#importReview"),
   importSourceBadge: document.querySelector("#importSourceBadge"),
   importSummary: document.querySelector("#importSummary"),
   importFlags: document.querySelector("#importFlags"),
+  aisrAssistantPanel: document.querySelector("#aisrAssistantPanel"),
+  aisrReadinessBadge: document.querySelector("#aisrReadinessBadge"),
+  aisrReadinessSummary: document.querySelector("#aisrReadinessSummary"),
+  aisrWarnings: document.querySelector("#aisrWarnings"),
+  aisrReviewBody: document.querySelector("#aisrReviewBody"),
+  closeAisrButton: document.querySelector("#closeAisrButton"),
+  copyAisrRouteButton: document.querySelector("#copyAisrRouteButton"),
+  copyAisrField10Button: document.querySelector("#copyAisrField10Button"),
+  copyAisrField18Button: document.querySelector("#copyAisrField18Button"),
+  copyAisrDataButton: document.querySelector("#copyAisrDataButton"),
+  copyAisrPayloadButton: document.querySelector("#copyAisrPayloadButton"),
+  aisrCopyStatus: document.querySelector("#aisrCopyStatus"),
   form: document.querySelector("#flightPlanForm"),
   firstField: document.querySelector("#aircraftIdentification"),
   route: document.querySelector("#route"),
@@ -106,9 +124,11 @@ const state = {
   plan: createBlankFlightPlan(),
   importedFileName: "",
   importResult: null,
+  manuallyEditedPaths: new Set(),
   routeUndoSnapshot: null,
   generatedFpl: "",
   generatedPlanSnapshot: "",
+  aisrReview: null,
   uploadBusy: false
 };
 
@@ -131,9 +151,11 @@ function blankWorkingState() {
   state.plan = createBlankFlightPlan();
   state.importedFileName = "";
   state.importResult = null;
+  state.manuallyEditedPaths = new Set();
   state.routeUndoSnapshot = null;
   state.generatedFpl = "";
   state.generatedPlanSnapshot = "";
+  state.aisrReview = null;
   dom.rejectionResponse.value = "";
   dom.routeStatus.textContent = "";
   dom.routeStatus.className = "route-status";
@@ -155,6 +177,12 @@ function blankWorkingState() {
   dom.importSourceBadge.textContent = "";
   dom.importSummary.replaceChildren();
   dom.importFlags.replaceChildren();
+  dom.aisrAssistantPanel.hidden = true;
+  dom.aisrReviewBody.replaceChildren();
+  dom.aisrWarnings.replaceChildren();
+  dom.aisrReadinessSummary.textContent = "";
+  dom.aisrCopyStatus.textContent = "";
+  dom.aisrAssistantButton.disabled = true;
   dom.pdfFileInput.value = "";
   dom.uploadProgress.hidden = true;
   dom.uploadProgressLabel.textContent = "";
@@ -237,6 +265,11 @@ function renderPlan() {
       control.value = value == null ? "" : String(value);
     }
   }
+  updateAisrAvailability();
+}
+
+function updateAisrAvailability() {
+  dom.aisrAssistantButton.disabled = !hasWorkingData(state.plan);
 }
 
 function readControl(control) {
@@ -261,10 +294,13 @@ function updateOutputFreshness() {
 function markPlanEdited() {
   dom.structuralStatus.hidden = true;
   updateOutputFreshness();
+  updateAisrAvailability();
+  if (!dom.aisrAssistantPanel.hidden) renderAisrReview();
 }
 
 function writeControlToState(control) {
   setFieldValue(state.plan, control.dataset.path, readControl(control));
+  state.manuallyEditedPaths.add(control.dataset.path);
   markPlanEdited();
 }
 
@@ -476,6 +512,145 @@ function appendWarningCard(warnings) {
   dom.importFlags.append(card);
 }
 
+function aisrField(key) {
+  return state.aisrReview?.fields?.find(field => field.key === key) || null;
+}
+
+function aisrValue(key) {
+  const field = aisrField(key);
+  return String(field?.copyValue ?? field?.value ?? "");
+}
+
+function aisrTone(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+function renderAisrReview() {
+  state.aisrReview = normalizeAisrPlan(state.plan, {
+    importResult: state.importResult,
+    manuallyEditedPaths: state.manuallyEditedPaths,
+  });
+  const { fields, summary, overallStatus, warnings } = state.aisrReview;
+
+  dom.aisrReadinessBadge.textContent = overallStatus;
+  const hasInvalid = summary.invalid > 0 || summary.structuralErrors > 0;
+  dom.aisrReadinessBadge.className = `status-badge ${hasInvalid ? "error" : overallStatus === "AISR READY" ? "passed" : "warning"}`;
+  dom.aisrReadinessSummary.className = `aisr-readiness-summary${overallStatus === "AISR READY" ? "" : " is-review-required"}`;
+  dom.aisrReadinessSummary.textContent = `${overallStatus} — ${summary.fromFlightPlan} from flight plan · ${summary.fromPreset} from C-17 preset · ${summary.manualRequired} manual · ${summary.conflicts} conflict${summary.conflicts === 1 ? "" : "s"} · ${summary.invalid} invalid field${summary.invalid === 1 ? "" : "s"} · ${summary.structuralErrors} validation error${summary.structuralErrors === 1 ? "" : "s"} · ${summary.structuralWarnings} validation warning${summary.structuralWarnings === 1 ? "" : "s"}`;
+
+  dom.aisrWarnings.replaceChildren();
+  if (warnings.length) {
+    const list = document.createElement("ul");
+    for (const warning of warnings) {
+      const item = document.createElement("li");
+      item.textContent = String(warning);
+      list.append(item);
+    }
+    dom.aisrWarnings.append(list);
+  }
+
+  dom.aisrReviewBody.replaceChildren();
+  for (const field of fields) {
+    const row = document.createElement("tr");
+    const labelCell = document.createElement("td");
+    const valueCell = document.createElement("td");
+    const sourceCell = document.createElement("td");
+    const statusCell = document.createElement("td");
+    const copyCell = document.createElement("td");
+    const copyButton = document.createElement("button");
+
+    labelCell.textContent = field.label;
+    valueCell.className = "aisr-value";
+    valueCell.textContent = field.value || "—";
+    sourceCell.className = `aisr-source is-${aisrTone(field.source)}`;
+    sourceCell.textContent = field.source;
+    statusCell.className = `aisr-status is-${aisrTone(field.status)}`;
+    statusCell.textContent = field.status;
+    if (field.warning) statusCell.title = field.warning;
+
+    copyButton.className = "secondary-button compact-button";
+    copyButton.type = "button";
+    copyButton.textContent = "COPY";
+    copyButton.setAttribute("aria-label", `Copy AISR ${field.label}`);
+    copyButton.disabled = !String(field.copyValue ?? "");
+    copyButton.addEventListener("click", () => void copyAisrText(
+      String(field.copyValue ?? ""),
+      `Copied ${field.label}.`,
+    ));
+    copyCell.append(copyButton);
+    row.append(labelCell, valueCell, sourceCell, statusCell, copyCell);
+    dom.aisrReviewBody.append(row);
+  }
+
+  dom.copyAisrRouteButton.disabled = !aisrValue("route");
+  dom.copyAisrField18Button.disabled = !aisrValue("field18");
+  dom.copyAisrField10Button.disabled = !(aisrValue("equipment") && aisrValue("surveillance"));
+  dom.aisrCopyStatus.textContent = "";
+}
+
+function openAisrAssistant() {
+  if (!hasWorkingData(state.plan)) return;
+  renderAisrReview();
+  dom.aisrAssistantPanel.hidden = false;
+  dom.aisrAssistantPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  dom.aisrAssistantPanel.focus({ preventScroll: true });
+}
+
+function closeAisrAssistant() {
+  dom.aisrAssistantPanel.hidden = true;
+  state.aisrReview = null;
+  dom.aisrCopyStatus.textContent = "";
+  dom.aisrAssistantButton.focus();
+}
+
+async function writeClipboardText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const copyArea = document.createElement("textarea");
+    copyArea.value = text;
+    copyArea.setAttribute("readonly", "");
+    copyArea.className = "visually-hidden";
+    document.body.append(copyArea);
+    copyArea.select();
+    const copied = document.execCommand("copy");
+    copyArea.remove();
+    return copied;
+  }
+}
+
+async function copyAisrText(text, successMessage) {
+  if (!text) return;
+  const copied = await writeClipboardText(text);
+  dom.aisrCopyStatus.textContent = copied
+    ? successMessage
+    : "Copy was blocked by the browser. Select the AISR value and copy it manually.";
+}
+
+function copyAisrField(key, successMessage) {
+  return copyAisrText(aisrValue(key), successMessage);
+}
+
+function copyAisrField10() {
+  const equipment = aisrValue("equipment");
+  const surveillance = aisrValue("surveillance");
+  if (!equipment || !surveillance) return Promise.resolve();
+  return copyAisrText(`${equipment}/${surveillance}`, "Copied Field 10 equipment/surveillance.");
+}
+
+function copyAllAisrData() {
+  if (!state.aisrReview) renderAisrReview();
+  return copyAisrText(formatAisrSummary(state.aisrReview), "Copied the AISR review summary.");
+}
+
+function copyAisrTransferPayload() {
+  if (!state.aisrReview) renderAisrReview();
+  const payload = serializeAisrTransferPayload(state.aisrReview);
+  const text = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+  return copyAisrText(text, "Copied the populate-only AISR transfer payload.");
+}
+
 function handleRouteValidation() {
   const originalRoute = String(getFieldValue(state.plan, "item15.route") || "");
   const result = validateRoute(originalRoute);
@@ -484,6 +659,7 @@ function handleRouteValidation() {
     state.routeUndoSnapshot = originalRoute;
     dom.undoRouteButton.disabled = false;
     setFieldValue(state.plan, "item15.route", result.route);
+    state.manuallyEditedPaths.add("item15.route");
     dom.route.value = result.route;
     markPlanEdited();
   }
@@ -506,6 +682,7 @@ function undoRouteValidation() {
   const exactSnapshot = state.routeUndoSnapshot;
   state.routeUndoSnapshot = null;
   setFieldValue(state.plan, "item15.route", exactSnapshot);
+  state.manuallyEditedPaths.add("item15.route");
   dom.route.value = exactSnapshot;
   dom.undoRouteButton.disabled = true;
   dom.routeStatus.textContent = "Restored the exact route text from immediately before the last modifying validation.";
@@ -588,22 +765,10 @@ async function copyFpl() {
     updateOutputFreshness();
     return;
   }
-  try {
-    await navigator.clipboard.writeText(state.generatedFpl);
-    dom.copyStatus.textContent = "Copied the exact generated FPL message.";
-  } catch {
-    const copyArea = document.createElement("textarea");
-    copyArea.value = state.generatedFpl;
-    copyArea.setAttribute("readonly", "");
-    copyArea.className = "visually-hidden";
-    document.body.append(copyArea);
-    copyArea.select();
-    const copied = document.execCommand("copy");
-    copyArea.remove();
-    dom.copyStatus.textContent = copied
-      ? "Copied the exact generated FPL message."
-      : "Copy was blocked by the browser. Select the generated message and copy it manually.";
-  }
+  const copied = await writeClipboardText(state.generatedFpl);
+  dom.copyStatus.textContent = copied
+    ? "Copied the exact generated FPL message."
+    : "Copy was blocked by the browser. Select the generated message and copy it manually.";
 }
 
 function editPlan() {
@@ -636,6 +801,16 @@ dom.choosePdfButton.addEventListener("click", requestPdfSelection);
 dom.retryUploadButton.addEventListener("click", requestPdfSelection);
 dom.workspaceUploadButton.addEventListener("click", requestPdfSelection);
 dom.workspaceManualButton.addEventListener("click", startManualEntry);
+dom.aisrAssistantButton.addEventListener("click", openAisrAssistant);
+dom.closeAisrButton.addEventListener("click", closeAisrAssistant);
+dom.copyAisrRouteButton.addEventListener("click", () => void copyAisrField("route", "Copied route."));
+dom.copyAisrField10Button.addEventListener("click", () => void copyAisrField10());
+dom.copyAisrField18Button.addEventListener("click", () => void copyAisrField("field18", "Copied Field 18."));
+dom.copyAisrDataButton.addEventListener("click", () => void copyAllAisrData());
+dom.copyAisrPayloadButton.addEventListener("click", () => void copyAisrTransferPayload());
+dom.aisrAssistantPanel.addEventListener("keydown", event => {
+  if (event.key === "Escape") closeAisrAssistant();
+});
 dom.failureManualButton.addEventListener("click", startManualEntry);
 dom.uploadBackButton.addEventListener("click", () => {
   if (state.uploadBusy) return;
