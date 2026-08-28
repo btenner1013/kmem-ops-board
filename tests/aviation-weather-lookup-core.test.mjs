@@ -9,8 +9,10 @@ import {
   filterAndSortReports,
   isValidIcao,
   lookupAviationWeather,
+  normalizeTafDisplay,
   normalizeIcao,
   parseAtisInfoResponse,
+  parseAtisHistoryPayload,
   parseIemMetarCsv,
   parseNwsTafProduct,
   rangeHours,
@@ -19,9 +21,40 @@ import {
 const NOW = new Date("2026-08-27T12:00:00Z");
 const fixtureUrl = (name) => new URL(`./fixtures/aviation-weather/${name}`, import.meta.url);
 const metarCsv = readFileSync(fixtureUrl("iem-metar.csv"), "utf8");
+const interleavedMetarCsv = readFileSync(fixtureUrl("iem-metar-interleaved.csv"), "utf8");
 const tafIndex = JSON.parse(readFileSync(fixtureUrl("iem-taf-index.json"), "utf8"));
 const tafDetails = JSON.parse(readFileSync(fixtureUrl("iem-taf-details.json"), "utf8"));
+const tafDisplayProducts = JSON.parse(readFileSync(fixtureUrl("taf-display-products.json"), "utf8"));
 const atisInfo = JSON.parse(readFileSync(fixtureUrl("atis-info.json"), "utf8"));
+const atisHistory = {
+  schemaVersion: 1,
+  station: "KMEM",
+  retentionHours: 96,
+  archiveStartedZ: "2026-08-26T09:05:00Z",
+  records: [
+    {
+      station: "KMEM",
+      observedZ: "2026-08-27T11:30:00Z",
+      letter: "C",
+      variant: "COMBINED",
+      raw: "MEM ATIS INFO C 1130Z. 22008KT 10SM SCT050 A2998. VISUAL APCH RY 27. ADVS YOU HAVE INFO C.",
+    },
+    {
+      station: "KMEM",
+      observedZ: "2026-08-27T10:30:00Z",
+      letter: "B",
+      variant: "ARR",
+      raw: "MEM ARR ATIS INFO B 1030Z. 21007KT 10SM SCT060 A2999. LANDING RY 27. ADVS YOU HAVE INFO B.",
+    },
+    {
+      station: "KMEM",
+      observedZ: "2026-08-27T10:30:00Z",
+      letter: "O",
+      variant: "DEP",
+      raw: "MEM DEP ATIS INFO O 1030Z. 21007KT 10SM SCT060 A2999. DEPG RY 27. ADVS YOU HAVE INFO O.",
+    },
+  ],
+};
 
 function jsonResponse(value, status = 200) {
   return {
@@ -83,8 +116,28 @@ test("IEM raw METAR rows use UTC observation time and ignore malformed records",
   const reports = parseIemMetarCsv(metarCsv, "KMEM");
   assert.equal(reports.length, 6);
   assert.equal(reports.at(-1).timestamp, "2026-08-27T11:54:00.000Z");
+  assert.equal(reports[0].product, "METAR");
+  assert.equal(reports.at(-1).product, "SPECI");
   assert.match(reports.at(-1).raw, /^SPECI KMEM 271154Z/);
   assert.ok(reports.every((report) => report.station === "KMEM"));
+});
+
+test("routine METARs and SPECIs retain raw text, explicit labels, and interleaved UTC order", () => {
+  const parsed = parseIemMetarCsv(interleavedMetarCsv, "KMEM");
+  assert.deepEqual(parsed.map((report) => report.product), ["METAR", "SPECI", "METAR"]);
+  assert.match(parsed[1].raw, /^SPECI KMEM 271120Z/);
+
+  const reports = filterAndSortReports(parsed, 3, NOW);
+  assert.deepEqual(
+    reports.map((report) => [report.product, report.timestamp]),
+    [
+      ["METAR", "2026-08-27T11:54:00.000Z"],
+      ["SPECI", "2026-08-27T11:20:00.000Z"],
+      ["METAR", "2026-08-27T10:54:00.000Z"],
+    ],
+  );
+  assert.equal(reports.length, 3);
+  assert.equal(reports[1].raw, "SPECI KMEM 271120Z 23012G20KT 4SM TSRA BKN030CB 29/20 A2996 RMK AO2");
 });
 
 test("historical filtering is inclusive, newest-first, and enforces the 96-hour cutoff", () => {
@@ -98,6 +151,8 @@ test("historical filtering is inclusive, newest-first, and enforces the 96-hour 
   assert.ok(ninetySixHours.some((report) => report.timestamp === "2026-08-23T12:00:00.000Z"));
   assert.ok(!ninetySixHours.some((report) => report.timestamp === "2026-08-23T11:59:00.000Z"));
   assert.equal(ninetySixHours.filter((report) => report.timestamp === "2026-08-27T11:54:00.000Z").length, 1);
+  assert.ok(ninetySixHours.some((report) => report.product === "METAR"));
+  assert.ok(ninetySixHours.some((report) => report.product === "SPECI"));
 });
 
 test("malformed and future report timestamps cannot displace valid reports", () => {
@@ -138,14 +193,142 @@ test("TAF parsing uses actual issuance time rather than forecast valid time", ()
   assert.match(report.raw, /TAF AMD\s+KMEM 271130Z/);
 });
 
-test("invalid ICAO and historical ATIS return truthful states without requesting a provider", async () => {
+test("TAF display copies canonicalize normal, AMD, and COR headers without changing raw source", () => {
+  const cases = [
+    {
+      name: "normal",
+      variant: "",
+      expected: [
+        "TAF KMEM 272329Z 2800/2906 36008KT P6SM FEW060 BKN250",
+        "    FM280100 05004KT P6SM SCT250",
+        "    TEMPO 2812/2814 3SM TSRA BKN025CB",
+        "    PROB30 TEMPO 2814/2816 1SM +TSRA OVC015CB=",
+      ].join("\n"),
+    },
+    {
+      name: "amendment",
+      variant: "AMD",
+      expected: [
+        "TAF AMD KMEM 272052Z 2721/2824 36008KT P6SM SCT080",
+        "    FM280000 05004KT P6SM SCT250",
+        "    BECMG 2814/2816 02008KT P6SM FEW060=",
+      ].join("\n"),
+    },
+    {
+      name: "correction",
+      variant: "COR",
+      expected: [
+        "TAF COR KMEM 272100Z 2721/2824 01006KT P6SM SCT060",
+        "    PROB40 2808/2812 2SM TSRA BKN020CB=",
+      ].join("\n"),
+    },
+  ];
+
+  for (const item of cases) {
+    const source = tafDisplayProducts[item.name];
+    const report = parseNwsTafProduct(
+      source,
+      { issuanceTime: "2026-08-27T11:30:00Z", is_amendment: item.variant === "AMD" },
+      "KMEM",
+    );
+    assert.ok(report, `${item.name} TAF should parse`);
+    assert.equal(report.raw, source, `${item.name} raw source should remain intact`);
+    assert.equal(report.displayText, item.expected);
+    assert.equal(report.variant, item.variant);
+    assert.equal(normalizeTafDisplay(report.raw, "KMEM", report.variant), item.expected);
+    assert.ok(report.displayText.endsWith("="), `${item.name} display should retain its terminator`);
+  }
+});
+
+test("invalid ICAO and non-KMEM historical ATIS return truthful states without requesting a provider", async () => {
   let calls = 0;
   const fetchImpl = async () => { calls += 1; throw new Error("should not run"); };
   const invalid = await lookupAviationWeather({ station: "MEM", product: "METAR", fetchImpl, now: NOW });
-  const history = await lookupAviationWeather({ station: "KMEM", product: "ATIS", range: "96", fetchImpl, now: NOW });
+  const history = await lookupAviationWeather({ station: "KATL", product: "ATIS", range: "96", fetchImpl, now: NOW });
   assert.equal(invalid.headline, "INVALID ICAO");
   assert.equal(history.headline, "HISTORICAL ATIS UNAVAILABLE");
   assert.equal(calls, 0);
+});
+
+test("KMEM historical ATIS parses valid archive records and preserves distinct ARR and DEP reports", () => {
+  const payload = structuredClone(atisHistory);
+  payload.records.push({
+    station: "KMEM",
+    observedZ: "2026-08-27T11:45:00Z",
+    letter: "D",
+    variant: "COMBINED",
+    raw: "MEM ATIS INFO D 1145Z. CORRUPT ARCHIVED BODY WITHOUT USABLE WEATHER DATA. ADVS YOU HAVE INFO D.",
+  });
+  const parsed = parseAtisHistoryPayload(payload, "KMEM");
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.archiveStartedZ, "2026-08-26T09:05:00.000Z");
+  assert.equal(parsed.reports.length, 3);
+  assert.deepEqual(parsed.reports.map((report) => report.letterName), ["CHARLIE", "BRAVO", "OSCAR"]);
+  assert.deepEqual(parsed.reports.slice(1).map((report) => report.variant), ["ARR", "DEP"]);
+  assert.ok(parsed.reports.every((report) => report.source === "KMEM local D-ATIS archive"));
+});
+
+test("KMEM historical ATIS is newest-first and discloses the truthful partial archive start", async () => {
+  const calls = [];
+  const response = await lookupAviationWeather({
+    station: "KMEM",
+    product: "ATIS",
+    range: "2",
+    now: NOW,
+    baseUrl: "https://example.test/board/",
+    fetchImpl: async (input) => {
+      calls.push(String(input));
+      return jsonResponse(atisHistory);
+    },
+  });
+  assert.equal(response.state, "success");
+  assert.deepEqual(response.reports.map((report) => report.timestamp), [
+    "2026-08-27T11:30:00.000Z",
+    "2026-08-27T10:30:00.000Z",
+    "2026-08-27T10:30:00.000Z",
+  ]);
+  assert.match(response.detail, /LOCAL D-ATIS ARCHIVE — AVAILABLE SINCE 26 AUG 2026 09:05Z/);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0], /atis_history\.json\?lookup=/);
+});
+
+test("empty partial KMEM archive windows do not imply there were no earlier broadcasts", async () => {
+  const response = await lookupAviationWeather({
+    station: "KMEM",
+    product: "ATIS",
+    range: "1",
+    now: new Date("2026-08-27T12:31:00Z"),
+    baseUrl: "https://example.test/board/",
+    fetchImpl: async () => jsonResponse(atisHistory),
+  });
+  assert.equal(response.state, "empty");
+  assert.equal(response.headline, "NO REPORTS FOUND");
+  assert.match(response.detail, /Only reports genuinely observed after that time can appear/);
+  assert.match(response.detail, /does not imply that no earlier broadcasts existed/);
+});
+
+test("missing or malformed KMEM history remains truthfully unavailable", async () => {
+  const malformed = await lookupAviationWeather({
+    station: "KMEM",
+    product: "ATIS",
+    range: "96",
+    now: NOW,
+    baseUrl: "https://example.test/board/",
+    fetchImpl: async () => jsonResponse({ schemaVersion: 1, station: "KMEM", records: [] }),
+  });
+  assert.equal(malformed.state, "unsupported");
+  assert.equal(malformed.headline, "HISTORICAL ATIS UNAVAILABLE");
+
+  const missing = await lookupAviationWeather({
+    station: "KMEM",
+    product: "ATIS",
+    range: "96",
+    now: NOW,
+    baseUrl: "https://example.test/board/",
+    fetchImpl: async () => jsonResponse({}, 404),
+  });
+  assert.equal(missing.state, "unsupported");
+  assert.equal(missing.headline, "HISTORICAL ATIS UNAVAILABLE");
 });
 
 test("KMEM current ATIS reads the operational selection and honors its existing freshness flag", async () => {
@@ -215,8 +398,28 @@ test("one failed METAR provider is isolated when the KMEM operational feed is va
   });
   assert.equal(response.state, "success");
   assert.equal(response.partialFailures, 1);
+  assert.equal(response.reports[0].product, "METAR");
   assert.equal(response.reports[0].source, "KMEM operational feed");
   assert.equal(calls.length, 2);
+});
+
+test("KMEM operational special observation is explicitly labeled SPECI", async () => {
+  const response = await lookupAviationWeather({
+    station: "KMEM",
+    product: "METAR",
+    now: NOW,
+    baseUrl: "https://example.test/board/",
+    fetchImpl: async (input) => {
+      if (String(input).includes("request/asos.py")) throw new Error("IEM timeout");
+      return jsonResponse({
+        metar: "SPECI KMEM 271158Z 23012G20KT 4SM TSRA BKN030CB 29/20 A2996 RMK AO2",
+        metarObservedZ: "2026-08-27T11:58:00Z",
+      });
+    },
+  });
+  assert.equal(response.state, "success");
+  assert.equal(response.reports[0].product, "SPECI");
+  assert.match(response.reports[0].raw, /^SPECI KMEM 271158Z/);
 });
 
 test("Most recent METAR selects the newest observation across archive and operational candidates", async () => {
@@ -236,6 +439,7 @@ test("Most recent METAR selects the newest observation across archive and operat
   assert.equal(response.state, "success");
   assert.equal(response.reports.length, 1);
   assert.equal(response.reports[0].timestamp, "2026-08-27T11:54:00.000Z");
+  assert.equal(response.reports[0].product, "SPECI");
   assert.equal(response.reports[0].source, "Iowa Environmental Mesonet");
 });
 

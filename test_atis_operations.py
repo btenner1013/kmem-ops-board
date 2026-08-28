@@ -80,6 +80,109 @@ class AtisOperationsTests(unittest.TestCase):
         self.assertGreaterEqual(diagnostics["candidateCount"], 2)
         self.assertEqual(diagnostics["selectedSources"], ["ATIS_RELAY"])
 
+    def test_fetcher_exposes_only_valid_live_candidates_for_history(self):
+        current = u.extract_atis_text(atis("A", "0954Z", "18C"))
+        malformed = "MEM ATIS INFO B 1004Z. INCOMPLETE."
+        live_candidates = [{"stale": "caller state must be cleared"}]
+
+        with mock.patch.object(
+            u,
+            "fetch_atis_info_api_candidates",
+            return_value=[current, malformed],
+        ):
+            with mock.patch.object(u, "fetch_url", return_value=current):
+                selected = u.fetch_current_atis(
+                    ["https://relay.test/current"],
+                    self.now,
+                    live_candidates=live_candidates,
+                )
+
+        self.assertEqual(selected, current)
+        self.assertEqual(len(live_candidates), 1)
+        self.assertEqual(
+            live_candidates[0],
+            {
+                "isLive": True,
+                "isFallback": False,
+                "station": "KMEM",
+                "observedZ": "2026-08-21T09:54:00Z",
+                "letter": "A",
+                "variant": "COMBINED",
+                "raw": current,
+                "sources": ["ATIS_INFO_API", "ATIS_RELAY"],
+            },
+        )
+
+    def test_history_failure_is_isolated_from_operational_producer(self):
+        def failing_maintainer(*_args, **_kwargs):
+            raise OSError("archive unavailable")
+
+        with mock.patch("builtins.print") as output:
+            result = u.maintain_atis_history_safely([], self.now, failing_maintainer)
+
+        self.assertIsNone(result)
+        self.assertTrue(
+            any(
+                "ATIS history maintenance failed safely" in str(call)
+                for call in output.call_args_list
+            )
+        )
+
+        with mock.patch("builtins.print"):
+            malformed_result = u.maintain_atis_history_safely(
+                [], self.now, lambda *_args, **_kwargs: None
+            )
+        self.assertIsNone(malformed_result)
+
+    def test_fetcher_preserves_arrival_and_departure_variants_for_history(self):
+        arrival = atis("S", "0954Z").replace("MEM ATIS", "MEM ARR ATIS")
+        departure = atis("O", "0954Z", "18C").replace("MEM ATIS", "MEM DEP ATIS")
+        live_candidates = []
+
+        with mock.patch.object(u, "fetch_atis_info_api_candidates", return_value=[arrival]):
+            with mock.patch.object(u, "fetch_url", return_value=departure):
+                u.fetch_current_atis(
+                    ["https://relay.test/split"],
+                    self.now,
+                    live_candidates=live_candidates,
+                )
+
+        self.assertEqual(
+            {(item["letter"], item["variant"]) for item in live_candidates},
+            {("S", "ARR"), ("O", "DEP")},
+        )
+        self.assertTrue(any(item["raw"].startswith("MEM ARR ATIS") for item in live_candidates))
+        self.assertTrue(any(item["raw"].startswith("MEM DEP ATIS") for item in live_candidates))
+
+    def test_fetcher_preserves_structured_provider_variant_metadata(self):
+        arrival = u.extract_atis_text(atis("S", "0954Z"))
+        live_candidates = []
+
+        def api_candidates(_icao, metadata=None):
+            metadata.setdefault(arrival, set()).add("ARR")
+            return [arrival]
+
+        with mock.patch.object(u, "fetch_atis_info_api_candidates", side_effect=api_candidates):
+            with mock.patch.object(u, "fetch_url", return_value=""):
+                u.fetch_current_atis(
+                    ["https://relay.test/empty"],
+                    self.now,
+                    live_candidates=live_candidates,
+                )
+
+        self.assertEqual(len(live_candidates), 1)
+        self.assertEqual(live_candidates[0]["variant"], "ARR")
+
+    def test_updater_explicitly_stages_history_without_broad_git_add(self):
+        completed = mock.Mock(returncode=0)
+        with mock.patch.object(u, "run_cmd", return_value=completed) as run:
+            u.git_commit_and_push()
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertIn(["git", "add", "weather.json"], commands)
+        self.assertIn(["git", "add", "atis_history.json"], commands)
+        self.assertNotIn(["git", "add", "."], commands)
+
     def test_same_time_provider_revision_uses_newer_information_letter(self):
         api_bravo = atis("B", "0954Z")
         relay_charlie = atis("C", "0954Z", "18C")
@@ -434,6 +537,22 @@ class AtisOperationsTests(unittest.TestCase):
             u.parse_atis_datetime_utc(selected, self.now),
             datetime(2026, 8, 21, 9, 54, tzinfo=timezone.utc),
         )
+
+    def test_api_list_extraction_retains_arrival_and_departure_type_hints(self):
+        arrival = atis("S", "0854Z")
+        departure = atis("O", "0854Z", "18C")
+        metadata = {}
+        reports = u._atis_candidates_from_json(
+            [
+                {"airport": "KMEM", "type": "arrival", "datis": arrival},
+                {"airport": "KMEM", "type": "departure", "datis": departure},
+            ],
+            metadata,
+        )
+
+        self.assertEqual(len(reports), 2)
+        self.assertEqual(metadata[u.extract_atis_text(arrival)], {"ARR"})
+        self.assertEqual(metadata[u.extract_atis_text(departure)], {"DEP"})
 
 
 if __name__ == "__main__":

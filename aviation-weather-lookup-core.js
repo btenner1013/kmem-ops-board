@@ -14,6 +14,15 @@ const IEM_METAR_URL = "https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py
 const IEM_API_URL = "https://mesonet.agron.iastate.edu";
 const ATIS_INFO_URL = "https://atis.info/api";
 const ATIS_CURRENT_LIMIT_MINUTES = 60;
+const ATIS_HISTORY_SCHEMA_VERSION = 1;
+
+const ATIS_PHONETIC = Object.freeze({
+  A: "ALFA", B: "BRAVO", C: "CHARLIE", D: "DELTA", E: "ECHO", F: "FOXTROT",
+  G: "GOLF", H: "HOTEL", I: "INDIA", J: "JULIETT", K: "KILO", L: "LIMA",
+  M: "MIKE", N: "NOVEMBER", O: "OSCAR", P: "PAPA", Q: "QUEBEC", R: "ROMEO",
+  S: "SIERRA", T: "TANGO", U: "UNIFORM", V: "VICTOR", W: "WHISKEY",
+  X: "X-RAY", Y: "YANKEE", Z: "ZULU",
+});
 
 export function normalizeIcao(value) {
   return String(value || "").trim().toUpperCase();
@@ -121,6 +130,10 @@ function metarStation(raw) {
   return match ? match[1].toUpperCase() : "";
 }
 
+function metarProduct(raw) {
+  return /^SPECI\b/i.test(normalizedRaw(raw)) ? "SPECI" : "METAR";
+}
+
 export function parseIemMetarCsv(text, requestedStation) {
   const station = normalizeIcao(requestedStation);
   const rows = parseCsvRows(text);
@@ -138,7 +151,7 @@ export function parseIemMetarCsv(text, requestedStation) {
     const timestamp = asDate(validText.includes("T") ? validText : `${validText.replace(" ", "T")}Z`);
     if (!raw || !timestamp || reportStation !== station) continue;
     reports.push({
-      product: "METAR",
+      product: metarProduct(raw),
       station,
       timestamp: timestamp.toISOString(),
       raw,
@@ -150,6 +163,46 @@ export function parseIemMetarCsv(text, requestedStation) {
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function normalizeTafDisplay(rawValue, requestedStation, fallbackVariant = "") {
+  const raw = String(rawValue || "").trim();
+  const station = normalizeIcao(requestedStation);
+  if (!raw || !isValidIcao(station)) return raw;
+
+  const flattened = normalizedRaw(raw);
+  const header = new RegExp(
+    `^(?:TAF\\s+)?(?:(AMD|COR)\\s+)?(${escapeRegExp(station)})\\s+(\\d{6}Z)\\s+(\\d{4}\\/\\d{4})(?=\\s|$)`,
+    "i",
+  ).exec(flattened);
+  if (!header) return raw;
+
+  const rawVariant = String(header[1] || "").toUpperCase();
+  const suppliedVariant = String(fallbackVariant || "").trim().toUpperCase();
+  const variant = rawVariant || (/^(?:AMD|COR)$/.test(suppliedVariant) ? suppliedVariant : "");
+  const firstLine = ["TAF", variant, station, header[3].toUpperCase(), header[4]].filter(Boolean);
+  const lines = [firstLine];
+  let currentLine = firstLine;
+  const bodyTokens = flattened.slice(header[0].length).trim().split(/\s+/).filter(Boolean);
+
+  for (const token of bodyTokens) {
+    const upper = token.toUpperCase();
+    const startsGroup = /^(?:FM\d{6}|TEMPO|BECMG|PROB\d{2})$/.test(upper);
+    const nestedProbabilityTempo = upper === "TEMPO"
+      && /^PROB\d{2}$/.test(String(currentLine[0] || "").toUpperCase())
+      && currentLine.length === 1;
+    if (startsGroup && !nestedProbabilityTempo) {
+      currentLine = [];
+      lines.push(currentLine);
+    }
+    currentLine.push(token);
+  }
+
+  return lines
+    .filter((line) => line.length)
+    .map((line, index) => `${index ? "    " : ""}${line.join(" ")}`)
+    .join("\n")
+    .replace(/\s+=\s*$/, "=");
 }
 
 export function parseNwsTafProduct(product, indexItem, requestedStation) {
@@ -168,14 +221,17 @@ export function parseNwsTafProduct(product, indexItem, requestedStation) {
   const end = tail.indexOf("=");
   const raw = (end >= 0 ? tail.slice(0, end + 1) : tail).trim();
   if (!new RegExp(`\\b${escapeRegExp(station)}\\s+\\d{6}Z\\b`, "i").test(raw)) return null;
+  const rawVariant = normalizedRaw(raw).match(/^TAF\s+(AMD|COR)\s+/i)?.[1]?.toUpperCase() || "";
+  const variant = rawVariant || (indexItem?.is_amendment ? "AMD" : "");
 
   return {
     product: "TAF",
     station,
     timestamp: timestamp.toISOString(),
     raw,
+    displayText: normalizeTafDisplay(raw, station, variant),
     source: "Iowa Environmental Mesonet / NWS text archive",
-    variant: indexItem?.is_amendment ? "AMD" : "",
+    variant,
   };
 }
 
@@ -226,12 +282,99 @@ export function parseAtisInfoResponse(payload, requestedStation, now = new Date(
   return dedupeReports(reports);
 }
 
+function normalizedArchiveVariant(value, inferred = "") {
+  const variant = String(inferred || value || "").trim().toUpperCase();
+  if (["ARR", "ARRIVAL", "ARRIVALS"].includes(variant)) return "ARR";
+  if (["DEP", "DEPARTURE", "DEPARTURES"].includes(variant)) return "DEP";
+  if (["", "ATIS", "BOTH", "COMBINED", "COMBINATION"].includes(variant)) return "COMBINED";
+  return "OTHER";
+}
+
+function archivedAtisHeader(raw, station) {
+  const alias = /^K[A-Z]{3}$/.test(station) ? station.slice(1) : station;
+  const stationPattern = [...new Set([station, alias])].map(escapeRegExp).join("|");
+  const match = normalizedRaw(raw).match(new RegExp(
+    `\\b(?:${stationPattern})\\s+(?:(ARR(?:IVAL)?|DEP(?:ARTURE)?)\\s+)?ATIS\\s+INFO(?:RMATION)?\\s+([A-Z])\\D{0,12}(\\d{4})Z\\b`,
+    "i",
+  ));
+  if (!match) return null;
+  return {
+    variant: match[1] ? normalizedArchiveVariant("", match[1]) : "",
+    letter: match[2].toUpperCase(),
+    time: match[3],
+  };
+}
+
+function archivedAtisBodyUsable(raw, letter) {
+  const text = normalizedRaw(raw).toUpperCase();
+  const handoffLetters = [...text.matchAll(/\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+([A-Z])\b/g)];
+  if (handoffLetters.length && handoffLetters.at(-1)[1] !== letter) return false;
+  const weatherSignals = [
+    /\b(?:\d{3}|VRB)\d{2}(?:G\d{2})?KT\b/,
+    /\b(?:P?\d+(?:\s+\d+\/\d+)?|\d+\/\d+)SM\b/,
+    /\bA\d{4}\b/,
+    /\b(?:SKC|CLR|FEW|SCT|BKN|OVC|VV)\d{3}\b/,
+    /\bM?\d{2}\/M?\d{2}\b/,
+  ].filter((pattern) => pattern.test(text)).length;
+  const hasOperations = /\b(?:APCH|APPROACH|LANDING|DEPARTING|DEPG|RWY|RY)\b/.test(text);
+  return weatherSignals >= 2 || (weatherSignals >= 1 && hasOperations);
+}
+
+export function parseAtisHistoryPayload(payload, requestedStation) {
+  const station = normalizeIcao(requestedStation);
+  const archiveStarted = asDate(payload?.archiveStartedZ);
+  if (
+    station !== "KMEM"
+    || Number(payload?.schemaVersion) !== ATIS_HISTORY_SCHEMA_VERSION
+    || normalizeIcao(payload?.station) !== station
+    || !archiveStarted
+    || !Array.isArray(payload?.records)
+  ) {
+    return { valid: false, archiveStartedZ: "", reports: [] };
+  }
+
+  const reports = [];
+  for (const record of payload.records) {
+    const raw = String(record?.raw || "").trim();
+    const timestamp = asDate(record?.observedZ);
+    const letter = String(record?.letter || "").trim().toUpperCase();
+    const header = archivedAtisHeader(raw, station);
+    if (
+      normalizeIcao(record?.station) !== station
+      || !timestamp
+      || raw.length < 40
+      || !/^[A-Z]$/.test(letter)
+      || !header
+      || header.letter !== letter
+      || header.time !== timestamp.toISOString().slice(11, 16).replace(":", "")
+      || !archivedAtisBodyUsable(raw, letter)
+    ) continue;
+
+    reports.push({
+      product: "ATIS",
+      station,
+      timestamp: timestamp.toISOString(),
+      letter,
+      letterName: ATIS_PHONETIC[letter] || letter,
+      variant: normalizedArchiveVariant(record?.variant, header.variant),
+      raw,
+      source: "KMEM local D-ATIS archive",
+    });
+  }
+
+  return {
+    valid: true,
+    archiveStartedZ: archiveStarted.toISOString(),
+    reports: dedupeReports(reports),
+  };
+}
+
 function reportFromOperationalMetar(data, station) {
   const raw = String(data?.metar || "").trim();
   const timestamp = asDate(data?.metarObservedZ);
   if (!timestamp || metarStation(raw) !== station) return null;
   return {
-    product: "METAR",
+    product: metarProduct(raw),
     station,
     timestamp: timestamp.toISOString(),
     raw,
@@ -289,6 +432,21 @@ function operationalWeatherUrl(baseUrl, now) {
   const url = new URL("./weather.json", baseUrl);
   url.searchParams.set("lookup", String(asDate(now).getTime()));
   return url.toString();
+}
+
+function atisHistoryUrl(baseUrl, now) {
+  const url = new URL("./atis_history.json", baseUrl);
+  url.searchParams.set("lookup", String(asDate(now).getTime()));
+  return url.toString();
+}
+
+function archiveAvailabilityDetail(archiveStartedZ) {
+  const date = asDate(archiveStartedZ);
+  if (!date) return "LOCAL D-ATIS ARCHIVE";
+  const month = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][date.getUTCMonth()];
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const time = `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}Z`;
+  return `LOCAL D-ATIS ARCHIVE — AVAILABLE SINCE ${day} ${month} ${date.getUTCFullYear()} ${time}`;
 }
 
 async function fetchMetarCandidates({ station, hours, now, fetchImpl, baseUrl, signal }) {
@@ -426,11 +584,40 @@ export async function lookupAviationWeather({
   try {
     if (product === "ATIS") {
       if (hours !== null) {
-        return result(
-          "unsupported",
-          "HISTORICAL ATIS UNAVAILABLE",
-          "The configured reliable browser-accessible ATIS sources do not provide a genuine broadcast archive.",
-        );
+        if (station !== "KMEM") {
+          return result(
+            "unsupported",
+            "HISTORICAL ATIS UNAVAILABLE",
+            "The configured reliable browser-accessible ATIS sources do not provide a genuine broadcast archive for this airport.",
+          );
+        }
+        let archive;
+        try {
+          const payload = await fetchJson(fetchImpl, atisHistoryUrl(baseUrl, nowDate), signal);
+          archive = parseAtisHistoryPayload(payload, station);
+        } catch (_error) {
+          return result(
+            "unsupported",
+            "HISTORICAL ATIS UNAVAILABLE",
+            "The local KMEM D-ATIS archive could not be loaded.",
+          );
+        }
+        if (!archive.valid) {
+          return result(
+            "unsupported",
+            "HISTORICAL ATIS UNAVAILABLE",
+            "The local KMEM D-ATIS archive is missing or malformed.",
+          );
+        }
+        const reports = filterAndSortReports(archive.reports, hours, nowDate);
+        const availability = archiveAvailabilityDetail(archive.archiveStartedZ);
+        return reports.length
+          ? result("success", "", availability, reports)
+          : result(
+            "empty",
+            "NO REPORTS FOUND",
+            `${availability}. Only reports genuinely observed after that time can appear; this does not imply that no earlier broadcasts existed.`,
+          );
       }
       const response = await fetchKmemAtis({ station, now: nowDate, fetchImpl, baseUrl, signal });
       if (response.unavailable) return result("unavailable", "SOURCE UNAVAILABLE", response.detail);

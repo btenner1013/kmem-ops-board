@@ -23,6 +23,8 @@ except Exception:
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 RADAR_GIF_URL = "https://radar.weather.gov/ridge/standard/KNQA_loop.gif"
 RADAR_GIF_PATH = os.path.join(REPO_DIR, "radar.gif")
+ATIS_HISTORY_PATH = os.path.join(REPO_DIR, "atis_history.json")
+ATIS_HISTORY_RETENTION_HOURS = 96
 LOCAL_CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", REPO_DIR), "KMEMOpsBoard")
 REPO_LAST_GOOD_WEATHER_PATH = os.path.join(REPO_DIR, "weather_last_good.json")
 LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
@@ -256,8 +258,8 @@ def extract_atis_text(raw_text):
     search_spaces = [raw, html_to_text(raw)]
 
     patterns = [
-        r"(?is)\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\b.{20,2500}?\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+[A-Z]\.?",
-        r"(?is)\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\s+\d{4}Z\b.{20,2500}",
+        r"(?is)\b(?:(?:KMEM|MEM)\s+)?(?:(?:ARR(?:IVAL)?|DEP(?:ARTURE)?)\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\b.{20,2500}?\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+[A-Z]\.?",
+        r"(?is)\b(?:(?:KMEM|MEM)\s+)?(?:(?:ARR(?:IVAL)?|DEP(?:ARTURE)?)\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\s+\d{4}Z\b.{20,2500}",
         r"(?is)\bINFO(?:RMATION)?\s+[A-Z]\s+\d{4}Z\b.{20,2500}?\bADVS?\s+YOU\s+HAVE\s+(?:INFO|INFORMATION)\s+[A-Z]\.?",
         r"(?is)\bINFO(?:RMATION)?\s+[A-Z]\s+\d{4}Z\b.{20,2500}",
     ]
@@ -285,29 +287,46 @@ def atis_text_from_html(atis_html):
     return extract_atis_text(atis_html)
 
 
-def _atis_candidates_from_json(data):
+def normalize_atis_variant_hint(value):
+    variant = re.sub(r"[^A-Z]", "", str(value or "").upper())
+    if variant in {"ARR", "ARRIVAL", "ARRIVALS"}:
+        return "ARR"
+    if variant in {"DEP", "DEPARTURE", "DEPARTURES"}:
+        return "DEP"
+    if variant in {"ATIS", "BOTH", "COMBINED", "COMBINATION"}:
+        return "COMBINED"
+    return ""
+
+
+def _atis_candidates_from_json(data, metadata=None):
     """Return every valid ATIS string found in a structured API response."""
     fields = {"atis", "datis", "text", "atistext", "message", "body", "data", "report"}
     candidates = []
 
-    def walk(value):
+    def walk(value, inherited_variant=""):
         if isinstance(value, dict):
+            local_variant = normalize_atis_variant_hint(
+                value.get("type") or value.get("variant")
+            ) or inherited_variant
             for key, child in value.items():
                 if str(key).lower() in fields and isinstance(child, str):
                     candidate = extract_atis_text(child)
                     if is_good_atis(candidate) and candidate not in candidates:
                         candidates.append(candidate)
+                    if metadata is not None and is_good_atis(candidate):
+                        variant = local_variant or parse_atis_variant(candidate)
+                        metadata.setdefault(candidate, set()).add(variant)
                 elif isinstance(child, (dict, list)):
-                    walk(child)
+                    walk(child, local_variant)
         elif isinstance(value, list):
             for child in value:
-                walk(child)
+                walk(child, inherited_variant)
 
     walk(data)
     return candidates
 
 
-def fetch_atis_info_api_candidates(icao="KMEM"):
+def fetch_atis_info_api_candidates(icao="KMEM", metadata=None):
     """Fetch all parseable reports from structured D-ATIS API sources.
 
     A provider can briefly return more than one report or regress to an older
@@ -339,12 +358,17 @@ def fetch_atis_info_api_candidates(icao="KMEM"):
         except Exception:
             data = None
         if data is not None:
-            found = _atis_candidates_from_json(data)
+            found_metadata = {}
+            found = _atis_candidates_from_json(data, found_metadata)
             if found:
                 print(f"D-ATIS fetch found {len(found)} report(s) in D-ATIS JSON API ({url})")
                 for candidate in found:
                     if candidate not in reports:
                         reports.append(candidate)
+                    if metadata is not None:
+                        metadata.setdefault(candidate, set()).update(
+                            found_metadata.get(candidate) or {parse_atis_variant(candidate)}
+                        )
             else:
                 print(f"D-ATIS JSON API JSON at {url} had no recognized ATIS field; trying next.")
             continue
@@ -353,6 +377,8 @@ def fetch_atis_info_api_candidates(icao="KMEM"):
             print(f"D-ATIS fetch OK from D-ATIS JSON API plain-text ({url})")
             if candidate not in reports:
                 reports.append(candidate)
+            if metadata is not None:
+                metadata.setdefault(candidate, set()).add(parse_atis_variant(candidate))
         else:
             print(f"D-ATIS JSON API plain-text at {url} did not contain valid ATIS; trying next.")
     return reports
@@ -363,28 +389,49 @@ def fetch_atis_info_api(icao="KMEM", now_z=None):
     return choose_latest_atis_report(fetch_atis_info_api_candidates(icao), now_z, default="")
 
 
-def fetch_current_atis(urls, now_z=None, known_observed_times=None, diagnostics=None):
+def fetch_current_atis(
+    urls,
+    now_z=None,
+    known_observed_times=None,
+    diagnostics=None,
+    live_candidates=None,
+):
     """Fetch every configured ATIS source and return the newest valid report."""
     reports = []
     report_sources = {}
+    report_variants = {}
 
-    def add_report(report, source):
+    if live_candidates is not None:
+        live_candidates.clear()
+
+    def add_report(report, source, variants=None):
         report = extract_atis_text(report)
         if not is_good_atis(report):
             return
         if report not in reports:
             reports.append(report)
         report_sources.setdefault(report, set()).add(source)
+        header_variant = parse_atis_variant(report)
+        variant_hints = set(variants or []) if not isinstance(variants, str) else {variants}
+        normalized_hints = {
+            normalize_atis_variant_hint(variant)
+            for variant in variant_hints
+            if normalize_atis_variant_hint(variant)
+        }
+        if header_variant != "COMBINED":
+            normalized_hints = {header_variant}
+        report_variants.setdefault(report, set()).update(normalized_hints or {"COMBINED"})
 
     try:
-        api_reports = fetch_atis_info_api_candidates("KMEM")
+        api_metadata = {}
+        api_reports = fetch_atis_info_api_candidates("KMEM", metadata=api_metadata)
     except Exception as err:
         # Each provider family is independent. A timeout or parser failure in one
         # must not prevent a current report from the other family from winning.
         print(f"D-ATIS JSON API provider failed: {err}")
         api_reports = []
     for report in api_reports:
-        add_report(report, "ATIS_INFO_API")
+        add_report(report, "ATIS_INFO_API", api_metadata.get(report))
 
     if not api_reports:
         print("D-ATIS JSON API: no valid ATIS returned; trying remaining sources.")
@@ -414,6 +461,21 @@ def fetch_current_atis(urls, now_z=None, known_observed_times=None, diagnostics=
         now_z,
         known_observed_times=known_observed_times,
     )
+
+    if live_candidates is not None:
+        for report in reports:
+            observed = resolve_atis_observed_datetime(report, now_z, known_observed_times)
+            for variant in sorted(report_variants.get(report) or {"COMBINED"}):
+                live_candidates.append({
+                    "isLive": True,
+                    "isFallback": False,
+                    "station": "KMEM",
+                    "observedZ": zulu_iso(observed),
+                    "letter": parse_atis_letter(report),
+                    "variant": variant,
+                    "raw": report,
+                    "sources": sorted(report_sources.get(report, set())),
+                })
 
     if diagnostics is not None:
         candidate_details = []
@@ -854,7 +916,7 @@ def parse_atis_datetime_utc(atis_text, now_z=None):
     # fallback can mistake a NOTAM or laser-event time later in the broadcast for
     # the report time and make an old ATIS look current.
     patterns = [
-        r"\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{2})(\d{2})Z\b",
+        r"\b(?:(?:KMEM|MEM)\s+)?(?:(?:ARR(?:IVAL)?|DEP(?:ARTURE)?)\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{2})(\d{2})Z\b",
         r"\bINFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{2})(\d{2})Z\b",
         r"\b(?:ATIS\s+)?(?:UPDATED|UPDATE|OBS|OBSERVATION|TIME)\D{0,12}\b(\d{2})(\d{2})Z\b",
     ]
@@ -894,7 +956,7 @@ def atis_report_identity(atis_text):
         return ""
 
     patterns = [
-        r"\b(?:KMEM\s+|MEM\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{4})Z\b",
+        r"\b(?:(?:KMEM|MEM)\s+)?(?:(?:ARR(?:IVAL)?|DEP(?:ARTURE)?)\s+)?ATIS\s+INFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{4})Z\b",
         r"\bINFO(?:RMATION)?\s+[A-Z]\D{0,12}\b(\d{4})Z\b",
     ]
     for pattern in patterns:
@@ -1238,6 +1300,15 @@ def parse_atis_letter(atis_text):
             return match.group(1)
 
     return "--"
+
+
+def parse_atis_variant(atis_text):
+    text = (atis_text or "").upper()
+    if re.search(r"\b(?:KMEM|MEM)\s+ARR(?:IVAL)?\s+ATIS\b", text):
+        return "ARR"
+    if re.search(r"\b(?:KMEM|MEM)\s+DEP(?:ARTURE)?\s+ATIS\b", text):
+        return "DEP"
+    return "COMBINED"
 
 
 def phonetic_for_letter(letter):
@@ -4637,6 +4708,47 @@ def should_save_last_good(data):
         and data.get("tafFetchStatus") in {"OK", "USED_LAST_GOOD"}
     )
 
+
+def maintain_atis_history_safely(live_candidates, now_z, maintainer=None):
+    """Maintain supplemental ATIS history without risking operational output."""
+    try:
+        if maintainer is None:
+            from atis_history import maintain_atis_history
+
+            maintainer = maintain_atis_history
+        result = maintainer(
+            ATIS_HISTORY_PATH,
+            live_candidates,
+            now_z=now_z,
+            validator=is_good_atis,
+            station="KMEM",
+            retention_hours=ATIS_HISTORY_RETENTION_HOURS,
+        )
+        if not result.success:
+            print(f"ATIS history maintenance failed safely: {result.error or 'unknown error'}")
+        elif result.changed:
+            print(
+                "ATIS history updated:",
+                f"appended={result.appended}",
+                f"deduplicated={result.deduplicated}",
+                f"pruned={result.pruned}",
+                f"rejected={result.rejected}",
+            )
+        else:
+            print(
+                "ATIS history unchanged:",
+                f"deduplicated={result.deduplicated}",
+                f"pruned={result.pruned}",
+                f"rejected={result.rejected}",
+            )
+        if result.warning:
+            print(f"ATIS history warning: {result.warning}")
+        return result
+    except Exception as error:
+        print(f"ATIS history maintenance failed safely: {error}")
+        return None
+
+
 def build_weather_json():
     print("Fetching KMEM weather data...")
 
@@ -4687,6 +4799,7 @@ def build_weather_json():
     )
 
     atis_live_diagnostics = {}
+    atis_history_candidates = []
     atis_current = fetch_current_atis(
         [
             f"https://atisrelay.com/datis/KMEM?_={cache_buster}",
@@ -4694,6 +4807,7 @@ def build_weather_json():
         now_z=now_z,
         known_observed_times=known_atis_observed_times,
         diagnostics=atis_live_diagnostics,
+        live_candidates=atis_history_candidates,
     )
 
     if is_good_metar(metar_current):
@@ -5008,6 +5122,8 @@ def build_weather_json():
         print(f"ERROR: Failed to write weather.json: {write_error}")
         return
 
+    maintain_atis_history_safely(atis_history_candidates, now_z)
+
     if should_save_last_good(data):
         save_last_good_weather(data)
         save_repo_last_good_weather(data, "post-write current good data")
@@ -5078,6 +5194,8 @@ def git_commit_and_push():
         run_cmd(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"], allow_fail=True)
 
     run_cmd(["git", "add", "weather.json"])
+    if os.path.exists(ATIS_HISTORY_PATH):
+        run_cmd(["git", "add", "atis_history.json"])
     if os.path.exists(RADAR_GIF_PATH):
         run_cmd(["git", "add", "radar.gif"])
 

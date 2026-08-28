@@ -28,6 +28,18 @@ function clearChildren(element) {
   while (element?.firstChild) element.removeChild(element.firstChild);
 }
 
+export function formatReportIdentity(report) {
+  const product = String(report?.product || "").trim().toUpperCase();
+  const station = String(report?.station || "").trim().toUpperCase();
+  const rawVariant = String(report?.variant || "").trim().toUpperCase();
+  const isLocalAtisArchive = report?.source === "KMEM local D-ATIS archive";
+  const hideGenericArchiveVariant = isLocalAtisArchive && ["COMBINED", "OTHER"].includes(rawVariant);
+  const variant = rawVariant && !hideGenericArchiveVariant ? ` ${rawVariant}` : "";
+  const rawLetter = String(report?.letterName || report?.letter || "").trim().toUpperCase();
+  const letter = rawLetter ? ` INFO ${rawLetter}` : "";
+  return `${product}${variant} ${station}${letter}`.trim();
+}
+
 function renderResultCards(container, reports) {
   clearChildren(container);
   for (const report of reports) {
@@ -37,16 +49,14 @@ function renderResultCards(container, reports) {
     const meta = document.createElement("div");
     meta.className = "aviation-lookup-result-meta";
     const identity = document.createElement("strong");
-    const variant = report.variant ? ` ${String(report.variant).toUpperCase()}` : "";
-    const letter = report.letter ? ` INFO ${String(report.letter).toUpperCase()}` : "";
-    identity.textContent = `${report.product}${variant} ${report.station}${letter}`;
+    identity.textContent = formatReportIdentity(report);
     const time = document.createElement("span");
     time.textContent = formatZulu(report.timestamp);
     meta.append(identity, time);
 
     const raw = document.createElement("pre");
     raw.className = "aviation-lookup-raw";
-    raw.textContent = report.raw;
+    raw.textContent = report.displayText || report.raw;
 
     const source = document.createElement("div");
     source.className = "aviation-lookup-source";

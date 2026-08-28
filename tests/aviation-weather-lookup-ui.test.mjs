@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { applyLookupDialogState } from "../aviation-weather-lookup.js";
+import { applyLookupDialogState, formatReportIdentity } from "../aviation-weather-lookup.js";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const lookupCss = readFileSync(new URL("../aviation-weather-lookup.css", import.meta.url), "utf8");
@@ -53,6 +53,39 @@ test("the product and range selectors contain every requested choice", () => {
   ]) {
     assert.match(indexHtml, new RegExp(`<option value="${value}"(?: selected)?>${label}</option>`));
   }
+});
+
+test("result-card identities distinguish routine METARs, SPECIs, and TAF variants", () => {
+  assert.equal(formatReportIdentity({ product: "METAR", station: "KMEM" }), "METAR KMEM");
+  assert.equal(formatReportIdentity({ product: "SPECI", station: "KMEM" }), "SPECI KMEM");
+  assert.equal(formatReportIdentity({ product: "TAF", variant: "AMD", station: "KMEM" }), "TAF AMD KMEM");
+  assert.equal(
+    formatReportIdentity({
+      product: "ATIS",
+      variant: "COMBINED",
+      station: "KMEM",
+      letter: "S",
+      letterName: "SIERRA",
+      source: "KMEM local D-ATIS archive",
+    }),
+    "ATIS KMEM INFO SIERRA",
+  );
+  assert.equal(
+    formatReportIdentity({
+      product: "ATIS",
+      variant: "ARR",
+      station: "KMEM",
+      letter: "S",
+      letterName: "SIERRA",
+      source: "KMEM local D-ATIS archive",
+    }),
+    "ATIS ARR KMEM INFO SIERRA",
+  );
+  assert.equal(
+    formatReportIdentity({ product: "ATIS", variant: "COMBINED", station: "KATL", letter: "B" }),
+    "ATIS COMBINED KATL INFO B",
+  );
+  assert.match(lookupJs, /raw\.textContent = report\.displayText \|\| report\.raw/);
 });
 
 test("dialog visibility helper opens, closes, and restores focus", () => {
