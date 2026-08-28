@@ -71,6 +71,19 @@ class WeatherGeneratorContractTests(unittest.TestCase):
         self.assertNotIn("lastKnownGoodCachePath", strings)
         self.assertNotIn("trendHistoryPath", strings)
 
+    def test_tracked_weather_payload_has_no_machine_local_identity_or_paths(self):
+        payload = json.loads((REPO_DIR / "weather.json").read_text(encoding="utf-8"))
+        serialized = json.dumps(payload).casefold()
+
+        self.assertNotIn("lastKnownGoodCachePath", payload)
+        self.assertNotIn("trendHistoryPath", payload)
+        self.assertNotIn("c:\\\\users\\\\", serialized)
+        self.assertNotIn("\\\\appdata\\\\", serialized)
+        self.assertEqual(
+            payload["workflowMetadata"]["lastWorkflowActor"],
+            "KMEM_PRIMARY_UPDATER",
+        )
+
 
 class SchedulerContractTests(unittest.TestCase):
     def test_backend_cadence_remains_exactly_ten_minutes(self):
