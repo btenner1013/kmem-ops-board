@@ -4419,6 +4419,50 @@ def normalize_runway_closure_notams(raw, previous_data=None, inactive_numbers=No
     return []
 
 
+def notam_feed_is_healthy(mil_notam_data):
+    """True only for the current successful NOTAM pull, never a cached fallback."""
+    data = mil_notam_data or {}
+    fetch_status = str(data.get("milNotamFetchStatus") or "").strip().upper()
+    raw_status = str(data.get("milNotamRawStatus") or "").strip().upper()
+
+    if fetch_status != "OK":
+        return False
+
+    return not any(term in raw_status for term in ("FAILED", "ERROR"))
+
+
+def runway_numbers_from_closure_notam(item):
+    """Return runway designators from an already-classified closure NOTAM."""
+    text = notam_text_blob(item)
+    compact = compact_runway_closure_text_for_export(text)
+    if not compact:
+        return []
+    return re.findall(r"\b\d{1,2}[LCR]?\b", compact.upper())
+
+
+def resolve_closed_runways(atis_ops, mil_notam_data, now_z=None):
+    """Select RWY CLSD from current ATIS, then current trusted NOTAMs."""
+    atis_ops = atis_ops or {}
+    if atis_ops.get("sourceIsCurrent"):
+        return atis_ops.get("reportedClosedRunways") or atis_ops.get("closedRunways") or "NONE"
+
+    if not notam_feed_is_healthy(mil_notam_data):
+        return "UNKNOWN"
+
+    now_z = now_z or datetime.now(timezone.utc)
+    runways = []
+    for item in (mil_notam_data or {}).get("runwayClosureNotams") or []:
+        if not isinstance(item, dict) or not notam_is_current(item, now_z):
+            continue
+        if not is_runway_closure_notam_text(notam_text_blob(item)):
+            continue
+        for runway in runway_numbers_from_closure_notam(item):
+            if runway not in runways:
+                runways.append(runway)
+
+    return " / ".join(runways) if runways else "NONE"
+
+
 def normalize_status_notams(
     raw,
     key_names,
@@ -4987,6 +5031,7 @@ def build_weather_json():
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
 
     mil_notam_data = fetch_mil_notams(previous_data)
+    closed_runways = resolve_closed_runways(atis_ops, mil_notam_data, now_z)
     rcr_data = parse_rcr_rcc_from_ficon_notams(mil_notam_data.get("ficonNotams", []))
     print("RSC/RCR:", rcr_data["rcrText"], "SOURCE:", rcr_data["rcrSource"], "SEVERITY:", rcr_data["rcrSeverity"])
 

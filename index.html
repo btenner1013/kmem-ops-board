@@ -274,6 +274,7 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .trend-value{ font-size:clamp(.80rem,2.3vh,4.0rem); letter-spacing:.5px; line-height:1.05; white-space:normal; overflow:hidden; text-overflow:ellipsis; text-align:center !important;}
 
 .closed-none{color:var(--ops-green)}
+.closed-unknown{color:var(--warning)}
 .closed-active{color:var(--closed);animation:blink 1s step-start infinite}
 
 .bwc-none{color:var(--ops-green)}
@@ -1721,6 +1722,9 @@ function setClosedRunwayDisplay(value){
   if(closed==="NONE"||closed==="--"){
     el.classList.add("closed-none");
     el.textContent="NONE";
+  }else if(closed==="UNKNOWN"){
+    el.classList.add("closed-unknown");
+    el.textContent="UNKNOWN";
   }else{
     el.classList.add("closed-active");
     el.textContent=closed;
@@ -1934,6 +1938,36 @@ function healthPart(name,status,detail){
   return `<span class="feed-token ${cls}">${text}</span>`;
 }
 
+function atisFeedState(data,atisText){
+  const status=String(data?.atisFetchStatus||"").toUpperCase();
+  const ageValue=data?.atisAgeMinutes;
+  const hasExplicitAge=ageValue!==null&&ageValue!==undefined&&ageValue!=="";
+  const explicitAge=hasExplicitAge?Number(ageValue):NaN;
+  const age=Number.isFinite(explicitAge)?explicitAge:minutesSince(parseAtisTime(atisText));
+  const text=String(atisText||"").toUpperCase();
+  const reportedLetter=String(data?.atisReportedLetter||data?.atisLetter||"").toUpperCase();
+  const reportIdentity=String(data?.atisReportIdentity||"").trim();
+  const hasUsableReport=(
+    !isBadText(text,["D-ATIS UNAVAILABLE","UNAVAILABLE","ERROR","FAILED"])&&
+    (
+      Boolean(reportIdentity&&reportIdentity!=="--")||
+      /^[A-Z]$/.test(reportedLetter)||
+      /\bATIS\s+INFO(?:RMATION)?\s+[A-Z]\b/.test(text)
+    )
+  );
+
+  if(!hasUsableReport||age===null||status.includes("FAILED")||status.includes("TIME_UNKNOWN")){
+    return {status:"UNAVAILABLE",detail:"",age:null};
+  }
+  if(status.includes("STALE")||age>=90){
+    return {status:"STALE",detail:`${age}M`,age};
+  }
+  if(status.includes("WARN")||age>=60){
+    return {status:"WARN",detail:`${age}M`,age};
+  }
+  return {status:"OK",detail:"",age};
+}
+
 function updateSourceHealth(data,updatedZ){
   const el=document.getElementById("feedHealth");
   let parts=[];
@@ -1967,14 +2001,8 @@ function updateSourceHealth(data,updatedZ){
   else if(tafIssueAge!==null&&tafIssueAge>360){ addPart("TAF","WARN",""); }
   else{ addPart("TAF","OK",""); }
 
-  const atisStatus=(data.atisFetchStatus||"").toString().toUpperCase();
-  const atisAgeFromData=Number(data.atisAgeMinutes);
-  const atisAge=Number.isFinite(atisAgeFromData) ? atisAgeFromData : minutesSince(parseAtisTime(atis));
-
-  if(isBadText(atis,["D-ATIS UNAVAILABLE","UNAVAILABLE","ERROR","FAILED"])||!(data.atisDisplay||data.atisLetter)||atisStatus.includes("FAILED")){ addPart("ATIS","BAD",""); }
-  else if(atisStatus.includes("STALE")||(atisAge!==null&&atisAge>90)){ addPart("ATIS","STALE",atisAge!==null?`${atisAge}M`:""); }
-  else if(atisStatus.includes("WARN")||atisStatus.includes("TIME_UNKNOWN")||(atisAge!==null&&atisAge>60)){ addPart("ATIS","WARN",atisAge!==null?`${atisAge}M`:""); }
-  else{ addPart("ATIS","OK",""); }
+  const atisFeed=atisFeedState(data,atis);
+  addPart("ATIS",atisFeed.status,atisFeed.detail);
 
   const ahasUpdated=parseUpdatedZ(data.bwcUpdatedZ||"");
   const ahasAge=ahasUpdated?Math.round((getBoardNowMs()-ahasUpdated.getTime())/60000):null;
