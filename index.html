@@ -965,7 +965,10 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
   <section id="aviationWeatherLookupPanel" class="aviation-lookup-panel" role="dialog" aria-modal="true" aria-labelledby="aviationWeatherLookupTitle">
     <header class="aviation-lookup-header">
       <h2 id="aviationWeatherLookupTitle" class="aviation-lookup-title">AVIATION WEATHER LOOKUP</h2>
-      <button id="aviationWeatherLookupClose" class="aviation-lookup-close" type="button" title="Close Aviation Weather Lookup" aria-label="Close Aviation Weather Lookup">×</button>
+      <div class="aviation-lookup-header-actions">
+        <button id="aviationWeatherLookupPrint" class="aviation-lookup-print" type="button" disabled>PRINT</button>
+        <button id="aviationWeatherLookupClose" class="aviation-lookup-close" type="button" title="Close Aviation Weather Lookup" aria-label="Close Aviation Weather Lookup">×</button>
+      </div>
     </header>
 
     <form id="aviationWeatherLookupForm" class="aviation-lookup-form" novalidate>
@@ -1000,6 +1003,8 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 
       <button id="aviationWeatherLookupSubmit" class="aviation-lookup-submit" type="submit">LOOK UP</button>
     </form>
+
+    <section id="aviationWeatherLookupPrintSummary" class="aviation-lookup-print-summary" aria-label="Printed lookup summary"></section>
 
     <div id="aviationWeatherLookupStatus" class="aviation-lookup-status" role="status" aria-live="polite">
       <strong>READY</strong>

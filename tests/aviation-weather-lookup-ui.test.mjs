@@ -2,7 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { applyLookupDialogState, formatReportIdentity } from "../aviation-weather-lookup.js";
+import {
+  applyLookupDialogState,
+  fetchCurrentTafSnapshot,
+  formatReportIdentity,
+  formatZulu,
+  toggleDecodedReport,
+} from "../aviation-weather-lookup.js";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const lookupCss = readFileSync(new URL("../aviation-weather-lookup.css", import.meta.url), "utf8");
@@ -26,6 +32,81 @@ test("the lookup panel has accessible dialog and close contracts", () => {
   assert.match(lookupJs, /closeButton\.addEventListener\("click", close\)/);
   assert.match(lookupJs, /form\.addEventListener\("submit",[\s\S]*?runLookup\(\)/);
   assert.match(lookupJs, /stationInput\.addEventListener\("keydown",[\s\S]*?event\.key !== "Enter"[\s\S]*?runLookup\(\)/);
+});
+
+test("lookup exposes print and decoder controls without a separate SPECI product", () => {
+  assert.match(indexHtml, /id="aviationWeatherLookupPrint"[^>]*>PRINT<\/button>/);
+  assert.match(indexHtml, /id="aviationWeatherLookupPrintSummary"/);
+  assert.doesNotMatch(indexHtml, /data-aviation-product="SPECI"/);
+  assert.match(lookupJs, /toggle\.textContent = "DECODE"/);
+  assert.match(lookupJs, /DECODED — FOR REFERENCE ONLY/);
+  assert.match(lookupJs, /classList\.add\("aviation-lookup-printing"\)/);
+  assert.match(lookupJs, /addEventListener\("afterprint"/);
+});
+
+test("decoder control expands and collapses without replacing the raw report", () => {
+  const attributes = new Map([["aria-expanded", "false"]]);
+  const toggle = {
+    textContent: "DECODE",
+    getAttribute(name) { return attributes.get(name); },
+    setAttribute(name, value) { attributes.set(name, value); },
+  };
+  const panel = { hidden: true };
+
+  assert.equal(toggleDecodedReport(toggle, panel), true);
+  assert.equal(attributes.get("aria-expanded"), "true");
+  assert.equal(toggle.textContent, "HIDE DECODED");
+  assert.equal(panel.hidden, false);
+  assert.equal(toggleDecodedReport(toggle, panel), false);
+  assert.equal(attributes.get("aria-expanded"), "false");
+  assert.equal(toggle.textContent, "DECODE");
+  assert.equal(panel.hidden, true);
+  assert.match(lookupJs, /card\.append\(meta, rawLabel, raw\)[\s\S]*card\.append\(controls, decodePanel\)/);
+});
+
+test("same-origin current TAF snapshot is schema-checked, cache-busted, and station-filtered", async () => {
+  let requestUrl = "";
+  let requestOptions = null;
+  const reports = await fetchCurrentTafSnapshot({
+    station: " kvok ",
+    now: new Date("2026-08-28T01:30:00Z"),
+    baseUrl: "https://example.test/board/index.html",
+    fetchImpl: async (url, options) => {
+      requestUrl = url;
+      requestOptions = options;
+      return {
+        ok: true,
+        async json() {
+          return {
+            schemaVersion: 1,
+            sourcePolicy: "NOAA_AWC_COMPLETE_CURRENT_CACHE",
+            reports: [
+              { station: "KVOK", issueTime: "2026-08-28T01:00:00Z", validTimeFrom: "2026-08-28T01:00:00Z", validTimeTo: "2026-08-29T07:00:00Z", raw: "TAF KVOK 280100Z 2801/2907 VRB06KT 9999 FEW060" },
+              { station: "KMEM", issueTime: "2026-08-27T23:29:00Z", raw: "TAF KMEM 272329Z 2800/2906 36008KT P6SM" },
+            ],
+          };
+        },
+      };
+    },
+  });
+
+  const parsedUrl = new URL(requestUrl);
+  assert.equal(parsedUrl.pathname, "/board/taf_current.json");
+  assert.equal(parsedUrl.searchParams.get("lookup"), String(Date.parse("2026-08-28T01:30:00Z")));
+  assert.equal(requestOptions.cache, "no-store");
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0].station, "KVOK");
+  assert.equal(reports[0].timestamp, "2026-08-28T01:00:00Z");
+  assert.match(reports[0].source, /Aviation Weather Center/);
+  assert.match(lookupJs, /currentTafProvider:[\s\S]*fetchCurrentTafSnapshot/);
+
+  await assert.rejects(
+    () => fetchCurrentTafSnapshot({
+      station: "KVOK",
+      fetchImpl: async () => ({ ok: true, async json() { return { schemaVersion: 99, reports: [] }; } }),
+    }),
+    /schema is invalid/,
+  );
 });
 
 test("the panel defaults to KMEM, ATIS, and Most recent", () => {
@@ -86,6 +167,17 @@ test("result-card identities distinguish routine METARs, SPECIs, and TAF variant
     "ATIS COMBINED KATL INFO B",
   );
   assert.match(lookupJs, /raw\.textContent = report\.displayText \|\| report\.raw/);
+  assert.equal(formatZulu("2026-08-28T00:55:00Z"), "280055Z");
+});
+
+test("result cards keep providers internal and show UTC plus station-local time", () => {
+  assert.doesNotMatch(lookupJs, /SOURCE:/);
+  assert.doesNotMatch(lookupJs, /aviation-lookup-source/);
+  assert.doesNotMatch(lookupCss, /aviation-lookup-source/);
+  assert.match(lookupJs, /formatStationLocalTime\(report\.timestamp, report\.station/);
+  assert.match(lookupJs, /localTime === "LOCAL TIME UNAVAILABLE" \? localTime : `LOCAL: \$\{localTime\}`/);
+  assert.match(lookupJs, /aviation-lookup-result-zulu/);
+  assert.match(lookupJs, /aviation-lookup-result-local/);
 });
 
 test("dialog visibility helper opens, closes, and restores focus", () => {
@@ -120,4 +212,19 @@ test("lookup styling is fixed, internally scrollable, and responsive", () => {
   assert.match(lookupCss, /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
   assert.doesNotMatch(lookupCss, /aviation-lookup-results:empty/);
   assert.match(indexHtml, /<script type="module" src="\.\/aviation-weather-lookup\.js"><\/script>/);
+});
+
+test("print layout is black-and-white lookup-only output", () => {
+  assert.match(lookupCss, /@media print/);
+  assert.match(lookupCss, /body\.aviation-lookup-printing> :not\(#aviationWeatherLookupOverlay\)\{display:none!important\}/);
+  assert.match(lookupCss, /background:#fff!important/);
+  assert.match(lookupCss, /color:#000!important/);
+  assert.match(lookupCss, /break-inside:avoid-page/);
+  assert.match(lookupCss, /aviation-lookup-result-controls\{display:none!important\}/);
+  assert.doesNotMatch(lookupCss, /@media print[\s\S]*#radarImg/);
+});
+
+test("changing ICAO clears stale result state while Enter still runs lookup", () => {
+  assert.match(lookupJs, /stationInput\.addEventListener\("input",[\s\S]*clearResultState\("READY"/);
+  assert.match(lookupJs, /stationInput\.addEventListener\("keydown",[\s\S]*event\.key !== "Enter"[\s\S]*runLookup\(\)/);
 });

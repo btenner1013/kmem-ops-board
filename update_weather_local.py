@@ -25,6 +25,7 @@ RADAR_GIF_URL = "https://radar.weather.gov/ridge/standard/KNQA_loop.gif"
 RADAR_GIF_PATH = os.path.join(REPO_DIR, "radar.gif")
 ATIS_HISTORY_PATH = os.path.join(REPO_DIR, "atis_history.json")
 ATIS_HISTORY_RETENTION_HOURS = 96
+TAF_CURRENT_PATH = os.path.join(REPO_DIR, "taf_current.json")
 LOCAL_CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", REPO_DIR), "KMEMOpsBoard")
 REPO_LAST_GOOD_WEATHER_PATH = os.path.join(REPO_DIR, "weather_last_good.json")
 LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
@@ -4749,6 +4750,42 @@ def maintain_atis_history_safely(live_candidates, now_z, maintainer=None):
         return None
 
 
+def maintain_taf_current_safely(now_z=None, maintainer=None):
+    """Maintain the supplemental current-TAF snapshot without operational impact."""
+    try:
+        if maintainer is None:
+            from taf_current import maintain_taf_current
+
+            maintainer = maintain_taf_current
+        result = maintainer(
+            TAF_CURRENT_PATH,
+            now_z=now_z or datetime.now(timezone.utc),
+        )
+        if not result.success:
+            print(
+                "Current TAF snapshot maintenance failed safely:",
+                result.error or "unknown error",
+            )
+        elif result.changed:
+            print(
+                "Current TAF snapshot updated:",
+                f"reports={result.report_count}",
+                f"rejected={result.rejected}",
+            )
+        else:
+            print(
+                "Current TAF snapshot unchanged:",
+                f"reports={result.report_count}",
+                f"rejected={result.rejected}",
+            )
+        if result.warning:
+            print(f"Current TAF snapshot warning: {result.warning}")
+        return result
+    except Exception as error:
+        print(f"Current TAF snapshot maintenance failed safely: {error}")
+        return None
+
+
 def build_weather_json():
     print("Fetching KMEM weather data...")
 
@@ -5196,6 +5233,8 @@ def git_commit_and_push():
     run_cmd(["git", "add", "weather.json"])
     if os.path.exists(ATIS_HISTORY_PATH):
         run_cmd(["git", "add", "atis_history.json"])
+    if os.path.exists(TAF_CURRENT_PATH):
+        run_cmd(["git", "add", "taf_current.json"])
     if os.path.exists(RADAR_GIF_PATH):
         run_cmd(["git", "add", "radar.gif"])
 
@@ -5231,6 +5270,7 @@ def run_loop(interval_seconds=600):
         try:
             sync_repo_before_update()
             build_weather_json()
+            maintain_taf_current_safely()
             download_radar_gif()
             git_commit_and_push()
             print("Update cycle complete.")
@@ -5260,6 +5300,7 @@ def main():
         try:
             sync_repo_before_update()
             build_weather_json()
+            maintain_taf_current_safely()
             download_radar_gif()
             git_commit_and_push()
             print("Local update complete.")

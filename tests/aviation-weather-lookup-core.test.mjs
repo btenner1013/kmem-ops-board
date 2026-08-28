@@ -5,8 +5,11 @@ import { readFileSync } from "node:fs";
 import {
   LOOKUP_RANGES,
   buildIemMetarUrl,
+  decodeMetarReport,
+  decodeTafReport,
   dedupeReports,
   filterAndSortReports,
+  formatStationLocalTime,
   isValidIcao,
   lookupAviationWeather,
   normalizeTafDisplay,
@@ -15,7 +18,9 @@ import {
   parseAtisHistoryPayload,
   parseIemMetarCsv,
   parseNwsTafProduct,
+  parseTafTextProduct,
   rangeHours,
+  resolveStationTimeZone,
 } from "../aviation-weather-lookup-core.js";
 
 const NOW = new Date("2026-08-27T12:00:00Z");
@@ -25,7 +30,22 @@ const interleavedMetarCsv = readFileSync(fixtureUrl("iem-metar-interleaved.csv")
 const tafIndex = JSON.parse(readFileSync(fixtureUrl("iem-taf-index.json"), "utf8"));
 const tafDetails = JSON.parse(readFileSync(fixtureUrl("iem-taf-details.json"), "utf8"));
 const tafDisplayProducts = JSON.parse(readFileSync(fixtureUrl("taf-display-products.json"), "utf8"));
+const kvokTaf = JSON.parse(readFileSync(fixtureUrl("kvok-taf.json"), "utf8"));
 const atisInfo = JSON.parse(readFileSync(fixtureUrl("atis-info.json"), "utf8"));
+const currentTafSnapshot = (reports) => ({
+  schemaVersion: 1,
+  sourcePolicy: "NOAA_AWC_COMPLETE_CURRENT_CACHE",
+  reports,
+});
+const kvokCurrentTafRecord = (overrides = {}) => ({
+  station: "KVOK",
+  issueTime: kvokTaf.issuanceTime,
+  validTimeFrom: "2026-08-27T17:00:00Z",
+  validTimeTo: "2026-08-28T23:00:00Z",
+  variant: "",
+  raw: kvokTaf.raw,
+  ...overrides,
+});
 const atisHistory = {
   schemaVersion: 1,
   station: "KMEM",
@@ -80,6 +100,31 @@ test("ICAO input is trimmed, uppercased, and validated", () => {
   assert.equal(isValidIcao("MEM"), false);
   assert.equal(isValidIcao("K1EM"), false);
   assert.equal(isValidIcao("K MEM"), false);
+  for (const station of ["KMEM", "KVOK", "KJFK", "EGLL", "LROP"]) {
+    assert.equal(normalizeIcao(`  ${station.toLowerCase()}  `), station);
+    assert.equal(isValidIcao(station), true);
+  }
+});
+
+test("station timezone resolution uses exact overrides and conservative country-prefix coverage", () => {
+  assert.equal(resolveStationTimeZone("KMEM"), "America/Chicago");
+  assert.equal(resolveStationTimeZone("KVOK"), "America/Chicago");
+  assert.equal(resolveStationTimeZone("KJFK"), "America/New_York");
+  assert.equal(resolveStationTimeZone("EGLL"), "Europe/London");
+  assert.equal(resolveStationTimeZone("LROP"), "Europe/Bucharest");
+  assert.equal(resolveStationTimeZone("LFPG"), "Europe/Paris");
+  assert.equal(resolveStationTimeZone("ZZZZ"), null);
+});
+
+test("station-local formatting handles DST, standard time, and the prior local calendar date", () => {
+  assert.equal(formatStationLocalTime("2026-08-28T00:55:00Z", "KVOK"), "27 AUG 2026 1955L");
+  assert.equal(formatStationLocalTime("2026-01-28T00:55:00Z", "KJFK"), "27 JAN 2026 1955L");
+  assert.equal(formatStationLocalTime("2026-08-28T00:55:00Z", "KJFK"), "27 AUG 2026 2055L");
+  assert.equal(formatStationLocalTime("2026-01-15T12:00:00Z", "EGLL"), "15 JAN 2026 1200L");
+  assert.equal(formatStationLocalTime("2026-08-15T12:00:00Z", "EGLL"), "15 AUG 2026 1300L");
+  assert.equal(formatStationLocalTime("2026-01-15T12:00:00Z", "LROP"), "15 JAN 2026 1400L");
+  assert.equal(formatStationLocalTime("2026-08-15T12:00:00Z", "LROP"), "15 AUG 2026 1500L");
+  assert.equal(formatStationLocalTime("2026-08-15T12:00:00Z", "ZZZZ"), "LOCAL TIME UNAVAILABLE");
 });
 
 test("all requested time ranges map to the intended UTC windows", () => {
@@ -110,6 +155,24 @@ test("IEM METAR request uses one UTC archive query with routine and special repo
   assert.equal(url.searchParams.get("sts"), "2026-08-23T12:00:00.000Z");
   assert.equal(url.searchParams.get("ets"), "2026-08-27T12:01:00.000Z");
   assert.deepEqual(url.searchParams.getAll("report_type"), ["3", "4"]);
+
+  assert.equal(new URL(buildIemMetarUrl("KVOK", 6, NOW)).searchParams.get("station"), "VOK");
+  assert.equal(new URL(buildIemMetarUrl("egll", 6, NOW)).searchParams.get("station"), "EGLL");
+  assert.equal(new URL(buildIemMetarUrl(" LROP ", 6, NOW)).searchParams.get("station"), "LROP");
+});
+
+test("METAR parsing accepts arbitrary four-letter ICAOs without a K-prefix assumption", () => {
+  const csv = [
+    "station,valid,metar",
+    "EGLL,2026-08-27 11:50,EGLL 271150Z 26008KT 9999 FEW030 19/12 Q1017",
+    "LROP,2026-08-27 11:30,LROP 271130Z 09006KT CAVOK 27/14 Q1013",
+  ].join("\n");
+  const egll = parseIemMetarCsv(csv, "egll");
+  const lrop = parseIemMetarCsv(csv, "LROP");
+  assert.equal(egll.length, 1);
+  assert.equal(egll[0].station, "EGLL");
+  assert.equal(lrop.length, 1);
+  assert.equal(lrop[0].station, "LROP");
 });
 
 test("IEM raw METAR rows use UTC observation time and ignore malformed records", () => {
@@ -138,6 +201,68 @@ test("routine METARs and SPECIs retain raw text, explicit labels, and interleave
   );
   assert.equal(reports.length, 3);
   assert.equal(reports[1].raw, "SPECI KMEM 271120Z 23012G20KT 4SM TSRA BKN030CB 29/20 A2996 RMK AO2");
+});
+
+test("provider-independent METAR dedupe ignores only the optional METAR prefix", () => {
+  const timestamp = "2026-08-27T11:54:00Z";
+  const body = "KMEM 271154Z 23008KT 10SM SCT050 30/19 A2996 RMK AO2";
+  const reports = dedupeReports([
+    { product: "METAR", station: "KMEM", timestamp, raw: `METAR ${body}`, source: "provider one" },
+    { product: "METAR", station: "KMEM", timestamp, raw: body, source: "provider two" },
+    { product: "SPECI", station: "KMEM", timestamp, raw: `SPECI ${body}`, source: "special provider" },
+  ]);
+  assert.equal(reports.length, 2);
+  assert.deepEqual(reports.map((report) => report.product), ["METAR", "SPECI"]);
+  assert.equal(reports[0].raw, `METAR ${body}`);
+});
+
+test("METAR decoder preserves raw data and decodes the KVOK calm-wind regression deterministically", () => {
+  const raw = "METAR KVOK 280055Z AUTO 00000KT 10SM CLR 20/15 A3000 RMK AO2 SLP160 T02000152 $";
+  const decoded = decodeMetarReport({
+    product: "METAR",
+    station: "KVOK",
+    timestamp: "2026-08-28T00:55:00Z",
+    raw,
+  });
+  assert.equal(decoded.raw, raw);
+  assert.equal(decoded.title, "METAR — KVOK");
+  assert.equal(decoded.observationUtc, "2026-08-28T00:55:00.000Z");
+  assert.equal(decoded.observationLocal, "27 AUG 2026 1955L");
+  assert.equal(decoded.conditions.winds[0], "Calm");
+  assert.equal(decoded.conditions.visibility[0], "10 statute miles");
+  assert.equal(decoded.conditions.sky[0], "Clear below reporting threshold");
+  assert.deepEqual(decoded.conditions.pressure[0], { label: "Altimeter", value: "30.00 inHg" });
+  assert.equal(decoded.temperatureC, 20);
+  assert.equal(decoded.dewPointC, 15);
+  assert.match(decoded.remarks.find((item) => item.code === "AO2").meaning, /precipitation discriminator/i);
+  assert.equal(decoded.remarks.find((item) => item.code === "SLP160").meaning, "Sea-level pressure 1016.0 hPa");
+  assert.match(decoded.remarks.find((item) => item.code === "T02000152").meaning, /20\.0°C \/ dew point 15\.2°C/);
+  assert.equal(decoded.remarks.find((item) => item.code === "$").meaning, "Maintenance indicator");
+  assert.deepEqual(decoded.undecoded, []);
+  assert.ok(decoded.sections.every((section) => Array.isArray(section.lines)));
+});
+
+test("SPECI decoder tolerates mixed recognized and unknown groups without guessing", () => {
+  const raw = "SPECI KJFK 271730Z 18012G22KT 140V220 1 1/2SM R04/2400FT VCTS +TSRA BKN020CB OVC080 M02/M05 Q1013 RMK AO1 PK WND 18030/1720 WSHFT 1715 PRESFR VIS 2 NE MYSTERY";
+  const decoded = decodeMetarReport(raw, { referenceTime: "2026-08-27T18:00:00Z" });
+  assert.equal(decoded.product, "SPECI");
+  assert.equal(decoded.station, "KJFK");
+  assert.match(decoded.conditions.winds[0], /180° true at 12 kt, gusting 22 kt/);
+  assert.match(decoded.conditions.winds[1], /140° to 220°/);
+  assert.equal(decoded.conditions.visibility[0], "1 1/2 statute miles");
+  assert.match(decoded.conditions.rvr[0], /Runway 04: 2400 ft/);
+  assert.ok(decoded.conditions.weather.some((value) => /vicinity.*thunderstorm/i.test(value)));
+  assert.ok(decoded.conditions.weather.some((value) => /Heavy thunderstorm rain/i.test(value)));
+  assert.match(decoded.conditions.sky[0], /Broken at 2000 ft; cumulonimbus/);
+  assert.equal(decoded.temperatureC, -2);
+  assert.equal(decoded.dewPointC, -5);
+  assert.deepEqual(decoded.conditions.pressure[0], { label: "QNH", value: "1013 hPa" });
+  assert.ok(decoded.remarks.some((item) => item.code === "PK WND 18030/1720"));
+  assert.ok(decoded.remarks.some((item) => item.code === "WSHFT 1715"));
+  assert.ok(decoded.remarks.some((item) => item.code === "PRESFR"));
+  assert.ok(decoded.remarks.some((item) => item.code === "VIS 2 NE"));
+  assert.deepEqual(decoded.undecoded, ["MYSTERY"]);
+  assert.equal(decoded.raw, raw);
 });
 
 test("historical filtering is inclusive, newest-first, and enforces the 96-hour cutoff", () => {
@@ -238,6 +363,137 @@ test("TAF display copies canonicalize normal, AMD, and COR headers without chang
     assert.equal(normalizeTafDisplay(report.raw, "KMEM", report.variant), item.expected);
     assert.ok(report.displayText.endsWith("="), `${item.name} display should retain its terminator`);
   }
+});
+
+test("KVOK military-style TAF parses generically, formats cleanly, and preserves every coded construct", () => {
+  const report = parseTafTextProduct(kvokTaf.bulletin, " kvok ", {
+    issuanceTime: kvokTaf.issuanceTime,
+    source: "Deterministic KVOK fixture",
+  });
+  assert.ok(report);
+  assert.equal(report.station, "KVOK");
+  assert.equal(report.timestamp, "2026-08-27T17:00:00.000Z");
+  assert.equal(report.raw, kvokTaf.raw);
+  assert.equal(report.source, "Deterministic KVOK fixture");
+  assert.deepEqual(report.displayText.split("\n"), [
+    "TAF KVOK 271700Z 2717/2823 VRB06KT 9999 FEW030 QNH3001INS",
+    "    BECMG 2800/2801 VRB06KT 9999 BKN060 QNH3000INS",
+    "    TX23/2719Z TN12/2811Z",
+  ]);
+  for (const token of [
+    "VRB06KT", "9999", "FEW030", "QNH3001INS", "BECMG 2800/2801",
+    "BKN060", "QNH3000INS", "TX23/2719Z", "TN12/2811Z",
+  ]) assert.match(report.raw, new RegExp(token.replace("/", "\\/")));
+  assert.equal(
+    parseTafTextProduct("TAF KVOK 271700Z VRB06KT 9999 FEW030", "KVOK", { issuanceTime: kvokTaf.issuanceTime }),
+    null,
+    "a header without an overall validity period is not a usable TAF",
+  );
+});
+
+test("official military validity-only TAF headers use authoritative metadata issue time", async () => {
+  const raw = "TAF AMD KNIP 2717/2823 18010KT 9999 FEW030 QNH3001INS BECMG 2800/2801 20008KT 9999 BKN060 QNH3000INS TX28/2719Z TN18/2811Z";
+  const issueTime = "2026-08-27T17:00:00Z";
+  const report = parseTafTextProduct(raw, "KNIP", { issuanceTime: issueTime, source: "Military fixture" });
+  assert.ok(report);
+  assert.equal(report.timestamp, "2026-08-27T17:00:00.000Z");
+  assert.equal(report.validTimeFrom, "2026-08-27T17:00:00.000Z");
+  assert.equal(report.validTimeTo, "2026-08-28T23:00:00.000Z");
+  assert.equal(report.variant, "AMD");
+  assert.equal(report.raw, raw);
+  assert.deepEqual(report.displayText.split("\n"), [
+    "TAF AMD KNIP 2717/2823 18010KT 9999 FEW030 QNH3001INS",
+    "    BECMG 2800/2801 20008KT 9999 BKN060 QNH3000INS",
+    "    TX28/2719Z TN18/2811Z",
+  ]);
+  const decoded = decodeTafReport(report);
+  assert.equal(decoded.issuanceUtc, "2026-08-27T17:00:00.000Z");
+  assert.equal(decoded.validity.endUtc, "2026-08-28T23:00:00.000Z");
+
+  const current = await lookupAviationWeather({
+    station: "KNIP",
+    product: "TAF",
+    range: "recent",
+    now: new Date("2026-08-27T18:00:00Z"),
+    fetchImpl: async () => jsonResponse({ data: [] }),
+    currentTafProvider: async () => currentTafSnapshot([{
+      station: "KNIP",
+      issueTime,
+      validTimeFrom: "2026-08-27T17:00:00Z",
+      validTimeTo: "2026-08-28T23:00:00Z",
+      variant: "AMD",
+      raw,
+    }]),
+  });
+  assert.equal(current.state, "success");
+  assert.equal(current.reports[0].station, "KNIP");
+  assert.equal(current.reports[0].variant, "AMD");
+});
+
+test("TAF decoder produces chronological blocks, station-local equivalents, temperatures, and unknown groups", () => {
+  const raw = `${kvokTaf.raw} MYSTERY`;
+  const decoded = decodeTafReport({
+    station: "KVOK",
+    timestamp: kvokTaf.issuanceTime,
+    raw,
+  });
+  assert.equal(decoded.raw, raw);
+  assert.equal(decoded.title, "TAF — KVOK");
+  assert.equal(decoded.issuanceUtc, "2026-08-27T17:00:00.000Z");
+  assert.equal(decoded.issuanceLocal, "27 AUG 2026 1200L");
+  assert.deepEqual(decoded.validity, {
+    startUtc: "2026-08-27T17:00:00.000Z",
+    endUtc: "2026-08-28T23:00:00.000Z",
+    utcLabel: "27 AUG 2026 1700Z through 28 AUG 2026 2300Z",
+    localLabel: "27 AUG 2026 1200L through 28 AUG 2026 1800L",
+  });
+  assert.deepEqual(decoded.blocks.map((block) => block.type), ["INITIAL", "BECOMING"]);
+  assert.equal(decoded.blocks[0].conditions.winds[0], "Variable at 6 kt");
+  assert.equal(decoded.blocks[0].conditions.visibility[0], "10 km or greater");
+  assert.equal(decoded.blocks[0].conditions.sky[0], "Few at 3000 ft");
+  assert.deepEqual(decoded.blocks[0].conditions.pressure[0], { label: "QNH", value: "30.01 inHg" });
+  assert.equal(decoded.blocks[1].sourceToken, "BECMG 2800/2801");
+  assert.equal(decoded.blocks[1].startUtc, "2026-08-28T00:00:00.000Z");
+  assert.equal(decoded.blocks[1].endUtc, "2026-08-28T01:00:00.000Z");
+  assert.match(decoded.blocks[1].localLabel, /27 AUG 2026 1900L through 27 AUG 2026 2000L/);
+  assert.deepEqual(decoded.temperatures.map((item) => [item.type, item.valueC, item.timestampUtc]), [
+    ["Maximum temperature", 23, "2026-08-27T19:00:00.000Z"],
+    ["Minimum temperature", 12, "2026-08-28T11:00:00.000Z"],
+  ]);
+  assert.deepEqual(decoded.undecoded, ["MYSTERY"]);
+  assert.ok(decoded.sections.some((section) => section.heading === "BECOMING"));
+});
+
+test("TAF decoder recognizes FM, TEMPO, PROB30/40, AMD, and COR without altering raw", () => {
+  const amd = tafDisplayProducts.amendment;
+  const amdDecoded = decodeTafReport(amd, { referenceTime: "2026-08-27T21:00:00Z" });
+  assert.equal(amdDecoded.variant, "AMD");
+  assert.ok(amdDecoded.blocks.some((block) => block.type === "FROM"));
+  assert.ok(amdDecoded.blocks.some((block) => block.type === "BECOMING"));
+  assert.equal(amdDecoded.blocks.find((block) => block.type === "INITIAL").endUtc, "2026-08-28T00:00:00.000Z");
+  assert.equal(amdDecoded.raw, amd);
+
+  const normal = tafDisplayProducts.normal;
+  const normalDecoded = decodeTafReport(normal, { referenceTime: "2026-08-27T23:30:00Z" });
+  assert.ok(normalDecoded.blocks.some((block) => block.type === "TEMPORARY"));
+  assert.ok(normalDecoded.blocks.some((block) => block.type === "PROB30 TEMPORARY"));
+  assert.equal(normalDecoded.blocks.find((block) => block.type === "INITIAL").endUtc, "2026-08-28T01:00:00.000Z");
+  assert.equal(normalDecoded.raw, normal);
+
+  const cor = tafDisplayProducts.correction;
+  const corDecoded = decodeTafReport(cor, { referenceTime: "2026-08-27T21:00:00Z" });
+  assert.equal(corDecoded.variant, "COR");
+  assert.ok(corDecoded.blocks.some((block) => block.type === "PROB40"));
+  assert.equal(corDecoded.raw, cor);
+
+  const multipleFm = "TAF KMEM 272300Z 2800/2906 36008KT P6SM SCT060 FM280100 05004KT P6SM SCT250 FM281600 02008KT P6SM FEW060=";
+  const multipleDecoded = decodeTafReport(multipleFm, { referenceTime: "2026-08-27T23:05:00Z" });
+  const prevailing = multipleDecoded.blocks.filter((block) => ["INITIAL", "FROM"].includes(block.type));
+  assert.deepEqual(prevailing.map((block) => block.endUtc), [
+    "2026-08-28T01:00:00.000Z",
+    "2026-08-28T16:00:00.000Z",
+    "2026-08-29T06:00:00.000Z",
+  ]);
 });
 
 test("invalid ICAO and non-KMEM historical ATIS return truthful states without requesting a provider", async () => {
@@ -379,6 +635,29 @@ test("non-KMEM current ATIS preserves same-time arrival and departure products",
   assert.equal(response.reports.length, 2);
 });
 
+test("a nonparticipating airport gets a clean ATIS-unavailable state rather than a provider error", async () => {
+  for (const providerResponse of [jsonResponse([]), jsonResponse({ error: "No results found" }, 404)]) {
+    const response = await lookupAviationWeather({
+      station: "KVOK",
+      product: "ATIS",
+      now: NOW,
+      fetchImpl: async () => providerResponse,
+    });
+    assert.equal(response.state, "unsupported");
+    assert.equal(response.headline, "ATIS NOT AVAILABLE FOR KVOK");
+    assert.match(response.detail, /No participating current D-ATIS source/);
+  }
+
+  const providerFailure = await lookupAviationWeather({
+    station: "KVOK",
+    product: "ATIS",
+    now: NOW,
+    fetchImpl: async () => jsonResponse({ error: "upstream failure" }, 503),
+  });
+  assert.equal(providerFailure.state, "error");
+  assert.equal(providerFailure.headline, "SOURCE UNAVAILABLE");
+});
+
 test("one failed METAR provider is isolated when the KMEM operational feed is valid", async () => {
   const calls = [];
   const response = await lookupAviationWeather({
@@ -461,6 +740,341 @@ test("TAF history ignores malformed data, isolates a detail failure, and include
   assert.deepEqual(
     response.reports.map((report) => report.timestamp),
     ["2026-08-27T11:30:00.000Z", "2026-08-23T12:00:00.000Z"],
+  );
+});
+
+test("current TAF fallback is independent of archive coverage while history reports truthful unavailability", async () => {
+  const now = new Date("2026-08-27T18:00:00Z");
+  let currentProviderCalls = 0;
+  const current = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async () => jsonResponse({ data: [] }),
+    currentTafProvider: async ({ station }) => {
+      currentProviderCalls += 1;
+      assert.equal(station, "KVOK");
+      return currentTafSnapshot([kvokCurrentTafRecord({
+        source: "Injected current-only provider",
+      })]);
+    },
+  });
+  assert.equal(current.state, "success");
+  assert.equal(current.usedCurrentFallback, true);
+  assert.equal(current.reports[0].station, "KVOK");
+  assert.equal(current.reports[0].raw, kvokTaf.raw);
+  assert.equal(current.reports[0].source, "Injected current-only provider");
+  assert.equal(currentProviderCalls, 1);
+
+  const history = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "96",
+    now,
+    fetchImpl: async () => jsonResponse({ data: [] }),
+    currentTafProvider: async () => {
+      currentProviderCalls += 1;
+      return [{ raw: kvokTaf.raw, timestamp: kvokTaf.issuanceTime }];
+    },
+  });
+  assert.equal(history.state, "unsupported");
+  assert.equal(history.headline, "TAF HISTORY UNAVAILABLE FOR THIS STATION");
+  assert.match(history.detail, /Current TAF availability is independent/);
+  assert.equal(currentProviderCalls, 1, "historical lookup must not call a current-only provider");
+});
+
+test("a current-only TAF provider remains usable when the archive provider times out", async () => {
+  const response = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now: new Date("2026-08-27T18:00:00Z"),
+    fetchImpl: async () => { throw new Error("IEM timeout"); },
+    currentTafProvider: async () => kvokCurrentTafRecord({
+      source: "Current-only provider",
+    }),
+  });
+  assert.equal(response.state, "success");
+  assert.equal(response.usedCurrentFallback, true);
+  assert.equal(response.partialFailures, 1);
+  assert.equal(response.reports[0].station, "KVOK");
+});
+
+test("Most Recent TAF checks IEM and the current snapshot concurrently and selects the freshest valid issuance", async () => {
+  const now = new Date("2026-08-27T18:00:00Z");
+  let releaseIem;
+  let currentProviderCalls = 0;
+  const providerStarted = new Promise((resolve) => { releaseIem = resolve; });
+  const iemEntry = {
+    station: "KVOK",
+    product_id: "kvok-older-iem",
+    utc_issued: "2026-08-27T16:00:00Z",
+    text_href: "/api/1/nwstext/kvok-older-iem",
+  };
+  const response = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("taf_overview.json")) {
+        await providerStarted;
+        return jsonResponse({ data: [iemEntry] });
+      }
+      return textResponse("TAF KVOK 271600Z 2716/2822 VRB05KT 9999 FEW030 QNH3002INS");
+    },
+    currentTafProvider: async () => {
+      currentProviderCalls += 1;
+      releaseIem();
+      return currentTafSnapshot([kvokCurrentTafRecord()]);
+    },
+  });
+  assert.equal(currentProviderCalls, 1);
+  assert.equal(response.state, "success");
+  assert.equal(response.reports[0].timestamp, "2026-08-27T17:00:00.000Z");
+  assert.equal(response.reports[0].source, "NOAA AWC current snapshot");
+  assert.equal(response.usedCurrentFallback, true);
+});
+
+test("equal-time current TAF ties prefer COR over AMD over routine, then deterministic body order", async () => {
+  const now = new Date("2026-08-27T18:00:00Z");
+  const entry = {
+    station: "KVOK",
+    product_id: "kvok-equal-time",
+    utc_issued: kvokTaf.issuanceTime,
+    text_href: "/api/1/nwstext/kvok-equal-time",
+  };
+  const lookupWith = (iemRaw, snapshotRaw, snapshotVariant) => lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async (input) => new URL(String(input)).pathname.endsWith("taf_overview.json")
+      ? jsonResponse({ data: [entry] })
+      : textResponse(iemRaw),
+    currentTafProvider: async () => currentTafSnapshot([kvokCurrentTafRecord({
+      variant: snapshotVariant,
+      raw: snapshotRaw,
+    })]),
+  });
+
+  const amendment = await lookupWith(
+    "TAF KVOK 271700Z 2717/2823 VRB05KT 9999 FEW030 QNH3002INS=",
+    "TAF AMD KVOK 271700Z 2717/2823 VRB06KT 9999 BKN040 QNH3001INS=",
+    "AMD",
+  );
+  assert.equal(amendment.reports[0].variant, "AMD");
+  assert.equal(amendment.usedCurrentFallback, true);
+
+  const correction = await lookupWith(
+    "TAF COR KVOK 271700Z 2717/2823 VRB07KT 9999 SCT030 QNH3000INS=",
+    "TAF AMD KVOK 271700Z 2717/2823 VRB06KT 9999 BKN040 QNH3001INS=",
+    "AMD",
+  );
+  assert.equal(correction.reports[0].variant, "COR");
+  assert.equal(correction.usedCurrentFallback, false);
+
+  const deterministicRoutineOrder = filterAndSortReports([
+    { product: "TAF", station: "KVOK", timestamp: kvokTaf.issuanceTime, raw: "TAF KVOK 271700Z 2717/2823 VRB06KT 9999 SCT040" },
+    { product: "TAF", station: "KVOK", timestamp: kvokTaf.issuanceTime, raw: "TAF KVOK 271700Z 2717/2823 VRB06KT 9999 BKN040" },
+  ], null, now);
+  assert.match(deterministicRoutineOrder[0].raw, /BKN040$/);
+});
+
+test("a newer IEM TAF beats an older snapshot while an equal provider copy dedupes", async () => {
+  const now = new Date("2026-08-27T18:00:00Z");
+  let currentProviderCalls = 0;
+  const iemEntry = {
+    station: "KVOK",
+    product_id: "kvok-newer-iem",
+    utc_issued: "2026-08-27T17:30:00Z",
+    text_href: "/api/1/nwstext/kvok-newer-iem",
+  };
+  const response = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async (input) => new URL(String(input)).pathname.endsWith("taf_overview.json")
+      ? jsonResponse({ data: [iemEntry] })
+      : textResponse("TAF KVOK 271730Z 2717/2823 VRB07KT 9999 SCT035 QNH3000INS="),
+    currentTafProvider: async () => {
+      currentProviderCalls += 1;
+      return currentTafSnapshot([kvokCurrentTafRecord()]);
+    },
+  });
+  assert.equal(currentProviderCalls, 1);
+  assert.equal(response.reports[0].timestamp, "2026-08-27T17:30:00.000Z");
+  assert.equal(response.usedCurrentFallback, false);
+
+  const equalCopies = dedupeReports([
+    { product: "TAF", station: "KVOK", timestamp: kvokTaf.issuanceTime, variant: "", raw: `${kvokTaf.raw}=` },
+    { product: "TAF", station: "KVOK", timestamp: kvokTaf.issuanceTime, variant: "", raw: kvokTaf.raw },
+  ]);
+  assert.equal(equalCopies.length, 1);
+
+  const equalEntry = {
+    station: "KVOK",
+    product_id: "kvok-equal-iem",
+    utc_issued: kvokTaf.issuanceTime,
+    text_href: "/api/1/nwstext/kvok-equal-iem",
+  };
+  let equalProviderCalls = 0;
+  const equalResponse = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async (input) => new URL(String(input)).pathname.endsWith("taf_overview.json")
+      ? jsonResponse({ data: [equalEntry] })
+      : textResponse(`${kvokTaf.bulletin}=`),
+    currentTafProvider: async () => {
+      equalProviderCalls += 1;
+      return currentTafSnapshot([kvokCurrentTafRecord()]);
+    },
+  });
+  assert.equal(equalProviderCalls, 1);
+  assert.equal(equalResponse.state, "success");
+  assert.equal(equalResponse.reports.length, 1);
+  assert.equal(equalResponse.reports[0].source, "Iowa Environmental Mesonet / NWS text archive");
+});
+
+test("expired or malformed current TAF snapshots cannot displace a valid IEM report", async () => {
+  const now = new Date("2026-08-27T18:00:00Z");
+  const expired = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async () => jsonResponse({ data: [] }),
+    currentTafProvider: async () => currentTafSnapshot([kvokCurrentTafRecord({
+      validTimeFrom: "2026-08-26T17:00:00Z",
+      validTimeTo: "2026-08-27T17:59:00Z",
+    })]),
+  });
+  assert.equal(expired.state, "empty");
+  assert.equal(expired.headline, "NO REPORTS FOUND");
+
+  const corruptEnvelope = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async () => jsonResponse({ data: [] }),
+    currentTafProvider: async () => currentTafSnapshot([kvokCurrentTafRecord({
+      issueTime: "2026-08-26T17:00:00Z",
+      validTimeFrom: "2026-08-26T17:00:00Z",
+      validTimeTo: "2026-08-28T23:00:00Z",
+      raw: "TAF KVOK 261700Z 2617/2717 VRB05KT 9999 FEW030 QNH3002INS=",
+    })]),
+  });
+  assert.equal(corruptEnvelope.state, "empty");
+  assert.equal(corruptEnvelope.reports.length, 0, "envelope dates cannot extend the raw TAF validity");
+
+  const wrongStation = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async () => jsonResponse({ data: [] }),
+    currentTafProvider: async () => currentTafSnapshot([kvokCurrentTafRecord({ station: "KJFK" })]),
+  });
+  assert.equal(wrongStation.state, "empty");
+  assert.equal(wrongStation.reports.length, 0);
+
+  const expiredIemEntry = {
+    station: "KVOK",
+    product_id: "kvok-expired-iem",
+    utc_issued: "2026-08-26T17:00:00Z",
+    text_href: "/api/1/nwstext/kvok-expired-iem",
+  };
+  const expiredIem = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async (input) => new URL(String(input)).pathname.endsWith("taf_overview.json")
+      ? jsonResponse({ data: [expiredIemEntry] })
+      : textResponse("TAF KVOK 261700Z 2617/2717 VRB05KT 9999 FEW030 QNH3002INS="),
+  });
+  assert.equal(expiredIem.state, "empty");
+  assert.equal(expiredIem.reports.length, 0);
+
+  const iemEntry = {
+    station: "KVOK",
+    product_id: "kvok-valid-iem",
+    utc_issued: kvokTaf.issuanceTime,
+    text_href: "/api/1/nwstext/kvok-valid-iem",
+  };
+  const malformedSnapshot = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async (input) => new URL(String(input)).pathname.endsWith("taf_overview.json")
+      ? jsonResponse({ data: [iemEntry] })
+      : textResponse(kvokTaf.bulletin),
+    currentTafProvider: async () => ({ schemaVersion: 2, sourcePolicy: "WRONG", reports: [] }),
+  });
+  assert.equal(malformedSnapshot.state, "success");
+  assert.equal(malformedSnapshot.partialFailures, 1);
+  assert.equal(malformedSnapshot.reports[0].source, "Iowa Environmental Mesonet / NWS text archive");
+});
+
+test("current TAF source failures remain isolated in either direction", async () => {
+  const now = new Date("2026-08-27T18:00:00Z");
+  const iemEntry = {
+    station: "KVOK",
+    product_id: "kvok-valid-iem",
+    utc_issued: kvokTaf.issuanceTime,
+    text_href: "/api/1/nwstext/kvok-valid-iem",
+  };
+  const response = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "recent",
+    now,
+    fetchImpl: async (input) => new URL(String(input)).pathname.endsWith("taf_overview.json")
+      ? jsonResponse({ data: [iemEntry] })
+      : textResponse(kvokTaf.bulletin),
+    currentTafProvider: async () => { throw new Error("snapshot unavailable"); },
+  });
+  assert.equal(response.state, "success");
+  assert.equal(response.partialFailures, 1);
+  assert.equal(response.reports[0].source, "Iowa Environmental Mesonet / NWS text archive");
+});
+
+test("a station with archive entries but none in the selected window remains an empty history result", async () => {
+  const now = new Date("2026-08-27T18:00:00Z");
+  let overviewUrl = null;
+  const oldEntry = {
+    station: "KVOK",
+    product_id: "kvok-old",
+    utc_issued: "2026-08-27T12:00:00Z",
+    text_href: "/api/1/nwstext/kvok-old",
+  };
+  const response = await lookupAviationWeather({
+    station: "KVOK",
+    product: "TAF",
+    range: "1",
+    now,
+    fetchImpl: async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("taf_overview.json")) {
+        overviewUrl = url;
+        return jsonResponse({ data: [oldEntry] });
+      }
+      return textResponse(kvokTaf.bulletin);
+    },
+  });
+  assert.equal(response.state, "empty");
+  assert.equal(response.headline, "NO REPORTS FOUND");
+  assert.equal(
+    now.getTime() - Date.parse(overviewUrl.searchParams.get("sts")),
+    96 * 60 * 60 * 1000,
+    "short history selections must inspect the full 96-hour archive before declaring coverage unavailable",
   );
 });
 
