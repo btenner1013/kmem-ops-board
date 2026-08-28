@@ -491,6 +491,13 @@ the previous contents until final verification, and rolls them back on failure.
 If rollback cannot be fully verified, the transaction and its journal are
 retained at the exact target for inspection rather than deleting recovery data.
 
+An old clean Git-based recovery package on the exact USB target remains blocked
+by default. After verifying that it is inactive, use
+`-AllowVerifiedUsbRecoveryCheckout` together with `-Replace`. That narrow override
+still requires removable media, one clean canonical `main` checkout whose SHA is
+an ancestor of the release, and no Scheduled Task or running-process reference.
+It is never valid for the Desktop target.
+
 These are recovery snapshots, not updater identities. Do not point Task Scheduler
 at them. In particular, a target containing the active development checkout must
 remain untouched; use a separate maintained Git checkout for an active BACKUP.

@@ -5,7 +5,8 @@ param(
     [string]$Source,
     [string]$ExpectedSourceSha,
     [switch]$Replace,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$AllowVerifiedUsbRecoveryCheckout
 )
 
 $ErrorActionPreference = "Stop"
@@ -219,7 +220,8 @@ try {
         throw "Another backup operation is already validating or replacing this exact target."
     }
 
-    Assert-NoReparseAncestor $destinationPath "Destination"
+Assert-NoReparseAncestor $destinationPath "Destination"
+$gitCheckoutMarkers = @()
 if (Test-Path -LiteralPath $destinationPath) {
     $destinationRootItem = Get-Item -LiteralPath $destinationPath -Force
     if (($destinationRootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
@@ -231,15 +233,13 @@ if (Test-Path -LiteralPath $destinationPath) {
     if ($pendingTransaction) {
         throw "Destination contains an unfinished backup transaction; inspect it before retrying."
     }
-    if (Test-Path -LiteralPath (Join-Path $destinationPath ".git")) {
-        throw "Destination is a Git checkout; refusing to replace a possible active updater checkout."
-    }
-    $nestedGit = Get-ChildItem -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop |
-        Where-Object { $_.Name -eq ".git" } |
-        Select-Object -First 1
-    if ($nestedGit) {
-        throw "Destination contains a nested Git checkout; refusing to replace it."
-    }
+    $gitCheckoutMarkers = @(
+        if (Test-Path -LiteralPath (Join-Path $destinationPath ".git")) {
+            Get-Item -LiteralPath (Join-Path $destinationPath ".git") -Force -ErrorAction Stop
+        }
+        Get-ChildItem -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop |
+            Where-Object { $_.Name -eq ".git" }
+    ) | Sort-Object FullName -Unique
     $reparsePoint = Get-ChildItem -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop |
         Where-Object { ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 } |
         Select-Object -First 1
@@ -259,6 +259,60 @@ if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
         $taskNames = ($referencingTasks | ForEach-Object TaskName) -join ", "
         throw "Destination is referenced by scheduled task(s): $taskNames"
     }
+}
+
+if ($AllowVerifiedUsbRecoveryCheckout -and ($destinationPath -ne $usbTarget -or -not $Replace)) {
+    throw "The recovery-checkout override is valid only with -Replace for the exact approved USB target."
+}
+
+if ($gitCheckoutMarkers.Count -gt 0) {
+    if (-not $AllowVerifiedUsbRecoveryCheckout) {
+        throw "Destination contains a Git checkout; refusing to replace a possible active updater checkout."
+    }
+    if ($gitCheckoutMarkers.Count -ne 1) {
+        throw "The USB target contains more than one Git checkout; recovery identity is ambiguous."
+    }
+
+    $driveId = [System.IO.Path]::GetPathRoot($destinationPath).TrimEnd('\')
+    $drive = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$driveId'" -ErrorAction Stop
+    if (-not $drive -or [int]$drive.DriveType -ne 2) {
+        throw "The recovery-checkout override requires the exact target to be on removable media."
+    }
+
+    $referencingProcesses = @(
+        Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+            $_.ProcessId -ne $PID -and
+            $_.CommandLine -and
+            $_.CommandLine.IndexOf($destinationPath, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+        }
+    )
+    if ($referencingProcesses.Count -gt 0) {
+        throw "The USB target is referenced by a running process; refusing recovery replacement."
+    }
+
+    $recoveryRepo = Normalize-AbsolutePath (Split-Path -Parent $gitCheckoutMarkers[0].FullName)
+    $safeRecoveryRepo = $recoveryRepo.Replace('\', '/')
+    $recoveryRemote = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo remote get-url origin 2>$null)).Trim()
+    if ($LASTEXITCODE -ne 0 -or (Normalize-GitRemote $recoveryRemote) -ne $canonicalRemote) {
+        throw "The USB checkout does not match the canonical KMEM repository."
+    }
+    $recoveryBranch = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo symbolic-ref --quiet --short HEAD 2>$null)).Trim()
+    if ($LASTEXITCODE -ne 0 -or $recoveryBranch -ne "main") {
+        throw "The USB recovery checkout must be on main."
+    }
+    $recoveryDirty = @(& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo status --porcelain=v1 --untracked-files=all)
+    if ($LASTEXITCODE -ne 0 -or $recoveryDirty.Count -ne 0) {
+        throw "The USB recovery checkout is dirty; refusing to delete possible local work."
+    }
+    $recoverySha = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo rev-parse HEAD 2>$null)).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to resolve the USB recovery checkout SHA."
+    }
+    & git -C $sourcePath merge-base --is-ancestor $recoverySha $sourceSha
+    if ($LASTEXITCODE -ne 0) {
+        throw "The USB recovery checkout is not an ancestor of the validated release."
+    }
+    Write-Host "Verified inactive USB recovery checkout at $recoverySha; replacement is authorized."
 }
 
 if (-not $Replace -and -not $DryRun) {
