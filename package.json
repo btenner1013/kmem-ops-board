@@ -5,6 +5,7 @@
   "scripts": {
     "test:flight-plan": "node --test tests/flight-plan-core.test.mjs tests/dd1801-import.test.mjs tests/flight-plan-ui.test.mjs tests/flight-plan-aisr.test.mjs tests/flight-plan-aisr-ui.test.mjs",
     "test:notams": "node --test tests/notam-cancellation-ui.test.mjs tests/operational-status-ui.test.mjs",
+    "test:updater-ui": "node --test tests/updater-host-status-ui.test.mjs",
     "test:aviation-weather": "node --test tests/aviation-weather-lookup-core.test.mjs tests/aviation-weather-lookup-ui.test.mjs"
   }
 }

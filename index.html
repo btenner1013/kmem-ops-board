@@ -355,9 +355,16 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
   font-weight:bold;
   min-height:0;
 }
-.footer-left{ text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.footer-left{ text-align:left; white-space:nowrap; overflow:hidden; display:flex; align-items:center; min-width:0; }
 .footer-center{ text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .footer-right{ text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.host-health{ margin-left:0; flex:0 0 auto; }
+.footer-left > .feed-sep{ flex:0 0 auto; }
+.data-updated-compact{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.host-ok{ color:var(--ops-green); }
+.host-delayed,.host-blocked{ color:var(--warning); }
+.host-no-heartbeat{ color:var(--closed); }
 
 .feed-health{
   font-size:var(--feed-px) !important;
@@ -1136,7 +1143,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 
   <div class="bottom">
     <div class="panel footer">
-      <div class="footer-left">DATA UPDATED: <span id="dataUpdated">--:--Z</span></div>
+      <div class="footer-left"><span id="hostHealth" class="host-health host-no-heartbeat">HOST NO HEARTBEAT</span><span class="feed-sep">|</span><span class="data-updated-compact">DATA UPDATED: <span id="dataUpdated">--:--Z</span></span></div>
       <div id="feedHealth" class="footer-center feed-health feed-warn">FEEDS: CHECKING...</div>
       <div id="staleWarning" class="footer-right">REFRESH IN: <span id="refreshCountdown">10:00</span></div>
     </div>
@@ -1968,6 +1975,87 @@ function atisFeedState(data,atisText){
   return {status:"OK",detail:"",age};
 }
 
+function notamFeedState(data,nowMs=getBoardNowMs()){
+  const fetchStatus=String(data?.milNotamFetchStatus||"").trim().toUpperCase();
+  const rawStatus=String(data?.milNotamRawStatus||"").trim().toUpperCase();
+  const updated=parseUpdatedZ(data?.milNotamUpdatedZ||"");
+  const exactAge=updated?(Number(nowMs)-updated.getTime())/60000:null;
+  const displayAge=Number.isFinite(exactAge)&&exactAge>=0?Math.ceil(exactAge):null;
+  const errorFetch=/(?:FAILED|FAILURE|ERROR|TIMEOUT|NO[\s_-]*OUTPUT)/.test(fetchStatus);
+  const errorRaw=/(?:FAILED|FAILURE|ERROR|TIMEOUT|NO[\s_-]*OUTPUT)/.test(rawStatus);
+
+  if(errorFetch||errorRaw){
+    const detail=errorFetch?fetchStatus:rawStatus;
+    return {status:"ERROR",detail,age:displayAge};
+  }
+  if(fetchStatus!=="OK"){
+    return {status:"UNAVAILABLE",detail:fetchStatus||"FETCH STATUS UNKNOWN",age:displayAge};
+  }
+  if(rawStatus!=="SUCCESS"){
+    return {status:"UNAVAILABLE",detail:rawStatus||"RAW STATUS UNKNOWN",age:displayAge};
+  }
+  if(!updated||!Number.isFinite(exactAge)){
+    return {status:"UNAVAILABLE",detail:"TIME UNKNOWN",age:null};
+  }
+  if(exactAge<0){
+    return {status:"UNAVAILABLE",detail:"FUTURE TIME",age:null};
+  }
+  if(exactAge<=30){
+    return {status:"OK",detail:"",age:displayAge};
+  }
+  if(exactAge<=60){
+    return {status:"WARN",detail:displayAge+"M",age:displayAge};
+  }
+  return {status:"STALE",detail:displayAge+"M",age:displayAge};
+}
+
+function hostHeartbeatState(data,nowMs=getBoardNowMs()){
+  const roleText=String(data?.activeRole||"NONE").trim().toUpperCase();
+  const role=(roleText==="PRIMARY"||roleText==="BACKUP")?roleText:"NONE";
+  if(role==="NONE")return {status:"NO_HEARTBEAT",detail:"",age:null,role,reason:"INVALID_ROLE"};
+  const heartbeat=parseUpdatedZ(data?.heartbeatUtc||"");
+  if(!heartbeat)return {status:"NO_HEARTBEAT",detail:"",age:null,role,reason:"MISSING_OR_MALFORMED"};
+
+  const exactAge=(Number(nowMs)-heartbeat.getTime())/60000;
+  if(!Number.isFinite(exactAge)||exactAge<0){
+    return {status:"NO_HEARTBEAT",detail:"",age:null,role,reason:"FUTURE_OR_INVALID"};
+  }
+
+  const age=Math.ceil(exactAge);
+  const syncStatus=String(data?.codeSyncStatus||"").trim().toUpperCase();
+  if(exactAge<=25&&syncStatus.includes("BLOCKED")){
+    return {status:"CODE_SYNC_BLOCKED",detail:"",age,role,reason:syncStatus};
+  }
+  if(exactAge<=15)return {status:"OK",detail:"",age,role,reason:""};
+  if(exactAge<=25)return {status:"DELAYED",detail:age+"M",age,role,reason:""};
+  return {status:"NO_HEARTBEAT",detail:age+"M",age,role,reason:""};
+}
+
+function renderHostHealth(data){
+  const el=document.getElementById("hostHealth");
+  if(!el)return;
+  const state=hostHeartbeatState(data);
+  el.className="host-health";
+  if(state.status==="OK"){
+    el.classList.add("host-ok");
+    el.textContent=`HOST OK [${state.role}]`;
+  }else if(state.status==="DELAYED"){
+    el.classList.add("host-delayed");
+    el.textContent=`HOST DELAYED ${state.detail}`;
+  }else if(state.status==="CODE_SYNC_BLOCKED"){
+    el.classList.add("host-blocked");
+    el.textContent="HOST CODE SYNC BLOCKED";
+  }else{
+    el.classList.add("host-no-heartbeat");
+    el.textContent=`HOST NO HEARTBEAT${state.detail?" "+state.detail:""}`;
+  }
+  const running=String(data?.runningSha||"--");
+  const origin=String(data?.originMainSha||"--");
+  const update=String(data?.updateStatus||"UNKNOWN");
+  const github=String(data?.githubStatus||"UNKNOWN");
+  el.title=`ROLE ${state.role} | UPDATE ${update} | GITHUB ${github} | RUNNING ${running} | ORIGIN ${origin}`;
+}
+
 function updateSourceHealth(data,updatedZ){
   const el=document.getElementById("feedHealth");
   let parts=[];
@@ -2789,6 +2877,22 @@ async function loadWeatherJson(){
   }
 }
 
+async function loadHostStatus(){
+  try{
+    const response=await fetch("host_status.json?t="+Date.now(),{cache:"no-store"});
+    if(!response.ok)throw new Error("Unable to load host_status.json");
+    const data=await response.json();
+    window.kmemHostStatus=data;
+    renderHostHealth(data);
+    return true;
+  }catch(error){
+    console.warn("host_status.json load failed",error);
+    window.kmemHostStatus=null;
+    renderHostHealth(null);
+    return false;
+  }
+}
+
 const WEATHER_REFRESH_SECONDS=300;
 let refreshRemaining=WEATHER_REFRESH_SECONDS;
 let weatherFetchInFlight=false;
@@ -2829,7 +2933,9 @@ function setRadarNexradOnly(){
 
 async function refreshActiveData(){
   setRadarNexradOnly();
-  return loadWeatherJson();
+  const results=await Promise.allSettled([loadWeatherJson(),loadHostStatus()]);
+  renderHostHealth(window.kmemHostStatus);
+  return results[0].status==="fulfilled"&&results[0].value===true;
 }
 
 updateClock();
