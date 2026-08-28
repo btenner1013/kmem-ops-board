@@ -5,6 +5,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest import mock
 
+import kmem_updater
 import update_weather_local as u
 
 
@@ -173,15 +174,10 @@ class AtisOperationsTests(unittest.TestCase):
         self.assertEqual(len(live_candidates), 1)
         self.assertEqual(live_candidates[0]["variant"], "ARR")
 
-    def test_updater_explicitly_stages_history_without_broad_git_add(self):
-        completed = mock.Mock(returncode=0)
-        with mock.patch.object(u, "run_cmd", return_value=completed) as run:
-            u.git_commit_and_push()
-
-        commands = [call.args[0] for call in run.call_args_list]
-        self.assertIn(["git", "add", "weather.json"], commands)
-        self.assertIn(["git", "add", "atis_history.json"], commands)
-        self.assertNotIn(["git", "add", "."], commands)
+    def test_coordinator_allowlist_explicitly_includes_weather_and_history(self):
+        self.assertIn("weather.json", kmem_updater.GENERATED_FILES)
+        self.assertIn("atis_history.json", kmem_updater.GENERATED_FILES)
+        self.assertNotIn(".", kmem_updater.GENERATED_FILES)
 
     def test_same_time_provider_revision_uses_newer_information_letter(self):
         api_bravo = atis("B", "0954Z")

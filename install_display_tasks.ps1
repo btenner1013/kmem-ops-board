@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [string]$TaskPrefix = "KMEM Ops Board",
-    [switch]$SkipDisplayLaunch
+    [switch]$SkipDisplayLaunch,
+    [switch]$ReplaceExisting,
+    [switch]$AcknowledgeExistingUpdaterTasks
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,50 +26,112 @@ if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
     throw "Git was not found. Install Git for Windows, then run this installer again."
 }
 
+$plannedTaskNames = @(
+    "$TaskPrefix - Local Server",
+    "$TaskPrefix - Weather Update"
+)
+if (-not $SkipDisplayLaunch) {
+    $plannedTaskNames += "$TaskPrefix - Display"
+}
+
+$existingPlanned = @($plannedTaskNames | ForEach-Object {
+    Get-ScheduledTask -TaskName $_ -ErrorAction SilentlyContinue
+})
+if ($existingPlanned.Count -gt 0 -and -not $ReplaceExisting) {
+    $names = ($existingPlanned | ForEach-Object TaskName) -join ", "
+    throw "Existing task(s) found: $names. No changes were made. Inspect them, then use -ReplaceExisting only if replacement is intended."
+}
+
+$otherUpdaterTasks = @(
+    Get-ScheduledTask | Where-Object {
+        $_.TaskName -notin $plannedTaskNames -and
+        @($_.Actions | Where-Object {
+            ("{0} {1}" -f $_.Execute, $_.Arguments) -match '(?i)(run_kmem_update\.bat|update_weather_local\.py|kmem_updater\.py)'
+        }).Count -gt 0
+    }
+)
+if ($otherUpdaterTasks.Count -gt 0 -and -not $AcknowledgeExistingUpdaterTasks) {
+    $names = ($otherUpdaterTasks | ForEach-Object TaskName) -join ", "
+    throw "Other updater task(s) found: $names. Inspect them first; no changes were made."
+}
+
+function Register-KmemTask {
+    param(
+        [string]$Name,
+        $Action,
+        $Trigger,
+        $Settings,
+        [string]$Description
+    )
+    $parameters = @{
+        TaskName = $Name
+        Action = $Action
+        Trigger = $Trigger
+        Principal = $principal
+        Settings = $Settings
+        Description = $Description
+    }
+    if ($ReplaceExisting) {
+        Write-Warning "Replacing explicitly approved task '$Name'."
+        $parameters.Force = $true
+    }
+    Register-ScheduledTask @parameters | Out-Null
+}
+
 $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 $principal = New-ScheduledTaskPrincipal -UserId $currentUser -LogonType Interactive -RunLevel Limited
-$settings = New-ScheduledTaskSettingsSet `
+$serverSettings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
-    -ExecutionTimeLimit (New-TimeSpan -Hours 2) `
+    -ExecutionTimeLimit ([TimeSpan]::Zero) `
+    -MultipleInstances IgnoreNew `
+    -RestartCount 2 `
+    -RestartInterval (New-TimeSpan -Minutes 2)
+$updaterSettings = New-ScheduledTaskSettingsSet `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 30) `
+    -MultipleInstances IgnoreNew `
+    -RestartCount 2 `
+    -RestartInterval (New-TimeSpan -Minutes 2)
+$displaySettings = New-ScheduledTaskSettingsSet `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 5) `
     -MultipleInstances IgnoreNew
 
 $serverAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"`"$serverBat`"`"" -WorkingDirectory $projectDir
 $serverTrigger = New-ScheduledTaskTrigger -AtLogOn -User $currentUser
-Register-ScheduledTask `
-    -TaskName "$TaskPrefix - Local Server" `
+Register-KmemTask `
+    -Name "$TaskPrefix - Local Server" `
     -Action $serverAction `
     -Trigger $serverTrigger `
-    -Principal $principal `
-    -Settings $settings `
-    -Description "Hosts the KMEM Ops Board at http://localhost:8765/ after sign-in." `
-    -Force | Out-Null
+    -Settings $serverSettings `
+    -Description "Hosts the KMEM Ops Board at http://localhost:8765/ after sign-in."
 
-$updateAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"`"$updateBat`"`"" -WorkingDirectory $projectDir
+$updateAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/d /c `"`"$updateBat`" PRIMARY`"" -WorkingDirectory $projectDir
 $updateTrigger = New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(1)) `
     -RepetitionInterval (New-TimeSpan -Minutes 10)
-Register-ScheduledTask `
-    -TaskName "$TaskPrefix - Weather Update" `
+Register-KmemTask `
+    -Name "$TaskPrefix - Weather Update" `
     -Action $updateAction `
     -Trigger $updateTrigger `
-    -Principal $principal `
-    -Settings $settings `
-    -Description "Refreshes KMEM weather, radar, and FAA NMS NOTAM data every 10 minutes." `
-    -Force | Out-Null
+    -Settings $updaterSettings `
+    -Description "Refreshes KMEM data every 10 minutes as the lease-protected PRIMARY updater."
 
 if (-not $SkipDisplayLaunch) {
     $displayAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"`"$displayBat`"`"" -WorkingDirectory $projectDir
     $displayTrigger = New-ScheduledTaskTrigger -AtLogOn -User $currentUser
     $displayTrigger.Delay = "PT20S"
-    Register-ScheduledTask `
-        -TaskName "$TaskPrefix - Display" `
+    Register-KmemTask `
+        -Name "$TaskPrefix - Display" `
         -Action $displayAction `
         -Trigger $displayTrigger `
-        -Principal $principal `
-        -Settings $settings `
-        -Description "Opens the local KMEM Ops Board in Microsoft Edge kiosk mode after sign-in." `
-        -Force | Out-Null
+        -Settings $displaySettings `
+        -Description "Opens the local KMEM Ops Board in Microsoft Edge kiosk mode after sign-in."
 }
 
 Start-ScheduledTask -TaskName "$TaskPrefix - Local Server"

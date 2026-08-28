@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,7 +27,13 @@ RADAR_GIF_PATH = os.path.join(REPO_DIR, "radar.gif")
 ATIS_HISTORY_PATH = os.path.join(REPO_DIR, "atis_history.json")
 ATIS_HISTORY_RETENTION_HOURS = 96
 TAF_CURRENT_PATH = os.path.join(REPO_DIR, "taf_current.json")
-LOCAL_CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", REPO_DIR), "KMEMOpsBoard")
+LOCAL_CACHE_BASE = (
+    os.environ.get("LOCALAPPDATA")
+    or os.environ.get("XDG_CACHE_HOME")
+    or os.environ.get("RUNNER_TEMP")
+    or tempfile.gettempdir()
+)
+LOCAL_CACHE_DIR = os.path.join(LOCAL_CACHE_BASE, "KMEMOpsBoard")
 REPO_LAST_GOOD_WEATHER_PATH = os.path.join(REPO_DIR, "weather_last_good.json")
 LAST_GOOD_WEATHER_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_last_good.json")
 TREND_HISTORY_PATH = os.path.join(LOCAL_CACHE_DIR, "weather_trend_history.json")
@@ -83,6 +90,13 @@ PHONETIC_ALPHABET = {
 }
 
 
+def generic_updater_actor():
+    role = os.environ.get("KMEM_UPDATER_ROLE", "").strip().upper()
+    if role not in {"PRIMARY", "BACKUP"}:
+        role = "UNSPECIFIED"
+    return f"KMEM_{role}_UPDATER"
+
+
 def log_trend(symbol):
     if symbol == "↑":
         return "UP"
@@ -91,28 +105,6 @@ def log_trend(symbol):
     if symbol == "→":
         return "STEADY"
     return "UNKNOWN"
-
-
-def run_cmd(command, allow_fail=False):
-    print("Running:", " ".join(command))
-
-    result = subprocess.run(
-        command,
-        cwd=REPO_DIR,
-        text=True,
-        capture_output=True
-    )
-
-    if result.stdout:
-        print(result.stdout.strip())
-
-    if result.stderr:
-        print(result.stderr.strip())
-
-    if result.returncode != 0 and not allow_fail:
-        raise RuntimeError(f"Command failed: {' '.join(command)}")
-
-    return result
 
 
 def fetch_url(url, attempts=2, retry_delay_seconds=1.0, timeout_seconds=30):
@@ -691,6 +683,15 @@ def snapshot_current_weather_before_overwrite(weather_path):
         return False
 
     return save_repo_last_good_weather(current_data, "pre-write snapshot")
+
+
+def write_weather_json(weather_path, data):
+    """Write the primary generated artifact or fail the updater run."""
+    try:
+        with open(weather_path, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+    except Exception as write_error:
+        raise RuntimeError(f"Failed to write weather.json: {write_error}") from write_error
 
 
 def parse_z_datetime(value):
@@ -3887,15 +3888,6 @@ def fetch_ahas_bwc(now_z):
         return result
 
 
-def sync_repo_before_update():
-    """
-    Production safety:
-      Scheduled updater must not run "git reset --hard origin/main".
-      Code updates should be pulled manually so local uncommitted work is not erased.
-    """
-    print("Scheduled update: repo auto-reset disabled. Code updates are manual.")
-    return
-
 def text_is_bad(value):
     text = (value or "").upper().strip()
 
@@ -5065,12 +5057,10 @@ def build_weather_json():
         "atisReportedClosedRunways": atis_ops["reportedClosedRunways"],
         "atisReportedFlow": atis_ops["reportedFlow"],
         "lastKnownGoodUsed": last_known_good_used,
-        "lastKnownGoodCachePath": LAST_GOOD_WEATHER_PATH,
         "trendLookbackHours": TREND_LOOKBACK_HOURS,
         "trendReferenceSource": trend_reference_source,
         "trendReferenceTimestampZ": trend_reference_timestamp,
         "trendSampleCount": len(trend_history),
-        "trendHistoryPath": TREND_HISTORY_PATH,
 
         "obsSource": best_obs["obsSource"],
         "obsFieldSources": best_obs["obsFieldSources"],
@@ -5185,8 +5175,8 @@ def build_weather_json():
 
         "workflowMetadata": {
             "lastWorkflowEvent": "local_windows_task",
-            "lastWorkflowActor": os.environ.get("USERNAME", "local_user"),
-            "lastWorkflowName": "Local Windows KMEM Updater",
+            "lastWorkflowActor": generic_updater_actor(),
+            "lastWorkflowName": "KMEM Lease-Aware Updater",
             "lastWorkflowRunNumber": "LOCAL",
             "lastWorkflowRunId": "LOCAL",
             "lastWorkflowTimestampZ": now_z.strftime("%Y-%m-%d %H:%M:%SZ")
@@ -5196,13 +5186,7 @@ def build_weather_json():
     weather_path = os.path.join(REPO_DIR, "weather.json")
 
     snapshot_current_weather_before_overwrite(weather_path)
-
-    try:
-        with open(weather_path, "w", encoding="utf-8") as file:
-            json.dump(data, file, indent=2)
-    except Exception as write_error:
-        print(f"ERROR: Failed to write weather.json: {write_error}")
-        return
+    write_weather_json(weather_path, data)
 
     maintain_atis_history_safely(atis_history_candidates, now_z)
 
@@ -5268,91 +5252,35 @@ def download_radar_gif():
         print(f"Radar GIF download failed (keeping previous): {e}")
 
 
-def git_commit_and_push():
-    print("Committing and pushing...")
-
-    if os.environ.get("GITHUB_ACTIONS") == "true":
-        run_cmd(["git", "config", "user.name", "github-actions[bot]"], allow_fail=True)
-        run_cmd(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"], allow_fail=True)
-
-    run_cmd(["git", "add", "weather.json"])
-    if os.path.exists(ATIS_HISTORY_PATH):
-        run_cmd(["git", "add", "atis_history.json"])
-    if os.path.exists(TAF_CURRENT_PATH):
-        run_cmd(["git", "add", "taf_current.json"])
-    if os.path.exists(RADAR_GIF_PATH):
-        run_cmd(["git", "add", "radar.gif"])
-
-    diff_result = run_cmd(["git", "diff", "--cached", "--quiet"], allow_fail=True)
-
-    if diff_result.returncode == 0:
-        print("No staged changes to commit.")
-        return
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
-
-    commit_res = run_cmd(["git", "commit", "-m", f"KMEM weather update {timestamp}"], allow_fail=True)
-    if commit_res.returncode != 0:
-        print("Git commit skipped or failed.")
-        return
-
-    push_res = run_cmd(["git", "push", "origin", "main"], allow_fail=True)
-    if push_res.returncode == 0:
-        print("Pushed weather.json to GitHub.")
-    else:
-        print("Git push failed; will retry on next update cycle.")
-
-
-def run_loop(interval_seconds=600):
-    print(f"Starting continuous KMEM Ops Board updater (interval: {interval_seconds}s)...")
-    while True:
-        cycle_start = time.time()
-        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
-        print(f"\n==================================================")
-        print(f"KMEM UPDATE CYCLE START: {now_str}")
-        print(f"==================================================")
-
-        try:
-            sync_repo_before_update()
-            build_weather_json()
-            maintain_taf_current_safely()
-            download_radar_gif()
-            git_commit_and_push()
-            print("Update cycle complete.")
-        except Exception as error:
-            print("UPDATE CYCLE FAILED:", error)
-
-        elapsed = time.time() - cycle_start
-        sleep_time = max(1.0, float(interval_seconds) - elapsed)
-        print(f"Sleeping {sleep_time:.1f}s until next update cycle (Press Ctrl+C to stop)...")
-        try:
-            time.sleep(sleep_time)
-        except KeyboardInterrupt:
-            print("\nContinuous updater stopped by user.")
-            sys.exit(0)
+def generate_once():
+    """Generate approved updater artifacts without performing any Git operation."""
+    build_weather_json()
+    maintain_taf_current_safely()
+    download_radar_gif()
 
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="KMEM Ops Board Weather Updater")
-    parser.add_argument("--daemon", "--loop", action="store_true", help="Run continuously in a background loop")
-    parser.add_argument("--interval", type=int, default=600, help="Interval in seconds between update cycles (default: 600)")
+    parser.add_argument(
+        "--generate-only",
+        action="store_true",
+        help="Generate weather artifacts without Git; used by kmem_updater.py",
+    )
     args = parser.parse_args()
 
-    if args.daemon:
-        run_loop(interval_seconds=args.interval)
-    else:
-        try:
-            sync_repo_before_update()
-            build_weather_json()
-            maintain_taf_current_safely()
-            download_radar_gif()
-            git_commit_and_push()
-            print("Local update complete.")
+    if not args.generate_only:
+        parser.error(
+            "Direct Git publishing is disabled. Run kmem_updater.py with an explicit "
+            "PRIMARY or BACKUP role."
+        )
 
-        except Exception as error:
-            print("LOCAL UPDATE FAILED:", error)
-            sys.exit(1)
+    try:
+        generate_once()
+        print("Artifact generation complete.")
+    except Exception as error:
+        print("ARTIFACT GENERATION FAILED:", error)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

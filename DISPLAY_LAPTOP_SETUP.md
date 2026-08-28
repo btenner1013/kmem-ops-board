@@ -83,13 +83,13 @@ https://github.com/btenner1013/kmem-ops-board
 Open Command Prompt in the copied project folder and run:
 
 ```cmd
-run_kmem_update.bat
+run_kmem_update.bat PRIMARY
 ```
 
 Review:
 
 ```text
-local_update_log.txt
+%LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log
 ```
 
 Confirm the log shows:
@@ -98,6 +98,8 @@ Confirm the log shows:
 - radar GIF saved
 - FAA NMS token/pull succeeded
 - Git push succeeded, or there were no new staged changes
+- host_status.json identifies the generic PRIMARY role
+- updater_lease.json was released after publication
 
 If the FAA credentials are wrong or missing, the board will retain previous NOTAM data when available and label the feed status accordingly.
 
@@ -109,6 +111,11 @@ Open **PowerShell as Administrator**, change to the project folder, and run:
 Set-ExecutionPolicy -Scope Process Bypass
 .\install_display_tasks.ps1
 ```
+
+The installer inventories existing updater tasks first and stops without making
+changes if it finds a conflicting or same-name task. Inspect any legacy task;
+do not enable or repoint it implicitly. Use `-ReplaceExisting` only after an
+intentional same-name replacement has been reviewed.
 
 This creates:
 
@@ -151,7 +158,7 @@ Run `run_kmem_server.bat` manually. If `py` is not recognized, reinstall Python 
 
 ### The board opens but data does not refresh
 
-Run `run_kmem_update.bat`, then inspect `local_update_log.txt`. Also confirm internet access and `gh auth status`.
+Run `run_kmem_update.bat PRIMARY`, then inspect `%LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log`. Also confirm internet access and `gh auth status`.
 
 ### FAA NOTAM data is missing
 
@@ -170,11 +177,13 @@ Open **Task Scheduler Library**, select the corresponding `KMEM Ops Board` task,
 
 ### The folder was moved
 
-Run `install_display_tasks.ps1` again from the new location. The installer replaces the tasks with the new paths.
+Inspect and remove or disable the old tasks deliberately, then run
+`install_display_tasks.ps1` from the new location. The installer will not
+silently replace old task paths.
 
 ## Security notes
 
 - The FAA client secret stays only in `nms_credentials_local.bat`.
 - GitHub credentials are stored by GitHub CLI/Windows Credential Manager, not in this folder.
 - The local web server listens only on `127.0.0.1`, so other computers on the network cannot browse it.
-- Do not copy `local_update_log.txt` when it may contain operational troubleshooting data.
+- Do not copy local updater logs when they may contain operational troubleshooting data.

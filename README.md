@@ -96,7 +96,11 @@ display_control.html               Local/browser display tuning controls
 control.html                       Manual/local control page
 manual_alert.json                  Manual alert/default state file
 weather.json                       Current board data pushed to GitHub Pages
-update_weather_local.py            Main local updater
+host_status.json                   Generic updater heartbeat/status
+updater_lease.json                 Remote PRIMARY/BACKUP ownership lease
+update_weather_local.py            Generation-only weather engine
+kmem_updater.py                    Safe sync/lease/heartbeat coordinator
+updater_git.py                     Fast-forward-only Git and local lock helpers
 nms_kmem_mil_notams_test.py        FAA NMS staging pull/export helper
 run_kmem_update.bat                Windows Task Scheduler entry point
 README.md                          This file
@@ -110,8 +114,7 @@ These are intentionally **not** committed:
 
 ```text
 nms_credentials_local.bat          Local NMS credentials helper
-local_update_log.txt               Scheduled update log
-logs/                              Local logs
+%LOCALAPPDATA%\KMEMOpsBoard\logs   Bounded rotating updater logs
 nms_kmem_mil_notams_output.json    NMS helper output/debug file
 weather_last_good.json             Repo-local last-good safety copy
 ```
@@ -135,34 +138,73 @@ There is no external weather-warning pull, no external lightning verification, a
 Windows Task Scheduler runs every 10 minutes:
 
 ```text
-run_kmem_update.bat
+run_kmem_update.bat PRIMARY
 ```
 
-That batch file:
+The wrapper and coordinator:
 
 ```text
-1. Changes directory to the repo folder.
-2. Calls nms_credentials_local.bat if present.
-3. Runs update_weather_local.py.
-4. Appends output to local_update_log.txt.
+1. Require an explicit generic PRIMARY or BACKUP role.
+2. Acquire a recoverable same-host operating-system lock.
+3. Verify the expected repository, main branch, and clean checkout.
+4. Fetch origin/main with bounded retries and fast-forward only when strictly behind.
+5. Acquire an atomic 20-minute remote lease with a normal Git push.
+6. Generate approved artifacts in an isolated scratch checkout.
+7. Publish host_status.json, release the lease, and push normally.
+8. Fast-forward the maintained checkout to the accepted result.
 ```
 
-Alternatively, to run continuously without Task Scheduler, double-click `run_kmem_daemon.bat` or run:
+No updater path uses pull, rebase, reset, stash, clean, force-push, or `git add .`.
+A rejected lease or data push cannot leave maintained `main` ahead or dirty because
+raceable commits exist only in the disposable scratch checkout.
+Git commands are non-interactive and time-bounded; scratch authentication is
+scrubbed before verified cleanup. A safely diagnosed dirty/ahead/diverged sync
+can publish only `host_status.json`, never generated weather data.
+
+PRIMARY is preferred. BACKUP performs only a Git fetch/status check while the
+PRIMARY heartbeat is at most 15 minutes old, waits from over 15 through 25
+minutes, and becomes eligible to acquire a lease only after 25 minutes. Missing
+or malformed heartbeat data must be observed locally for the same grace period.
+An active lease always blocks both roles. The 10-minute backend cadence is
+unchanged.
+
+After BACKUP completes, it yields a 12-minute handoff window so PRIMARY gets the
+next scheduled opportunity after the lease is released. If PRIMARY does not
+return, BACKUP becomes eligible again. An invalid or malformed lease fails closed
+for one 20-minute local quarantine; only the same unchanged value can then be
+replaced through the normal atomic push race. A parseable expired lease is
+recoverable immediately. The 20-minute lease covers observed normal cycles of
+roughly 80–103 seconds while the generator itself is bounded below lease expiry.
+
+Install a role-specific task only after inspecting existing updater tasks:
 
 ```cmd
-cd /d C:\Users\btenn\Documents\KMEM-Ops-Board-Local\kmem-ops-board
-call nms_credentials_local.bat
-py update_weather_local.py --daemon
+"Install Primary Updater Task.cmd"
+"Install Backup Updater Task.cmd"
 ```
 
-The Python updater:
+The installer stops when it finds an existing updater task. It never silently
+repoints, enables, or replaces one. An intentional same-name replacement needs
+the explicit `-ReplaceExisting` PowerShell switch. `KMEM Backup Update Now.cmd`
+runs the same standby checks manually; `--force-failover` bypasses heartbeat
+preference only and never changes Git push semantics.
+
+Alternatively, run the coordinator continuously without changing the 600-second cadence:
+
+```cmd
+cd /d "%USERPROFILE%\Documents\KMEM-Ops-Board-Local\kmem-ops-board"
+call nms_credentials_local.bat
+run_kmem_daemon.bat PRIMARY
+```
+
+The generation engine:
 
 ```text
 1. Pulls/parses weather sources.
 2. Runs the NMS helper for MIL NOTAM/FICON/RWY closure display data.
 3. Builds weather.json.
 4. Saves local and repo last-good backups when data passes quality checks.
-5. Commits and pushes weather.json to GitHub.
+5. Returns control to the lease-aware coordinator for scoped publication.
 ```
 
 ### D-ATIS source selection
@@ -184,12 +226,18 @@ persisted ATIS timestamp wins while other fields retain their normal cache prior
 and selected provider in the `atisSource*`, `atisLiveCandidate*`, and `atisSelectedSource`
 fields for troubleshooting.
 
-Production safety note:
+### Host heartbeat
 
-```text
-update_weather_local.py should NOT run git reset --hard origin/main.
-Code updates are manual. Scheduled updates should only update weather.json.
-```
+The board loads `host_status.json` independently from `weather.json`. Its compact
+footer state is `HOST OK [PRIMARY|BACKUP]` through 15 minutes, `HOST DELAYED`
+through 25 minutes, then `HOST NO HEARTBEAT`. A recent blocked sync can display
+`HOST CODE SYNC BLOCKED`. Host status does not alter `DATA STALE` or any METAR,
+TAF, ATIS, AHAS, or NOTAM feed classification. Published role names and status
+contain no hostname, username, address, credential, token, or local path.
+
+The first deployment still requires one manual sync and task/role setup on the
+display laptop, and one initial maintained-checkout/task setup on any optional
+home BACKUP. Self-update cannot install itself on a machine still running old code.
 
 ---
 
@@ -199,9 +247,8 @@ Code updates are manual. Scheduled updates should only update weather.json.
 From Command Prompt:
 
 ```cmd
-cd /d C:\Users\btenn\Documents\KMEM-Ops-Board-Local\kmem-ops-board
-call nms_credentials_local.bat
-py update_weather_local.py
+cd /d "%USERPROFILE%\Documents\KMEM-Ops-Board-Local\kmem-ops-board"
+call run_kmem_update.bat PRIMARY
 ```
 
 Verify:
@@ -221,20 +268,21 @@ nothing to commit, working tree clean
 
 ## Manual code change workflow
 
-Before editing code:
+Before editing code, require a clean checkout and inspect remote movement:
 
 ```cmd
-cd /d C:\Users\btenn\Documents\KMEM-Ops-Board-Local\kmem-ops-board
+cd /d "%USERPROFILE%\Documents\KMEM-Ops-Board-Local\kmem-ops-board"
 git status
-git pull --rebase origin main
+git fetch origin main
+git log --oneline --left-right HEAD...origin/main
 ```
 
 After editing/testing:
 
 ```cmd
-git add index.html display_control.html control.html update_weather_local.py nms_kmem_mil_notams_test.py run_kmem_update.bat README.md .gitignore
+git add <only the reviewed files>
 git commit -m "Describe change here"
-git pull --rebase origin main
+git fetch origin main
 git push origin main
 ```
 
@@ -257,7 +305,7 @@ Ctrl + F5
 Run the NMS helper by itself:
 
 ```cmd
-cd /d C:\Users\btenn\Documents\KMEM-Ops-Board-Local\kmem-ops-board
+cd /d "%USERPROFILE%\Documents\KMEM-Ops-Board-Local\kmem-ops-board"
 call nms_credentials_local.bat
 py nms_kmem_mil_notams_test.py
 ```
@@ -286,17 +334,16 @@ Taxiway closures that only mention a runway as a boundary should not be listed u
 
 ### Board looks stale
 
-Check the local updater log:
+Check the bounded local updater log:
 
 ```cmd
-type local_update_log.txt
+type "%LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log"
 ```
 
 Run a manual update:
 
 ```cmd
-call nms_credentials_local.bat
-py update_weather_local.py
+call run_kmem_update.bat PRIMARY
 ```
 
 Then verify GitHub push:

@@ -12,6 +12,7 @@ from unittest import mock
 from xml.sax.saxutils import escape
 
 import taf_current as current
+import kmem_updater
 import update_weather_local as updater
 
 
@@ -340,20 +341,13 @@ class TafCurrentUpdaterIntegrationTests(unittest.TestCase):
             updater.maintain_taf_current_safely(NOW, maintainer=crashing_maintainer)
         )
 
-    def test_git_staging_names_taf_snapshot_exactly_without_broad_add(self):
-        completed = SimpleNamespace(returncode=0)
-        with mock.patch.object(updater.os.path, "exists", return_value=True), mock.patch.object(
-            updater, "run_cmd", return_value=completed
-        ) as run_cmd:
-            updater.git_commit_and_push()
-
-        commands = [call.args[0] for call in run_cmd.call_args_list]
-        self.assertIn(["git", "add", "taf_current.json"], commands)
-        self.assertNotIn(["git", "add", "."], commands)
-        self.assertNotIn(["git", "add", "-A"], commands)
+    def test_coordinator_allowlist_names_taf_snapshot_without_broad_add(self):
+        self.assertIn("taf_current.json", kmem_updater.GENERATED_FILES)
+        self.assertNotIn(".", kmem_updater.GENERATED_FILES)
+        self.assertNotIn("-A", kmem_updater.GENERATED_FILES)
 
     def test_existing_ten_minute_cadence_remains_unchanged(self):
-        self.assertEqual(updater.run_loop.__defaults__, (600,))
+        self.assertEqual(kmem_updater.DEFAULT_INTERVAL_SECONDS, 600)
 
 
 if __name__ == "__main__":

@@ -1,47 +1,27 @@
 @echo off
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions
 
 set "REPO=%~dp0"
 if "%REPO:~-1%"=="\" set "REPO=%REPO:~0,-1%"
-set "LOG=%REPO%\local_update_log.txt"
-
 cd /d "%REPO%"
 
-echo.>> "%LOG%"
-echo ==================================================>> "%LOG%"
-echo KMEM UPDATE START %DATE% %TIME%>> "%LOG%"
-echo Repo: %REPO%>> "%LOG%"
-
-echo Scheduled update: syncing repo before weather update...>> "%LOG%"
-git fetch origin main >> "%LOG%" 2>&1
-git pull --rebase origin main >> "%LOG%" 2>&1
-
-if errorlevel 1 (
-  echo PRE-UPDATE GIT PULL/REBASE FAILED. Continuing with local files.>> "%LOG%"
+set "ROLE=%~1"
+if not defined ROLE set "ROLE=%KMEM_UPDATER_ROLE%"
+if /I not "%ROLE%"=="PRIMARY" if /I not "%ROLE%"=="BACKUP" (
+  echo ERROR: Specify updater role PRIMARY or BACKUP.
+  echo Example: run_kmem_update.bat PRIMARY
+  exit /b 2
 )
+
+set "EXTRA="
+if /I "%~2"=="--force-failover" set "EXTRA=--force-failover"
 
 if exist "%REPO%\nms_credentials_local.bat" (
   call "%REPO%\nms_credentials_local.bat"
 ) else (
-  echo WARNING: nms_credentials_local.bat not found.>> "%LOG%"
+  echo WARNING: local NMS credentials were not found; public feeds remain available.
 )
 
-echo Running weather updater...>> "%LOG%"
-py -3 update_weather_local.py >> "%LOG%" 2>&1
-
-if errorlevel 1 (
-  echo FIRST UPDATE RUN FAILED. Attempting git rebase recovery and one retry...>> "%LOG%"
-  git fetch origin main >> "%LOG%" 2>&1
-  git pull --rebase origin main >> "%LOG%" 2>&1
-
-  echo Retrying weather updater...>> "%LOG%"
-  py -3 update_weather_local.py >> "%LOG%" 2>&1
-)
-
-if errorlevel 1 (
-  echo KMEM UPDATE FAILED AFTER RETRY %DATE% %TIME%>> "%LOG%"
-  exit /b 1
-)
-
-echo KMEM UPDATE COMPLETE %DATE% %TIME%>> "%LOG%"
-exit /b 0
+py -3 kmem_updater.py --role "%ROLE%" %EXTRA%
+set "RESULT=%ERRORLEVEL%"
+exit /b %RESULT%
