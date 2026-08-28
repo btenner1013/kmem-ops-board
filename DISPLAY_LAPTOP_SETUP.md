@@ -29,29 +29,48 @@ C:\KMEM-Ops-Board\kmem-ops-board
 
 Do not move or rename the folder after installing the scheduled tasks. If it is moved later, rerun `install_display_tasks.ps1`.
 
-## 3. Add the FAA NMS credentials
+## 3. Confirm the controlled credential file
 
-The portable package intentionally does **not** contain the working FAA client secret.
+The controlled ready-to-install Desktop/USB package includes the working local
+`nms_credentials_local.bat`. It is ignored and untracked by Git. Do not share,
+upload, email, or publicly distribute that controlled package.
 
-1. Copy `nms_credentials_local.example.bat`.
-2. Rename the copy to:
+A normal public Git clone intentionally does **not** include the working secret;
+in that case an authorized maintainer must supply the ignored local file before
+installation. Never paste the credential into support messages or commit it.
 
-   ```text
-   nms_credentials_local.bat
-   ```
+## 4. Run the installation check
 
-3. Edit it in Notepad and replace both placeholders:
+From the copied permanent folder, run:
 
-   ```bat
-   set "NMS_CLIENT_ID=YOUR_REAL_CLIENT_ID"
-   set "NMS_CLIENT_SECRET=YOUR_REAL_CLIENT_SECRET"
-   ```
+```cmd
+"INSTALL KMEM DISPLAY - PRIMARY.cmd" --check
+```
 
-4. Save the file.
+This validates prerequisites, the Git checkout, NMS credentials and a NOTAM read,
+and inventories KMEM scheduled tasks. It may fetch/fast-forward `main`, but it does
+not change Task Scheduler and does not run a weather update.
 
-`nms_credentials_local.bat` is ignored by Git. Never commit or share it.
+## 5. Install PRIMARY
 
-## 4. Authenticate GitHub
+Right-click and run as Administrator:
+
+```cmd
+"INSTALL KMEM DISPLAY - PRIMARY.cmd"
+```
+
+If GitHub CLI is not authenticated, follow its normal secure browser prompt. The
+installer then validates push permission, proves one controlled update and fresh
+PRIMARY heartbeat, and installs the local server/PRIMARY updater/display tasks.
+Wait for:
+
+```text
+KMEM PRIMARY INSTALL COMPLETE
+```
+
+GitHub authentication remains machine-local and is never included in the package.
+
+## 6. GitHub authentication details
 
 The updater commits `weather.json` and `radar.gif` and pushes them to GitHub Pages. Open PowerShell and run:
 
@@ -66,7 +85,8 @@ Choose:
 - HTTPS
 - Login with a web browser
 
-Then verify:
+The one-click installer performs these commands only when authentication is
+missing or needs configuration. To verify manually:
 
 ```powershell
 gh auth status
@@ -78,7 +98,7 @@ The authenticated account must have write access to:
 https://github.com/btenner1013/kmem-ops-board
 ```
 
-## 5. Test one update manually
+## 7. Optional manual update test
 
 Open Command Prompt in the copied project folder and run:
 
@@ -103,7 +123,7 @@ Confirm the log shows:
 
 If the FAA credentials are wrong or missing, the board will retain previous NOTAM data when available and label the feed status accordingly.
 
-## 6. Install the scheduled tasks
+## 8. Advanced manual task installation
 
 Open **PowerShell as Administrator**, change to the project folder, and run:
 
@@ -133,7 +153,7 @@ To install the server and updater without automatically opening Edge:
 .\install_display_tasks.ps1 -SkipDisplayLaunch
 ```
 
-## 7. Final display setup
+## 9. Final display setup
 
 1. Restart the laptop.
 2. Sign in to the Windows account used during setup.

@@ -46,6 +46,7 @@ DEFAULT_INTERVAL_SECONDS = 600
 GENERATOR_TIMEOUT_SECONDS = 17 * 60
 WORKER_TIMEOUT_SECONDS = 25 * 60
 RESTART_AFTER_SYNC_EXIT = 75
+REQUIRED_OWNED_CYCLE_SKIPPED_EXIT = 76
 STATUS_FILE = "host_status.json"
 LEASE_FILE = "updater_lease.json"
 GENERATED_FILES = (
@@ -548,6 +549,7 @@ class UpdaterCoordinator:
         runtime_root: Path,
         *,
         force_failover: bool = False,
+        require_owned_cycle: bool = False,
         now_fn: Callable[[], datetime] = utc_now,
         sleep_fn: Callable[[float], None] = time.sleep,
         python_executable: str = sys.executable,
@@ -556,6 +558,7 @@ class UpdaterCoordinator:
         self.role = role
         self.runtime_root = runtime_root
         self.force_failover = force_failover
+        self.require_owned_cycle = require_owned_cycle
         self.now_fn = now_fn
         self.sleep_fn = sleep_fn
         self.python_executable = python_executable
@@ -563,6 +566,9 @@ class UpdaterCoordinator:
         self.invalid_lease_observation = InvalidLeaseObservation(
             runtime_root.parent / "invalid-lease-observation.json"
         )
+
+    def skipped_cycle_result(self) -> int:
+        return REQUIRED_OWNED_CYCLE_SKIPPED_EXIT if self.require_owned_cycle else 0
 
     def _read_lease_document(self, ref: str) -> tuple[str, Optional[dict], str]:
         result = self.repo.run(["show", f"{ref}:{LEASE_FILE}"], check=False)
@@ -1128,11 +1134,11 @@ class UpdaterCoordinator:
             lease = self.repo.read_json("origin/main", LEASE_FILE)
             if lease_is_active(lease, self.now_fn()):
                 LOGGER.info("Active remote lease found; BACKUP exits.")
-                return 0
+                return self.skipped_cycle_result()
             if not self._backup_should_run(status):
                 wait_seconds = self._backup_handoff_wait_seconds(status)
                 if wait_seconds is None:
-                    return 0
+                    return self.skipped_cycle_result()
                 LOGGER.info(
                     "BACKUP handoff recheck scheduled in %s seconds.",
                     int(wait_seconds),
@@ -1142,10 +1148,10 @@ class UpdaterCoordinator:
                 lease = self.repo.read_json("origin/main", LEASE_FILE)
                 if lease_is_active(lease, self.now_fn()):
                     LOGGER.info("Active remote lease found after handoff wait; BACKUP exits.")
-                    return 0
+                    return self.skipped_cycle_result()
                 status = self.repo.read_json("origin/main", STATUS_FILE)
                 if not self._backup_should_run(status):
-                    return 0
+                    return self.skipped_cycle_result()
 
         outcome = self.repo.sync(already_fetched=True)
         LOGGER.info(
@@ -1165,7 +1171,7 @@ class UpdaterCoordinator:
                 return RESTART_AFTER_SYNC_EXIT
             raise
         if ownership is None:
-            return 0
+            return self.skipped_cycle_result()
         try:
             success = self.publish_owned_cycle(ownership, run_started)
             return 0 if success else 1
@@ -1254,6 +1260,7 @@ def run_single(args) -> int:
         role,
         runtime_root,
         force_failover=args.force_failover,
+        require_owned_cycle=args.require_owned_cycle,
     )
 
     def execute_cycle() -> int:
@@ -1295,6 +1302,8 @@ def run_single(args) -> int:
                 ]
                 if args.force_failover:
                     command.append("--force-failover")
+                if args.require_owned_cycle:
+                    command.append("--require-owned-cycle")
                 try:
                     write_worker_authorization(
                         worker_authorization_path(lock_path),
@@ -1324,7 +1333,7 @@ def run_single(args) -> int:
             return result
     except LocalLockUnavailable as error:
         LOGGER.info("Cycle skipped: %s", error)
-        return 0
+        return REQUIRED_OWNED_CYCLE_SKIPPED_EXIT if args.require_owned_cycle else 0
     except GitSafetyError as error:
         LOGGER.error("Cycle stopped code=%s", error.code)
         return 2
@@ -1338,6 +1347,8 @@ def daemon_loop(args) -> int:
         command = [sys.executable, str(Path(__file__).resolve()), "--role", role]
         if args.force_failover:
             command.append("--force-failover")
+        if args.require_owned_cycle:
+            command.append("--require-owned-cycle")
         try:
             result = run_bounded_process(command, timeout=WORKER_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
@@ -1370,6 +1381,7 @@ def main() -> int:
         help="Daemon interval seconds (default 600)",
     )
     parser.add_argument("--coordinated-worker", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--require-owned-cycle", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     try:
         return daemon_loop(args) if args.daemon else run_single(args)

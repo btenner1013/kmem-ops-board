@@ -3,7 +3,10 @@ param(
     [string]$TaskPrefix = "KMEM Ops Board",
     [switch]$SkipDisplayLaunch,
     [switch]$ReplaceExisting,
-    [switch]$AcknowledgeExistingUpdaterTasks
+    [switch]$AcknowledgeExistingUpdaterTasks,
+    [switch]$SkipInitialStart,
+    [ValidateRange(1, 60)]
+    [int]$InitialUpdaterDelayMinutes = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -113,7 +116,7 @@ Register-KmemTask `
     -Description "Hosts the KMEM Ops Board at http://localhost:8765/ after sign-in."
 
 $updateAction = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/d /c `"`"$updateBat`" PRIMARY`"" -WorkingDirectory $projectDir
-$updateTrigger = New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(1)) `
+$updateTrigger = New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes($InitialUpdaterDelayMinutes)) `
     -RepetitionInterval (New-TimeSpan -Minutes 10)
 Register-KmemTask `
     -Name "$TaskPrefix - Weather Update" `
@@ -134,8 +137,10 @@ if (-not $SkipDisplayLaunch) {
         -Description "Opens the local KMEM Ops Board in Microsoft Edge kiosk mode after sign-in."
 }
 
-Start-ScheduledTask -TaskName "$TaskPrefix - Local Server"
-Start-ScheduledTask -TaskName "$TaskPrefix - Weather Update"
+if (-not $SkipInitialStart) {
+    Start-ScheduledTask -TaskName "$TaskPrefix - Local Server"
+    Start-ScheduledTask -TaskName "$TaskPrefix - Weather Update"
+}
 
 Write-Host ""
 Write-Host "KMEM display tasks installed successfully." -ForegroundColor Green

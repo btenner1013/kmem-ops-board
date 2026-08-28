@@ -21,6 +21,7 @@ from kmem_updater import (
     HOST_FAILOVER_MINUTES,
     InvalidLeaseObservation,
     LEASE_MINUTES,
+    REQUIRED_OWNED_CYCLE_SKIPPED_EXIT,
     UpdaterCoordinator,
     active_lease,
     classify_lease_state,
@@ -300,6 +301,28 @@ class RemoteLeaseTests(GitFixture):
         scratch.write_json("updater_lease.json", lease)
         sha = scratch.commit(["updater_lease.json"], f"lease {role}")
         return scratch, lease, sha
+
+    def test_required_owned_cycle_turns_lease_skip_into_failure(self):
+        repo = mock.Mock()
+        repo.sync.return_value = mock.Mock(
+            status="CODE_CURRENT",
+            local_sha="a" * 40,
+            origin_sha="a" * 40,
+            advanced=False,
+        )
+        coordinator = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            require_owned_cycle=True,
+            now_fn=lambda: FIXED_NOW,
+            python_executable=sys.executable,
+        )
+        with mock.patch.object(coordinator, "acquire_lease", return_value=None):
+            self.assertEqual(
+                coordinator.run_once(),
+                REQUIRED_OWNED_CYCLE_SKIPPED_EXIT,
+            )
 
     def test_simultaneous_lease_candidates_have_exactly_one_winner(self):
         primary_repo = GitRepository(self.primary, fetch_attempts=1)

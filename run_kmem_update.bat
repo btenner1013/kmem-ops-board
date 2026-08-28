@@ -14,7 +14,19 @@ if /I not "%ROLE%"=="PRIMARY" if /I not "%ROLE%"=="BACKUP" (
 )
 
 set "EXTRA="
-if /I "%~2"=="--force-failover" set "EXTRA=--force-failover"
+if not "%~3"=="" (
+  echo ERROR: Too many updater arguments.
+  exit /b 2
+)
+if "%~2"=="" goto arguments_ok
+if /I "%ROLE%"=="BACKUP" if /I "%~2"=="--force-failover" set "EXTRA=--force-failover"
+if /I "%ROLE%"=="PRIMARY" if /I "%~2"=="--require-owned-cycle" set "EXTRA=--require-owned-cycle"
+if not defined EXTRA (
+  echo ERROR: Invalid updater option for role %ROLE%.
+  exit /b 2
+)
+
+:arguments_ok
 
 if exist "%REPO%\nms_credentials_local.bat" (
   call "%REPO%\nms_credentials_local.bat"

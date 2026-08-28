@@ -191,6 +191,23 @@ the explicit `-ReplaceExisting` PowerShell switch. `KMEM Backup Update Now.cmd`
 runs the same standby checks manually; `--force-failover` bypasses heartbeat
 preference only and never changes Git push semantics.
 
+For a complete display-laptop PRIMARY installation, the preferred entrypoint is:
+
+```cmd
+"INSTALL KMEM DISPLAY - PRIMARY.cmd" --check
+"INSTALL KMEM DISPLAY - PRIMARY.cmd"
+```
+
+The check mode validates Python, Git, GitHub CLI, Edge, the ignored local NMS
+credential file, canonical `main`, GitHub push permission when already signed in,
+NMS authentication/NOTAM read access, and existing KMEM task inventory. It may
+perform a bounded fetch and strict fast-forward, but it never registers, disables,
+replaces, or starts a task and never runs a weather update. The full installer
+uses GitHub CLI's browser login only when required, proves one controlled
+lease-protected update and fresh PRIMARY heartbeat before changing tasks, installs
+the server/PRIMARY updater/display tasks, and then starts the local server/display.
+It never embeds GitHub credentials.
+
 Alternatively, run the coordinator continuously without changing the 600-second cadence:
 
 ```cmd

@@ -113,6 +113,73 @@ class SchedulerContractTests(unittest.TestCase):
         )
         self.assertIn("timeout-minutes: 25", workflow)
 
+    def test_primary_display_installer_has_safe_check_and_full_install_paths(self):
+        script = (REPO_DIR / "install_primary_display.ps1").read_text(encoding="utf-8")
+        wrapper = (REPO_DIR / "INSTALL KMEM DISPLAY - PRIMARY.cmd").read_text(
+            encoding="utf-8"
+        )
+        support = (REPO_DIR / "primary_install_support.py").read_text(encoding="utf-8")
+
+        self.assertIn('if /I "%~1"=="--check"', wrapper)
+        self.assertIn("-CheckOnly", wrapper)
+        self.assertIn("goto usage", wrapper)
+        for dependency in ("py.exe", "git.exe", "gh.exe", "Microsoft\\Edge"):
+            self.assertIn(dependency, script)
+        self.assertIn("nms_credentials_local.bat", script)
+        self.assertIn("gh.exe auth login", script)
+        self.assertIn("gh.exe auth setup-git", script)
+        self.assertIn(".permissions.push", script)
+        self.assertIn("Get-ScheduledTask", script)
+        self.assertIn("Disable-ScheduledTask", script)
+        self.assertIn("Stop-ScheduledTask", script)
+        self.assertIn("Unregister-ScheduledTask", script)
+        self.assertIn("Test-ExactEntrypointToken", script)
+        self.assertIn("Get-SemanticEntrypoints", script)
+        self.assertIn('"run_kmem_server.ps1"', script)
+        self.assertIn('-(?:Command|EncodedCommand)\\b', script)
+        self.assertIn("(?i)^\\s*", script)
+        self.assertIn("-WindowStyle\\s+Hidden", script)
+        self.assertIn("-ExecutionPolicy\\s+Bypass", script)
+        self.assertIn("$semanticMatches = @()", script)
+        self.assertNotIn("$matches = @()", script)
+        self.assertIn("$fact.ActionCount -eq 1", script)
+        self.assertIn("$protectedConflicts", script)
+        self.assertIn("$ambiguousEntrypointTasks", script)
+        self.assertIn("run_kmem_update.bat", script)
+        self.assertIn("& $runUpdate PRIMARY --require-owned-cycle", script)
+        self.assertIn("PRIMARY HOST STATUS: VALID", support)
+        self.assertIn("GitRepository(repo, expected_remote=CANONICAL_REPOSITORY).sync()", support)
+
+        check_exit = script.index("KMEM PRIMARY INSTALL CHECK PASSED")
+        disable = script.index("Disable-ScheduledTask")
+        install = script.index("& $displayInstaller")
+        controlled_update = script.index("& $runUpdate PRIMARY")
+        self.assertLess(check_exit, disable)
+        self.assertLess(check_exit, install)
+        self.assertLess(check_exit, controlled_update)
+        self.assertLess(controlled_update, disable)
+        self.assertLess(disable, install)
+        self.assertIn("Export-ScheduledTask", script)
+        self.assertIn("Register-ScheduledTask", script)
+        self.assertIn("cannot be safely replaced automatically", script)
+        self.assertIn("$pushPermissionExit", script)
+        self.assertIn("KMEM Ops Board Maintainer", script)
+        self.assertIn("http://127.0.0.1:8765/", script)
+        self.assertIn("<title>\\s*KMEM Ops Board", script)
+
+    def test_ready_package_metadata_is_ignored_and_task_cadence_is_unchanged(self):
+        ignore = (REPO_DIR / ".gitignore").read_text(encoding="utf-8")
+        installer = (REPO_DIR / "install_display_tasks.ps1").read_text(encoding="utf-8")
+        for filename in (
+            "/KMEM_PACKAGE_INFO.txt",
+            "/START HERE - INSTALL KMEM DISPLAY.txt",
+            "/CONTROLLED PACKAGE - DO NOT SHARE.txt",
+        ):
+            self.assertIn(filename, ignore)
+        self.assertIn("[int]$InitialUpdaterDelayMinutes = 1", installer)
+        self.assertIn("-RepetitionInterval (New-TimeSpan -Minutes 10)", installer)
+        self.assertIn("if (-not $SkipInitialStart)", installer)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
