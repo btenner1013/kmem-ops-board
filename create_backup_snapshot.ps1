@@ -220,104 +220,140 @@ try {
         throw "Another backup operation is already validating or replacing this exact target."
     }
 
-Assert-NoReparseAncestor $destinationPath "Destination"
-$gitCheckoutMarkers = @()
-if (Test-Path -LiteralPath $destinationPath) {
-    $destinationRootItem = Get-Item -LiteralPath $destinationPath -Force
-    if (($destinationRootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
-        throw "Destination is a reparse point; refusing recursive replacement."
-    }
-    $pendingTransaction = Get-ChildItem -LiteralPath $destinationPath -Force -ErrorAction Stop |
-        Where-Object { $_.Name -like ".kmem-backup-transaction-*" } |
-        Select-Object -First 1
-    if ($pendingTransaction) {
-        throw "Destination contains an unfinished backup transaction; inspect it before retrying."
-    }
-    $gitCheckoutMarkers = @(
-        if (Test-Path -LiteralPath (Join-Path $destinationPath ".git")) {
-            Get-Item -LiteralPath (Join-Path $destinationPath ".git") -Force -ErrorAction Stop
+    Assert-NoReparseAncestor $destinationPath "Destination"
+    $gitCheckoutMarkers = @()
+    if (Test-Path -LiteralPath $destinationPath) {
+        $destinationRootItem = Get-Item -LiteralPath $destinationPath -Force
+        if (($destinationRootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Destination is a reparse point; refusing recursive replacement."
         }
-        Get-ChildItem -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop |
-            Where-Object { $_.Name -eq ".git" }
-    ) | Sort-Object FullName -Unique
-    $reparsePoint = Get-ChildItem -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop |
-        Where-Object { ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 } |
-        Select-Object -First 1
-    if ($reparsePoint) {
-        throw "Destination contains a reparse point; refusing recursive replacement."
-    }
-}
-
-if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
-    $referencingTasks = @(
-        Get-ScheduledTask | Where-Object {
-            $taskText = (@($_.Actions) | ForEach-Object { "{0} {1} {2}" -f $_.Execute, $_.Arguments, $_.WorkingDirectory }) -join " "
-            $taskText.IndexOf($destinationPath, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+        $pendingTransaction = Get-ChildItem -LiteralPath $destinationPath -Force -ErrorAction Stop |
+            Where-Object { $_.Name -like ".kmem-backup-transaction-*" } |
+            Select-Object -First 1
+        if ($pendingTransaction) {
+            throw "Destination contains an unfinished backup transaction; inspect it before retrying."
         }
-    )
-    if ($referencingTasks.Count -gt 0) {
-        $taskNames = ($referencingTasks | ForEach-Object TaskName) -join ", "
-        throw "Destination is referenced by scheduled task(s): $taskNames"
-    }
-}
-
-if ($AllowVerifiedUsbRecoveryCheckout -and ($destinationPath -ne $usbTarget -or -not $Replace)) {
-    throw "The recovery-checkout override is valid only with -Replace for the exact approved USB target."
-}
-
-if ($gitCheckoutMarkers.Count -gt 0) {
-    if (-not $AllowVerifiedUsbRecoveryCheckout) {
-        throw "Destination contains a Git checkout; refusing to replace a possible active updater checkout."
-    }
-    if ($gitCheckoutMarkers.Count -ne 1) {
-        throw "The USB target contains more than one Git checkout; recovery identity is ambiguous."
-    }
-
-    $driveId = [System.IO.Path]::GetPathRoot($destinationPath).TrimEnd('\')
-    $drive = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$driveId'" -ErrorAction Stop
-    if (-not $drive -or [int]$drive.DriveType -ne 2) {
-        throw "The recovery-checkout override requires the exact target to be on removable media."
-    }
-
-    $referencingProcesses = @(
-        Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
-            $_.ProcessId -ne $PID -and
-            $_.CommandLine -and
-            $_.CommandLine.IndexOf($destinationPath, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+        $gitCheckoutMarkers = @(
+            if (Test-Path -LiteralPath (Join-Path $destinationPath ".git")) {
+                Get-Item -LiteralPath (Join-Path $destinationPath ".git") -Force -ErrorAction Stop
+            }
+            Get-ChildItem -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop |
+                Where-Object { $_.Name -eq ".git" }
+        ) | Sort-Object FullName -Unique
+        $reparsePoint = Get-ChildItem -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop |
+            Where-Object { ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 } |
+            Select-Object -First 1
+        if ($reparsePoint) {
+            throw "Destination contains a reparse point; refusing recursive replacement."
         }
-    )
-    if ($referencingProcesses.Count -gt 0) {
-        throw "The USB target is referenced by a running process; refusing recovery replacement."
     }
 
-    $recoveryRepo = Normalize-AbsolutePath (Split-Path -Parent $gitCheckoutMarkers[0].FullName)
-    $safeRecoveryRepo = $recoveryRepo.Replace('\', '/')
-    $recoveryRemote = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo remote get-url origin 2>$null)).Trim()
-    if ($LASTEXITCODE -ne 0 -or (Normalize-GitRemote $recoveryRemote) -ne $canonicalRemote) {
-        throw "The USB checkout does not match the canonical KMEM repository."
+    $scheduledTaskCommand = Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue
+    if ($scheduledTaskCommand) {
+        $referencingTasks = @(
+            Get-ScheduledTask | Where-Object {
+                $taskText = (@($_.Actions) | ForEach-Object { "{0} {1} {2}" -f $_.Execute, $_.Arguments, $_.WorkingDirectory }) -join " "
+                $taskText.IndexOf($destinationPath, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+            }
+        )
+        if ($referencingTasks.Count -gt 0) {
+            $taskNames = ($referencingTasks | ForEach-Object TaskName) -join ", "
+            throw "Destination is referenced by scheduled task(s): $taskNames"
+        }
     }
-    $recoveryBranch = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo symbolic-ref --quiet --short HEAD 2>$null)).Trim()
-    if ($LASTEXITCODE -ne 0 -or $recoveryBranch -ne "main") {
-        throw "The USB recovery checkout must be on main."
-    }
-    $recoveryDirty = @(& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo status --porcelain=v1 --untracked-files=all)
-    if ($LASTEXITCODE -ne 0 -or $recoveryDirty.Count -ne 0) {
-        throw "The USB recovery checkout is dirty; refusing to delete possible local work."
-    }
-    $recoverySha = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo rev-parse HEAD 2>$null)).Trim()
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to resolve the USB recovery checkout SHA."
-    }
-    & git -C $sourcePath merge-base --is-ancestor $recoverySha $sourceSha
-    if ($LASTEXITCODE -ne 0) {
-        throw "The USB recovery checkout is not an ancestor of the validated release."
-    }
-    Write-Host "Verified inactive USB recovery checkout at $recoverySha; replacement is authorized."
-}
 
-if (-not $Replace -and -not $DryRun) {
-    throw "Replacement requires the explicit -Replace switch."
-}
+    if ($AllowVerifiedUsbRecoveryCheckout -and ($destinationPath -ne $usbTarget -or -not $Replace)) {
+        throw "The recovery-checkout override is valid only with -Replace for the exact approved USB target."
+    }
+
+    if ($gitCheckoutMarkers.Count -gt 0) {
+        if (-not $AllowVerifiedUsbRecoveryCheckout) {
+            throw "Destination contains a Git checkout; refusing to replace a possible active updater checkout."
+        }
+        if ($gitCheckoutMarkers.Count -ne 1) {
+            throw "The USB target contains more than one Git checkout; recovery identity is ambiguous."
+        }
+        $expectedRecoveryMarker = Normalize-AbsolutePath (Join-Path $destinationPath "site\.git")
+        $actualRecoveryMarker = Normalize-AbsolutePath $gitCheckoutMarkers[0].FullName
+        if (-not $actualRecoveryMarker.Equals($expectedRecoveryMarker, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "The USB Git checkout is not in the exact legacy recovery location site\.git."
+        }
+        if (-not $scheduledTaskCommand) {
+            throw "Scheduled Task inspection is unavailable; refusing USB recovery replacement."
+        }
+
+        $driveId = [System.IO.Path]::GetPathRoot($destinationPath).TrimEnd('\')
+        $drive = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$driveId'" -ErrorAction Stop
+        if (-not $drive -or [int]$drive.DriveType -ne 2) {
+            throw "The recovery-checkout override requires the exact target to be on removable media."
+        }
+
+        $recoveryEntrypoints = @(
+            "kmem_updater.py",
+            "update_weather_local.py",
+            "run_kmem_update",
+            "run_kmem_daemon",
+            "run_kmem_server",
+            "launch_kmem_display",
+            "kmem_display_server.py",
+            "run_kmem_display_watchdog.ps1"
+        )
+        $referencingProcesses = @(
+            Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+                $commandLine = [string]$_.CommandLine
+                $matchesEntrypoint = $false
+                foreach ($entrypoint in $recoveryEntrypoints) {
+                    if ($commandLine.IndexOf($entrypoint, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                        $matchesEntrypoint = $true
+                        break
+                    }
+                }
+                $_.ProcessId -ne $PID -and $commandLine -and (
+                    $commandLine.IndexOf($destinationPath, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+                    $matchesEntrypoint
+                )
+            }
+        )
+        if ($referencingProcesses.Count -gt 0) {
+            throw "The USB target or a KMEM updater entrypoint is referenced by a running process; refusing recovery replacement."
+        }
+
+        $recoveryRepo = Normalize-AbsolutePath (Split-Path -Parent $gitCheckoutMarkers[0].FullName)
+        $safeRecoveryRepo = $recoveryRepo.Replace('\', '/')
+        $recoveryFetchRemote = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo remote get-url origin 2>$null)).Trim()
+        $recoveryFetchExit = $LASTEXITCODE
+        $recoveryPushRemote = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo remote get-url --push origin 2>$null)).Trim()
+        $recoveryPushExit = $LASTEXITCODE
+        if (
+            $recoveryFetchExit -ne 0 -or
+            $recoveryPushExit -ne 0 -or
+            (Normalize-GitRemote $recoveryFetchRemote) -ne $canonicalRemote -or
+            (Normalize-GitRemote $recoveryPushRemote) -ne $canonicalRemote
+        ) {
+            throw "The USB checkout does not match the canonical KMEM fetch and push repository."
+        }
+        $recoveryBranch = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo symbolic-ref --quiet --short HEAD 2>$null)).Trim()
+        if ($LASTEXITCODE -ne 0 -or $recoveryBranch -ne "main") {
+            throw "The USB recovery checkout must be on main."
+        }
+        $recoveryDirty = @(& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo status --porcelain=v1 --untracked-files=all)
+        if ($LASTEXITCODE -ne 0 -or $recoveryDirty.Count -ne 0) {
+            throw "The USB recovery checkout is dirty; refusing to delete possible local work."
+        }
+        $recoverySha = ([string](& git -c "safe.directory=$safeRecoveryRepo" -C $recoveryRepo rev-parse HEAD 2>$null)).Trim()
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to resolve the USB recovery checkout SHA."
+        }
+        & git -C $sourcePath merge-base --is-ancestor $recoverySha $sourceSha
+        if ($LASTEXITCODE -ne 0) {
+            throw "The USB recovery checkout is not an ancestor of the validated release."
+        }
+        Write-Host "Verified inactive USB recovery checkout at $recoverySha; replacement is authorized."
+    }
+
+    if (-not $Replace -and -not $DryRun) {
+        throw "Replacement requires the explicit -Replace switch."
+    }
 
 $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("kmem-backup-" + [guid]::NewGuid().ToString("N"))
 $stagingPath = Join-Path $temporaryRoot "snapshot"

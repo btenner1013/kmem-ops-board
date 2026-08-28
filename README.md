@@ -495,8 +495,10 @@ An old clean Git-based recovery package on the exact USB target remains blocked
 by default. After verifying that it is inactive, use
 `-AllowVerifiedUsbRecoveryCheckout` together with `-Replace`. That narrow override
 still requires removable media, one clean canonical `main` checkout whose SHA is
-an ancestor of the release, and no Scheduled Task or running-process reference.
-It is never valid for the Desktop target.
+an ancestor of the release, the exact legacy `site\.git` package layout, available
+Scheduled Task inspection, and no task or KMEM-process reference. Both fetch and
+push remotes must match the canonical repository. It is never valid for the
+Desktop target.
 
 These are recovery snapshots, not updater identities. Do not point Task Scheduler
 at them. In particular, a target containing the active development checkout must
