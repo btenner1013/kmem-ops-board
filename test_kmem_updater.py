@@ -1147,5 +1147,39 @@ class StaticSafetyTests(unittest.TestCase):
             self.assertNotIn(forbidden, source)
         self.assertIn("cleanup_stale_scratch_clones(runtime_root, max_age_seconds=0)", source)
 
+    def test_backup_tool_is_pinned_transactional_and_fail_closed(self):
+        root = Path(__file__).resolve().parent
+        source = (root / "create_backup_snapshot.ps1").read_text(encoding="utf-8")
+        self.assertIn('Desktop\\KMEM Ops Board Portable', source)
+        self.assertIn('E:\\KMEM-Ops-Board-Shop-Display', source)
+        self.assertIn('archive --format=zip --output=$archivePath $sourceSha', source)
+        self.assertNotIn('archive --format=zip --output=$archivePath HEAD', source)
+        self.assertIn('Source and destination overlap', source)
+        self.assertIn('contains the active source checkout', source)
+        self.assertIn('fetch --no-tags origin main', source)
+        self.assertIn('github.com/btenner1013/kmem-ops-board', source)
+        self.assertIn('Replacement requires -ExpectedSourceSha', source)
+        self.assertIn('Destination contains a reparse point', source)
+        self.assertIn('.kmem-backup-transaction-', source)
+        self.assertIn('[System.Threading.Mutex]::new', source)
+        self.assertIn('Assert-NoReparseAncestor $destinationPath', source)
+        self.assertIn('Get-TreeFingerprint $stagingPath', source)
+        self.assertIn('Assert-TreeFingerprintMatch $stagedFingerprint $finalFingerprint', source)
+        self.assertIn('ROLLBACK_INCOMPLETE', source)
+        self.assertIn('journal.json', source)
+        self.assertIn('launch_kmem_display.bat', source)
+        self.assertIn('install_display_tasks.ps1', source)
+        self.assertIn('run_kmem_daemon.bat', source)
+        self.assertIn('$uri.Scheme -notin @("https", "ssh")', source)
+        for sensitive_pattern in ('.env.*', '*.pfx', '*.p12', 'id_rsa*', 'id_ed25519*', '*token*'):
+            self.assertIn(sensitive_pattern, source)
+        get_child_lines = [line for line in source.splitlines() if 'Get-ChildItem' in line]
+        self.assertTrue(all('SilentlyContinue' not in line for line in get_child_lines))
+
+        move_position = source.index('Move-Item -LiteralPath $item.FullName -Destination $destinationPath')
+        track_position = source.index('[void]$installedNames.Add($item.Name)')
+        self.assertLess(move_position, track_position)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

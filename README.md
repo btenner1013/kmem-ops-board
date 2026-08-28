@@ -103,6 +103,8 @@ kmem_updater.py                    Safe sync/lease/heartbeat coordinator
 updater_git.py                     Fast-forward-only Git and local lock helpers
 nms_kmem_mil_notams_test.py        FAA NMS staging pull/export helper
 run_kmem_update.bat                Windows Task Scheduler entry point
+install_updater_task.ps1           PRIMARY/BACKUP task installer
+create_backup_snapshot.ps1         Validated portable recovery snapshot tool
 README.md                          This file
 .github/workflows/update-weather.yml
 .gitignore
@@ -462,6 +464,36 @@ hidden. When usable ATIS is unavailable, RWY CLSD may trust a current NOTAM
 feed through the 60-minute WARN boundary. STALE, ERROR, and UNAVAILABLE NOTAM
 states produce `RWY CLSD UNKNOWN` rather than treating an old absence of closure
 records as newly verified.
+
+## Recovery snapshots
+
+After a release is tested, pushed, synchronized, and clean, create a tracked-file
+portable snapshot with `create_backup_snapshot.ps1`. The tool accepts only these
+two exact targets:
+
+```text
+%USERPROFILE%\Desktop\KMEM Ops Board Portable
+E:\KMEM-Ops-Board-Shop-Display
+```
+
+It fetches and verifies the canonical origin/main first, pins the archive to that
+validated SHA, then rejects drive/Desktop roots, overlapping source/destination
+trees, Git checkouts, nested checkouts, reparse-point ancestors or descendants,
+and destinations referenced by Scheduled Tasks. A nonblocking per-target mutex
+prevents concurrent validation/replacement races. It uses `git archive`, so
+`.git`, credentials, logs, caches, uploaded PDFs, untracked local configuration,
+and other development artifacts are excluded.
+Replacement requires `-Replace`; validate first with `-DryRun` and pin the source
+with `-ExpectedSourceSha`. Each successful copy includes
+`KMEM_BACKUP_VERSION.txt` with the authoritative SHA. Replacement stages and
+verifies a complete-tree SHA-256 inventory inside the approved target, preserves
+the previous contents until final verification, and rolls them back on failure.
+If rollback cannot be fully verified, the transaction and its journal are
+retained at the exact target for inspection rather than deleting recovery data.
+
+These are recovery snapshots, not updater identities. Do not point Task Scheduler
+at them. In particular, a target containing the active development checkout must
+remain untouched; use a separate maintained Git checkout for an active BACKUP.
 
 ---
 
