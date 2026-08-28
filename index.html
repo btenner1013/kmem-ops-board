@@ -944,6 +944,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
   animation:notamScrollSimple var(--notam-scroll-seconds,55s) linear infinite !important;
 }
 </style>
+<link rel="stylesheet" href="./aviation-weather-lookup.css">
 </head>
 
 <body>
@@ -958,6 +959,53 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
       <div id="manualAlertCao" class="manual-alert-cao">CAO --</div>
     </div>
   </div>
+</div>
+
+<div id="aviationWeatherLookupOverlay" class="aviation-lookup-overlay" hidden aria-hidden="true">
+  <section id="aviationWeatherLookupPanel" class="aviation-lookup-panel" role="dialog" aria-modal="true" aria-labelledby="aviationWeatherLookupTitle">
+    <header class="aviation-lookup-header">
+      <h2 id="aviationWeatherLookupTitle" class="aviation-lookup-title">AVIATION WEATHER LOOKUP</h2>
+      <button id="aviationWeatherLookupClose" class="aviation-lookup-close" type="button" title="Close Aviation Weather Lookup" aria-label="Close Aviation Weather Lookup">×</button>
+    </header>
+
+    <form id="aviationWeatherLookupForm" class="aviation-lookup-form" novalidate>
+      <label class="aviation-lookup-field">
+        <span class="aviation-lookup-label">AIRPORT ICAO</span>
+        <input id="aviationWeatherLookupStation" class="aviation-lookup-input" name="station" value="KMEM" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Airport ICAO">
+      </label>
+
+      <div class="aviation-lookup-field aviation-lookup-products-field">
+        <span class="aviation-lookup-label">PRODUCT</span>
+        <div class="aviation-lookup-products" aria-label="Weather product selector">
+          <button class="aviation-lookup-product aviation-lookup-product-active" type="button" data-aviation-product="ATIS" aria-pressed="true">ATIS</button>
+          <button class="aviation-lookup-product" type="button" data-aviation-product="METAR" aria-pressed="false">METAR</button>
+          <button class="aviation-lookup-product" type="button" data-aviation-product="TAF" aria-pressed="false">TAF</button>
+        </div>
+      </div>
+
+      <label class="aviation-lookup-field">
+        <span class="aviation-lookup-label">TIME RANGE</span>
+        <select id="aviationWeatherLookupRange" class="aviation-lookup-select" name="range" aria-label="Time range">
+          <option value="recent" selected>Most recent</option>
+          <option value="1">Past 1 hour</option>
+          <option value="2">Past 2 hours</option>
+          <option value="3">Past 3 hours</option>
+          <option value="6">Past 6 hours</option>
+          <option value="12">Past 12 hours</option>
+          <option value="24">Past 24 hours</option>
+          <option value="48">Past 48 hours</option>
+          <option value="96">Past 96 hours</option>
+        </select>
+      </label>
+
+      <button id="aviationWeatherLookupSubmit" class="aviation-lookup-submit" type="submit">LOOK UP</button>
+    </form>
+
+    <div id="aviationWeatherLookupStatus" class="aviation-lookup-status" role="status" aria-live="polite">
+      <strong>READY</strong>
+    </div>
+    <div id="aviationWeatherLookupResults" class="aviation-lookup-results" aria-live="polite"></div>
+  </section>
 </div>
 
 <div class="board">
@@ -3080,6 +3128,14 @@ setInterval(phase45PolishOpsText,1000);
     hazard.title="Hazard / lightning control panel";
     hazard.textContent="⚡";
 
+    const aviationWeather=document.createElement("button");
+    aviationWeather.id="aviationWeatherLookupButton";
+    aviationWeather.className="board-quick-link-phase66";
+    aviationWeather.type="button";
+    aviationWeather.title="Aviation Weather Lookup";
+    aviationWeather.setAttribute("aria-label","Aviation Weather Lookup");
+    aviationWeather.textContent="🌤️";
+
     const flightPlan=document.createElement("a");
     flightPlan.className="board-quick-link-phase66";
     flightPlan.href=FLIGHT_PLAN_URL;
@@ -3089,6 +3145,7 @@ setInterval(phase45PolishOpsText,1000);
     flightPlan.textContent="🌐";
 
     wrap.appendChild(hazard);
+    wrap.appendChild(aviationWeather);
     wrap.appendChild(flightPlan);
     wrap.appendChild(display);
     target.appendChild(wrap);
@@ -3175,6 +3232,8 @@ setInterval(phase45PolishOpsText,1000);
   window.addEventListener("load",()=>{requestWakeLock();setTimeout(requestWakeLock,1500);});
 })();
 </script>
+
+<script type="module" src="./aviation-weather-lookup.js"></script>
 
 </body>
 </html>
