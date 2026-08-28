@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 import subprocess
@@ -42,6 +43,8 @@ TREND_LOOKBACK_HOURS = 3
 NMS_MIL_NOTAMS_SCRIPT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_test.py")
 NMS_MIL_NOTAMS_OUTPUT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_output.json")
 NMS_MIL_NOTAMS_TIMEOUT_SECONDS = 120
+NOTAM_OK_MAX_AGE_MINUTES = 30
+NOTAM_WARN_MAX_AGE_MINUTES = 60
 
 # ATIS.info is the direct API. DATIS Clowd currently mirrors/redirects to that
 # same provider and remains as an endpoint fallback. ATIS Relay is fetched
@@ -4411,16 +4414,68 @@ def normalize_runway_closure_notams(raw, previous_data=None, inactive_numbers=No
     return []
 
 
-def notam_feed_is_healthy(mil_notam_data):
-    """True only for the current successful NOTAM pull, never a cached fallback."""
+def classify_notam_feed(mil_notam_data, now_z=None):
+    """Return deterministic feed freshness without treating cached data as current."""
     data = mil_notam_data or {}
     fetch_status = str(data.get("milNotamFetchStatus") or "").strip().upper()
     raw_status = str(data.get("milNotamRawStatus") or "").strip().upper()
+    updated = parse_z_datetime(data.get("milNotamUpdatedZ"))
+    now_z = now_z or datetime.now(timezone.utc)
+    exact_age = None
+    display_age = None
+
+    if updated:
+        exact_age = (now_z - updated).total_seconds() / 60.0
+        if exact_age >= 0:
+            display_age = int(math.ceil(exact_age))
+
+    fetch_error = any(term in fetch_status for term in ("FAILED", "FAILURE", "ERROR", "TIMEOUT")) or bool(
+        re.search(r"NO[\s_-]*OUTPUT", fetch_status)
+    )
+    raw_error = any(term in raw_status for term in ("FAILED", "FAILURE", "ERROR", "TIMEOUT")) or bool(
+        re.search(r"NO[\s_-]*OUTPUT", raw_status)
+    )
+
+    if fetch_error or raw_error:
+        return {
+            "status": "ERROR",
+            "detail": fetch_status if fetch_error else raw_status,
+            "age": display_age,
+        }
 
     if fetch_status != "OK":
-        return False
+        return {
+            "status": "UNAVAILABLE",
+            "detail": fetch_status or "FETCH STATUS UNKNOWN",
+            "age": display_age,
+        }
 
-    return not any(term in raw_status for term in ("FAILED", "ERROR"))
+    if raw_status != "SUCCESS":
+        return {
+            "status": "UNAVAILABLE",
+            "detail": raw_status or "RAW STATUS UNKNOWN",
+            "age": display_age,
+        }
+
+    if not updated or exact_age is None:
+        return {"status": "UNAVAILABLE", "detail": "TIME UNKNOWN", "age": None}
+
+    if exact_age < 0:
+        return {"status": "UNAVAILABLE", "detail": "FUTURE TIME", "age": None}
+
+    if exact_age <= NOTAM_OK_MAX_AGE_MINUTES:
+        return {"status": "OK", "detail": "", "age": display_age}
+
+    if exact_age <= NOTAM_WARN_MAX_AGE_MINUTES:
+        return {"status": "WARN", "detail": f"{display_age}M", "age": display_age}
+
+    return {"status": "STALE", "detail": f"{display_age}M", "age": display_age}
+
+
+def notam_feed_is_healthy(mil_notam_data, now_z=None):
+    """True only while the authoritative NOTAM pull is no more than 60 minutes old."""
+    state = classify_notam_feed(mil_notam_data, now_z)
+    return state["status"] in {"OK", "WARN"}
 
 
 def runway_numbers_from_closure_notam(item):
@@ -4438,10 +4493,10 @@ def resolve_closed_runways(atis_ops, mil_notam_data, now_z=None):
     if atis_ops.get("sourceIsCurrent"):
         return atis_ops.get("reportedClosedRunways") or atis_ops.get("closedRunways") or "NONE"
 
-    if not notam_feed_is_healthy(mil_notam_data):
+    now_z = now_z or datetime.now(timezone.utc)
+    if not notam_feed_is_healthy(mil_notam_data, now_z):
         return "UNKNOWN"
 
-    now_z = now_z or datetime.now(timezone.utc)
     runways = []
     for item in (mil_notam_data or {}).get("runwayClosureNotams") or []:
         if not isinstance(item, dict) or not notam_is_current(item, now_z):
@@ -4621,7 +4676,7 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         "milNotamCount": count,
         "milNotamStatus": status,
         "milNotamSource": raw.get("source") or "FAA_NMS_STAGING",
-        "milNotamUpdatedZ": raw.get("generatedZ") or raw.get("updated_at_z") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"),
+        "milNotamUpdatedZ": raw.get("generatedZ") or raw.get("updated_at_z") or "--",
         "milNotamScrollText": scroll_text,
         "milNotams": normalized_items,
         "milNotamFetchStatus": fetch_status,
@@ -4657,7 +4712,7 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
         "milNotamCount": 0,
         "milNotamStatus": "NMS NOT CHECKED",
         "milNotamSource": "FAA_NMS_STAGING",
-        "milNotamUpdatedZ": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"),
+        "milNotamUpdatedZ": "--",
         "milNotamScrollText": "",
         "milNotams": [],
         "milNotamFetchStatus": fetch_status,

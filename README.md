@@ -442,6 +442,27 @@ No hazard:
 NONE
 ```
 
+### NOTAM feed freshness and runway trust
+
+`milNotamUpdatedZ` is the last authoritative NMS check time, not an individual
+NOTAM effective time. The footer and CAO use the same classifier:
+
+```text
+0-30 minutes       NOTAMS OK / green CAO
+over 30-60 minutes NOTAMS WARN / yellow CAO
+over 60 minutes    NOTAMS STALE / red CAO
+FAILED/FAILURE/ERROR/TIMEOUT/NO_OUTPUT status       NOTAMS ERROR / red CAO
+other non-current/missing/malformed/future state    NOTAMS UNAVAILABLE / gray CAO
+```
+
+Effective active and future NOTAM records remain displayed when the feed is
+stale. NOTAMC action records and their cancelled targets remain hidden; NOTAMR
+replacement records remain visible while their superseded targets remain
+hidden. When usable ATIS is unavailable, RWY CLSD may trust a current NOTAM
+feed through the 60-minute WARN boundary. STALE, ERROR, and UNAVAILABLE NOTAM
+states produce `RWY CLSD UNKNOWN` rather than treating an old absence of closure
+records as newly verified.
+
 ---
 
 ## Production limitations

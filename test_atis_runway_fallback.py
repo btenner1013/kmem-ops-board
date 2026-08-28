@@ -3,7 +3,7 @@
 
 import copy
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import update_weather_local as weather
 
@@ -26,13 +26,21 @@ def closure(number, runway, start="202608281100", end="202608281300", text=None)
     }
 
 
-def normalized_notams(records, fetch_status="OK"):
+def normalized_notams(
+    records,
+    fetch_status="OK",
+    generated_z="2026-08-28 12:00:00Z",
+    raw_status="Success",
+):
+    raw = {
+        "status": raw_status,
+        "runwayClosureNotams": records,
+        "airportNotams": records,
+    }
+    if generated_z is not None:
+        raw["generatedZ"] = generated_z
     result = weather.normalize_mil_notams_output(
-        {
-            "status": "Success",
-            "runwayClosureNotams": records,
-            "airportNotams": records,
-        },
+        raw,
         fetch_status,
     )
     return result
@@ -44,6 +52,167 @@ class RunwayClosureFallbackTests(unittest.TestCase):
         self.current_ops = weather.parse_atis_operations(CURRENT_ATIS_WITH_CLOSURE, "OK")
         self.warn_ops = weather.parse_atis_operations(CURRENT_ATIS_WITH_CLOSURE, "WARN_SOURCE")
         self.stale_ops = weather.parse_atis_operations(CURRENT_ATIS_WITH_CLOSURE, "STALE_SOURCE")
+
+    def feed_at(self, age_seconds=0, fetch_status="OK", raw_status="Success"):
+        return {
+            "milNotamUpdatedZ": (
+                self.now - timedelta(seconds=age_seconds)
+            ).strftime("%Y-%m-%d %H:%M:%SZ"),
+            "milNotamFetchStatus": fetch_status,
+            "milNotamRawStatus": raw_status,
+        }
+
+    def test_notam_classifier_uses_exact_30_and_60_minute_boundaries(self):
+        cases = [
+            (0, {"status": "OK", "detail": "", "age": 0}),
+            (30 * 60, {"status": "OK", "detail": "", "age": 30}),
+            (30 * 60 + 1, {"status": "WARN", "detail": "31M", "age": 31}),
+            (60 * 60, {"status": "WARN", "detail": "60M", "age": 60}),
+            (60 * 60 + 1, {"status": "STALE", "detail": "61M", "age": 61}),
+        ]
+        for age_seconds, expected in cases:
+            with self.subTest(age_seconds=age_seconds):
+                self.assertEqual(
+                    weather.classify_notam_feed(
+                        self.feed_at(age_seconds),
+                        self.now,
+                    ),
+                    expected,
+                )
+
+    def test_notam_classifier_prioritizes_errors_over_cached_success(self):
+        for fetch_status in ("SCRIPT_FAILED", "TIMEOUT", "ERROR", "NO_OUTPUT_JSON", "NO-OUTPUT", "NO OUTPUT"):
+            with self.subTest(fetch_status=fetch_status):
+                state = weather.classify_notam_feed(
+                    self.feed_at(5 * 60, fetch_status),
+                    self.now,
+                )
+                self.assertEqual(state["status"], "ERROR")
+                self.assertEqual(state["detail"], fetch_status)
+
+        raw_error = weather.classify_notam_feed(
+            self.feed_at(5 * 60, raw_status="Source Error"),
+            self.now,
+        )
+        self.assertEqual(raw_error["status"], "ERROR")
+        self.assertEqual(raw_error["detail"], "SOURCE ERROR")
+
+        raw_no_output = weather.classify_notam_feed(
+            self.feed_at(5 * 60, raw_status="NO_OUTPUT_JSON"),
+            self.now,
+        )
+        self.assertEqual(raw_no_output["status"], "ERROR")
+        self.assertEqual(raw_no_output["detail"], "NO_OUTPUT_JSON")
+
+    def test_notam_classifier_marks_non_current_or_unprovable_states_unavailable(self):
+        for fetch_status in ("NO_DATA", "NO_CREDENTIALS", "NO_NMS_SCRIPT"):
+            with self.subTest(fetch_status=fetch_status):
+                state = weather.classify_notam_feed(
+                    self.feed_at(5 * 60, fetch_status),
+                    self.now,
+                )
+                self.assertEqual(state["status"], "UNAVAILABLE")
+                self.assertEqual(state["detail"], fetch_status)
+
+        for value, expected_detail in (
+            (
+                {
+                    "milNotamUpdatedZ": "--",
+                    "milNotamFetchStatus": "OK",
+                    "milNotamRawStatus": "Success",
+                },
+                "TIME UNKNOWN",
+            ),
+            (
+                {
+                    "milNotamUpdatedZ": "not-a-time",
+                    "milNotamFetchStatus": "OK",
+                    "milNotamRawStatus": "Success",
+                },
+                "TIME UNKNOWN",
+            ),
+            (
+                {
+                    "milNotamUpdatedZ": (
+                        self.now + timedelta(seconds=1)
+                    ).strftime("%Y-%m-%d %H:%M:%SZ"),
+                    "milNotamFetchStatus": "OK",
+                    "milNotamRawStatus": "Success",
+                },
+                "FUTURE TIME",
+            ),
+            (
+                self.feed_at(5 * 60, raw_status="UNKNOWN"),
+                "UNKNOWN",
+            ),
+            (
+                self.feed_at(5 * 60, raw_status="NO_PREVIOUS_DATA"),
+                "NO_PREVIOUS_DATA",
+            ),
+        ):
+            with self.subTest(value=value):
+                state = weather.classify_notam_feed(value, self.now)
+                self.assertEqual(state["status"], "UNAVAILABLE")
+                self.assertEqual(state["detail"], expected_detail)
+
+    def test_runway_fallback_trusts_only_ok_or_warn_notam_freshness(self):
+        for age_seconds in (30 * 60, 60 * 60):
+            with self.subTest(age_seconds=age_seconds):
+                self.assertTrue(
+                    weather.notam_feed_is_healthy(
+                        self.feed_at(age_seconds),
+                        self.now,
+                    )
+                )
+
+        for data in (
+            self.feed_at(60 * 60 + 1),
+            self.feed_at(5 * 60, "TIMEOUT"),
+            self.feed_at(5 * 60, "NO_CREDENTIALS"),
+            {
+                "milNotamUpdatedZ": "--",
+                "milNotamFetchStatus": "OK",
+                "milNotamRawStatus": "Success",
+            },
+        ):
+            with self.subTest(data=data):
+                self.assertFalse(weather.notam_feed_is_healthy(data, self.now))
+
+    def test_runway_fallback_stops_after_the_60_minute_boundary(self):
+        records = [closure("08/401", "18C")]
+        at_sixty = normalized_notams(
+            records,
+            generated_z=(self.now - timedelta(minutes=60)).strftime(
+                "%Y-%m-%d %H:%M:%SZ"
+            ),
+        )
+        after_sixty = normalized_notams(
+            records,
+            generated_z=(self.now - timedelta(minutes=60, seconds=1)).strftime(
+                "%Y-%m-%d %H:%M:%SZ"
+            ),
+        )
+
+        self.assertEqual(
+            weather.resolve_closed_runways(self.warn_ops, at_sixty, self.now),
+            "18C",
+        )
+        self.assertEqual(
+            weather.resolve_closed_runways(self.warn_ops, after_sixty, self.now),
+            "UNKNOWN",
+        )
+        self.assertEqual(
+            weather.resolve_closed_runways(self.current_ops, after_sixty, self.now),
+            "27",
+        )
+
+    def test_missing_source_timestamp_is_not_replaced_with_current_time(self):
+        notams = normalized_notams([], generated_z=None)
+        self.assertEqual(notams["milNotamUpdatedZ"], "--")
+        self.assertEqual(
+            weather.classify_notam_feed(notams, self.now)["status"],
+            "UNAVAILABLE",
+        )
 
     def test_current_atis_closure_wins_over_notam(self):
         notams = normalized_notams([closure("08/401", "18C")])

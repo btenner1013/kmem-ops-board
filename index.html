@@ -135,6 +135,7 @@ body.anti-burn-in-enabled .board{
 .mil-notam-cao-warn{ color:var(--warning) !important; text-shadow:0 0 7px rgba(255,204,0,.30); }
 .mil-notam-cao-stale{ color:var(--closed) !important; text-shadow:0 0 7px rgba(255,68,68,.30); }
 .mil-notam-cao-bad{ color:var(--closed) !important; animation:blink 1s step-start infinite; }
+.mil-notam-cao-unavailable{ color:#9fb0c0 !important; text-shadow:none; }
 .ns-ok{ color:var(--ops-green); font-weight:900; white-space:nowrap; }
 .ns-warn{ color:var(--warning); font-weight:900; white-space:nowrap; }
 .ns-red{ color:var(--closed); font-weight:900; white-space:nowrap; }
@@ -1927,7 +1928,7 @@ function parseAtisTime(atisText){
 
 function feedClassForStatus(status){
   if(status==="OK")return "feed-ok";
-  if(status==="BAD")return "feed-bad";
+  if(status==="BAD"||status==="ERROR")return "feed-bad";
   if(status==="STALE")return "feed-stale";
   return "feed-warn";
 }
@@ -2063,7 +2064,7 @@ function updateSourceHealth(data,updatedZ){
 
   function addPart(name,status,detail){
     parts.push(healthPart(name,status,detail));
-    if(status==="BAD"||status==="STALE"){ worst="BAD"; }
+    if(status==="BAD"||status==="ERROR"||status==="STALE"){ worst="BAD"; }
     else if(status!=="OK"&&worst!=="BAD"){ worst="WARN"; }
   }
 
@@ -2101,19 +2102,8 @@ function updateSourceHealth(data,updatedZ){
     else{ addPart("AHAS","OK",""); }
   }else{ addPart("AHAS","WARN",""); }
 
-  const notamFetchStatus=(data.milNotamFetchStatus||"").toString().toUpperCase();
-  const notamRawStatus=(data.milNotamRawStatus||"").toString().toUpperCase();
-  const notamUpdated=parseUpdatedZ(data.milNotamUpdatedZ||"");
-  const notamAge=notamUpdated?Math.round((getBoardNowMs()-notamUpdated.getTime())/60000):null;
-
-  if(notamFetchStatus==="OK"||notamRawStatus==="SUCCESS"){
-    if(notamAge!==null&&notamAge>720){ addPart("NOTAMS","STALE",""); }
-    else if(notamAge!==null&&notamAge>240){ addPart("NOTAMS","WARN",""); }
-    else{ addPart("NOTAMS","OK",""); }
-  }else if(notamFetchStatus==="NO_DATA"){ addPart("NOTAMS","WARN",""); }
-  else if(notamFetchStatus.includes("FAILED")||notamFetchStatus.includes("ERROR")||notamRawStatus.includes("FAILED")||notamRawStatus.includes("ERROR")){ addPart("NOTAMS","BAD",""); }
-  else if(data.milNotams||data.milNotamCount!==undefined||data.milNotamStatus){ addPart("NOTAMS","WARN",""); }
-  else{ addPart("NOTAMS","WARN",""); }
+  const notamFeed=notamFeedState(data);
+  addPart("NOTAMS",notamFeed.status,notamFeed.detail);
 
   const updated=parseUpdatedZ(updatedZ);
   const updatedAge=updated?Math.round((getBoardNowMs()-updated.getTime())/60000):null;
@@ -2158,19 +2148,23 @@ function setCaoStatusDisplay(cao,value,fetchStatus,rawStatus){
   if(!cao)return;
   cao.className="mil-notam-cao";
   cao.textContent=formatCaoZulu(value);
+  const feed=notamFeedState({
+    milNotamUpdatedZ:value,
+    milNotamFetchStatus:fetchStatus,
+    milNotamRawStatus:rawStatus
+  });
+  cao.title="NOTAM FEED "+feed.status+(feed.detail?" "+feed.detail:"");
 
-  const fetch=(fetchStatus||"").toString().toUpperCase();
-  const raw=(rawStatus||"").toString().toUpperCase();
-  const parsed=parseCaoDate(value);
-  const ageMin=parsed?Math.round((getBoardNowMs()-parsed.getTime())/60000):null;
-
-  if(fetch.includes("FAILED")||fetch.includes("ERROR")||raw.includes("FAILED")||raw.includes("ERROR")){
+  if(feed.status==="ERROR"){
     cao.classList.add("mil-notam-cao-bad");
     return;
   }
-  if(ageMin===null){ cao.classList.add("mil-notam-cao-warn"); return; }
-  if(ageMin>720){ cao.classList.add("mil-notam-cao-stale"); }
-  else if(ageMin>240){ cao.classList.add("mil-notam-cao-warn"); }
+  if(feed.status==="UNAVAILABLE"){
+    cao.classList.add("mil-notam-cao-unavailable");
+    return;
+  }
+  if(feed.status==="STALE"){ cao.classList.add("mil-notam-cao-stale"); }
+  else if(feed.status==="WARN"){ cao.classList.add("mil-notam-cao-warn"); }
   else{ cao.classList.add("mil-notam-cao-ok"); }
 }
 
@@ -2553,7 +2547,7 @@ function setMilNotamsDisplay(data){
   if(!panel||!status||!crawl)return;
 
   const source=data.milNotamSource||"FAA NMS";
-  const updated=data.milNotamUpdatedZ||data.allFeedsUpdatedZ||"--";
+  const updated=data.milNotamUpdatedZ||"--";
 
   const fetchStatus=(data.milNotamFetchStatus||"").toUpperCase();
   const rawStatus=(data.milNotamRawStatus||"").toUpperCase();
