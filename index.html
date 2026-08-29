@@ -349,7 +349,7 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
 
 .footer{
   display:grid;
-  grid-template-columns:.95fr 1.9fr .95fr;
+  grid-template-columns:max-content minmax(0,1fr) max-content;
   align-items:center;
   column-gap:10px;
   font-size:var(--footer-px) !important;
@@ -622,7 +622,7 @@ body.getac-preset .radar-panel{min-height:0 !important;overflow:hidden !importan
 body.getac-preset .radarimg{ width:100% !important; height:100% !important; min-height:0 !important; object-fit:contain !important; object-position:center center !important; }
 body.getac-preset .mil-notam-panel{ display:grid !important; grid-template-columns:minmax(126px,18%) 1fr !important; min-height:0 !important; height:100% !important; padding:5px 7px !important; column-gap:7px !important; overflow:hidden !important; }
 body.getac-preset .mil-notam-header{ min-height:0 !important; height:100% !important; justify-content:center !important; padding-right:6px !important; overflow:hidden !important; }
-body.getac-preset .footer{ min-height:0 !important; height:100% !important; padding:3px 6px !important; overflow:hidden !important; display:grid !important; grid-template-columns:.9fr 1.6fr .9fr !important; align-items:center !important; }
+body.getac-preset .footer{ min-height:0 !important; height:100% !important; padding:3px 6px !important; overflow:hidden !important; display:grid !important; grid-template-columns:max-content minmax(0,1fr) max-content !important; align-items:center !important; }
 .awake-indicator{ position:fixed;right:6px;bottom:4px;z-index:9999; font-family:Arial,sans-serif;font-size:10px;font-weight:900;letter-spacing:.4px; padding:2px 5px;border:1px solid rgba(255,255,255,.35); background:rgba(0,0,0,.68);color:#00ff88;pointer-events:none;opacity:.85; }
 .awake-indicator.awake-warn{color:#ffcc00}
 .awake-indicator.awake-off{color:#aaa}

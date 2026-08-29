@@ -142,14 +142,17 @@ test("host status fetch remains supplemental to weather and feed state", () => {
 });
 
 
-test("compact footer gives host health priority over the data timestamp", () => {
+test("desktop and Getac footer grids preserve intrinsic edge content", () => {
   assert.match(
     indexHtml,
     /<div class="footer-left"><span id="hostHealth"[^>]*>HOST NO HEARTBEAT<\/span><span class="feed-sep">\|<\/span><span class="data-updated-compact">DATA UPDATED:/,
   );
-  assert.match(indexHtml, /\.host-health\{ margin-left:0; flex:0 0 auto; \}/);
   assert.match(
     indexHtml,
-    /\.data-updated-compact\{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; \}/,
+    /\.footer\{\s*display:grid;\s*grid-template-columns:max-content minmax\(0,1fr\) max-content;/,
+  );
+  assert.match(
+    indexHtml,
+    /body\.getac-preset \.footer\{[^}]*grid-template-columns:max-content minmax\(0,1fr\) max-content !important;/,
   );
 });
