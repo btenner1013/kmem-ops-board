@@ -1,6 +1,7 @@
 # KMEM Ops Board
 
-Lightweight local/GitHub Pages display board for KMEM Airfield Management situational awareness.
+Lightweight GitHub Pages display board for KMEM Airfield Management situational
+awareness, with an optional localhost display mode.
 
 > **FOR REFERENCE ONLY**  
 > This board is a supplemental display aid. It does not replace official ATIS, METAR/TAF, NOTAM, AHAS/BAM/BWC, NMS, GDSS, FAA, command, or locally approved operational sources.
@@ -21,12 +22,16 @@ Cache-buster example:
 https://btenner1013.github.io/kmem-ops-board/?v=prod
 ```
 
-### Local board test
+### Optional manual local board
+
+The hosted URL above is the default display. A local server is not required for
+the hosted board or its browser refresh loop. To serve the same files manually
+for testing, run this from the repo folder and leave its console window open:
 
 From the repo folder:
 
 ```cmd
-py -m http.server 8765
+run_kmem_server.bat
 ```
 
 Open:
@@ -102,7 +107,9 @@ update_weather_local.py            Generation-only weather engine
 kmem_updater.py                    Safe sync/lease/heartbeat coordinator
 updater_git.py                     Fast-forward-only Git and local lock helpers
 nms_kmem_mil_notams_test.py        FAA NMS staging pull/export helper
-run_kmem_update.bat                Windows Task Scheduler entry point
+run_kmem_update.bat                Manual/underlying role-specific updater entry point
+run_kmem_update_hidden.vbs         No-window Task Scheduler launcher
+run_kmem_update_hidden.ps1         Hidden updater process/log wrapper
 install_updater_task.ps1           PRIMARY/BACKUP task installer
 create_backup_snapshot.ps1         Validated portable recovery snapshot tool
 README.md                          This file
@@ -137,11 +144,23 @@ There is no external weather-warning pull, no external lightning verification, a
 
 ## Scheduled update flow
 
-Windows Task Scheduler runs every 10 minutes:
+By default, Windows Task Scheduler keeps only `KMEM Ops Board - Weather Update`
+and runs it every 10 minutes. Its action uses Windows Script Host and the hidden
+wrappers, so routine updates do not open a Command Prompt or PowerShell window:
 
 ```text
-run_kmem_update.bat PRIMARY
+wscript.exe //B //NoLogo run_kmem_update_hidden.vbs PRIMARY
+  -> run_kmem_update_hidden.ps1 -Role PRIMARY
+  -> run_kmem_update.bat PRIMARY
 ```
+
+The task uses an interactive principal for the Windows account that installed
+it. That same account must remain signed in, and its GitHub CLI/Windows
+Credential Manager authentication must remain valid, for scheduled pushes to
+continue. The main updater log is
+`%LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log`; hidden-launcher output and exit
+status are recorded in
+`%LOCALAPPDATA%\KMEMOpsBoard\logs\scheduled-updater.log`.
 
 The wrapper and coordinator:
 
@@ -191,22 +210,47 @@ the explicit `-ReplaceExisting` PowerShell switch. `KMEM Backup Update Now.cmd`
 runs the same standby checks manually; `--force-failover` bypasses heartbeat
 preference only and never changes Git push semantics.
 
-For a complete display-laptop PRIMARY installation, the preferred entrypoint is:
+For a PRIMARY updater installation, the preferred entrypoint is:
 
 ```cmd
 "INSTALL KMEM DISPLAY - PRIMARY.cmd" --check
 "INSTALL KMEM DISPLAY - PRIMARY.cmd"
 ```
 
-The check mode validates Python, Git, GitHub CLI, Edge, the ignored local NMS
-credential file, canonical `main`, GitHub push permission when already signed in,
-NMS authentication/NOTAM read access, and existing KMEM task inventory. It may
-perform a bounded fetch and strict fast-forward, but it never registers, disables,
+The command without options is the exact hosted-only installation and
+reconciliation command. Run it as Administrator. If it lists positively
+identified existing KMEM tasks, review the list and type exactly
+`REPLACE KMEM TASKS` when prompted. Hosted-only reconciliation removes only the
+recognized obsolete local-server/display tasks and leaves one PRIMARY Weather
+Update task whose launcher runs hidden. It does not install or launch a
+localhost server or kiosk.
+
+The check mode validates Python, Git, GitHub CLI, the ignored local NMS credential
+file, canonical `main`, GitHub push permission when already signed in, NMS
+authentication/NOTAM read access, and existing KMEM task inventory. It may perform
+a bounded fetch and strict fast-forward, but it never registers, removes,
 replaces, or starts a task and never runs a weather update. The full installer
 uses GitHub CLI's browser login only when required, proves one controlled
-lease-protected update and fresh PRIMARY heartbeat before changing tasks, installs
-the server/PRIMARY updater/display tasks, and then starts the local server/display.
-It never embeds GitHub credentials.
+lease-protected update and fresh PRIMARY heartbeat before reconciling tasks, and
+then installs the hidden updater. Run it from the same Windows account that will
+remain signed in for scheduled updates; GitHub credentials are per-account and
+are never embedded in the package.
+
+The normal display is:
+
+```text
+https://btenner1013.github.io/kmem-ops-board/
+```
+
+Automatic localhost serving and Edge kiosk launch are available only through the
+explicit opt-in:
+
+```cmd
+"INSTALL KMEM DISPLAY - PRIMARY.cmd" --local-display
+```
+
+For an occasional local session without scheduled local-display tasks, run
+`run_kmem_server.bat` manually and open `http://localhost:8765/`.
 
 Alternatively, run the coordinator continuously without changing the 600-second cadence:
 
@@ -255,7 +299,7 @@ TAF, ATIS, AHAS, or NOTAM feed classification. Published role names and status
 contain no hostname, username, address, credential, token, or local path.
 
 The first deployment still requires one manual sync and task/role setup on the
-display laptop, and one initial maintained-checkout/task setup on any optional
+PRIMARY updater laptop, and one initial maintained-checkout/task setup on any optional
 home BACKUP. Self-update cannot install itself on a machine still running old code.
 
 ---
@@ -357,6 +401,7 @@ Check the bounded local updater log:
 
 ```cmd
 type "%LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log"
+type "%LOCALAPPDATA%\KMEMOpsBoard\logs\scheduled-updater.log"
 ```
 
 Run a manual update:

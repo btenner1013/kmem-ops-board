@@ -4751,12 +4751,18 @@ def fetch_mil_notams(previous_data):
     try:
         print("MIL NOTAMS: running FAA NMS pull...")
 
+        platform_options = {}
+        if os.name == "nt":
+            platform_options["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         result = subprocess.run(
             [sys.executable, NMS_MIL_NOTAMS_SCRIPT_PATH],
             cwd=REPO_DIR,
             text=True,
+            encoding="utf-8",
+            errors="backslashreplace",
             capture_output=True,
-            timeout=NMS_MIL_NOTAMS_TIMEOUT_SECONDS
+            timeout=NMS_MIL_NOTAMS_TIMEOUT_SECONDS,
+            **platform_options,
         )
 
         if result.stdout:

@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$CheckOnly,
-    [switch]$AfterSync
+    [switch]$AfterSync,
+    [switch]$EnableLocalDisplay
 )
 
 $ErrorActionPreference = "Stop"
@@ -9,12 +10,20 @@ $projectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $supportScript = Join-Path $projectDir "primary_install_support.py"
 $displayInstaller = Join-Path $projectDir "install_display_tasks.ps1"
 $runUpdate = Join-Path $projectDir "run_kmem_update.bat"
+$hiddenUpdateVbs = Join-Path $projectDir "run_kmem_update_hidden.vbs"
+$hiddenUpdatePowerShell = Join-Path $projectDir "run_kmem_update_hidden.ps1"
+$wscriptPath = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::System)) "wscript.exe"
 $taskPrefix = "KMEM Ops Board"
-$plannedTaskNames = @(
+$managedTaskNames = @(
     "$taskPrefix - Local Server",
     "$taskPrefix - Weather Update",
-    "$taskPrefix - Display"
+    "$taskPrefix - Display",
+    "$taskPrefix - Display Watchdog"
 )
+$desiredTaskNames = @("$taskPrefix - Weather Update")
+if ($EnableLocalDisplay) {
+    $desiredTaskNames += @("$taskPrefix - Local Server", "$taskPrefix - Display")
+}
 
 function Write-Step([string]$Message) {
     Write-Host "[KMEM] $Message" -ForegroundColor Cyan
@@ -46,30 +55,39 @@ function Invoke-Support([string[]]$Arguments) {
 }
 
 Write-Host ""
-Write-Host "KMEM OPS BOARD - PRIMARY DISPLAY INSTALL" -ForegroundColor Green
+Write-Host "KMEM OPS BOARD - PRIMARY UPDATER INSTALL" -ForegroundColor Green
 Write-Host "Repository: $projectDir"
 Write-Host "Mode: $(if ($CheckOnly) { 'CHECK ONLY' } else { 'INSTALL' })"
+Write-Host "Install mode: $(if ($EnableLocalDisplay) { 'LOCAL DISPLAY OPT-IN' } else { 'HOSTED-ONLY PRIMARY UPDATER' })"
 Write-Host ""
 
 if (-not $CheckOnly -and -not (Test-IsAdministrator)) {
     throw "Run INSTALL KMEM DISPLAY - PRIMARY.cmd as Administrator."
 }
 
-foreach ($required in @(
+$requiredFiles = @(
     $supportScript,
     $displayInstaller,
     $runUpdate,
-    (Join-Path $projectDir "run_kmem_server.bat"),
-    (Join-Path $projectDir "launch_kmem_display.bat"),
+    $hiddenUpdateVbs,
+    $hiddenUpdatePowerShell,
     (Join-Path $projectDir "kmem_updater.py"),
     (Join-Path $projectDir "updater_git.py"),
     (Join-Path $projectDir "host_status.json"),
     (Join-Path $projectDir "nms_credentials_local.bat")
-)) {
+)
+if ($EnableLocalDisplay) {
+    $requiredFiles += @(
+        (Join-Path $projectDir "run_kmem_server.bat"),
+        (Join-Path $projectDir "launch_kmem_display.bat")
+    )
+}
+foreach ($required in $requiredFiles) {
     Require-File $required "Required package file"
 }
+Require-File $wscriptPath "Windows Script Host"
 
-Write-Step "Checking Python, Git, GitHub CLI, and Microsoft Edge."
+Write-Step "Checking Python, Git, and GitHub CLI."
 Require-Command "py.exe" "Install Python 3 with the Python Launcher, then rerun this installer."
 & py.exe -3 -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 9) else 1)"
 if ($LASTEXITCODE -ne 0) {
@@ -77,17 +95,21 @@ if ($LASTEXITCODE -ne 0) {
 }
 Require-Command "git.exe" "Install Git for Windows, then rerun this installer."
 Require-Command "gh.exe" "Install GitHub CLI, then rerun this installer."
-$edgeCandidates = @(
-    if (${env:ProgramFiles(x86)}) {
-        Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe"
+$edgePath = $null
+if ($EnableLocalDisplay) {
+    Write-Step "Checking Microsoft Edge for the explicit local-display opt-in."
+    $edgeCandidates = @(
+        if (${env:ProgramFiles(x86)}) {
+            Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe"
+        }
+        if ($env:ProgramFiles) {
+            Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe"
+        }
+    )
+    $edgePath = $edgeCandidates | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) } | Select-Object -First 1
+    if (-not $edgePath) {
+        throw "Microsoft Edge was not found in a standard Program Files location. Install Edge or use hosted-only mode."
     }
-    if ($env:ProgramFiles) {
-        Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe"
-    }
-)
-$edgePath = $edgeCandidates | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) } | Select-Object -First 1
-if (-not $edgePath) {
-    throw "Microsoft Edge was not found in a standard Program Files location. Install Edge, then rerun this installer."
 }
 
 Write-Step "Validating the local credential file and Git checkout."
@@ -179,6 +201,9 @@ if ($syncOutput -contains "SYNC STATUS: CODE_FAST_FORWARDED") {
     if ($CheckOnly) {
         $restartArguments += "-CheckOnly"
     }
+    if ($EnableLocalDisplay) {
+        $restartArguments += "-EnableLocalDisplay"
+    }
     & powershell.exe @restartArguments
     exit $LASTEXITCODE
 }
@@ -188,6 +213,8 @@ Invoke-Support @("validate-nms", "--repo", $projectDir)
 
 Write-Step "Inventorying existing scheduled tasks without changing them."
 $knownEntrypointNames = @(
+    "run_kmem_update_hidden.vbs",
+    "run_kmem_update_hidden.ps1",
     "run_kmem_update.bat",
     "update_weather_local.py",
     "kmem_updater.py",
@@ -199,10 +226,18 @@ $knownEntrypointNames = @(
     "run_kmem_display_watchdog.ps1"
 )
 $expectedEntrypointByTaskName = @{
-    "$taskPrefix - Local Server" = @("run_kmem_server.bat", "run_kmem_server.ps1")
-    "$taskPrefix - Weather Update" = @("run_kmem_update.bat", "run_kmem_update.ps1")
+    "$taskPrefix - Local Server" = @("run_kmem_server.bat", "run_kmem_server.ps1", "kmem_display_server.py")
+    "$taskPrefix - Weather Update" = @("run_kmem_update_hidden.vbs", "run_kmem_update.bat", "run_kmem_update.ps1")
     "$taskPrefix - Display" = @("launch_kmem_display.bat", "run_kmem_display_watchdog.ps1")
+    "$taskPrefix - Display Watchdog" = @("run_kmem_display_watchdog.ps1")
 }
+$localDisplayEntrypointNames = @(
+    "run_kmem_server.bat",
+    "run_kmem_server.ps1",
+    "kmem_display_server.py",
+    "launch_kmem_display.bat",
+    "run_kmem_display_watchdog.ps1"
+)
 $protectedTaskPattern = '(?i)(tail[\s_-]*watch|clock|(?<![a-z])obs)'
 
 function Test-ExactEntrypointToken([string]$Text, [string]$Entrypoint) {
@@ -210,26 +245,196 @@ function Test-ExactEntrypointToken([string]$Text, [string]$Entrypoint) {
     return [Regex]::IsMatch($Text, "(?i)(?<![A-Za-z0-9_.:-])$escaped(?![A-Za-z0-9_.:-])")
 }
 
-function Test-CommandStartsWithEntrypoint([string]$CommandText, [string]$Entrypoint) {
-    $candidate = $CommandText.Trim()
-    while ($candidate.StartsWith('"') -or $candidate.StartsWith("'")) {
+function Get-ObjectTextProperty($Object, [string]$Name) {
+    if ($null -eq $Object) {
+        return ""
+    }
+    try {
+        $property = $Object.PSObject.Properties[$Name]
+        if ($null -eq $property -or $null -eq $property.Value) {
+            return ""
+        }
+        return [string]$property.Value
+    } catch {
+        return ""
+    }
+}
+
+function Get-LeadingCommandToken([string]$CommandText) {
+    $candidate = $CommandText.TrimStart()
+    if ($candidate.StartsWith('""')) {
+        # cmd.exe /S /C uses one outer command quote before the quoted path.
         $candidate = $candidate.Substring(1)
     }
-    $escaped = [Regex]::Escape($Entrypoint)
-    $match = [Regex]::Match(
-        $candidate,
-        "(?i)(?<![A-Za-z0-9_.:-])$escaped(?=[`"'\s]|$)"
-    )
-    if (-not $match.Success) {
+    if (-not $candidate) {
+        return ""
+    }
+
+    $commandToken = ""
+    if ($candidate.StartsWith('"') -or $candidate.StartsWith("'")) {
+        $quote = $candidate.Substring(0, 1)
+        $closingQuote = $candidate.IndexOf($quote, 1)
+        if ($closingQuote -le 1) {
+            return ""
+        }
+        $commandToken = $candidate.Substring(1, $closingQuote - 1)
+    } else {
+        $tokenMatch = [Regex]::Match($candidate, '^\S+')
+        if (-not $tokenMatch.Success) {
+            return ""
+        }
+        $commandToken = $tokenMatch.Value
+    }
+
+    $isBareName = $commandToken -match '^[A-Za-z0-9._-]+$'
+    $isDrivePath = $commandToken -match '^[A-Za-z]:[\\/]'
+    if (-not ($isBareName -or $isDrivePath)) {
+        return ""
+    }
+    if ($isDrivePath) {
+        if (
+            $commandToken -match '[\x00-\x1F"<>|?*&,;^]' -or
+            $commandToken.Substring(2).Contains(':')
+        ) {
+            return ""
+        }
+    }
+    return $commandToken
+}
+
+function Test-CommandStartsWithEntrypoint([string]$CommandText, [string]$Entrypoint) {
+    $commandToken = Get-LeadingCommandToken $CommandText
+    if (-not $commandToken) {
         return $false
     }
-    $prefix = $candidate.Substring(0, $match.Index)
-    return -not $prefix -or $prefix -match '^(?:[A-Za-z]:[\\/]|\\\\).*[\\/]$'
+    try {
+        return [IO.Path]::GetFileName($commandToken) -ieq $Entrypoint
+    } catch {
+        return $false
+    }
+}
+
+function Test-PrimaryUpdaterRole($Action) {
+    $arguments = Get-ObjectTextProperty $Action "Arguments"
+    return (
+        $arguments -notmatch '(?i)(?:^|\s)BACKUP(?:["'']?\s*$|\s)' -and
+        $arguments -match '(?i)(?:^|\s)PRIMARY["'']?\s*$'
+    )
+}
+
+function Test-ProjectWorkingDirectory([string]$PathValue) {
+    if (
+        [string]::IsNullOrWhiteSpace($PathValue) -or
+        -not [IO.Path]::IsPathRooted($PathValue) -or
+        $PathValue -notmatch '^[A-Za-z]:[\\/]'
+    ) {
+        return $false
+    }
+    try {
+        $candidate = [IO.Path]::GetFullPath($PathValue).TrimEnd('\', '/')
+        $expected = [IO.Path]::GetFullPath($projectDir).TrimEnd('\', '/')
+        return $candidate.Equals($expected, [StringComparison]::OrdinalIgnoreCase)
+    } catch {
+        return $false
+    }
+}
+
+function Test-ActionTargetsProjectEntrypoint($Action, [string]$Entrypoint) {
+    try {
+        $expectedPath = [IO.Path]::GetFullPath((Join-Path $projectDir $Entrypoint))
+        $executeText = (Get-ObjectTextProperty $Action "Execute").Trim()
+        if (
+            $executeText.Length -ge 2 -and
+            (($executeText.StartsWith('"') -and $executeText.EndsWith('"')) -or
+             ($executeText.StartsWith("'") -and $executeText.EndsWith("'")))
+        ) {
+            $executeText = $executeText.Substring(1, $executeText.Length - 2)
+        }
+        if ([IO.Path]::IsPathRooted($executeText)) {
+            if (
+                [IO.Path]::GetFullPath($executeText).Equals(
+                    $expectedPath,
+                    [StringComparison]::OrdinalIgnoreCase
+                )
+            ) {
+                return $true
+            }
+        } elseif (
+            $executeText -ieq $Entrypoint -and
+            (Test-ProjectWorkingDirectory (Get-ObjectTextProperty $Action "WorkingDirectory"))
+        ) {
+            return $true
+        }
+
+        $arguments = Get-ObjectTextProperty $Action "Arguments"
+        $executeName = [IO.Path]::GetFileName($executeText)
+        $extension = [IO.Path]::GetExtension($Entrypoint)
+        $commandText = ""
+
+        if ($executeName -ieq "cmd.exe" -or $executeName -ieq "cmd") {
+            if ($extension -ine ".bat") {
+                return $false
+            }
+            $commandSwitch = [Regex]::Match($arguments, '(?i)^\s*(?:/d\s+)?/c\s+')
+            if (-not $commandSwitch.Success) {
+                return $false
+            }
+            $commandText = $arguments.Substring($commandSwitch.Length)
+        } elseif ($executeName -ieq "wscript.exe" -or $executeName -ieq "wscript") {
+            if ($extension -ine ".vbs") {
+                return $false
+            }
+            $commandText = [Regex]::Replace(
+                $arguments,
+                '(?i)^\s*(?:(?://B|//NoLogo)\s+)*',
+                ''
+            )
+        } elseif ($executeName -in @("powershell.exe", "powershell", "pwsh.exe", "pwsh")) {
+            if (
+                $extension -ine ".ps1" -or
+                $arguments -match '(?i)(?:^|\s)-(?:Command|EncodedCommand)\b'
+            ) {
+                return $false
+            }
+            $fileSwitch = [Regex]::Match(
+                $arguments,
+                '(?i)^\s*(?:(?:-NoLogo|-NoProfile|-NonInteractive)\s+|-WindowStyle\s+Hidden\s+|-ExecutionPolicy\s+Bypass\s+)*-File\s+'
+            )
+            if (-not $fileSwitch.Success) {
+                return $false
+            }
+            $commandText = $arguments.Substring($fileSwitch.Length)
+        } elseif ($executeName -in @("py.exe", "py", "python.exe", "python", "python3.exe", "python3")) {
+            if ($extension -ine ".py") {
+                return $false
+            }
+            $commandText = [Regex]::Replace($arguments, '^\s*(?:-\d(?:\.\d+)?)?\s*', '')
+        } else {
+            return $false
+        }
+
+        $commandToken = Get-LeadingCommandToken $commandText
+        if (-not $commandToken) {
+            return $false
+        }
+        if ([IO.Path]::IsPathRooted($commandToken)) {
+            return [IO.Path]::GetFullPath($commandToken).Equals(
+                $expectedPath,
+                [StringComparison]::OrdinalIgnoreCase
+            )
+        }
+        return (
+            $commandToken -ieq $Entrypoint -and
+            (Test-ProjectWorkingDirectory (Get-ObjectTextProperty $Action "WorkingDirectory"))
+        )
+    } catch {
+        return $false
+    }
 }
 
 function Get-SemanticEntrypoints($Action) {
     try {
-        $executeText = [string]$Action.Execute
+        $executeText = Get-ObjectTextProperty $Action "Execute"
         if ([string]::IsNullOrWhiteSpace($executeText)) {
             return @()
         }
@@ -262,7 +467,8 @@ function Get-SemanticEntrypoints($Action) {
             $executeName -in @(
                 "cmd.exe", "cmd",
                 "powershell.exe", "powershell", "pwsh.exe", "pwsh",
-                "py.exe", "py", "python.exe", "python", "python3.exe", "python3"
+                "py.exe", "py", "python.exe", "python", "python3.exe", "python3",
+                "wscript.exe", "wscript"
             )
         )
         if (-not $isSemanticExecuteName) {
@@ -283,7 +489,7 @@ function Get-SemanticEntrypoints($Action) {
         # Treat it as unrecognized instead of aborting the all-task inventory.
         return @()
     }
-    $arguments = [string]$Action.Arguments
+    $arguments = Get-ObjectTextProperty $Action "Arguments"
     if ($arguments -match '[&|<>^!%]') {
         return @()
     }
@@ -303,6 +509,19 @@ function Get-SemanticEntrypoints($Action) {
                     $commandSwitch.Success -and
                     (Test-CommandStartsWithEntrypoint $arguments.Substring($commandSwitch.Length) $entrypoint)
                 ) {
+                    $semanticMatches += $entrypoint
+                }
+            }
+            continue
+        }
+        if ($executeName -ieq "wscript.exe" -or $executeName -ieq "wscript") {
+            if ($extension -ieq ".vbs") {
+                $scriptCommand = [Regex]::Replace(
+                    $arguments,
+                    '(?i)^\s*(?:(?://B|//NoLogo)\s+)*',
+                    ''
+                )
+                if (Test-CommandStartsWithEntrypoint $scriptCommand $entrypoint) {
                     $semanticMatches += $entrypoint
                 }
             }
@@ -341,7 +560,10 @@ function Get-SemanticEntrypoints($Action) {
 function Get-TaskFacts($Task) {
     $actions = @($Task.Actions)
     $actionText = ($actions | ForEach-Object {
-        "{0} {1} {2}" -f $_.Execute, $_.Arguments, $_.WorkingDirectory
+        "{0} {1} {2}" -f `
+            (Get-ObjectTextProperty $_ "Execute"), `
+            (Get-ObjectTextProperty $_ "Arguments"), `
+            (Get-ObjectTextProperty $_ "WorkingDirectory")
     }) -join " "
     $entrypoints = @($actions | ForEach-Object { Get-SemanticEntrypoints $_ } | Select-Object -Unique)
     $identityText = "{0} {1} {2}" -f $Task.TaskName, $Task.TaskPath, $actionText
@@ -352,14 +574,16 @@ function Get-TaskFacts($Task) {
             ""
         )
     }
-    $workingDirectories = @($actions | ForEach-Object WorkingDirectory | Where-Object { $_ } | Select-Object -Unique)
+    $workingDirectories = @($actions | ForEach-Object {
+        Get-ObjectTextProperty $_ "WorkingDirectory"
+    } | Where-Object { $_ } | Select-Object -Unique)
     return [pscustomobject]@{
         Task = $Task
         ActionCount = $actions.Count
         Entrypoints = $entrypoints
         WorkingDirectories = $workingDirectories
         HasKmemIdentity = $identityText -match '(?i)(?<![a-z0-9])kmem'
-        IsProtected = ("{0} {1}" -f $Task.TaskName, $actionText) -match $protectedTaskPattern
+        IsProtected = ("{0} {1} {2}" -f $Task.TaskName, $Task.TaskPath, $actionText) -match $protectedTaskPattern
     }
 }
 
@@ -374,69 +598,160 @@ function Write-TaskFact($Fact, [ConsoleColor]$Color) {
     Write-Host ("  {0} [{1}] -> {2}; working directory: {3}" -f $taskLocation, $Fact.Task.State, $entrypoints, $workingDirectories) -ForegroundColor $Color
 }
 
-$allTasks = @(Get-ScheduledTask -ErrorAction Stop)
-$unknownPlannedTasks = @()
-$protectedConflicts = @()
-$ambiguousEntrypointTasks = @()
-$knownLegacyTasks = @()
-foreach ($task in $allTasks) {
-    $fact = Get-TaskFacts $task
-    $isPlanned = $task.TaskName -in $plannedTaskNames
-    if ($isPlanned) {
-        $expectedEntrypoint = $expectedEntrypointByTaskName[$task.TaskName]
-        $hasExactPlannedAction = (
+function Get-TaskInventory([object[]]$Tasks) {
+    $unknownManagedTasks = @()
+    $protectedConflicts = @()
+    $ambiguousEntrypointTasks = @()
+    $safeKmemTasks = @()
+    foreach ($task in $Tasks) {
+        $fact = Get-TaskFacts $task
+        $hasManagedName = $task.TaskName -in $managedTaskNames
+        if ($hasManagedName) {
+            $expectedEntrypoint = $expectedEntrypointByTaskName[$task.TaskName]
+            $hasExactManagedAction = (
+                $task.TaskPath -eq "\" -and
+                $fact.ActionCount -eq 1 -and
+                $fact.Entrypoints.Count -eq 1 -and
+                $expectedEntrypoint -icontains $fact.Entrypoints[0] -and
+                (Test-ActionTargetsProjectEntrypoint $task.Actions[0] $fact.Entrypoints[0]) -and
+                (
+                    $task.TaskName -ne "$taskPrefix - Weather Update" -or
+                    (Test-PrimaryUpdaterRole $task.Actions[0])
+                )
+            )
+            if ($fact.IsProtected) {
+                $protectedConflicts += $fact
+            } elseif (-not $hasExactManagedAction) {
+                $unknownManagedTasks += $fact
+            } else {
+                $safeKmemTasks += $fact
+            }
+            continue
+        }
+        if ($fact.Entrypoints.Count -eq 0) {
+            if (
+                $fact.HasKmemIdentity -and
+                $task.TaskName -match '(?i)(?:display|server|watchdog|updater|weather)'
+            ) {
+                $ambiguousEntrypointTasks += $fact
+            }
+            continue
+        }
+        $isExactLegacyDisplayTask = (
+            $task.TaskPath -eq "\" -and
             $fact.ActionCount -eq 1 -and
             $fact.Entrypoints.Count -eq 1 -and
-            $expectedEntrypoint -icontains $fact.Entrypoints[0]
+            $task.TaskName -match '(?i)(?<![a-z0-9])kmem.*(?:display|server|watchdog)' -and
+            $localDisplayEntrypointNames -icontains $fact.Entrypoints[0] -and
+            (Test-ActionTargetsProjectEntrypoint $task.Actions[0] $fact.Entrypoints[0]) -and
+            $fact.WorkingDirectories.Count -eq 1 -and
+            (Test-ProjectWorkingDirectory $fact.WorkingDirectories[0])
         )
         if ($fact.IsProtected) {
             $protectedConflicts += $fact
-        } elseif (-not $hasExactPlannedAction) {
-            $unknownPlannedTasks += $fact
+        } elseif ($isExactLegacyDisplayTask) {
+            $safeKmemTasks += $fact
         } else {
-            $knownLegacyTasks += $fact
-        }
-    } elseif ($fact.Entrypoints.Count -gt 0) {
-        if ($fact.IsProtected) {
-            $protectedConflicts += $fact
-        } elseif ($fact.ActionCount -ne 1 -or $fact.Entrypoints.Count -ne 1 -or -not $fact.HasKmemIdentity) {
             $ambiguousEntrypointTasks += $fact
-        } else {
-            $knownLegacyTasks += $fact
+        }
+    }
+    return [pscustomobject]@{
+        SafeKmemTasks = @($safeKmemTasks)
+        UnknownManagedTasks = @($unknownManagedTasks)
+        ProtectedConflicts = @($protectedConflicts)
+        AmbiguousEntrypointTasks = @($ambiguousEntrypointTasks)
+    }
+}
+
+function Assert-LosslessTaskBackup([object[]]$Facts) {
+    foreach ($fact in $Facts) {
+        $principalProperty = $fact.Task.PSObject.Properties["Principal"]
+        $principal = if ($null -ne $principalProperty) { $principalProperty.Value } else { $null }
+        $logonType = Get-ObjectTextProperty $principal "LogonType"
+        if ($logonType -notin @("Interactive", "InteractiveToken", "S4U", "Group", "ServiceAccount")) {
+            throw "Task '$($fact.Task.TaskPath)$($fact.Task.TaskName)' uses logon type '$logonType', which cannot be guaranteed to restore without credentials. No tasks were changed."
         }
     }
 }
-if (
-    $unknownPlannedTasks.Count -gt 0 -or
-    $protectedConflicts.Count -gt 0 -or
-    $ambiguousEntrypointTasks.Count -gt 0
-) {
-    Write-Host "Scheduled-task conflicts require manual inspection; no tasks were changed:" -ForegroundColor Red
-    @($unknownPlannedTasks + $protectedConflicts + $ambiguousEntrypointTasks) | ForEach-Object {
-        Write-TaskFact $_ Red
+
+function Assert-SafeTaskInventory($Inventory) {
+    $conflicts = @(
+        $Inventory.UnknownManagedTasks +
+        $Inventory.ProtectedConflicts +
+        $Inventory.AmbiguousEntrypointTasks
+    )
+    if ($conflicts.Count -gt 0) {
+        Write-Host "Scheduled-task conflicts require manual inspection; no tasks were changed:" -ForegroundColor Red
+        $conflicts | ForEach-Object { Write-TaskFact $_ Red }
+        throw "A planned, protected, or ambiguous task action cannot be safely replaced automatically."
     }
-    throw "A planned, protected, or ambiguous task action cannot be safely replaced automatically."
 }
-if ($knownLegacyTasks.Count -gt 0) {
-    Write-Host "Known KMEM task actions found:" -ForegroundColor Yellow
-    $knownLegacyTasks | ForEach-Object { Write-TaskFact $_ Yellow }
-} else {
-    Write-Host "Known KMEM task actions found: NONE"
+
+function Get-ReconciliationDisposition($Fact, [string[]]$DesiredNames) {
+    if ($Fact.Task.TaskPath -eq "\" -and $DesiredNames -icontains $Fact.Task.TaskName) {
+        return "KEEP"
+    }
+    return "REMOVE"
 }
+
+function Get-SafeTaskInventorySignature($Inventory) {
+    $rows = @($Inventory.SafeKmemTasks | ForEach-Object {
+        $actionText = @($_.Task.Actions | ForEach-Object {
+            "{0}|{1}|{2}" -f `
+                (Get-ObjectTextProperty $_ "Execute"), `
+                (Get-ObjectTextProperty $_ "Arguments"), `
+                (Get-ObjectTextProperty $_ "WorkingDirectory")
+        }) -join ";"
+        $triggerText = @($_.Task.Triggers | ForEach-Object {
+            $repetitionProperty = $_.PSObject.Properties["Repetition"]
+            $repetition = if ($null -ne $repetitionProperty) { $repetitionProperty.Value } else { $null }
+            "{0}|{1}|{2}" -f `
+                (Get-ObjectTextProperty $_ "StartBoundary"), `
+                (Get-ObjectTextProperty $_ "Delay"), `
+                (Get-ObjectTextProperty $repetition "Interval")
+        }) -join ";"
+        $principalProperty = $_.Task.PSObject.Properties["Principal"]
+        $principal = if ($null -ne $principalProperty) { $principalProperty.Value } else { $null }
+        $settingsProperty = $_.Task.PSObject.Properties["Settings"]
+        $settings = if ($null -ne $settingsProperty) { $settingsProperty.Value } else { $null }
+        $principalText = "{0}|{1}|{2}" -f `
+            (Get-ObjectTextProperty $principal "UserId"), `
+            (Get-ObjectTextProperty $principal "LogonType"), `
+            (Get-ObjectTextProperty $principal "RunLevel")
+        $settingsText = "{0}|{1}|{2}" -f `
+            (Get-ObjectTextProperty $settings "MultipleInstances"), `
+            (Get-ObjectTextProperty $settings "ExecutionTimeLimit"), `
+            (Get-ObjectTextProperty $settings "Enabled")
+        "{0}|{1}|{2}|{3}|{4}|{5}" -f $_.Task.TaskPath, $_.Task.TaskName, $actionText, $triggerText, $principalText, $settingsText
+    } | Sort-Object)
+    return $rows -join "`n"
+}
+
+function Write-TaskInventory($Inventory) {
+    if ($Inventory.SafeKmemTasks.Count -eq 0) {
+        Write-Host "Known KMEM task actions found: NONE"
+        return
+    }
+    Write-Host "Positively identified KMEM task actions:" -ForegroundColor Yellow
+    foreach ($fact in $Inventory.SafeKmemTasks) {
+        $disposition = Get-ReconciliationDisposition $fact $desiredTaskNames
+        Write-TaskFact $fact Yellow
+        Write-Host "    RECONCILIATION ACTION: $disposition" -ForegroundColor Yellow
+    }
+}
+
+$allTasks = @(Get-ScheduledTask -ErrorAction Stop)
+$taskInventory = Get-TaskInventory $allTasks
+Assert-SafeTaskInventory $taskInventory
+Assert-LosslessTaskBackup $taskInventory.SafeKmemTasks
+Write-TaskInventory $taskInventory
 
 if ($CheckOnly) {
     Write-Host ""
     Write-Host "KMEM PRIMARY INSTALL CHECK PASSED - NO SCHEDULED TASKS WERE CHANGED" -ForegroundColor Green
-    Write-Host "The full installer may prompt for GitHub login on the display laptop."
+    Write-Host "Default full install will keep only the Weather Update task with its hidden launcher."
+    Write-Host "The full installer may prompt for GitHub login on the PRIMARY updater laptop."
     exit 0
-}
-
-if ($knownLegacyTasks.Count -gt 0) {
-    Write-Host "Only the listed, positively identified KMEM tasks will be replaced or disabled." -ForegroundColor Yellow
-    $confirmation = Read-Host "Type REPLACE KMEM TASKS to continue"
-    if ($confirmation -cne "REPLACE KMEM TASKS") {
-        throw "Task replacement was not confirmed; no tasks were changed."
-    }
 }
 
 $runStartedUtc = (Get-Date).ToUniversalTime().ToString("o")
@@ -450,14 +765,41 @@ Write-Step "Verifying synchronized Git state and the new PRIMARY heartbeat."
 Invoke-Support @("sync", "--repo", $projectDir)
 Invoke-Support @("verify-status", "--repo", $projectDir, "--since", $runStartedUtc)
 
-$preexistingPlannedRoot = @{}
+$allTasks = @(Get-ScheduledTask -ErrorAction Stop)
+$taskInventory = Get-TaskInventory $allTasks
+Assert-SafeTaskInventory $taskInventory
+Assert-LosslessTaskBackup $taskInventory.SafeKmemTasks
+Write-Step "Revalidated scheduled-task inventory immediately before reconciliation."
+Write-TaskInventory $taskInventory
+$approvedInventorySignature = Get-SafeTaskInventorySignature $taskInventory
+if ($taskInventory.SafeKmemTasks.Count -gt 0) {
+    Write-Host "Only the listed, positively identified KMEM tasks will be reconciled or removed." -ForegroundColor Yellow
+    $confirmation = Read-Host "Type REPLACE KMEM TASKS to continue"
+    if ($confirmation -cne "REPLACE KMEM TASKS") {
+        throw "Task replacement was not confirmed; no tasks were changed."
+    }
+}
+
+$allTasks = @(Get-ScheduledTask -ErrorAction Stop)
+$taskInventory = Get-TaskInventory $allTasks
+Assert-SafeTaskInventory $taskInventory
+Assert-LosslessTaskBackup $taskInventory.SafeKmemTasks
+if ((Get-SafeTaskInventorySignature $taskInventory) -cne $approvedInventorySignature) {
+    throw "The KMEM scheduled-task inventory changed before reconciliation; no tasks were changed."
+}
+$safeKmemTasks = @($taskInventory.SafeKmemTasks)
+$obsoleteTaskFacts = @($safeKmemTasks | Where-Object {
+    (Get-ReconciliationDisposition $_ $desiredTaskNames) -eq "REMOVE"
+})
+
+$preexistingDesiredRoot = @{}
 foreach ($task in $allTasks) {
-    if ($task.TaskName -in $plannedTaskNames -and $task.TaskPath -eq "\") {
-        $preexistingPlannedRoot[$task.TaskName] = $true
+    if ($task.TaskName -in $desiredTaskNames -and $task.TaskPath -eq "\") {
+        $preexistingDesiredRoot[$task.TaskName] = $true
     }
 }
 $taskBackups = @()
-foreach ($fact in $knownLegacyTasks) {
+foreach ($fact in $safeKmemTasks) {
     $task = $fact.Task
     $taskBackups += [pscustomobject]@{
         TaskName = $task.TaskName
@@ -480,54 +822,109 @@ try {
     }
 
     $registrationStarted = $true
-    Write-Step "Installing current PRIMARY server, updater, and display tasks."
+    Write-Step "Installing the PRIMARY Weather Update task with its hidden launcher."
     & $displayInstaller `
         -TaskPrefix $taskPrefix `
         -ReplaceExisting `
         -AcknowledgeExistingUpdaterTasks `
         -SkipInitialStart `
+        -EnableLocalDisplay:$EnableLocalDisplay `
         -InitialUpdaterDelayMinutes 10
-    if ($LASTEXITCODE -ne 0) {
-        throw "Current KMEM display tasks could not be installed."
+
+    $weatherTask = Get-ScheduledTask -TaskName "$taskPrefix - Weather Update" -TaskPath "\" -ErrorAction Stop
+    $weatherFact = Get-TaskFacts $weatherTask
+    $weatherAction = $weatherTask.Actions[0]
+    $expectedWeatherArguments = "//B //NoLogo `"$hiddenUpdateVbs`" PRIMARY"
+    $hasExactWeatherAction = (
+        [IO.Path]::GetFullPath([string]$weatherAction.Execute).Equals(
+            [IO.Path]::GetFullPath($wscriptPath),
+            [StringComparison]::OrdinalIgnoreCase
+        ) -and
+        [string]$weatherAction.Arguments -ceq $expectedWeatherArguments -and
+        (Test-ProjectWorkingDirectory ([string]$weatherAction.WorkingDirectory))
+    )
+    $hasExactWeatherPolicy = (
+        @($weatherTask.Triggers).Count -eq 1 -and
+        [string]$weatherTask.Triggers[0].Repetition.Interval -eq "PT10M" -and
+        [string]$weatherTask.Settings.MultipleInstances -eq "IgnoreNew" -and
+        [string]$weatherTask.Settings.ExecutionTimeLimit -eq "PT30M"
+    )
+    if (
+        $weatherFact.ActionCount -ne 1 -or
+        $weatherFact.Entrypoints.Count -ne 1 -or
+        $weatherFact.Entrypoints[0] -ine "run_kmem_update_hidden.vbs" -or
+        -not (Test-PrimaryUpdaterRole $weatherTask.Actions[0]) -or
+        -not $hasExactWeatherAction -or
+        -not $hasExactWeatherPolicy -or
+        $weatherTask.State -eq "Disabled"
+    ) {
+        throw "The installed Weather Update task did not match the required hidden PRIMARY action."
     }
 
-    Start-ScheduledTask -TaskName "$taskPrefix - Local Server" -ErrorAction Stop
-    $serverDeadline = (Get-Date).AddSeconds(30)
-    $serverReady = $false
-    do {
-        try {
-            $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8765/" -TimeoutSec 3
-            $serverTask = Get-ScheduledTask -TaskName "$taskPrefix - Local Server" -TaskPath "\" -ErrorAction Stop
-            $serverReady = (
-                $response.StatusCode -eq 200 -and
-                $response.Content -match '(?i)<title>\s*KMEM Ops Board\s*</title>' -and
-                $serverTask.State -eq "Running"
-            )
-        } catch {
-            $serverReady = $false
+    if ($obsoleteTaskFacts.Count -gt 0) {
+        Write-Step "Removing only positively identified obsolete KMEM local-server/display tasks."
+        foreach ($fact in $obsoleteTaskFacts) {
+            Unregister-ScheduledTask `
+                -TaskName $fact.Task.TaskName `
+                -TaskPath $fact.Task.TaskPath `
+                -Confirm:$false `
+                -ErrorAction Stop
         }
-        if (-not $serverReady) {
-            Start-Sleep -Seconds 1
-        }
-    } while (-not $serverReady -and (Get-Date) -lt $serverDeadline)
-    if (-not $serverReady) {
-        throw "The scheduled tasks were installed, but the local board server did not become ready at http://127.0.0.1:8765/."
     }
-    Start-ScheduledTask -TaskName "$taskPrefix - Display" -ErrorAction Stop
+
+    $finalInventory = Get-TaskInventory @(Get-ScheduledTask -ErrorAction Stop)
+    Assert-SafeTaskInventory $finalInventory
+    if ($finalInventory.SafeKmemTasks.Count -ne $desiredTaskNames.Count) {
+        throw "The final KMEM scheduled-task inventory did not match the requested install mode."
+    }
+    foreach ($taskName in $desiredTaskNames) {
+        $matching = @($finalInventory.SafeKmemTasks | Where-Object {
+            $_.Task.TaskName -eq $taskName -and $_.Task.TaskPath -eq "\"
+        })
+        if ($matching.Count -ne 1) {
+            throw "The final KMEM scheduled-task inventory is missing the exact task '$taskName'."
+        }
+    }
+
+    if ($EnableLocalDisplay) {
+        Start-ScheduledTask -TaskName "$taskPrefix - Local Server" -TaskPath "\" -ErrorAction Stop
+        $serverDeadline = (Get-Date).AddSeconds(30)
+        $serverReady = $false
+        do {
+            try {
+                $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8765/" -TimeoutSec 3
+                $serverTask = Get-ScheduledTask -TaskName "$taskPrefix - Local Server" -TaskPath "\" -ErrorAction Stop
+                $serverReady = (
+                    $response.StatusCode -eq 200 -and
+                    $response.Content -match '(?i)<title>\s*KMEM Ops Board\s*</title>' -and
+                    $serverTask.State -eq "Running"
+                )
+            } catch {
+                $serverReady = $false
+            }
+            if (-not $serverReady) {
+                Start-Sleep -Seconds 1
+            }
+        } while (-not $serverReady -and (Get-Date) -lt $serverDeadline)
+        if (-not $serverReady) {
+            throw "The opt-in local board server did not become ready at http://127.0.0.1:8765/."
+        }
+        Start-ScheduledTask -TaskName "$taskPrefix - Display" -TaskPath "\" -ErrorAction Stop
+    }
 } catch {
     $installFailure = $_.Exception.Message
     $rollbackFailures = @()
     if ($registrationStarted) {
-        foreach ($taskName in $plannedTaskNames) {
+        foreach ($taskName in $desiredTaskNames) {
             try {
                 $currentPlannedTask = Get-ScheduledTask -TaskName $taskName -TaskPath "\" -ErrorAction SilentlyContinue
-                if ($currentPlannedTask) {
+                if ($currentPlannedTask -and $currentPlannedTask.State -eq "Running") {
                     Stop-ScheduledTask -TaskName $taskName -TaskPath "\" -ErrorAction Stop
                 }
             } catch {
                 $rollbackFailures += "stop $taskName"
             }
-            if (-not $preexistingPlannedRoot.ContainsKey($taskName)) {
+            if (-not $preexistingDesiredRoot.ContainsKey($taskName)) {
                 try {
                     $createdTask = Get-ScheduledTask -TaskName $taskName -TaskPath "\" -ErrorAction SilentlyContinue
                     if ($createdTask) {
@@ -561,7 +958,8 @@ try {
 }
 
 Write-Host ""
-Write-Host "KMEM PRIMARY INSTALL COMPLETE" -ForegroundColor Green
-Write-Host "Local board: http://localhost:8765/"
+Write-Host "KMEM PRIMARY UPDATER INSTALL COMPLETE" -ForegroundColor Green
+Write-Host "Hosted board: https://btenner1013.github.io/kmem-ops-board/"
+Write-Host "Local server/display tasks: $(if ($EnableLocalDisplay) { 'INSTALLED BY EXPLICIT OPT-IN' } else { 'NOT INSTALLED' })"
 Write-Host "Updater cadence: 10 minutes"
-Write-Host "Restart or sign out/in if the kiosk display does not open automatically."
+Write-Host "Scheduled task: $taskPrefix - Weather Update"

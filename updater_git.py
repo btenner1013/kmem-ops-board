@@ -98,6 +98,9 @@ def _default_runner(
         process_env.update(env)
     process_env["GIT_TERMINAL_PROMPT"] = "0"
     process_env["GCM_INTERACTIVE"] = "Never"
+    platform_options = {}
+    if os.name == "nt":
+        platform_options["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     return subprocess.run(
         command,
         cwd=str(cwd),
@@ -106,6 +109,7 @@ def _default_runner(
         capture_output=True,
         check=False,
         timeout=DEFAULT_GIT_TIMEOUT_SECONDS,
+        **platform_options,
     )
 
 

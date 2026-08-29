@@ -1059,6 +1059,29 @@ class LocalLockTests(unittest.TestCase):
             recovered.acquire()
             recovered.release()
 
+    @unittest.skipUnless(os.name == "nt", "Windows no-window process contract")
+    def test_bounded_process_combines_process_group_and_no_window_flags(self):
+        process = mock.Mock()
+        process.communicate.return_value = ("", "")
+        process.returncode = 0
+        with mock.patch("kmem_updater.subprocess.Popen", return_value=process) as popen:
+            result = run_bounded_process(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout=5,
+                capture_output=True,
+            )
+
+        self.assertEqual(result.returncode, 0)
+        creationflags = popen.call_args.kwargs["creationflags"]
+        self.assertEqual(
+            creationflags & subprocess.CREATE_NEW_PROCESS_GROUP,
+            subprocess.CREATE_NEW_PROCESS_GROUP,
+        )
+        self.assertEqual(
+            creationflags & subprocess.CREATE_NO_WINDOW,
+            subprocess.CREATE_NO_WINDOW,
+        )
+
     def test_bounded_process_timeout_terminates_grandchild_tree(self):
         with tempfile.TemporaryDirectory() as directory:
             sentinel = Path(directory) / "grandchild-survived.txt"

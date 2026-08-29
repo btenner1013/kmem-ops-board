@@ -8,10 +8,11 @@ WHAT TO COPY
 2. Do NOT copy nms_credentials_local.bat from your personal laptop. It contains
    the FAA NMS secret. The portable folder only contains a safe template.
 
-ON THE DISPLAY LAPTOP
----------------------
-1. Install Python 3, Git for Windows, GitHub CLI, and Microsoft Edge.
-   No pip packages are needed.
+ON THE PRIMARY UPDATER LAPTOP
+-----------------------------
+1. Install Python 3, Git for Windows, and GitHub CLI.
+   No pip packages are needed. Microsoft Edge is needed only if you opt in to
+   automatic local-display/kiosk mode.
 2. Copy the entire folder from the flash drive to a permanent location, such as:
       C:\KMEM-Ops-Board\kmem-ops-board
 3. In that copied folder, make a copy of:
@@ -19,33 +20,61 @@ ON THE DISPLAY LAPTOP
    Rename the copy to:
       nms_credentials_local.bat
    Then add the FAA NMS client ID and client secret in the copied file.
-4. Open PowerShell and authenticate GitHub:
+4. Sign in to the Windows account that will run the updater and remain signed
+   in. From that same account, open PowerShell and authenticate GitHub:
       gh auth login -h github.com
       gh auth setup-git
 5. Test one update from Command Prompt:
-      run_kmem_update.bat
-6. Open PowerShell as Administrator in the project folder and install the
-   automatic tasks:
-      Set-ExecutionPolicy -Scope Process Bypass
-      .\install_display_tasks.ps1
+      run_kmem_update.bat PRIMARY
+6. Right-click the following file and choose "Run as administrator":
+      INSTALL KMEM DISPLAY - PRIMARY.cmd
+   If existing KMEM tasks are detected, type this exact confirmation when
+   prompted:
+      REPLACE KMEM TASKS
+7. Open the hosted board in a browser:
+      https://btenner1013.github.io/kmem-ops-board/
 
-WHAT THE SCHEDULED TASKS DO
----------------------------
-- Start a local-only board server at http://localhost:8765/ after sign-in.
-- Refresh weather, radar, and FAA NMS NOTAM data every 10 minutes.
-- Open Microsoft Edge in kiosk mode about 20 seconds after sign-in.
+DEFAULT SCHEDULED MODE
+----------------------
+- The installer reconciles recognized KMEM tasks and keeps one task:
+      KMEM Ops Board - Weather Update
+- That task refreshes weather, radar, and FAA NMS NOTAM data every 10 minutes,
+  publishes the result to GitHub Pages, and runs without a visible console.
+- The default does not install a local-server task or an Edge kiosk task. The
+  hosted board refreshes independently of a local server.
+- The updater runs as the signed-in Windows user. That user must remain signed
+  in and must have working GitHub credentials.
+- Logs are written here:
+      %LOCALAPPDATA%\KMEMOpsBoard\logs\scheduled-updater.log
+      %LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log
+
+OPTIONAL LOCAL DISPLAY
+----------------------
+To explicitly install the local server and Edge kiosk tasks as well as the
+hidden updater, run this command as Administrator:
+      "INSTALL KMEM DISPLAY - PRIMARY.cmd" --local-display
+
+For an occasional manual local board, run:
+      run_kmem_server.bat
+Then open http://localhost:8765/ and leave the server console open. This manual
+capability does not change the hosted-only scheduled-task default.
 
 ANTI-BURN-IN FEATURE
 --------------------
 The board makes a very small whole-screen shift every 90 seconds to reduce
-static-image burn-in risk. It is enabled by default. To turn it off, open:
+static-image burn-in risk. It is enabled by default. To turn it off, open the
+hosted control page:
+      https://btenner1013.github.io/kmem-ops-board/display_control.html
+For a manually running local board, use:
       http://localhost:8765/display_control.html
 and clear "Screen burn-in protection."
 
 IMPORTANT
 ---------
-- Keep the display laptop signed in for the local server, browser kiosk, and
-  GitHub credentials to remain available.
-- Do not move the project folder after installing the tasks. If you move it,
-  rerun install_display_tasks.ps1 from the new location.
+- Keep the updater's Windows account signed in so its scheduled task and GitHub
+  credentials remain available.
+- Do not move the project folder after task installation. If it was moved,
+  restore the original path or deliberately inspect and remove the old KMEM
+  task before installing from the new location. The safe installer will stop on
+  a task that still points at a different checkout.
 - For detailed troubleshooting, read DISPLAY_LAPTOP_SETUP.md in the folder.

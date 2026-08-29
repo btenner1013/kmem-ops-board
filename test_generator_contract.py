@@ -86,6 +86,29 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             "KMEM_PRIMARY_UPDATER",
         )
 
+    @unittest.skipUnless(os.name == "nt", "Windows no-window NMS child contract")
+    def test_nested_nms_process_is_hidden_and_decoded_deterministically(self):
+        completed = subprocess.CompletedProcess(["nms"], 1, "diagnostic", "warning")
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                clear=False,
+            ),
+            mock.patch.object(updater.os.path, "exists", return_value=True),
+            mock.patch.object(updater.subprocess, "run", return_value=completed) as run,
+            mock.patch("builtins.print"),
+        ):
+            updater.fetch_mil_notams({})
+
+        kwargs = run.call_args.kwargs
+        self.assertEqual(
+            kwargs["creationflags"] & subprocess.CREATE_NO_WINDOW,
+            subprocess.CREATE_NO_WINDOW,
+        )
+        self.assertEqual(kwargs["encoding"], "utf-8")
+        self.assertEqual(kwargs["errors"], "backslashreplace")
+
 
 class SchedulerContractTests(unittest.TestCase):
     def test_backend_cadence_remains_exactly_ten_minutes(self):
@@ -109,6 +132,48 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("-Settings $updaterSettings", script)
         self.assertIn("-Settings $displaySettings", script)
 
+    def test_hosted_only_is_default_and_local_display_requires_explicit_opt_in(self):
+        registrar = (REPO_DIR / "install_display_tasks.ps1").read_text(encoding="utf-8")
+        installer = (REPO_DIR / "install_primary_display.ps1").read_text(encoding="utf-8")
+        wrapper = (REPO_DIR / "INSTALL KMEM DISPLAY - PRIMARY.cmd").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('$plannedTaskNames = @(\n    "$TaskPrefix - Weather Update"\n)', registrar)
+        self.assertIn("$installLocalServer = $EnableLocalDisplay -or $SkipDisplayLaunch", registrar)
+        self.assertIn("$installDisplay = $EnableLocalDisplay", registrar)
+        self.assertIn('if ($installLocalServer) {\n    $plannedTaskNames += "$TaskPrefix - Local Server"', registrar)
+        self.assertIn('if ($installDisplay) {\n    $plannedTaskNames += "$TaskPrefix - Display"', registrar)
+        self.assertNotIn('"$TaskPrefix - Display Watchdog"', registrar)
+        self.assertIn('$desiredTaskNames = @("$taskPrefix - Weather Update")', installer)
+        self.assertIn("if ($EnableLocalDisplay)", installer)
+        self.assertIn("-EnableLocalDisplay:$EnableLocalDisplay", installer)
+        self.assertIn("Local server/display tasks:", installer)
+        self.assertIn('if /I "%~1"=="--local-display"', wrapper)
+        self.assertIn("-EnableLocalDisplay", wrapper)
+
+    def test_scheduled_update_uses_hidden_launcher_and_preserves_task_policy(self):
+        registrar = (REPO_DIR / "install_display_tasks.ps1").read_text(encoding="utf-8")
+        updater_installer = (REPO_DIR / "install_updater_task.ps1").read_text(
+            encoding="utf-8"
+        )
+        hidden_ps = (REPO_DIR / "run_kmem_update_hidden.ps1").read_text(encoding="utf-8")
+        hidden_vbs = (REPO_DIR / "run_kmem_update_hidden.vbs").read_text(encoding="utf-8")
+
+        for script in (registrar, updater_installer):
+            self.assertIn("run_kmem_update_hidden.vbs", script)
+            self.assertIn("wscript.exe", script)
+            self.assertIn("//B //NoLogo", script)
+            self.assertIn("-RepetitionInterval (New-TimeSpan -Minutes 10)", script)
+            self.assertIn("-MultipleInstances IgnoreNew", script)
+        self.assertIn('"$hiddenUpdateVbs`" PRIMARY"', registrar)
+        self.assertIn("CreateNoWindow = $true", hidden_ps)
+        self.assertIn("RedirectStandardOutput = $true", hidden_ps)
+        self.assertIn("RedirectStandardError = $true", hidden_ps)
+        self.assertIn("scheduled-updater.log", hidden_ps)
+        self.assertIn("shell.Run(command, 0, True)", hidden_vbs)
+        self.assertIn("WScript.Quit exitCode", hidden_vbs)
+
     def test_manual_workflow_has_bounded_job_runtime(self):
         workflow = (REPO_DIR / ".github" / "workflows" / "update-weather.yml").read_text(
             encoding="utf-8"
@@ -125,8 +190,10 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn('if /I "%~1"=="--check"', wrapper)
         self.assertIn("-CheckOnly", wrapper)
         self.assertIn("goto usage", wrapper)
-        for dependency in ("py.exe", "git.exe", "gh.exe", "Microsoft\\Edge"):
+        for dependency in ("py.exe", "git.exe", "gh.exe"):
             self.assertIn(dependency, script)
+        self.assertIn("Microsoft\\Edge", script)
+        self.assertIn("if ($EnableLocalDisplay)", script)
         self.assertIn("nms_credentials_local.bat", script)
         self.assertIn("gh.exe auth login", script)
         self.assertIn("gh.exe auth setup-git", script)
@@ -137,6 +204,8 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("Unregister-ScheduledTask", script)
         self.assertIn("Test-ExactEntrypointToken", script)
         self.assertIn("Get-SemanticEntrypoints", script)
+        self.assertIn("Test-PrimaryUpdaterRole", script)
+        self.assertIn("Get-TaskInventory", script)
         self.assertIn("$executeName = [IO.Path]::GetFileName($executeText)", script)
         self.assertIn("[IO.File]::Exists($executeText)", script)
         self.assertIn("$isDevicePath -or $isUncPath", script)
@@ -174,6 +243,16 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("http://127.0.0.1:8765/", script)
         self.assertIn("<title>\\s*KMEM Ops Board", script)
 
+    def test_nested_windows_children_use_no_window_process_flags(self):
+        updater_source = (REPO_DIR / "kmem_updater.py").read_text(encoding="utf-8")
+        git_source = (REPO_DIR / "updater_git.py").read_text(encoding="utf-8")
+        generator_source = (REPO_DIR / "update_weather_local.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('getattr(subprocess, "CREATE_NO_WINDOW", 0)', updater_source)
+        self.assertIn('platform_options["creationflags"] = getattr(', git_source)
+        self.assertIn('platform_options["creationflags"] = getattr(', generator_source)
+
     @unittest.skipUnless(os.name == "nt", "PowerShell classifier test is Windows-only")
     def test_primary_task_classifier_regressions(self):
         powershell = (
@@ -206,6 +285,70 @@ class SchedulerContractTests(unittest.TestCase):
         )
         self.assertIn("PRIMARY TASK CLASSIFIER TESTS:", completed.stdout)
 
+    @unittest.skipUnless(os.name == "nt", "PowerShell hidden launcher test is Windows-only")
+    def test_hidden_updater_launcher_regressions(self):
+        powershell = (
+            Path(os.environ["SystemRoot"])
+            / "System32"
+            / "WindowsPowerShell"
+            / "v1.0"
+            / "powershell.exe"
+        )
+        completed = subprocess.run(
+            [
+                str(powershell),
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(REPO_DIR / "test_hidden_updater_launcher.ps1"),
+            ],
+            cwd=REPO_DIR,
+            text=True,
+            capture_output=True,
+            timeout=45,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}",
+        )
+        self.assertIn("HIDDEN UPDATER LAUNCHER TESTS:", completed.stdout)
+
+    @unittest.skipUnless(os.name == "nt", "PowerShell task registration test is Windows-only")
+    def test_display_task_registration_regressions(self):
+        powershell = (
+            Path(os.environ["SystemRoot"])
+            / "System32"
+            / "WindowsPowerShell"
+            / "v1.0"
+            / "powershell.exe"
+        )
+        completed = subprocess.run(
+            [
+                str(powershell),
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(REPO_DIR / "test_display_task_registration.ps1"),
+            ],
+            cwd=REPO_DIR,
+            text=True,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}",
+        )
+        self.assertIn("DISPLAY TASK REGISTRATION TESTS:", completed.stdout)
+
     def test_ready_package_metadata_is_ignored_and_task_cadence_is_unchanged(self):
         ignore = (REPO_DIR / ".gitignore").read_text(encoding="utf-8")
         installer = (REPO_DIR / "install_display_tasks.ps1").read_text(encoding="utf-8")
@@ -218,6 +361,9 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("[int]$InitialUpdaterDelayMinutes = 1", installer)
         self.assertIn("-RepetitionInterval (New-TimeSpan -Minutes 10)", installer)
         self.assertIn("if (-not $SkipInitialStart)", installer)
+        snapshot = (REPO_DIR / "create_backup_snapshot.ps1").read_text(encoding="utf-8")
+        self.assertIn('"run_kmem_update_hidden.vbs"', snapshot)
+        self.assertIn('"run_kmem_update_hidden.ps1"', snapshot)
 
 
 if __name__ == "__main__":

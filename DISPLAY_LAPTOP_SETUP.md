@@ -1,6 +1,10 @@
 # KMEM Ops Board — Display Laptop Setup
 
-This package runs the board locally on a Windows display laptop, refreshes its data every 10 minutes, and can open Microsoft Edge in kiosk mode after sign-in.
+This package installs a Windows PRIMARY updater that refreshes the hosted board
+every 10 minutes. Hosted-only is the default: the installer keeps one Weather
+Update task whose launcher runs hidden and does not install a localhost server
+or kiosk task. Automatic localhost serving and Microsoft Edge kiosk launch
+remain available as an explicit local-display opt-in.
 
 The updater uses only the Python standard library. No `pip` packages are required.
 
@@ -14,8 +18,9 @@ Install these applications on the new laptop:
    Download from <https://git-scm.com/download/win>.
 3. **GitHub CLI**  
    Download from <https://cli.github.com/>. This securely supplies Git credentials for scheduled pushes.
-4. **Microsoft Edge**  
-   Edge is normally included with Windows and is used for kiosk/full-screen display.
+4. **Microsoft Edge (optional)**
+   Edge is required only for the explicit automatic local-display/kiosk opt-in.
+   Any current browser can open the hosted board.
 
 Restart Windows after installing the software so Task Scheduler receives the updated PATH.
 
@@ -27,7 +32,11 @@ Extract or copy the complete `kmem-ops-board` folder to a permanent location. A 
 C:\KMEM-Ops-Board\kmem-ops-board
 ```
 
-Do not move or rename the folder after installing the scheduled tasks. If it is moved later, rerun `install_display_tasks.ps1`.
+Do not move or rename the folder after installing the scheduled task. The safe
+classifier deliberately refuses to delete a task whose action still targets a
+different checkout. If the folder was moved, restore the original path or
+inspect and remove the old KMEM task deliberately before installing from the new
+location.
 
 ## 3. Confirm the controlled credential file
 
@@ -59,20 +68,44 @@ Right-click and run as Administrator:
 "INSTALL KMEM DISPLAY - PRIMARY.cmd"
 ```
 
+This is the exact hosted-only installation and reconciliation command. If the
+installer lists positively identified existing KMEM tasks, review them and type
+exactly `REPLACE KMEM TASKS` when prompted. It removes only recognized obsolete
+KMEM local-server/display tasks and installs one
+`KMEM Ops Board - Weather Update` task with a hidden/background launcher.
+
 If GitHub CLI is not authenticated, follow its normal secure browser prompt. The
-installer then validates push permission, proves one controlled update and fresh
-PRIMARY heartbeat, and installs the local server/PRIMARY updater/display tasks.
-Wait for:
+installer then validates push permission and proves one controlled update and
+fresh PRIMARY heartbeat before changing tasks. Wait for:
 
 ```text
-KMEM PRIMARY INSTALL COMPLETE
+KMEM PRIMARY UPDATER INSTALL COMPLETE
 ```
 
-GitHub authentication remains machine-local and is never included in the package.
+The normal display URL is:
+
+```text
+https://btenner1013.github.io/kmem-ops-board/
+```
+
+The hosted board and its automatic browser refresh do not depend on
+`run_kmem_server.bat` or any local server process.
+
+To install the automatic localhost server and Edge kiosk tasks as well, use the
+explicit opt-in instead:
+
+```cmd
+"INSTALL KMEM DISPLAY - PRIMARY.cmd" --local-display
+```
+
+GitHub authentication remains machine- and Windows-account-local and is never
+included in the package.
 
 ## 6. GitHub authentication details
 
-The updater commits `weather.json` and `radar.gif` and pushes them to GitHub Pages. Open PowerShell and run:
+The updater commits `weather.json` and `radar.gif` and pushes them to GitHub
+Pages. Sign in to the Windows account that will run the scheduled task, then open
+PowerShell as that same account and run:
 
 ```powershell
 gh auth login -h github.com
@@ -98,6 +131,10 @@ The authenticated account must have write access to:
 https://github.com/btenner1013/kmem-ops-board
 ```
 
+The scheduled task uses an interactive principal and the GitHub credentials of
+that Windows account. Keep the account signed in; hosted-only mode removes the
+local kiosk, but it does not turn the updater into a signed-out system service.
+
 ## 7. Optional manual update test
 
 Open Command Prompt in the copied project folder and run:
@@ -110,7 +147,12 @@ Review:
 
 ```text
 %LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log
+%LOCALAPPDATA%\KMEMOpsBoard\logs\scheduled-updater.log
 ```
+
+`updater.log` is the primary rotating updater log. Because the scheduled launch
+is hidden and shows no console window, `scheduled-updater.log` also records its
+captured output, exit code, and timeout result.
 
 Confirm the log shows:
 
@@ -132,37 +174,44 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\install_display_tasks.ps1
 ```
 
-The installer inventories existing updater tasks first and stops without making
-changes if it finds a conflicting or same-name task. Inspect any legacy task;
-do not enable or repoint it implicitly. Use `-ReplaceExisting` only after an
-intentional same-name replacement has been reviewed.
+This raw command installs only the hidden hosted-board Weather Update task. It
+inventories existing updater tasks first and stops without making changes if it
+finds a conflicting or same-name task. Inspect any legacy task; do not enable or
+repoint it implicitly. Use `-ReplaceExisting` only after an intentional same-name
+replacement has been reviewed. Prefer the one-click installer in section 5 when
+existing local-server/display tasks need safe reconciliation.
 
 This creates:
 
 | Scheduled task | Purpose |
 |---|---|
-| `KMEM Ops Board - Local Server` | Hosts the board at `http://localhost:8765/` after sign-in |
-| `KMEM Ops Board - Weather Update` | Refreshes weather, radar, and FAA NOTAM data every 10 minutes |
-| `KMEM Ops Board - Display` | Opens Edge in kiosk mode 20 seconds after sign-in |
+| `KMEM Ops Board - Weather Update` | Default; silently refreshes and publishes hosted weather, radar, and FAA NOTAM data every 10 minutes |
+| `KMEM Ops Board - Local Server` | Local-display opt-in only; hosts `http://localhost:8765/` after sign-in |
+| `KMEM Ops Board - Display` | Local-display opt-in only; opens Edge in kiosk mode after sign-in |
 
-The tasks run as the signed-in Windows user. Keep that user signed in so GitHub credentials and the display session are available.
+The tasks run as the signed-in Windows user. Keep that user signed in so its
+GitHub credentials remain available.
 
-To install the server and updater without automatically opening Edge:
+For the raw PowerShell equivalent of the local-display opt-in, run:
 
 ```powershell
-.\install_display_tasks.ps1 -SkipDisplayLaunch
+.\install_display_tasks.ps1 -EnableLocalDisplay
 ```
 
 ## 9. Final display setup
 
-1. Restart the laptop.
-2. Sign in to the Windows account used during setup.
-3. Wait about 20 seconds.
-4. Confirm Edge opens the local board full-screen.
-5. Press `F11` if normal browser full screen is preferred over kiosk mode.
-6. Press `Alt+F4` to exit the kiosk display.
+1. Sign in to the same Windows account used during setup and leave it signed in.
+2. Confirm `KMEM Ops Board - Weather Update` is enabled in Task Scheduler.
+3. Open `https://btenner1013.github.io/kmem-ops-board/` in a current browser.
+4. Bookmark the hosted URL or use normal browser full-screen mode as desired.
 
-Useful local URLs:
+If `--local-display` was explicitly selected, restart or sign in again, wait
+about 20 seconds, and confirm Edge opens the localhost board full-screen. Press
+`F11` if normal browser full screen is preferred over kiosk mode and `Alt+F4` to
+exit it.
+
+The local server is still available without installing local-display tasks. Run
+`run_kmem_server.bat` manually, leave its console open, and use:
 
 ```text
 http://localhost:8765/
@@ -174,11 +223,18 @@ http://localhost:8765/control.html
 
 ### The board does not open
 
-Run `run_kmem_server.bat` manually. If `py` is not recognized, reinstall Python with the launcher and PATH options enabled.
+For the default mode, open
+`https://btenner1013.github.io/kmem-ops-board/` and verify internet access. For
+an optional local session, run `run_kmem_server.bat` manually. If `py` is not
+recognized, reinstall Python with the launcher and PATH options enabled.
 
 ### The board opens but data does not refresh
 
-Run `run_kmem_update.bat PRIMARY`, then inspect `%LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log`. Also confirm internet access and `gh auth status`.
+Run `run_kmem_update.bat PRIMARY`, then inspect both
+`%LOCALAPPDATA%\KMEMOpsBoard\logs\updater.log` and
+`%LOCALAPPDATA%\KMEMOpsBoard\logs\scheduled-updater.log`. Also confirm internet
+access and run `gh auth status` as the same signed-in Windows account used to
+install the task.
 
 ### FAA NOTAM data is missing
 
@@ -197,13 +253,15 @@ Open **Task Scheduler Library**, select the corresponding `KMEM Ops Board` task,
 
 ### The folder was moved
 
-Inspect and remove or disable the old tasks deliberately, then run
-`install_display_tasks.ps1` from the new location. The installer will not
-silently replace old task paths.
+Restore the original installed path first, or deliberately inspect and remove
+the old KMEM task before installing from the new location. The installer treats
+an action that targets a different checkout as ambiguous and will stop instead
+of deleting it.
 
 ## Security notes
 
 - The FAA client secret stays only in `nms_credentials_local.bat`.
 - GitHub credentials are stored by GitHub CLI/Windows Credential Manager, not in this folder.
-- The local web server listens only on `127.0.0.1`, so other computers on the network cannot browse it.
+- When started manually or through `--local-display`, the local web server listens
+  only on `127.0.0.1`, so other computers on the network cannot browse it.
 - Do not copy local updater logs when they may contain operational troubleshooting data.

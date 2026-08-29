@@ -78,6 +78,13 @@ class GitRunnerHardeningTests(unittest.TestCase):
         self.assertEqual(kwargs["env"]["CUSTOM_VALUE"], "preserved")
         self.assertEqual(kwargs["env"]["GIT_TERMINAL_PROMPT"], "0")
         self.assertEqual(kwargs["env"]["GCM_INTERACTIVE"], "Never")
+        if os.name == "nt":
+            self.assertEqual(
+                kwargs["creationflags"] & subprocess.CREATE_NO_WINDOW,
+                subprocess.CREATE_NO_WINDOW,
+            )
+        else:
+            self.assertNotIn("creationflags", kwargs)
 
     def test_timeout_has_stable_checked_and_unchecked_results(self):
         def timeout_runner(command, *, cwd, env=None):

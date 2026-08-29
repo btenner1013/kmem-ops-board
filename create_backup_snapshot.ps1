@@ -389,6 +389,8 @@ try {
         "kmem_updater.py",
         "updater_git.py",
         "run_kmem_update.bat",
+        "run_kmem_update_hidden.vbs",
+        "run_kmem_update_hidden.ps1",
         "run_kmem_daemon.bat",
         "run_kmem_server.bat",
         "launch_kmem_display.bat",

@@ -221,6 +221,7 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
                 stderr=subprocess.DEVNULL,
                 check=False,
                 timeout=15,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
         except (OSError, subprocess.TimeoutExpired):
             pass
@@ -238,6 +239,7 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
                         stderr=subprocess.DEVNULL,
                         check=False,
                         timeout=5,
+                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                     )
                 except (OSError, subprocess.TimeoutExpired):
                     pass
@@ -269,7 +271,10 @@ def run_bounded_process(
         "stderr": subprocess.PIPE if capture_output else None,
     }
     if os.name == "nt":
-        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        kwargs["creationflags"] = (
+            subprocess.CREATE_NEW_PROCESS_GROUP
+            | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        )
     else:
         kwargs["start_new_session"] = True
     process = subprocess.Popen(command, **kwargs)

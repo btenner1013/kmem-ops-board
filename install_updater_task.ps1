@@ -13,9 +13,13 @@ param(
 $ErrorActionPreference = "Stop"
 $projectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $updateBat = Join-Path $projectDir "run_kmem_update.bat"
+$hiddenUpdateVbs = Join-Path $projectDir "run_kmem_update_hidden.vbs"
+$hiddenUpdatePowerShell = Join-Path $projectDir "run_kmem_update_hidden.ps1"
 
-if (-not (Test-Path -LiteralPath $updateBat -PathType Leaf)) {
-    throw "Required updater entrypoint is missing: run_kmem_update.bat"
+foreach ($requiredFile in @($updateBat, $hiddenUpdateVbs, $hiddenUpdatePowerShell)) {
+    if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
+        throw "Required updater entrypoint is missing: $requiredFile"
+    }
 }
 if (-not (Get-Command py.exe -ErrorAction SilentlyContinue)) {
     throw "Python Launcher was not found. Install Python 3 before installing the updater task."
@@ -32,8 +36,12 @@ $updaterTasks = @(
     Get-ScheduledTask | Where-Object {
         $task = $_
         @($task.Actions) | Where-Object {
-            $combined = "{0} {1}" -f $_.Execute, $_.Arguments
-            $combined -match '(?i)(run_kmem_update\.bat|update_weather_local\.py|kmem_updater\.py)'
+            $executeProperty = $_.PSObject.Properties["Execute"]
+            $argumentsProperty = $_.PSObject.Properties["Arguments"]
+            $executeText = if ($null -ne $executeProperty) { [string]$executeProperty.Value } else { "" }
+            $argumentsText = if ($null -ne $argumentsProperty) { [string]$argumentsProperty.Value } else { "" }
+            $combined = "{0} {1}" -f $executeText, $argumentsText
+            $combined -match '(?i)(run_kmem_update_hidden\.(?:vbs|ps1)|run_kmem_update\.bat|update_weather_local\.py|kmem_updater\.py)'
         }
     }
 )
@@ -43,13 +51,15 @@ if ($updaterTasks.Count -gt 0) {
     $updaterTasks | ForEach-Object {
         Write-Host ("  {0} [{1}]" -f $_.TaskName, $_.State) -ForegroundColor Yellow
     }
-    $otherTasks = @($updaterTasks | Where-Object { $_.TaskName -ne $TaskName })
+    $otherTasks = @($updaterTasks | Where-Object {
+        -not ($_.TaskName -eq $TaskName -and $_.TaskPath -eq "\")
+    })
     if ($otherTasks.Count -gt 0 -and -not $AcknowledgeExistingUpdaterTasks) {
         throw "Another updater task already exists. Inspect it first, then rerun with -AcknowledgeExistingUpdaterTasks only if coexistence is intentional."
     }
 }
 
-$existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+$existing = Get-ScheduledTask -TaskName $TaskName -TaskPath "\" -ErrorAction SilentlyContinue
 if ($existing -and -not $ReplaceExisting) {
     throw "Task '$TaskName' already exists. No changes were made. Use -ReplaceExisting only after inspecting it."
 }
@@ -68,8 +78,12 @@ $settings = New-ScheduledTaskSettingsSet `
     -RestartCount 2 `
     -RestartInterval (New-TimeSpan -Minutes 2)
 
-$arguments = "/d /c `"`"$updateBat`" $Role`""
-$action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument $arguments -WorkingDirectory $projectDir
+$wscriptPath = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::System)) "wscript.exe"
+if (-not (Test-Path -LiteralPath $wscriptPath -PathType Leaf)) {
+    throw "Windows Script Host was not found: $wscriptPath"
+}
+$arguments = "//B //NoLogo `"$hiddenUpdateVbs`" $Role"
+$action = New-ScheduledTaskAction -Execute $wscriptPath -Argument $arguments -WorkingDirectory $projectDir
 $trigger = New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(1)) `
     -RepetitionInterval (New-TimeSpan -Minutes 10)
 $description = if ($Role -eq "PRIMARY") {
@@ -80,6 +94,7 @@ $description = if ($Role -eq "PRIMARY") {
 
 $registration = @{
     TaskName   = $TaskName
+    TaskPath   = "\"
     Action     = $action
     Trigger    = $trigger
     Principal  = $principal
@@ -92,11 +107,12 @@ if ($ReplaceExisting) {
 Register-ScheduledTask @registration | Out-Null
 
 if ($StartNow) {
-    Start-ScheduledTask -TaskName $TaskName
+    Start-ScheduledTask -TaskName $TaskName -TaskPath "\"
 }
 
 Write-Host "Installed '$TaskName'." -ForegroundColor Green
 Write-Host "Role: $Role"
 Write-Host "Cadence: 10 minutes"
 Write-Host "Overlap policy: IgnoreNew"
+Write-Host "Scheduled launcher: hidden/background"
 Write-Host "Working directory: $projectDir"
