@@ -4,6 +4,8 @@
 import ast
 import inspect
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -135,6 +137,11 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("Unregister-ScheduledTask", script)
         self.assertIn("Test-ExactEntrypointToken", script)
         self.assertIn("Get-SemanticEntrypoints", script)
+        self.assertIn("$executeName = [IO.Path]::GetFileName($executeText)", script)
+        self.assertIn("[IO.File]::Exists($executeText)", script)
+        self.assertIn("$isDevicePath -or $isUncPath", script)
+        self.assertIn("[IO.DriveType]::Network", script)
+        self.assertIn("Treat it as unrecognized", script)
         self.assertIn('"run_kmem_server.ps1"', script)
         self.assertIn('-(?:Command|EncodedCommand)\\b', script)
         self.assertIn("(?i)^\\s*", script)
@@ -166,6 +173,38 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("KMEM Ops Board Maintainer", script)
         self.assertIn("http://127.0.0.1:8765/", script)
         self.assertIn("<title>\\s*KMEM Ops Board", script)
+
+    @unittest.skipUnless(os.name == "nt", "PowerShell classifier test is Windows-only")
+    def test_primary_task_classifier_regressions(self):
+        powershell = (
+            Path(os.environ["SystemRoot"])
+            / "System32"
+            / "WindowsPowerShell"
+            / "v1.0"
+            / "powershell.exe"
+        )
+        completed = subprocess.run(
+            [
+                str(powershell),
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(REPO_DIR / "test_primary_task_classifier.ps1"),
+            ],
+            cwd=REPO_DIR,
+            text=True,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}",
+        )
+        self.assertIn("PRIMARY TASK CLASSIFIER TESTS:", completed.stdout)
 
     def test_ready_package_metadata_is_ignored_and_task_cadence_is_unchanged(self):
         ignore = (REPO_DIR / ".gitignore").read_text(encoding="utf-8")

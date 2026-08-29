@@ -228,7 +228,61 @@ function Test-CommandStartsWithEntrypoint([string]$CommandText, [string]$Entrypo
 }
 
 function Get-SemanticEntrypoints($Action) {
-    $executeName = [IO.Path]::GetFileName([string]$Action.Execute)
+    try {
+        $executeText = [string]$Action.Execute
+        if ([string]::IsNullOrWhiteSpace($executeText)) {
+            return @()
+        }
+        if ($executeText.Length -ge 2 -and $executeText.StartsWith('"') -and $executeText.EndsWith('"')) {
+            $executeText = $executeText.Substring(1, $executeText.Length - 2)
+        }
+        $isBareName = $executeText -match '^[A-Za-z0-9._-]+$'
+        $isDrivePath = $executeText -match '^[A-Za-z]:[\\/]'
+        $isUncPath = $executeText -match '^\\\\[^\\/]+[\\/][^\\/]+[\\/]'
+        $isDevicePath = $executeText -match '^\\\\[.?][\\/]'
+        if ($isDevicePath -or $isUncPath -or -not ($isBareName -or $isDrivePath)) {
+            return @()
+        }
+        if (
+            -not $isBareName -and (
+                $executeText -match '[\x00-\x1F"<>|?*&,;^]' -or
+                $executeText -match '\s[\\/]' -or
+                $executeText -match '\s[-/][A-Za-z]' -or
+                $executeText.Substring(2).Contains(':')
+            )
+        ) {
+            return @()
+        }
+        $executeName = [IO.Path]::GetFileName($executeText)
+        if ($executeName -notmatch '^[A-Za-z0-9._-]+$') {
+            return @()
+        }
+        $isSemanticExecuteName = (
+            $knownEntrypointNames -icontains $executeName -or
+            $executeName -in @(
+                "cmd.exe", "cmd",
+                "powershell.exe", "powershell", "pwsh.exe", "pwsh",
+                "py.exe", "py", "python.exe", "python", "python3.exe", "python3"
+            )
+        )
+        if (-not $isSemanticExecuteName) {
+            return @()
+        }
+        if (-not $isBareName) {
+            # A rooted Execute value can still be arbitrary command text. Only
+            # an existing leaf on a non-network drive is accepted as a direct
+            # filesystem action; unrelated paths never cause filesystem I/O.
+            $driveRoot = [IO.Path]::GetPathRoot($executeText)
+            $driveInfo = [IO.DriveInfo]::new($driveRoot)
+            if ($driveInfo.DriveType -eq [IO.DriveType]::Network -or -not [IO.File]::Exists($executeText)) {
+                return @()
+            }
+        }
+    } catch {
+        # Unrelated system/vendor tasks can expose non-filesystem Execute data.
+        # Treat it as unrecognized instead of aborting the all-task inventory.
+        return @()
+    }
     $arguments = [string]$Action.Arguments
     if ($arguments -match '[&|<>^!%]') {
         return @()
