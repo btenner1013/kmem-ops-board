@@ -267,6 +267,8 @@ def run_bounded_process(
         "cwd": str(cwd) if cwd is not None else None,
         "env": env,
         "text": True,
+        "encoding": "utf-8",
+        "errors": "backslashreplace",
         "stdout": subprocess.PIPE if capture_output else None,
         "stderr": subprocess.PIPE if capture_output else None,
     }

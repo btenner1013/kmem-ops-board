@@ -1059,6 +1059,33 @@ class LocalLockTests(unittest.TestCase):
             recovered.acquire()
             recovered.release()
 
+    def test_bounded_process_preserves_invalid_byte_diagnostics_without_reader_thread_failure(self):
+        script = (
+            "import os; "
+            "os.write(1, b'WIND: \\xe2\\x86\\x90 INVALID: \\x90\\n'); "
+            "os.write(2, b'WARNING: \\xff\\n'); "
+            "raise SystemExit(23)"
+        )
+        reader_failures = []
+
+        with mock.patch("threading.excepthook", side_effect=reader_failures.append):
+            result = run_bounded_process(
+                [sys.executable, "-c", script],
+                timeout=5,
+                capture_output=True,
+            )
+
+        self.assertEqual(reader_failures, [])
+        self.assertEqual(result.returncode, 23)
+        self.assertEqual(result.stdout, "WIND: ← INVALID: \\x90\n")
+        self.assertEqual(result.stderr, "WARNING: \\xff\n")
+
+        with self.assertLogs("kmem-updater", level="INFO") as captured:
+            _log_generator_output(result, {})
+        combined = "\n".join(captured.output)
+        self.assertIn("GENERATOR STDOUT WIND: ← INVALID: \\x90", combined)
+        self.assertIn("GENERATOR STDERR WARNING: \\xff", combined)
+
     @unittest.skipUnless(os.name == "nt", "Windows no-window process contract")
     def test_bounded_process_combines_process_group_and_no_window_flags(self):
         process = mock.Mock()
