@@ -284,11 +284,12 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .bwc-moderate{color:var(--warning)}
 .bwc-severe{color:var(--closed);animation:blink 1s step-start infinite}
 
-.bwc-stamp{ display:inline-block; font-size:1em; font-weight:900; opacity:0.98; white-space:nowrap; line-height:1; margin-left:6px; text-align:center !important;}
+.ops-box.bwc-ops-box{min-height:clamp(54px,7.1vh,78px)!important}
+.bwc-stamp{ display:block; max-width:100%; font-size:.82em; font-weight:900; opacity:0.98; white-space:nowrap; line-height:1; margin:1px 0 0; text-align:center !important;}
 .bwc-stamp::before{content:"("}
 .bwc-stamp::after{content:")"}
-.bwc-stamp-source,.bwc-age{display:inline}
-.bwc-age:not([hidden])::before{content:" · "}
+.bwc-stamp-source{display:inline}
+.bwc-age{display:block;max-width:100%;margin-top:2px;font-size:clamp(.58rem,1.05vh,1.1rem);font-weight:900;line-height:1.05;white-space:normal;overflow:visible;overflow-wrap:anywhere;text-align:center!important}
 .bwc-age[hidden]{display:none!important}
 .bwc-age-last-known,.bwc-age-stale{color:var(--warning)!important}
 .bwc-stamp-none{color:var(--ops-green)}
@@ -436,7 +437,7 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
   .flight-category{ font-size:clamp(2rem,3.25vw,3.6rem); }
   .atis-letter{ font-size:clamp(1.35rem,2.0vw,2.5rem); }
   .raw{ font-size:clamp(.88rem,.98vw,1.15rem); line-height:1.32; }
-  .bwc-stamp{ display:block !important; max-width:100% !important; margin:1px 0 0 0 !important; font-size:.70em !important; line-height:1.05 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  .bwc-stamp{ display:block !important; max-width:100% !important; margin:1px 0 0 0 !important; font-size:clamp(.56rem,.78vw,.68rem) !important; line-height:1.05 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   #bwc{ font-size:clamp(.88rem,1.55vw,1.08rem) !important; line-height:1.02 !important; }
 }
 
@@ -624,6 +625,7 @@ body.getac-preset .details-grid{grid-template-columns:repeat(4,1fr) !important;g
 body.getac-preset .ops-grid{grid-template-columns:repeat(3,1fr) !important;gap:3px !important;margin-bottom:3px !important}
 body.getac-preset .status-grid{gap:3px !important;margin-bottom:3px !important}
 body.getac-preset .detail-box, body.getac-preset .ops-box, body.getac-preset .trend-box{min-height:27px !important;padding:3px 4px !important}
+body.getac-preset .bwc-ops-box{min-height:54px !important}
 body.getac-preset .radar-panel{min-height:0 !important;overflow:hidden !important}
 body.getac-preset .radarimg{ width:100% !important; height:100% !important; min-height:0 !important; object-fit:contain !important; object-position:center center !important; }
 body.getac-preset .mil-notam-panel{ display:grid !important; grid-template-columns:minmax(126px,18%) 1fr !important; min-height:0 !important; height:100% !important; padding:5px 7px !important; column-gap:7px !important; overflow:hidden !important; }
@@ -842,8 +844,8 @@ body.getac-preset .board-qr-label-phase66 { display: block !important; }
   .bwc-stamp-source{display:block!important}
   .bwc-stamp-source::before{content:"("}
   .bwc-stamp-source::after{content:")"}
-  .bwc-age:not([hidden]){display:block!important;margin-top:1px}
-  .bwc-age:not([hidden])::before{content:none!important}
+  .ops-box.bwc-ops-box{min-height:54px!important}
+  .bwc-age:not([hidden]){display:block!important;margin-top:2px}
   .wind-compact-final{ font-size:clamp(.88rem,4vw,1.05rem) !important; }
   #tafTrend.wx-alert-compact,.wx-alert-compact{ white-space:normal !important; overflow:visible !important; }
 
@@ -1006,7 +1008,15 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
         <section id="bwcHistoryLastChange" class="bwc-history-summary-card" aria-label="Last confirmed BWC change"></section>
       </div>
       <section class="bwc-history-chart-shell" aria-labelledby="bwcHistoryChartHeading">
-        <h3 id="bwcHistoryChartHeading" class="bwc-history-chart-heading">ROLLING UTC HISTORY</h3>
+        <div class="bwc-history-chart-toolbar">
+          <h3 id="bwcHistoryChartHeading" class="bwc-history-chart-heading">ROLLING UTC HISTORY</h3>
+          <div class="bwc-history-zoom-controls" role="group" aria-label="BWC history time-axis zoom">
+            <button id="bwcHistoryZoomOut" class="bwc-history-zoom-button" type="button" aria-label="Zoom out BWC history time axis" aria-controls="bwcHistoryChart" disabled>&minus;</button>
+            <button id="bwcHistoryZoomIn" class="bwc-history-zoom-button" type="button" aria-label="Zoom in BWC history time axis" aria-controls="bwcHistoryChart" disabled>+</button>
+            <button id="bwcHistoryZoomReset" class="bwc-history-zoom-button bwc-history-zoom-reset" type="button" aria-controls="bwcHistoryChart" disabled>RESET</button>
+          </div>
+          <span id="bwcHistoryZoomStatus" class="bwc-history-zoom-status">FULL RANGE</span>
+        </div>
         <div id="bwcHistoryChart" class="bwc-history-chart">
           <div id="bwcHistoryTooltip" class="bwc-history-tooltip" hidden></div>
         </div>
@@ -1156,9 +1166,10 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
           <div class="ops-label">LIGHTNING</div>
           <div id="lightning" class="ops-value lightning-none">NONE</div>
         </div>
-        <div class="ops-box">
+        <div class="ops-box bwc-ops-box">
           <div id="bwcLabel" class="ops-label">BWC</div>
-          <div id="bwc" class="ops-value bwc-pending">PENDING</div>
+          <div id="bwc" class="ops-value bwc-pending" aria-describedby="bwcAge">PENDING</div>
+          <div id="bwcAge" class="bwc-age bwc-stamp-pending" hidden></div>
         </div>
         <div class="ops-box">
           <div class="ops-label">RSC/RCR</div>
@@ -1811,6 +1822,7 @@ function formatAhasBwcDateTime(value){
 function setBwcDisplay(value,data){
   const labelEl=document.getElementById("bwcLabel");
   const el=document.getElementById("bwc");
+  const ageEl=document.getElementById("bwcAge");
   const bwc=(value||"PENDING").toUpperCase();
   const ahasDateTime=formatAhasBwcDateTime(data?.bwcUpdatedZ||"");
 
@@ -1825,6 +1837,7 @@ function setBwcDisplay(value,data){
 
   el.classList.add(bwcClass);
   el.textContent=bwc;
+  if(ageEl)ageEl.className=`bwc-age ${stampClass}`;
 
   if(labelEl){
     labelEl.textContent="BWC";
@@ -1834,11 +1847,7 @@ function setBwcDisplay(value,data){
       const source=document.createElement("span");
       source.className="bwc-stamp-source";
       source.textContent=`AHAS ${ahasDateTime}`;
-      const age=document.createElement("span");
-      age.id="bwcAge";
-      age.className="bwc-age";
-      age.hidden=true;
-      stamp.append(source,age);
+      stamp.append(source);
       labelEl.appendChild(stamp);
     }
   }

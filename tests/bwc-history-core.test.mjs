@@ -3,20 +3,28 @@ import assert from "node:assert/strict";
 
 import {
   BWC_HISTORY_SCHEMA_VERSION,
+  BWC_MIN_VISIBLE_DURATION_MS,
   BWC_RANGE_DURATIONS_MS,
   BWC_RANGES,
+  BWC_UTC_TICK_INTERVALS_MS,
   buildBwcTimeline,
   buildStepPaths,
   calculateBwcAge,
   calculateBwcStatistics,
   countSevereEpisodes,
+  createBwcTimeDomain,
   describeArchiveAvailability,
   findLastConfirmedChange,
+  formatBwcUtcTickLabel,
   formatBwcMemphisTime,
   formatBwcZuluTime,
   getBwcRange,
   normalizeBwcHistory,
+  panBwcTimeDomain,
   parseAhasUtcTimestamp,
+  resetBwcTimeDomain,
+  selectBwcUtcTicks,
+  zoomBwcTimeDomain,
 } from "../bwc-history-core.js";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -463,4 +471,169 @@ test("timeline and chart APIs fail closed on malformed inputs", () => {
   assert.equal(buildStepPaths({}, {}).error.code, "INVALID_TIMELINE");
   const timeline = buildBwcTimeline(history(), customRange("2026-08-30T08:00:00Z", "2026-08-30T09:00:00Z"));
   assert.equal(buildStepPaths(timeline, { width: 20, height: 20, padding: { left: 15, right: 15 } }).error.code, "INVALID_DIMENSIONS");
+});
+
+test("time-domain creation preserves a master range and enforces the 30-minute visible minimum", () => {
+  const master = {
+    startMs: Date.parse("2026-08-30T00:00:00Z"),
+    endMs: Date.parse("2026-08-31T00:00:00Z"),
+  };
+  const masterBefore = structuredClone(master);
+  const full = createBwcTimeDomain(master);
+  assert.equal(full.ok, true);
+  assert.equal(full.durationMs, 24 * HOUR_MS);
+  assert.equal(full.minVisibleDurationMs, BWC_MIN_VISIBLE_DURATION_MS);
+  assert.equal(full.isFullRange, true);
+  assert.equal(full.canZoomOut, false);
+  assert.equal(full.canZoomIn, true);
+
+  const short = createBwcTimeDomain(master, {
+    startMs: Date.parse("2026-08-30T04:00:00Z"),
+    endMs: Date.parse("2026-08-30T04:10:00Z"),
+  });
+  assert.equal(short.durationMs, 30 * 60 * 1000);
+  assert.equal(short.startMs, Date.parse("2026-08-30T03:50:00Z"));
+  assert.equal(short.endMs, Date.parse("2026-08-30T04:20:00Z"));
+  assert.equal(short.isAtMinimumDuration, true);
+  assert.equal(short.canZoomIn, false);
+  assert.deepEqual(master, masterBefore, "domain normalization must not mutate caller state");
+});
+
+test("time-domain creation translates out-of-bounds windows and handles a master shorter than 30 minutes", () => {
+  const master = customRange("2026-08-30T00:00:00Z", "2026-08-31T00:00:00Z");
+  const before = createBwcTimeDomain(master, customRange("2026-08-29T23:00:00Z", "2026-08-30T01:00:00Z"));
+  assert.equal(before.startMs, Date.parse("2026-08-30T00:00:00Z"));
+  assert.equal(before.endMs, Date.parse("2026-08-30T02:00:00Z"));
+  const after = createBwcTimeDomain(master, customRange("2026-08-30T23:00:00Z", "2026-08-31T02:00:00Z"));
+  assert.equal(after.startMs, Date.parse("2026-08-30T21:00:00Z"));
+  assert.equal(after.endMs, Date.parse("2026-08-31T00:00:00Z"));
+
+  const tinyMaster = createBwcTimeDomain(customRange("2026-08-30T12:00:00Z", "2026-08-30T12:20:00Z"));
+  assert.equal(tinyMaster.durationMs, 20 * 60 * 1000);
+  assert.equal(tinyMaster.minVisibleDurationMs, 20 * 60 * 1000);
+  assert.equal(tinyMaster.isFullRange, true);
+  assert.equal(tinyMaster.isAtMinimumDuration, true);
+});
+
+test("zoom keeps the center or cursor anchor stable and uses factor greater than one to zoom in", () => {
+  const master = customRange("2026-08-30T00:00:00Z", "2026-08-31T00:00:00Z");
+  const full = createBwcTimeDomain(master);
+  const centered = zoomBwcTimeDomain(full, 2);
+  assert.equal(centered.startMs, Date.parse("2026-08-30T06:00:00Z"));
+  assert.equal(centered.endMs, Date.parse("2026-08-30T18:00:00Z"));
+
+  const quarter = zoomBwcTimeDomain(full, 2, { ratio: 0.25 });
+  assert.equal(quarter.startMs, Date.parse("2026-08-30T03:00:00Z"));
+  assert.equal(quarter.endMs, Date.parse("2026-08-30T15:00:00Z"));
+
+  const cursorMs = Date.parse("2026-08-30T18:00:00Z");
+  const cursorCentered = zoomBwcTimeDomain(full, 2, { timeMs: cursorMs });
+  assert.equal(cursorCentered.startMs, Date.parse("2026-08-30T09:00:00Z"));
+  assert.equal(cursorCentered.endMs, Date.parse("2026-08-30T21:00:00Z"));
+  assert.equal((cursorMs - cursorCentered.startMs) / cursorCentered.durationMs, 0.75);
+});
+
+test("zoom clamps at 30 minutes, full range, and master boundaries", () => {
+  const master = customRange("2026-08-30T00:00:00Z", "2026-08-31T00:00:00Z");
+  const full = createBwcTimeDomain(master);
+  const maximumZoom = zoomBwcTimeDomain(full, 10_000);
+  assert.equal(maximumZoom.durationMs, 30 * 60 * 1000);
+  assert.equal(maximumZoom.startMs, Date.parse("2026-08-30T11:45:00Z"));
+  assert.equal(maximumZoom.endMs, Date.parse("2026-08-30T12:15:00Z"));
+  assert.equal(maximumZoom.canZoomIn, false);
+  assert.deepEqual(zoomBwcTimeDomain(maximumZoom, 2).visible, maximumZoom.visible);
+
+  const fullyOut = zoomBwcTimeDomain(maximumZoom, 0.00001);
+  assert.equal(fullyOut.isFullRange, true);
+  assert.equal(fullyOut.startMs, full.startMs);
+  assert.equal(fullyOut.endMs, full.endMs);
+
+  const atLeft = createBwcTimeDomain(master, customRange("2026-08-30T00:00:00Z", "2026-08-30T06:00:00Z"));
+  const leftAnchoredOut = zoomBwcTimeDomain(atLeft, 0.5, 0);
+  assert.equal(leftAnchoredOut.startMs, full.startMs);
+  assert.equal(leftAnchoredOut.endMs, Date.parse("2026-08-30T12:00:00Z"));
+});
+
+test("horizontal pan preserves duration and clamps independently at both master boundaries", () => {
+  const master = customRange("2026-08-30T00:00:00Z", "2026-08-31T00:00:00Z");
+  const initial = createBwcTimeDomain(master, customRange("2026-08-30T06:00:00Z", "2026-08-30T18:00:00Z"));
+  const initialBefore = structuredClone(initial);
+  const later = panBwcTimeDomain(initial, 2 * HOUR_MS);
+  assert.equal(later.startMs, Date.parse("2026-08-30T08:00:00Z"));
+  assert.equal(later.endMs, Date.parse("2026-08-30T20:00:00Z"));
+  assert.equal(later.durationMs, initial.durationMs);
+  const rightClamp = panBwcTimeDomain(initial, 100 * HOUR_MS);
+  assert.equal(rightClamp.startMs, Date.parse("2026-08-30T12:00:00Z"));
+  assert.equal(rightClamp.endMs, Date.parse("2026-08-31T00:00:00Z"));
+  assert.equal(rightClamp.canPanForward, false);
+  const leftClamp = panBwcTimeDomain(initial, -100 * HOUR_MS);
+  assert.equal(leftClamp.startMs, Date.parse("2026-08-30T00:00:00Z"));
+  assert.equal(leftClamp.endMs, Date.parse("2026-08-30T12:00:00Z"));
+  assert.equal(leftClamp.canPanBackward, false);
+  assert.deepEqual(initial, initialBefore, "pan must not mutate the previous domain");
+});
+
+test("reset restores the full master range without changing minimum zoom policy", () => {
+  const master = customRange("2026-08-30T00:00:00Z", "2026-08-31T00:00:00Z");
+  const zoomed = zoomBwcTimeDomain(createBwcTimeDomain(master), 8, 0.75);
+  const reset = resetBwcTimeDomain(zoomed);
+  assert.equal(reset.startMs, Date.parse("2026-08-30T00:00:00Z"));
+  assert.equal(reset.endMs, Date.parse("2026-08-31T00:00:00Z"));
+  assert.equal(reset.durationMs, 24 * HOUR_MS);
+  assert.equal(reset.minVisibleDurationMs, 30 * 60 * 1000);
+  assert.equal(reset.isFullRange, true);
+});
+
+test("time-domain primitives reject invalid master, visible, zoom, pan, and anchor inputs", () => {
+  assert.equal(createBwcTimeDomain({}).error.code, "INVALID_MASTER_DOMAIN");
+  assert.equal(
+    createBwcTimeDomain(customRange("2026-08-30T00:00:00Z", "2026-08-31T00:00:00Z"), {}).error.code,
+    "INVALID_VISIBLE_DOMAIN",
+  );
+  const domain = createBwcTimeDomain(customRange("2026-08-30T00:00:00Z", "2026-08-31T00:00:00Z"));
+  assert.equal(zoomBwcTimeDomain(domain, 0).error.code, "INVALID_ZOOM_FACTOR");
+  assert.equal(zoomBwcTimeDomain(domain, 2, "not a time").error.code, "INVALID_ZOOM_ANCHOR");
+  assert.equal(panBwcTimeDomain(domain, Number.NaN).error.code, "INVALID_PAN_DELTA");
+  assert.equal(resetBwcTimeDomain({}).error.code, "INVALID_TIME_DOMAIN");
+});
+
+test("adaptive UTC ticks select standard intervals and deterministic labels from visible duration", () => {
+  const thirtyMinutes = customRange("2026-08-30T02:30:00Z", "2026-08-30T03:00:00Z");
+  const closeTicks = selectBwcUtcTicks(thirtyMinutes, { targetCount: 7 });
+  assert.equal(closeTicks.ok, true);
+  assert.equal(closeTicks.intervalMs, 5 * 60 * 1000);
+  assert.deepEqual(closeTicks.ticks.map((tick) => tick.label), [
+    "0230Z", "0235Z", "0240Z", "0245Z", "0250Z", "0255Z", "0300Z",
+  ]);
+
+  const dayTicks = selectBwcUtcTicks(customRange("2026-08-30T00:00:00Z", "2026-08-31T00:00:00Z"), { targetCount: 5 });
+  assert.equal(dayTicks.intervalMs, 6 * HOUR_MS);
+  assert.equal(dayTicks.ticks[1].label, "30 AUG 0600Z");
+
+  const weekTicks = selectBwcUtcTicks(customRange("2026-08-30T00:00:00Z", "2026-09-06T00:00:00Z"), { targetCount: 5 });
+  assert.equal(weekTicks.intervalMs, 2 * DAY_MS);
+  assert.match(weekTicks.ticks[0].label, /^\d{2} [A-Z]{3}$/);
+
+  const yearTicks = selectBwcUtcTicks(customRange("2025-08-30T00:00:00Z", "2026-08-30T00:00:00Z"), { targetCount: 5 });
+  assert.equal(yearTicks.intervalMs, 90 * DAY_MS);
+  assert.match(yearTicks.ticks[0].label, /^[A-Z]{3} \d{4}$/);
+  assert.equal(BWC_UTC_TICK_INTERVALS_MS.includes(yearTicks.intervalMs), true);
+});
+
+test("pixel-constrained UTC ticks honor minimum spacing and remain epoch-aligned inside the domain", () => {
+  const range = customRange("2026-08-01T05:17:00Z", "2026-08-31T05:17:00Z");
+  const selected = selectBwcUtcTicks(range, { width: 400, minSpacingPx: 100 });
+  assert.equal(selected.targetCount, 5);
+  assert.equal(selected.intervalMs, 10 * DAY_MS);
+  assert.ok(selected.ticks.length >= 2);
+  for (const tick of selected.ticks) {
+    assert.ok(tick.timeMs >= Date.parse(range.startZ));
+    assert.ok(tick.timeMs <= Date.parse(range.endZ));
+    assert.equal(tick.timeMs % selected.intervalMs, 0);
+    assert.equal(tick.timeZ, new Date(tick.timeMs).toISOString());
+  }
+  assert.equal(formatBwcUtcTickLabel("2026-08-30T02:30:00Z", 6 * HOUR_MS), "0230Z");
+  assert.equal(formatBwcUtcTickLabel("2026-08-30T02:30:00Z", 24 * HOUR_MS), "30 AUG 0230Z");
+  assert.equal(formatBwcUtcTickLabel("2026-08-30T02:30:00Z", 30 * DAY_MS), "30 AUG");
+  assert.equal(formatBwcUtcTickLabel("2026-08-30T02:30:00Z", 365 * DAY_MS), "AUG 2026");
 });

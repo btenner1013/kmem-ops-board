@@ -205,13 +205,51 @@ body.bwc-history-open{overflow:hidden!important}
   background:#070908;
 }
 
+.bwc-history-chart-toolbar{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  padding:6px 8px 0 10px;
+}
+
 .bwc-history-chart-heading{
+  flex:1 1 auto;
+  min-width:0;
   margin:0;
-  padding:7px 10px 0;
   color:#aeb9b4;
   font-size:.68rem;
   font-weight:900;
   letter-spacing:.07em;
+}
+
+.bwc-history-zoom-controls{display:flex;align-items:center;gap:4px;flex:0 0 auto}
+.bwc-history-zoom-button{
+  min-width:34px;
+  min-height:30px;
+  padding:3px 8px;
+  border:1px solid rgba(0,255,136,.48);
+  border-radius:4px;
+  background:#0b1310;
+  color:#d9e6df;
+  font:900 .82rem Arial,sans-serif;
+  line-height:1;
+  cursor:pointer;
+}
+.bwc-history-zoom-button:hover:not(:disabled),
+.bwc-history-zoom-button:focus-visible{border-color:var(--ops-green,#00ff88);background:#10271d;color:#fff;outline:none}
+.bwc-history-zoom-button:disabled{border-color:rgba(255,255,255,.14);color:#66716c;background:#080a09;cursor:default}
+.bwc-history-zoom-reset{min-width:54px;font-size:.62rem;letter-spacing:.045em}
+body.getac-preset .bwc-history-zoom-button{min-width:40px;min-height:40px}
+body.getac-preset .bwc-history-zoom-reset{min-width:62px}
+.bwc-history-zoom-status{
+  flex:0 0 auto;
+  min-width:68px;
+  color:#7f8c85;
+  font:800 .57rem Consolas,"Courier New",monospace;
+  letter-spacing:.035em;
+  text-align:right;
+  white-space:nowrap;
 }
 
 .bwc-history-chart{
@@ -219,8 +257,9 @@ body.bwc-history-open{overflow:hidden!important}
   min-width:0;
   min-height:230px;
   overflow:hidden;
-  touch-action:manipulation;
+  touch-action:pan-y;
 }
+.bwc-history-chart.bwc-history-panning{cursor:grabbing;user-select:none}
 
 .bwc-history-svg{display:block;width:100%;height:auto;min-height:230px}
 .bwc-history-plot-background{fill:#0c110f;stroke:rgba(255,255,255,.13)}
@@ -231,12 +270,12 @@ body.bwc-history-open{overflow:hidden!important}
 .bwc-history-axis-moderate{fill:#ffd34d}
 .bwc-history-axis-severe{fill:#ff666d}
 .bwc-history-time-label{fill:#8d9993;font-size:9px}
-.bwc-history-unknown-hatch-line{stroke:rgba(200,209,204,.22);stroke-width:3}
+.bwc-history-unknown-hatch-line{stroke:rgba(200,209,204,.14);stroke-width:2}
 .bwc-history-unknown-band{fill:url(#bwcHistoryUnknownHatch);stroke:none}
 
 .bwc-history-step{
   fill:none;
-  stroke-width:3;
+  stroke-width:2.5;
   stroke-linecap:square;
   stroke-linejoin:miter;
 }
@@ -244,7 +283,13 @@ body.bwc-history-open{overflow:hidden!important}
 .bwc-history-step-low{stroke:#42e36f}
 .bwc-history-step-moderate{stroke:#ffd34d}
 .bwc-history-step-severe{stroke:#ff4d55}
+.bwc-history-transition{stroke-width:1.25;stroke-linecap:butt}
+.bwc-history-transition-low{stroke:#42e36f}
+.bwc-history-transition-moderate{stroke:#ffd34d}
+.bwc-history-transition-severe{stroke:#ff4d55}
 .bwc-history-hit-area{fill:transparent;stroke:none;cursor:crosshair;pointer-events:all}
+.bwc-history-chart-zoomed .bwc-history-hit-area{cursor:grab}
+.bwc-history-panning .bwc-history-hit-area{cursor:grabbing}
 
 .bwc-history-tooltip{
   position:absolute;
@@ -350,6 +395,11 @@ body.bwc-history-open{overflow:hidden!important}
   .bwc-history-details-grid{grid-template-columns:1fr}
   .bwc-history-stats{grid-template-columns:1fr}
   .bwc-history-stat-row:nth-last-child(2){border-bottom:1px dotted rgba(255,255,255,.13)}
+  .bwc-history-chart-toolbar{flex-wrap:wrap;padding:7px 8px 0}
+  .bwc-history-chart-heading{flex-basis:calc(100% - 176px)}
+  .bwc-history-zoom-button{min-width:42px;min-height:42px;padding:5px 10px}
+  .bwc-history-zoom-reset{min-width:62px}
+  .bwc-history-zoom-status{order:3;flex-basis:100%;min-width:0;text-align:right}
   .bwc-history-chart,.bwc-history-svg,.bwc-history-chart-empty{min-height:210px}
 }
 
@@ -365,6 +415,9 @@ body.bwc-history-open{overflow:hidden!important}
   .bwc-history-body{padding:6px 9px 9px}
   .bwc-history-summary{margin-bottom:6px;gap:6px}
   .bwc-history-summary-card{padding:5px 8px}
+  .bwc-history-chart-toolbar{padding-top:4px}
+  .bwc-history-zoom-button{min-width:38px;min-height:38px;padding:3px 8px}
+  .bwc-history-zoom-reset{min-width:60px}
   .bwc-history-chart,.bwc-history-svg,.bwc-history-chart-empty{min-height:170px}
   .bwc-history-details-grid{grid-template-columns:minmax(220px,.8fr) minmax(280px,1.2fr);gap:6px}
 }

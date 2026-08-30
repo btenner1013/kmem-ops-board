@@ -28,6 +28,34 @@ export const BWC_RANGES = Object.freeze([
   Object.freeze({ key: "365d", label: "1 YEAR", durationMs: BWC_RANGE_DURATIONS_MS["365d"] }),
 ]);
 
+export const BWC_MIN_VISIBLE_DURATION_MS = 30 * MINUTE_MS;
+
+export const BWC_UTC_TICK_INTERVALS_MS = Object.freeze([
+  MINUTE_MS,
+  2 * MINUTE_MS,
+  5 * MINUTE_MS,
+  10 * MINUTE_MS,
+  15 * MINUTE_MS,
+  30 * MINUTE_MS,
+  HOUR_MS,
+  2 * HOUR_MS,
+  3 * HOUR_MS,
+  6 * HOUR_MS,
+  12 * HOUR_MS,
+  DAY_MS,
+  2 * DAY_MS,
+  3 * DAY_MS,
+  7 * DAY_MS,
+  10 * DAY_MS,
+  14 * DAY_MS,
+  30 * DAY_MS,
+  60 * DAY_MS,
+  90 * DAY_MS,
+  120 * DAY_MS,
+  180 * DAY_MS,
+  365 * DAY_MS,
+]);
+
 const RANGE_ALIASES = Object.freeze({
   "24": "24h",
   "24h": "24h",
@@ -166,6 +194,256 @@ export function getBwcRange(rangeKey = "24h", nowValue = Date.now()) {
     startMs: nowMs - durationMs,
     endMs: nowMs,
     durationMs,
+  };
+}
+
+function timeRangeBounds(value, prefix = "") {
+  if (!value || typeof value !== "object") return null;
+  const capitalized = prefix ? `${prefix[0].toUpperCase()}${prefix.slice(1)}` : "";
+  const nested = prefix && value[prefix] && typeof value[prefix] === "object" ? value[prefix] : null;
+  const startRaw = nested?.startMs
+    ?? nested?.startZ
+    ?? value[`${prefix}StartMs`]
+    ?? value[`${prefix}StartZ`]
+    ?? value[`${capitalized}StartMs`]
+    ?? value[`${capitalized}StartZ`]
+    ?? (!prefix ? value.startMs ?? value.startZ : undefined);
+  const endRaw = nested?.endMs
+    ?? nested?.endZ
+    ?? value[`${prefix}EndMs`]
+    ?? value[`${prefix}EndZ`]
+    ?? value[`${capitalized}EndMs`]
+    ?? value[`${capitalized}EndZ`]
+    ?? (!prefix ? value.endMs ?? value.endZ : undefined);
+  const startMs = finiteEpoch(startRaw);
+  const endMs = finiteEpoch(endRaw);
+  if (startMs === null || endMs === null || endMs <= startMs) return null;
+  return { startMs, endMs, durationMs: endMs - startMs };
+}
+
+function normalizedTimeDomain(masterBounds, visibleBounds, minVisibleDurationMs) {
+  const masterDurationMs = masterBounds.durationMs;
+  const effectiveMinimumMs = Math.min(masterDurationMs, minVisibleDurationMs);
+  const requestedDurationMs = visibleBounds.endMs - visibleBounds.startMs;
+  const durationMs = Math.min(masterDurationMs, Math.max(effectiveMinimumMs, requestedDurationMs));
+  const requestedCenterMs = visibleBounds.startMs + requestedDurationMs / 2;
+  let startMs = requestedCenterMs - durationMs / 2;
+  let endMs = startMs + durationMs;
+  if (startMs < masterBounds.startMs) {
+    startMs = masterBounds.startMs;
+    endMs = startMs + durationMs;
+  }
+  if (endMs > masterBounds.endMs) {
+    endMs = masterBounds.endMs;
+    startMs = endMs - durationMs;
+  }
+
+  const epsilon = 0.001;
+  const isFullRange = durationMs >= masterDurationMs - epsilon;
+  const isAtMinimumDuration = durationMs <= effectiveMinimumMs + epsilon;
+  return {
+    ok: true,
+    master: {
+      startMs: masterBounds.startMs,
+      endMs: masterBounds.endMs,
+      durationMs: masterDurationMs,
+    },
+    visible: { startMs, endMs, durationMs },
+    masterStartMs: masterBounds.startMs,
+    masterEndMs: masterBounds.endMs,
+    masterDurationMs,
+    visibleStartMs: startMs,
+    visibleEndMs: endMs,
+    startMs,
+    endMs,
+    durationMs,
+    minVisibleDurationMs: effectiveMinimumMs,
+    isFullRange,
+    isAtMinimumDuration,
+    canZoomIn: !isAtMinimumDuration,
+    canZoomOut: !isFullRange,
+    canPanBackward: startMs > masterBounds.startMs + epsilon,
+    canPanForward: endMs < masterBounds.endMs - epsilon,
+  };
+}
+
+/**
+ * Normalize a master UTC range and an optional visible subrange. The visible
+ * domain is expanded to at least 30 minutes and translated inside the master
+ * range without mutating either input object.
+ */
+export function createBwcTimeDomain(masterRange, visibleRange = null, options = {}) {
+  if (masterRange?.ok === false) return masterRange;
+  const masterBounds = timeRangeBounds(masterRange, "master") || timeRangeBounds(masterRange);
+  if (!masterBounds) return resultError("INVALID_MASTER_DOMAIN", "Master time domain is invalid", "masterRange");
+  const visibleBounds = visibleRange
+    ? timeRangeBounds(visibleRange, "visible") || timeRangeBounds(visibleRange)
+    : timeRangeBounds(masterRange, "visible") || timeRangeBounds(masterRange) || masterBounds;
+  if (!visibleBounds) return resultError("INVALID_VISIBLE_DOMAIN", "Visible time domain is invalid", "visibleRange");
+  const requestedMinimumMs = options.minVisibleDurationMs
+    ?? masterRange.minVisibleDurationMs
+    ?? BWC_MIN_VISIBLE_DURATION_MS;
+  const minVisibleDurationMs = Number(requestedMinimumMs);
+  if (!Number.isFinite(minVisibleDurationMs) || minVisibleDurationMs <= 0) {
+    return resultError("INVALID_MINIMUM_DURATION", "Minimum visible duration must be positive", "minVisibleDurationMs");
+  }
+  return normalizedTimeDomain(masterBounds, visibleBounds, minVisibleDurationMs);
+}
+
+function coerceBwcTimeDomain(domain) {
+  if (domain?.ok === false) return domain;
+  const masterBounds = timeRangeBounds(domain, "master") || timeRangeBounds(domain);
+  const visibleBounds = timeRangeBounds(domain, "visible") || timeRangeBounds(domain);
+  if (!masterBounds || !visibleBounds) {
+    return resultError("INVALID_TIME_DOMAIN", "A normalized BWC time domain is required");
+  }
+  return createBwcTimeDomain(masterBounds, visibleBounds, {
+    minVisibleDurationMs: domain.minVisibleDurationMs ?? BWC_MIN_VISIBLE_DURATION_MS,
+  });
+}
+
+function zoomAnchor(domain, anchor) {
+  if (anchor === undefined || anchor === null) {
+    return { ratio: 0.5, timeMs: domain.startMs + domain.durationMs / 2 };
+  }
+  if (typeof anchor === "object" && !(anchor instanceof Date)) {
+    const ratioValue = Number(anchor.ratio);
+    if (Number.isFinite(ratioValue)) {
+      const ratio = Math.max(0, Math.min(1, ratioValue));
+      return { ratio, timeMs: domain.startMs + domain.durationMs * ratio };
+    }
+    anchor = anchor.timeMs ?? anchor.timeZ ?? anchor.timestampMs ?? anchor.timestampZ;
+  }
+  if (typeof anchor === "number" && Number.isFinite(anchor) && anchor >= 0 && anchor <= 1) {
+    return { ratio: anchor, timeMs: domain.startMs + domain.durationMs * anchor };
+  }
+  const anchorMs = finiteEpoch(anchor);
+  if (anchorMs === null) return null;
+  const clampedTimeMs = Math.max(domain.startMs, Math.min(domain.endMs, anchorMs));
+  return {
+    ratio: domain.durationMs > 0 ? (clampedTimeMs - domain.startMs) / domain.durationMs : 0.5,
+    timeMs: clampedTimeMs,
+  };
+}
+
+/**
+ * Zoom a visible domain. factor > 1 zooms in; factor < 1 zooms out. A ratio,
+ * epoch timestamp, or {ratio|timeMs} anchor keeps the cursor position stable
+ * until a master-domain boundary or zoom limit is reached.
+ */
+export function zoomBwcTimeDomain(domainValue, factor, anchor = 0.5) {
+  const domain = coerceBwcTimeDomain(domainValue);
+  if (!domain.ok) return domain;
+  const zoomFactor = Number(factor);
+  if (!Number.isFinite(zoomFactor) || zoomFactor <= 0) {
+    return resultError("INVALID_ZOOM_FACTOR", "Zoom factor must be greater than zero", "factor");
+  }
+  const resolvedAnchor = zoomAnchor(domain, anchor);
+  if (!resolvedAnchor) return resultError("INVALID_ZOOM_ANCHOR", "Zoom anchor is invalid", "anchor");
+  const targetDurationMs = Math.min(
+    domain.masterDurationMs,
+    Math.max(domain.minVisibleDurationMs, domain.durationMs / zoomFactor),
+  );
+  const requestedStartMs = resolvedAnchor.timeMs - resolvedAnchor.ratio * targetDurationMs;
+  return normalizedTimeDomain(
+    domain.master,
+    { startMs: requestedStartMs, endMs: requestedStartMs + targetDurationMs, durationMs: targetDurationMs },
+    domain.minVisibleDurationMs,
+  );
+}
+
+/** Positive delta moves the visible window toward later UTC time. */
+export function panBwcTimeDomain(domainValue, deltaMs) {
+  const domain = coerceBwcTimeDomain(domainValue);
+  if (!domain.ok) return domain;
+  const delta = Number(deltaMs);
+  if (!Number.isFinite(delta)) return resultError("INVALID_PAN_DELTA", "Pan delta must be finite", "deltaMs");
+  return normalizedTimeDomain(
+    domain.master,
+    {
+      startMs: domain.startMs + delta,
+      endMs: domain.endMs + delta,
+      durationMs: domain.durationMs,
+    },
+    domain.minVisibleDurationMs,
+  );
+}
+
+/** Restore the complete master range. */
+export function resetBwcTimeDomain(domainValue) {
+  const domain = coerceBwcTimeDomain(domainValue);
+  if (!domain.ok) return domain;
+  return normalizedTimeDomain(domain.master, domain.master, domain.minVisibleDurationMs);
+}
+
+/** Format one adaptive chart tick in UTC without local-time/DST influence. */
+export function formatBwcUtcTickLabel(value, visibleDurationMs) {
+  const ms = finiteEpoch(value);
+  const durationMs = Number(visibleDurationMs);
+  if (ms === null || !Number.isFinite(durationMs) || durationMs <= 0) return "";
+  const date = new Date(ms);
+  const day = pad2(date.getUTCDate());
+  const month = MONTHS[date.getUTCMonth()];
+  const hourMinute = `${pad2(date.getUTCHours())}${pad2(date.getUTCMinutes())}Z`;
+  if (durationMs <= 6 * HOUR_MS) return hourMinute;
+  if (durationMs <= 48 * HOUR_MS) return `${day} ${month} ${hourMinute}`;
+  if (durationMs <= 90 * DAY_MS) return `${day} ${month}`;
+  return `${month} ${date.getUTCFullYear()}`;
+}
+
+/**
+ * Select epoch-aligned UTC ticks for the visible domain. The nearest standard
+ * interval to the requested density is used, keeping labels deterministic.
+ */
+export function selectBwcUtcTicks(domainOrRange, options = {}) {
+  const visibleBounds = timeRangeBounds(domainOrRange, "visible") || timeRangeBounds(domainOrRange);
+  if (!visibleBounds) return resultError("INVALID_TICK_DOMAIN", "Tick time domain is invalid");
+  const width = Number(options.width);
+  const minSpacingPx = Number(options.minSpacingPx);
+  let targetCount = Number(options.targetCount);
+  let spacingConstrained = false;
+  if ((!Number.isFinite(targetCount) || targetCount < 2)
+      && Number.isFinite(width) && width > 0 && Number.isFinite(minSpacingPx) && minSpacingPx > 0) {
+    targetCount = Math.floor(width / minSpacingPx) + 1;
+    spacingConstrained = true;
+  }
+  if (!Number.isFinite(targetCount) || targetCount < 2) targetCount = 5;
+  targetCount = Math.max(2, Math.min(20, Math.floor(targetCount)));
+
+  const desiredIntervalMs = visibleBounds.durationMs / Math.max(1, targetCount - 1);
+  const largestTickIntervalMs = BWC_UTC_TICK_INTERVALS_MS[BWC_UTC_TICK_INTERVALS_MS.length - 1];
+  let intervalMs = largestTickIntervalMs;
+  if (spacingConstrained) {
+    intervalMs = BWC_UTC_TICK_INTERVALS_MS.find((candidate) => candidate >= desiredIntervalMs)
+      ?? largestTickIntervalMs;
+  } else {
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const candidate of BWC_UTC_TICK_INTERVALS_MS) {
+      const distance = Math.abs(Math.log(candidate / desiredIntervalMs));
+      if (distance < bestDistance || (distance === bestDistance && candidate > intervalMs)) {
+        intervalMs = candidate;
+        bestDistance = distance;
+      }
+    }
+  }
+
+  const ticks = [];
+  const firstTickMs = Math.ceil(visibleBounds.startMs / intervalMs) * intervalMs;
+  for (let timeMs = firstTickMs; timeMs <= visibleBounds.endMs && ticks.length < 1000; timeMs += intervalMs) {
+    ticks.push({
+      timeMs,
+      timeZ: canonicalIso(timeMs),
+      label: formatBwcUtcTickLabel(timeMs, visibleBounds.durationMs),
+    });
+  }
+  return {
+    ok: true,
+    startMs: visibleBounds.startMs,
+    endMs: visibleBounds.endMs,
+    durationMs: visibleBounds.durationMs,
+    targetCount,
+    intervalMs,
+    ticks,
   };
 }
 
@@ -821,9 +1099,17 @@ if (typeof window !== "undefined") {
     BWC_STATES,
     BWC_RANGE_DURATIONS_MS,
     BWC_RANGES,
+    BWC_MIN_VISIBLE_DURATION_MS,
+    BWC_UTC_TICK_INTERVALS_MS,
     parseAhasUtcTimestamp,
     calculateBwcAge,
     getBwcRange,
+    createBwcTimeDomain,
+    zoomBwcTimeDomain,
+    panBwcTimeDomain,
+    resetBwcTimeDomain,
+    formatBwcUtcTickLabel,
+    selectBwcUtcTicks,
     normalizeBwcHistory,
     buildBwcTimeline,
     calculateBwcStatistics,

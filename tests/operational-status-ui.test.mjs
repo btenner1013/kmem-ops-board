@@ -243,8 +243,14 @@ test("live BWC keeps source time visible and delegates age updates to the board 
 
   assert.match(clockSource, /window\.kmemUpdateBwcAge\?\.\(\)/);
   assert.match(bwcSource, /className="bwc-stamp-source"/);
-  assert.match(bwcSource, /age\.id="bwcAge"/);
+  assert.match(indexHtml, /id="bwc"[^>]*>PENDING<\/div>\s*<div id="bwcAge" class="bwc-age bwc-stamp-pending" hidden><\/div>/);
+  assert.match(bwcSource, /getElementById\("bwcAge"\)/);
+  assert.doesNotMatch(bwcSource, /stamp\.append\(source,age\)/);
+  assert.match(bwcSource, /stamp\.append\(source\)/);
   assert.match(bwcSource, /window\.kmemUpdateBwcAge\?\.\(true\)/);
   assert.doesNotMatch(indexHtml, /\.bwc-stamp\{ display:none !important; \}/);
-  assert.match(indexHtml, /\.bwc-age/);
+  assert.match(indexHtml, /\.bwc-age\{display:block;[^}]*font-size:clamp\(/);
+  assert.match(indexHtml, /\.bwc-age\{[^}]*white-space:normal;[^}]*overflow:visible;[^}]*overflow-wrap:anywhere/);
+  assert.doesNotMatch(indexHtml, /\.bwc-age\{[^}]*white-space:nowrap;[^}]*overflow:hidden/);
+  assert.match(indexHtml, /\.ops-box\.bwc-ops-box\{min-height:[^}]*!important/);
 });
