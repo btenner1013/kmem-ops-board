@@ -176,6 +176,7 @@ class BwcHistoryMergeTests(unittest.TestCase):
                     "startZ": "2026-08-30T02:30:00Z",
                     "firstObservedZ": "2026-08-30T02:30:00Z",
                     "lastObservedZ": "2026-08-30T02:30:00Z",
+                    "observationsZ": ["2026-08-30T02:30:00Z"],
                     "firstRecordedZ": "2026-08-30T03:00:00Z",
                     "lastRecordedZ": "2026-08-30T03:00:00Z",
                     "confirmationCount": 1,
@@ -306,6 +307,7 @@ class BwcHistoryMergeTests(unittest.TestCase):
         self.assertEqual(unknown["reason"], "SOURCE_NO_DATA")
         self.assertEqual(unknown["startZ"], "2026-08-30T02:36:00Z")
         self.assertEqual(unknown["endZ"], "")
+        self.assertNotIn("observationsZ", unknown)
         self.assertNotIn("NONE", json.dumps(result.archive))
 
     def test_identical_source_observation_is_a_no_change_duplicate(self):
@@ -329,6 +331,86 @@ class BwcHistoryMergeTests(unittest.TestCase):
         self.assertEqual(result.extended, 1)
         self.assertEqual(result.archive["runs"][0]["lastObservedZ"], "2026-08-30T02:36:00Z")
         self.assertEqual(result.archive["runs"][0]["confirmationCount"], 2)
+        self.assertEqual(
+            result.archive["runs"][0]["observationsZ"],
+            ["2026-08-30T02:30:00Z", "2026-08-30T02:36:00Z"],
+        )
+
+    def test_legacy_state_run_upgrades_using_only_exact_stored_endpoints(self):
+        existing = first_archive()
+        existing = history.merge_bwc_history(
+            existing,
+            direct_candidate(observed="2026-08-30 02:36:00.000"),
+            now_z=datetime(2026, 8, 30, 2, 37, tzinfo=UTC),
+        ).archive
+        existing = history.merge_bwc_history(
+            existing,
+            direct_candidate(observed="2026-08-30 02:42:00.000"),
+            now_z=datetime(2026, 8, 30, 2, 43, tzinfo=UTC),
+        ).archive
+        del existing["runs"][0]["observationsZ"]
+
+        result = history.merge_bwc_history(existing, None, now_z=NOW)
+        run = result.archive["runs"][0]
+
+        self.assertTrue(result.changed)
+        self.assertEqual(run["confirmationCount"], 3)
+        self.assertEqual(
+            run["observationsZ"],
+            ["2026-08-30T02:30:00Z", "2026-08-30T02:42:00Z"],
+        )
+        self.assertNotIn("2026-08-30T02:36:00Z", run["observationsZ"])
+
+    def test_upgraded_legacy_run_appends_future_exact_observations(self):
+        existing = first_archive()
+        del existing["runs"][0]["observationsZ"]
+
+        result = history.merge_bwc_history(
+            existing,
+            direct_candidate(observed="2026-08-30 02:36:00.000"),
+            now_z=NOW,
+        )
+
+        self.assertEqual(result.extended, 1)
+        self.assertEqual(
+            result.archive["runs"][0]["observationsZ"],
+            ["2026-08-30T02:30:00Z", "2026-08-30T02:36:00Z"],
+        )
+
+    def test_legacy_upgrade_does_not_reject_previously_valid_aggregate_count(self):
+        existing = first_archive()
+        run = existing["runs"][0]
+        del run["observationsZ"]
+        run["lastObservedZ"] = "2026-08-30T02:36:00Z"
+        run["lastRecordedZ"] = "2026-08-30T02:37:00Z"
+        existing["archiveUpdatedZ"] = "2026-08-30T02:37:00Z"
+
+        result = history.merge_bwc_history(existing, None, now_z=NOW)
+
+        self.assertEqual(result.archive["runs"][0]["confirmationCount"], 1)
+        self.assertEqual(
+            result.archive["runs"][0]["observationsZ"],
+            ["2026-08-30T02:30:00Z", "2026-08-30T02:36:00Z"],
+        )
+
+    def test_state_observation_ledger_rejects_malformed_or_conflicting_evidence(self):
+        valid = first_archive()
+        malformed_values = {
+            "not-a-list": "2026-08-30T02:30:00Z",
+            "explicit-null": None,
+            "empty": [],
+            "duplicate": [
+                "2026-08-30T02:30:00Z",
+                "2026-08-30T02:30:00Z",
+            ],
+            "wrong-endpoint": ["2026-08-30T02:24:00Z"],
+        }
+        for label, observations in malformed_values.items():
+            with self.subTest(label=label):
+                archive = json.loads(json.dumps(valid))
+                archive["runs"][0]["observationsZ"] = observations
+                with self.assertRaises(history.BwcHistoryFormatError):
+                    history.merge_bwc_history(archive, None, now_z=NOW)
 
     def test_state_change_begins_at_exact_source_timestamp(self):
         existing = first_archive(state="MODERATE")
@@ -342,6 +424,7 @@ class BwcHistoryMergeTests(unittest.TestCase):
         self.assertEqual(new_run["startReason"], "STATE_CHANGE")
         self.assertEqual(new_run["startZ"], "2026-08-30T02:36:00Z")
         self.assertEqual(new_run["state"], "SEVERE")
+        self.assertEqual(new_run["observationsZ"], ["2026-08-30T02:36:00Z"])
 
     def test_basis_change_splits_provenance_without_state_change_reason(self):
         existing = first_archive(state="SEVERE", basis="NEXRAD")
@@ -359,6 +442,7 @@ class BwcHistoryMergeTests(unittest.TestCase):
         new_run = result.archive["runs"][-1]
         self.assertEqual(new_run["startReason"], "BASIS_CHANGE")
         self.assertEqual(new_run["basisClass"], "MODEL_OPERATIONAL")
+        self.assertEqual(new_run["observationsZ"], ["2026-08-30T02:36:00Z"])
         self.assertNotEqual(new_run["startReason"], "STATE_CHANGE")
 
     def test_same_timestamp_conflict_is_rejected_and_first_value_preserved(self):
@@ -415,7 +499,9 @@ class BwcHistoryMergeTests(unittest.TestCase):
         resumed = result.archive["runs"][2]
         self.assertEqual(unknown["startZ"], "2026-08-30T01:30:00Z")
         self.assertEqual(unknown["endZ"], "2026-08-30T01:30:01Z")
+        self.assertNotIn("observationsZ", unknown)
         self.assertEqual(resumed["startReason"], "COVERAGE_RESUMED")
+        self.assertEqual(resumed["observationsZ"], [zulu(second_time)])
 
     def test_different_state_after_gap_is_first_observed_not_exact_change(self):
         first_time = datetime(2026, 8, 30, 0, 0, tzinfo=UTC)
@@ -505,6 +591,7 @@ class BwcHistoryRetentionTests(unittest.TestCase):
         self.assertEqual(result.pruned, 0)
         self.assertEqual(len(result.archive["runs"]), 1)
         self.assertEqual(result.archive["runs"][0]["lastObservedZ"], zulu(cutoff))
+        self.assertEqual(result.archive["runs"][0]["observationsZ"], [zulu(cutoff)])
 
     def test_greater_than_365_days_old_is_pruned(self):
         cutoff = self.RETENTION_NOW - timedelta(days=365)
@@ -528,7 +615,20 @@ class BwcHistoryRetentionTests(unittest.TestCase):
         self.assertEqual(run["startZ"], zulu(cutoff))
         self.assertEqual(run["firstObservedZ"], zulu(observed))
         self.assertEqual(run["lastObservedZ"], zulu(observed))
+        self.assertEqual(run["observationsZ"], [])
         self.assertEqual(run["startReason"], "RETENTION_CARRY_IN")
+
+    def test_aged_out_carry_in_rejects_nonempty_impossible_observation_ledger(self):
+        cutoff = self.RETENTION_NOW - timedelta(days=365)
+        observed = cutoff - timedelta(minutes=30)
+        existing = first_archive(observed, recorded=observed + timedelta(minutes=1))
+        carry_in = history.merge_bwc_history(
+            existing, None, now_z=self.RETENTION_NOW
+        ).archive
+        carry_in["runs"][0]["observationsZ"] = [zulu(cutoff + timedelta(minutes=12))]
+
+        with self.assertRaises(history.BwcHistoryFormatError):
+            history.merge_bwc_history(carry_in, None, now_z=self.RETENTION_NOW)
 
     def test_state_run_crossing_cutoff_is_clipped_without_fabricated_observation(self):
         cutoff = self.RETENTION_NOW - timedelta(days=365)
@@ -548,6 +648,8 @@ class BwcHistoryRetentionTests(unittest.TestCase):
         self.assertEqual(run["startZ"], zulu(cutoff))
         self.assertEqual(run["firstObservedZ"], zulu(first_time))
         self.assertEqual(run["lastObservedZ"], zulu(later_time))
+        self.assertEqual(run["observationsZ"], [zulu(later_time)])
+        self.assertNotIn(zulu(cutoff), run["observationsZ"])
         self.assertEqual(run["startReason"], "RETENTION_CARRY_IN")
         self.assertEqual(run["originalStartReason"], "ARCHIVE_START")
 

@@ -11,6 +11,7 @@ import {
   formatCurrentBwc,
   historyFailureArchiveMessage,
   initializeBwcHistory,
+  renderBwcHistoryChart,
   updateLiveBwcAge,
 } from "../bwc-history.js";
 
@@ -547,6 +548,77 @@ test("controller events drive the visible viewport while preserving the selected
   assert.equal(stats.textContent, initialStatistics, "master summaries remain independent of viewport interactions");
 });
 
+test("wheel and pointer pan coalesce annual-safe viewport redraws to one animation frame", async () => {
+  const { doc, view } = behavioralBwcFixture();
+  let nextFrame = 1;
+  const frames = new Map();
+  view.requestAnimationFrame = (callback) => {
+    const id = nextFrame;
+    nextFrame += 1;
+    frames.set(id, callback);
+    return id;
+  };
+  view.cancelAnimationFrame = (id) => { frames.delete(id); };
+  function flushFrames() {
+    const pending = [...frames.entries()];
+    frames.clear();
+    for (const [_id, callback] of pending) callback();
+    return pending.length;
+  }
+
+  const controller = initializeBwcHistory(doc);
+  controller.open(doc.createElement("button"));
+  for (let turn = 0; turn < 8 && !controller.historyLoaded; turn += 1) await Promise.resolve();
+  flushFrames(); // deferred focus from dialog opening
+
+  const chart = doc.getElementById("bwcHistoryChart");
+  const initialSvg = chart.querySelector(".bwc-history-svg");
+  const hitArea = chart.querySelector(".bwc-history-hit-area");
+  const rect = hitArea.getBoundingClientRect();
+  for (let index = 0; index < 100; index += 1) {
+    chart.dispatchEvent({
+      type: "wheel",
+      clientX: rect.left + rect.width / 2,
+      deltaY: -1,
+      deltaMode: 0,
+    });
+  }
+  assert.equal(frames.size, 1, "100 wheel events queue one viewport redraw");
+  assert.strictEqual(chart.querySelector(".bwc-history-svg"), initialSvg, "DOM waits for the queued frame");
+  assert.equal(controller.timeDomain.durationMs, 30 * 60 * 1000, "all wheel deltas accumulate before redraw");
+  assert.equal(flushFrames(), 1);
+  assert.notStrictEqual(chart.querySelector(".bwc-history-svg"), initialSvg);
+
+  const panSvg = chart.querySelector(".bwc-history-svg");
+  const panHitArea = chart.querySelector(".bwc-history-hit-area");
+  const panRect = panHitArea.getBoundingClientRect();
+  const startX = panRect.left + panRect.width / 2;
+  chart.dispatchEvent({
+    type: "pointerdown", target: panHitArea, pointerId: 41, pointerType: "mouse",
+    button: 0, isPrimary: true, clientX: startX,
+  });
+  const beforePan = controller.timeDomain.startMs;
+  for (let index = 1; index <= 100; index += 1) {
+    chart.dispatchEvent({
+      type: "pointermove", target: panHitArea, pointerId: 41, clientX: startX + index,
+    });
+  }
+  assert.equal(frames.size, 1, "100 pointer moves queue one viewport redraw");
+  assert.ok(controller.timeDomain.startMs < beforePan, "all horizontal pan deltas accumulate before redraw");
+  assert.strictEqual(chart.querySelector(".bwc-history-svg"), panSvg);
+  assert.equal(flushFrames(), 1);
+  assert.notStrictEqual(chart.querySelector(".bwc-history-svg"), panSvg);
+  chart.dispatchEvent({ type: "pointerup", pointerId: 41 });
+
+  const closeRect = chart.querySelector(".bwc-history-hit-area").getBoundingClientRect();
+  chart.dispatchEvent({
+    type: "wheel", clientX: closeRect.left + closeRect.width / 2, deltaY: 100, deltaMode: 0,
+  });
+  assert.equal(frames.size, 1);
+  controller.close();
+  assert.equal(frames.size, 0, "closing cancels a pending viewport redraw");
+});
+
 test("CURRENT formatting uses only live weather data and marks last-known values", () => {
   const live = formatCurrentBwc({
     bwc: "SEVERE",
@@ -637,6 +709,176 @@ test("timeline lookup is deterministic at boundaries and across gaps", () => {
   assert.equal(findTimelineSegmentAt(segments, 400), null);
 });
 
+test("SVG observation markers use exact UTC geometry and snap pointer and keyboard inspection", () => {
+  const view = new FakeEventTarget();
+  const doc = new FakeDocument(view);
+  const chart = doc.createElement("div");
+  chart.clientWidth = 820;
+  chart.clientHeight = 286;
+  const tooltip = doc.createElement("div");
+  tooltip.hidden = true;
+  tooltip.offsetWidth = 230;
+  tooltip.offsetHeight = 96;
+  const rangeStart = Date.parse("2026-08-30T12:00:00Z");
+  const rangeEnd = Date.parse("2026-08-30T14:00:00Z");
+  const lowTimes = [
+    Date.parse("2026-08-30T12:15:00Z"),
+    Date.parse("2026-08-30T12:30:00Z"),
+  ];
+  const severeTimes = [
+    Date.parse("2026-08-30T13:00:00Z"),
+    Date.parse("2026-08-30T13:15:00Z"),
+  ];
+  const timeline = {
+    range: { startMs: rangeStart, endMs: rangeEnd, durationMs: rangeEnd - rangeStart },
+    history: { runs: [
+      {
+        kind: "STATE", state: "LOW", firstObservedMs: lowTimes[0], lastObservedMs: lowTimes[1],
+        observationsZ: lowTimes.map((timeMs) => new Date(timeMs).toISOString()),
+        observationTimesMs: lowTimes, observationsComplete: true, confirmationCount: 2,
+        source: "USAHAS", basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL",
+      },
+      {
+        kind: "STATE", state: "SEVERE", firstObservedMs: severeTimes[0], lastObservedMs: severeTimes[1],
+        observationsZ: severeTimes.map((timeMs) => new Date(timeMs).toISOString()),
+        observationTimesMs: severeTimes, observationsComplete: true, confirmationCount: 2,
+        source: "USAHAS", basis: "NEXBAM", basisClass: "MODEL_OPERATIONAL",
+      },
+    ] },
+    segments: [
+      {
+        kind: "STATE", state: "LOW", startMs: rangeStart, endMs: severeTimes[0],
+        source: "USAHAS", basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL",
+      },
+      {
+        kind: "STATE", state: "SEVERE", startMs: severeTimes[0], endMs: rangeEnd,
+        source: "USAHAS", basis: "NEXBAM", basisClass: "MODEL_OPERATIONAL",
+      },
+    ],
+  };
+
+  const svg = renderBwcHistoryChart(doc, chart, tooltip, timeline);
+  const markers = svg.querySelectorAll(".bwc-history-observation-marker");
+  assert.equal(markers.length, 4);
+  const first = markers[0];
+  const plotLeft = 58;
+  const plotWidth = 820 - 58 - 14;
+  const expectedX = plotLeft + ((lowTimes[0] - rangeStart) / (rangeEnd - rangeStart)) * plotWidth;
+  assert.equal(Number(first.getAttribute("cx")), expectedX);
+  assert.equal(Number(first.getAttribute("cy")), 286 - 34, "LOW marker sits exactly on the categorical LOW level");
+  assert.equal(first.getAttribute("data-bwc-observation-ms"), String(lowTimes[0]));
+  assert.equal(first.getAttribute("vector-effect"), "non-scaling-stroke");
+
+  const hitArea = svg.querySelector(".bwc-history-hit-area");
+  hitArea.dispatchEvent({
+    type: "pointermove",
+    pointerType: "mouse",
+    clientX: Number(first.getAttribute("cx")) + 5,
+    clientY: Number(first.getAttribute("cy")) - 4,
+  });
+  assert.equal(tooltip.children[1].textContent, expectedZuluTime(lowTimes[0]));
+  assert.match(tooltip.textContent, /Observation 1 of 2/);
+
+  tooltip.hidden = true;
+  hitArea.dispatchEvent({ type: "keydown", key: "Enter" });
+  assert.equal(tooltip.hidden, false);
+  assert.equal(tooltip.children[1].textContent, expectedZuluTime(lowTimes[0]), "keyboard inspection retains exact snapped marker time");
+
+  const freeInspectionMs = Date.parse("2026-08-30T12:45:00Z");
+  hitArea.dispatchEvent({
+    type: "pointermove",
+    pointerType: "mouse",
+    clientX: plotLeft + ((freeInspectionMs - rangeStart) / (rangeEnd - rangeStart)) * plotWidth,
+    clientY: 120,
+  });
+  assert.equal(tooltip.children[1].textContent, expectedZuluTime(freeInspectionMs), "inspection away from dots keeps continuous timeline behavior");
+  assert.equal(svg.children.at(-1), hitArea, "the existing transparent interaction surface stays above noninteractive markers");
+});
+
+test("marker geometry remains UTC-anchored across viewport ranges and dense compact rendering keeps every point", () => {
+  const view = new FakeEventTarget();
+  const doc = new FakeDocument(view);
+  const observationTime = Date.parse("2026-08-30T13:00:00Z");
+  function renderRange(startZ, endZ, width = 820) {
+    const chart = doc.createElement("div");
+    chart.clientWidth = width;
+    const tooltip = doc.createElement("div");
+    const startMs = Date.parse(startZ);
+    const endMs = Date.parse(endZ);
+    const timeline = {
+      range: { startMs, endMs, durationMs: endMs - startMs },
+      history: { runs: [{
+        kind: "STATE", state: "MODERATE", firstObservedMs: observationTime, lastObservedMs: observationTime,
+        observationsZ: [new Date(observationTime).toISOString()], observationTimesMs: [observationTime],
+        observationsComplete: true, confirmationCount: 1, source: "USAHAS",
+        basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL",
+      }] },
+      segments: [{
+        kind: "STATE", state: "MODERATE", startMs, endMs, source: "USAHAS",
+        basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL",
+      }],
+    };
+    return renderBwcHistoryChart(doc, chart, tooltip, timeline)
+      .querySelector(".bwc-history-observation-marker");
+  }
+  const full = renderRange("2026-08-30T12:00:00Z", "2026-08-30T14:00:00Z");
+  const zoomed = renderRange("2026-08-30T12:00:00Z", "2026-08-30T13:30:00Z");
+  const panned = renderRange("2026-08-30T12:30:00Z", "2026-08-30T14:00:00Z");
+  assert.equal(Number(full.getAttribute("cx")), 58 + 0.5 * (820 - 58 - 14));
+  assert.ok(Math.abs(Number(zoomed.getAttribute("cx")) - (58 + (2 / 3) * (820 - 58 - 14))) < 0.001);
+  assert.ok(Math.abs(Number(panned.getAttribute("cx")) - (58 + (1 / 3) * (820 - 58 - 14))) < 0.001);
+
+  const denseStart = Date.parse("2025-08-30T00:00:00Z");
+  const denseEnd = Date.parse("2026-08-30T00:00:00Z");
+  const denseTimes = Array.from({ length: 52_560 }, (_value, index) => (
+    denseStart + index * 10 * 60_000
+  ));
+  const compactChart = doc.createElement("div");
+  compactChart.clientWidth = 360;
+  const compactTooltip = doc.createElement("div");
+  const compactSvg = renderBwcHistoryChart(doc, compactChart, compactTooltip, {
+    range: { startMs: denseStart, endMs: denseEnd, durationMs: denseEnd - denseStart },
+    history: { runs: [{
+      kind: "STATE", state: "MODERATE", firstObservedMs: denseTimes[0], lastObservedMs: denseTimes.at(-1),
+      observationsZ: denseTimes.map((timeMs) => new Date(timeMs).toISOString()),
+      observationTimesMs: denseTimes, observationsComplete: true, confirmationCount: denseTimes.length,
+      source: "USAHAS", basis: "NEXBAM", basisClass: "MODEL_OPERATIONAL",
+    }] },
+    segments: [{
+      kind: "STATE", state: "MODERATE", startMs: denseStart, endMs: denseEnd,
+      source: "USAHAS", basis: "NEXBAM", basisClass: "MODEL_OPERATIONAL",
+    }],
+  });
+  const denseMarkers = compactSvg.querySelectorAll(".bwc-history-observation-marker");
+  const denseCircles = denseMarkers.filter((marker) => marker.tagName === "CIRCLE");
+  const denseBatches = denseMarkers.filter((marker) => marker.tagName === "PATH");
+  const colorBatch = denseBatches.find((marker) => marker.dataset.bwcObservationLayer === "color");
+  const outlineBatch = denseBatches.find((marker) => marker.dataset.bwcObservationLayer === "outline");
+  assert.equal(denseCircles.length, 0, "annual views do not create one DOM node per observation");
+  assert.equal(denseBatches.length, 2, "one-state annual evidence uses one outline and one color path");
+  assert.equal(Number(colorBatch.dataset.bwcObservationCount), denseTimes.length);
+  assert.equal((colorBatch.getAttribute("d").match(/\bM /g) || []).length, denseTimes.length);
+  assert.equal((colorBatch.getAttribute("d").match(/ h 0\b/g) || []).length, denseTimes.length);
+  assert.equal(colorBatch.getAttribute("stroke-width"), "3.5");
+  assert.equal(outlineBatch.getAttribute("stroke-width"), "5.25");
+  const denseXs = [...colorBatch.getAttribute("d").matchAll(/\bM ([\d.]+) [\d.]+ h 0/g)]
+    .map((match) => Number(match[1]));
+  assert.equal(denseXs.length, denseTimes.length);
+  assert.ok(denseXs.every((x) => x >= 48 && x <= 346),
+    "batched compact markers remain inside the SVG plot without introducing layout width");
+  const denseTargetIndex = Math.floor(denseTimes.length / 2);
+  const denseTargetX = 48 + ((denseTimes[denseTargetIndex] - denseStart) / (denseEnd - denseStart)) * (360 - 48 - 14);
+  const denseTargetY = (18 + (230 - 34)) / 2;
+  compactSvg.querySelector(".bwc-history-hit-area").dispatchEvent({
+    type: "pointermove",
+    pointerType: "touch",
+    clientX: denseTargetX,
+    clientY: denseTargetY,
+  });
+  assert.equal(compactTooltip.hidden, false, "dense nearest-point inspection remains usable");
+  assert.equal(compactTooltip.children[1].textContent, expectedZuluTime(denseTimes[denseTargetIndex]));
+});
+
 test("plot-relative pointer ratios exclude the Y-axis gutter and clamp to the visible plot", () => {
   const chart = {
     querySelector(selector) {
@@ -672,12 +914,13 @@ test("controller source provides open/close/backdrop/Escape/focus trap and cache
 
 test("viewport interactions zoom, pan, reset, and keep summaries on the master range", () => {
   assert.match(historyJs, /addEventListener\("wheel",[\s\S]*\{ passive: false \}\)/);
-  assert.match(historyJs, /event\.preventDefault\(\)[\s\S]*zoomViewport\(factor, anchor\)/);
+  assert.match(historyJs, /event\.preventDefault\(\)[\s\S]*zoomViewport\(factor, anchor, true\)/);
   assert.match(historyJs, /bwcPlotPointerRatio\(chart, event\)/);
   assert.match(historyJs, /setPointerCapture\?\.\(event\.pointerId\)/);
   assert.match(historyJs, /addEventListener\("pointercancel", endPan\)/);
   assert.match(historyJs, /addEventListener\("lostpointercapture", endPan\)/);
-  assert.match(historyJs, /panViewport\(-\(deltaX \/ panSession\.plotWidth\) \* timeDomain\.durationMs\)/);
+  assert.match(historyJs, /panViewport\(-\(deltaX \/ panSession\.plotWidth\) \* timeDomain\.durationMs, true\)/);
+  assert.match(historyJs, /viewportRenderQueued[\s\S]*requestAnimationFrame/);
   assert.match(historyJs, /zoomResetButton\.addEventListener\("click", resetViewport\)/);
   assert.match(historyJs, /timeDomain = null;[\s\S]*render\(true\)/);
   assert.match(historyJs, /calculateBwcStatistics\(masterTimeline\)/);
@@ -692,6 +935,9 @@ test("chart rendering is dependency-free SVG with unknown gaps and pointer/tap i
   assert.match(historyJs, /bwc-history-unknown-band/);
   assert.match(historyJs, /selectBwcUtcTicks\(timeline\.range/);
   assert.match(historyJs, /bwc-history-transition/);
+  assert.match(historyJs, /selectBwcObservationMarkers\(timeline\)/);
+  assert.match(historyJs, /createSvgElement\(doc, "circle"/);
+  assert.match(historyJs, /bwc-history-observation-marker/);
   assert.match(historyJs, /`M \$\{svgCoordinate\(x1\)\} \$\{svgCoordinate\(y\)\} H \$\{svgCoordinate\(x2\)\}`/);
   assert.match(historyJs, /addEventListener\("pointermove"/);
   assert.match(historyJs, /addEventListener\("click"/);
@@ -715,6 +961,7 @@ test("modal styling stays fixed, internally scrollable, touch friendly, and resp
   assert.match(historyCss, /@media \(max-width:700px\) and \(orientation:landscape\)/);
   assert.match(historyCss, /\.bwc-history-range-strip\{[\s\S]*overflow-x:auto/);
   assert.match(historyCss, /\.bwc-history-chart\{[\s\S]*min-width:0/);
+  assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*pointer-events:none/);
   assert.doesNotMatch(historyCss, /width:\s*\d{4,}px/);
 });
 

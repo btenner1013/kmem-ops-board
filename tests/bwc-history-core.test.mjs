@@ -23,6 +23,7 @@ import {
   panBwcTimeDomain,
   parseAhasUtcTimestamp,
   resetBwcTimeDomain,
+  selectBwcObservationMarkers,
   selectBwcUtcTicks,
   zoomBwcTimeDomain,
 } from "../bwc-history-core.js";
@@ -91,6 +92,11 @@ test("strict AHAS parser treats bare timestamps as UTC and accepts canonical UTC
   assert.equal(parseAhasUtcTimestamp("2026-08-30T02:30:00.123Z"), expected);
   assert.equal(parseAhasUtcTimestamp("2026-08-30T02:30:00.123000+00:00"), expected);
   assert.equal(parseAhasUtcTimestamp(" 2026-08-30 02:30:00.123 "), expected);
+  const microsecondFirst = parseAhasUtcTimestamp("2026-08-30T02:30:00.123456Z");
+  const microsecondSecond = parseAhasUtcTimestamp("2026-08-30T02:30:00.123789Z");
+  assert.ok(microsecondFirst > expected);
+  assert.ok(microsecondSecond > microsecondFirst);
+  assert.ok(Math.abs((microsecondSecond - microsecondFirst) - 0.333) < 0.001);
 });
 
 test("strict AHAS parser rejects rollover, incomplete, local-offset, and non-string values", () => {
@@ -185,6 +191,166 @@ test("schema-v1 normalization canonicalizes, sorts, classifies basis, and leaves
   assert.equal(result.value.runs[1].basisClass, "MODEL_OPERATIONAL");
   assert.equal(result.value.runs[0].startZ, "2026-08-30T09:00:00.000Z");
   assert.deepEqual(input, before);
+});
+
+test("optional exact observation ledgers normalize without inventing missing confirmations", () => {
+  const complete = normalizeBwcHistory(history([
+    stateRun("MODERATE", "2026-08-30T09:00:00Z", "2026-08-30T09:24:00Z", {
+      confirmationCount: 3,
+      observationsZ: [
+        "2026-08-30T09:00:00Z",
+        "2026-08-30T09:12:00Z",
+        "2026-08-30T09:24:00Z",
+      ],
+    }),
+  ]));
+  assert.equal(complete.ok, true);
+  assert.deepEqual(complete.value.runs[0].observationsZ, [
+    "2026-08-30T09:00:00.000Z",
+    "2026-08-30T09:12:00.000Z",
+    "2026-08-30T09:24:00.000Z",
+  ]);
+  assert.equal(complete.value.runs[0].observationsComplete, true);
+
+  const partial = normalizeBwcHistory(history([
+    stateRun("SEVERE", "2026-08-30T10:00:00Z", "2026-08-30T10:48:00Z", {
+      confirmationCount: 5,
+      observationsZ: [
+        "2026-08-30T10:00:00Z",
+        "2026-08-30T10:30:00Z",
+        "2026-08-30T10:48:00Z",
+      ],
+    }),
+  ]));
+  assert.equal(partial.ok, true, "a truthful partial ledger remains readable after future appends");
+  assert.equal(partial.value.runs[0].observationTimesMs.length, 3);
+  assert.equal(partial.value.runs[0].confirmationCount, 5);
+  assert.equal(partial.value.runs[0].observationsComplete, false);
+  assert.equal(buildBwcTimeline(partial.value, customRange(
+    "2026-08-30T09:00:00Z",
+    "2026-08-30T12:00:00Z",
+  )).ok, true, "normalized partial ledgers can be normalized again by timeline construction");
+
+  const legacy = normalizeBwcHistory(history([
+    stateRun("LOW", "2026-08-30T11:00:00Z", "2026-08-30T11:36:00Z", {
+      confirmationCount: 4,
+    }),
+  ]));
+  assert.equal(legacy.ok, true);
+  assert.equal(legacy.value.runs[0].observationsZ, undefined);
+  assert.deepEqual(legacy.value.runs[0].observationTimesMs, [
+    Date.parse("2026-08-30T11:00:00Z"),
+    Date.parse("2026-08-30T11:36:00Z"),
+  ]);
+  assert.equal(legacy.value.runs[0].observationsComplete, false);
+
+  const historicalCount = normalizeBwcHistory(history([
+    stateRun("LOW", "2026-08-30T12:00:00Z", "2026-08-30T12:24:00Z", {
+      confirmationCount: 1,
+      observationsZ: ["2026-08-30T12:00:00Z", "2026-08-30T12:24:00Z"],
+    }),
+  ]));
+  assert.equal(historicalCount.ok, true, "legacy aggregate counts do not invalidate two exact endpoints");
+  assert.equal(historicalCount.value.runs[0].confirmationCount, 1);
+  assert.deepEqual(historicalCount.value.runs[0].observationsZ, [
+    "2026-08-30T12:00:00.000Z",
+    "2026-08-30T12:24:00.000Z",
+  ]);
+  assert.equal(historicalCount.value.runs[0].observationsComplete, false);
+});
+
+test("microsecond observations preserve exact ordering, canonical identity, and marker geometry time", () => {
+  const first = "2026-08-30T12:00:00.123456Z";
+  const second = "2026-08-30T12:00:00.123789Z";
+  const normalized = normalizeBwcHistory(history([
+    stateRun("SEVERE", first, second, {
+      confirmationCount: 2,
+      observationsZ: [first, second],
+    }),
+  ]));
+  assert.equal(normalized.ok, true);
+  assert.equal(normalized.value.runs[0].startZ, first);
+  assert.deepEqual(normalized.value.runs[0].observationsZ, [first, second]);
+  assert.ok(normalized.value.runs[0].observationTimesMs[1] > normalized.value.runs[0].observationTimesMs[0]);
+
+  const timeline = buildBwcTimeline(
+    normalized.value,
+    customRange("2026-08-30T11:59:59Z", "2026-08-30T12:00:01Z"),
+  );
+  const selected = selectBwcObservationMarkers(timeline);
+  assert.equal(selected.ok, true);
+  assert.deepEqual(selected.markers.map((marker) => marker.timeZ), [first, second]);
+  assert.ok(selected.markers[1].timeMs > selected.markers[0].timeMs);
+});
+
+test("exact observation ledgers reject invalid evidence but allow an empty aged-out retention carry-in", () => {
+  const base = stateRun("LOW", "2026-08-30T09:00:00Z", "2026-08-30T09:24:00Z", {
+    confirmationCount: 2,
+  });
+  for (const observationsZ of [
+    null,
+    ["2026-08-30T09:00:00Z", "2026-08-30T09:00:00Z"],
+    ["2026-08-30T09:06:00Z", "2026-08-30T09:24:00Z"],
+    [],
+  ]) {
+    assert.equal(
+      normalizeBwcHistory(history([{ ...base, observationsZ }])).error.code,
+      "INVALID_OBSERVATIONS",
+    );
+  }
+
+  const carryIn = normalizeBwcHistory(history([
+    stateRun("LOW", "2026-08-30T10:00:00Z", "2026-08-30T09:30:00Z", {
+      firstObservedZ: "2026-08-30T09:00:00Z",
+      firstRecordedZ: "2026-08-30T09:01:00Z",
+      lastRecordedZ: "2026-08-30T09:31:00Z",
+      confirmationCount: 4,
+      observationsZ: [],
+      startReason: "RETENTION_CARRY_IN",
+    }),
+  ], { collectionStartedZ: "2026-08-30T09:01:00Z" }));
+  assert.equal(carryIn.ok, true);
+  assert.deepEqual(carryIn.value.runs[0].observationsZ, []);
+  assert.deepEqual(carryIn.value.runs[0].observationTimesMs, []);
+
+  const impossibleAgedOutCarryIn = normalizeBwcHistory(history([
+    stateRun("LOW", "2026-08-30T10:00:00Z", "2026-08-30T09:30:00Z", {
+      firstObservedZ: "2026-08-30T09:00:00Z",
+      confirmationCount: 4,
+      observationsZ: ["2026-08-30T10:12:00Z"],
+      startReason: "RETENTION_CARRY_IN",
+    }),
+  ]));
+  assert.equal(impossibleAgedOutCarryIn.ok, false);
+  assert.equal(impossibleAgedOutCarryIn.error.code, "INVALID_OBSERVATIONS");
+
+  const invalidEmptyCarryIn = normalizeBwcHistory(history([
+    stateRun("LOW", "2026-08-30T10:00:00Z", "2026-08-30T10:12:00Z", {
+      firstObservedZ: "2026-08-30T09:00:00Z",
+      confirmationCount: 4,
+      observationsZ: [],
+      startReason: "RETENTION_CARRY_IN",
+    }),
+  ]));
+  assert.equal(invalidEmptyCarryIn.ok, false);
+  assert.equal(invalidEmptyCarryIn.error.code, "INVALID_OBSERVATIONS");
+
+  const crossingCutoff = normalizeBwcHistory(history([
+    stateRun("MODERATE", "2026-08-30T10:00:00Z", "2026-08-30T10:24:00Z", {
+      firstObservedZ: "2026-08-30T09:30:00Z",
+      firstRecordedZ: "2026-08-30T09:31:00Z",
+      lastRecordedZ: "2026-08-30T10:25:00Z",
+      confirmationCount: 5,
+      observationsZ: ["2026-08-30T10:12:00Z", "2026-08-30T10:24:00Z"],
+      startReason: "RETENTION_CARRY_IN",
+    }),
+  ], { collectionStartedZ: "2026-08-30T09:31:00Z" }));
+  assert.equal(crossingCutoff.ok, true);
+  assert.deepEqual(crossingCutoff.value.runs[0].observationsZ, [
+    "2026-08-30T10:12:00.000Z",
+    "2026-08-30T10:24:00.000Z",
+  ]);
+  assert.equal(crossingCutoff.value.runs[0].observationsComplete, false);
 });
 
 test("schema validation rejects unsupported schemas, NONE-as-data, bad intervals, and ambiguous starts", () => {
@@ -471,6 +637,161 @@ test("timeline and chart APIs fail closed on malformed inputs", () => {
   assert.equal(buildStepPaths({}, {}).error.code, "INVALID_TIMELINE");
   const timeline = buildBwcTimeline(history(), customRange("2026-08-30T08:00:00Z", "2026-08-30T09:00:00Z"));
   assert.equal(buildStepPaths(timeline, { width: 20, height: 20, padding: { left: 15, right: 15 } }).error.code, "INVALID_DIMENSIONS");
+});
+
+test("observation markers preserve every exact in-range state timestamp and never decorate gaps", () => {
+  const payload = history([
+    stateRun("LOW", "2026-08-30T08:00:00Z", "2026-08-30T08:24:00Z", {
+      confirmationCount: 3,
+      observationsZ: [
+        "2026-08-30T08:00:00Z",
+        "2026-08-30T08:12:00Z",
+        "2026-08-30T08:24:00Z",
+      ],
+    }),
+    unknownRun("2026-08-30T09:54:00Z", "2026-08-30T10:30:00Z", {
+      reason: "COVERAGE_GAP",
+      firstObservedZ: "",
+      lastObservedZ: "",
+      firstRecordedZ: "",
+      lastRecordedZ: "",
+      confirmationCount: 0,
+    }),
+    stateRun("SEVERE", "2026-08-30T10:30:00Z", "2026-08-30T10:42:00Z", {
+      confirmationCount: 2,
+      observationsZ: ["2026-08-30T10:30:00Z", "2026-08-30T10:42:00Z"],
+      startReason: "STATE_AFTER_GAP",
+    }),
+    stateRun("MODERATE", "2026-08-30T11:00:00Z", "2026-08-30T11:36:00Z", {
+      confirmationCount: 4,
+    }),
+  ]);
+  const timeline = buildBwcTimeline(
+    payload,
+    customRange("2026-08-30T07:30:00Z", "2026-08-30T12:00:00Z"),
+  );
+  const selected = selectBwcObservationMarkers(timeline);
+  assert.equal(selected.ok, true);
+  assert.deepEqual(selected.markers.map((marker) => [marker.state, marker.timeZ]), [
+    ["LOW", "2026-08-30T08:00:00.000Z"],
+    ["LOW", "2026-08-30T08:12:00.000Z"],
+    ["LOW", "2026-08-30T08:24:00.000Z"],
+    ["SEVERE", "2026-08-30T10:30:00.000Z"],
+    ["SEVERE", "2026-08-30T10:42:00.000Z"],
+    ["MODERATE", "2026-08-30T11:00:00.000Z"],
+    ["MODERATE", "2026-08-30T11:36:00.000Z"],
+  ]);
+  assert.equal(selected.markers.some((marker) => marker.kind === "UNKNOWN"), false);
+  assert.equal(
+    selected.markers.filter((marker) => marker.state === "MODERATE").length,
+    2,
+    "legacy confirmationCount does not create guessed intermediate points",
+  );
+});
+
+test("dense observation selection is deterministic and does not sample exact evidence", () => {
+  const startMs = Date.parse("2026-08-30T00:00:00Z");
+  const observationsZ = Array.from({ length: 240 }, (_value, index) => (
+    new Date(startMs + index * 60_000).toISOString()
+  ));
+  const payload = history([
+    stateRun("MODERATE", observationsZ[0], observationsZ.at(-1), {
+      confirmationCount: observationsZ.length,
+      observationsZ,
+    }),
+  ]);
+  const timeline = buildBwcTimeline(
+    payload,
+    customRange("2026-08-30T00:00:00Z", "2026-08-30T04:00:00Z"),
+  );
+  const selected = selectBwcObservationMarkers(timeline);
+  assert.equal(selected.ok, true);
+  assert.equal(selected.markers.length, observationsZ.length);
+  assert.deepEqual(
+    selected.markers.map((marker) => marker.timeZ),
+    observationsZ.map((value) => new Date(value).toISOString()),
+  );
+});
+
+test("annual observation ledgers normalize once and binary-select exact inclusive ranges", () => {
+  const count = 52_560;
+  const intervalMs = 10 * 60_000;
+  const startMs = Date.parse("2025-08-30T00:00:00Z");
+  const observationsZ = Array.from({ length: count }, (_value, index) => (
+    new Date(startMs + index * intervalMs).toISOString()
+  ));
+  const payload = history([
+    stateRun("MODERATE", observationsZ[0], observationsZ.at(-1), {
+      confirmationCount: observationsZ.length,
+      observationsZ,
+      basis: "NEXBAM",
+      basisClass: "MODEL_OPERATIONAL",
+    }),
+  ], {
+    collectionStartedZ: observationsZ[0],
+    archiveUpdatedZ: observationsZ.at(-1),
+  });
+
+  const normalized = normalizeBwcHistory(payload);
+  assert.equal(normalized.ok, true);
+  assert.equal(Object.isFrozen(normalized.value), true);
+  assert.equal(Object.isFrozen(normalized.value.sourceArea), true);
+  assert.equal(Object.isFrozen(normalized.value.runs), true);
+  assert.equal(Object.isFrozen(normalized.value.runs[0]), true);
+  assert.equal(Object.isFrozen(normalized.value.runs[0].observationsZ), true);
+  assert.equal(Object.isFrozen(normalized.value.runs[0].observationTimesMs), true);
+  assert.throws(() => { normalized.value.station = "KATL"; }, TypeError);
+  assert.throws(() => { normalized.value.runs[0].observationTimesMs[0] = 0; }, TypeError);
+  assert.strictEqual(
+    normalizeBwcHistory(normalized.value).value,
+    normalized.value,
+    "validated numeric ledgers are reused by identity",
+  );
+
+  const firstIndex = 10_000;
+  const lastIndex = 14_320;
+  const timeline = buildBwcTimeline(
+    normalized.value,
+    customRange(observationsZ[firstIndex], observationsZ[lastIndex]),
+  );
+  assert.strictEqual(timeline.history, normalized.value);
+  const selected = selectBwcObservationMarkers(timeline);
+  assert.equal(selected.ok, true);
+  assert.equal(selected.markers.length, lastIndex - firstIndex + 1);
+  assert.equal(selected.markers[0].timeZ, observationsZ[firstIndex]);
+  assert.equal(selected.markers.at(-1).timeZ, observationsZ[lastIndex]);
+  const selectedAgain = selectBwcObservationMarkers(timeline);
+  assert.strictEqual(selectedAgain.markers[0], selected.markers[0], "the cached marker index reuses evidence objects");
+  assert.notStrictEqual(selectedAgain.markers, selected.markers, "each range result owns its slice array");
+  assert.equal(Object.isFrozen(selected.markers[0]), true);
+  assert.throws(() => { selected.markers[0].timeMs = 0; }, TypeError);
+
+  const rawMutation = structuredClone(payload);
+  assert.equal(normalizeBwcHistory(rawMutation).ok, true);
+  rawMutation.station = "KATL";
+  assert.equal(
+    normalizeBwcHistory(rawMutation).ok,
+    false,
+    "the same raw caller object is revalidated rather than cached",
+  );
+});
+
+test("exact observation markers remain available in every supported rolling range", () => {
+  const now = "2026-08-30T12:00:00Z";
+  const payload = history([
+    stateRun("LOW", "2026-08-30T00:00:00Z", "2026-08-30T06:00:00Z", {
+      confirmationCount: 2,
+      observationsZ: ["2026-08-30T00:00:00Z", "2026-08-30T06:00:00Z"],
+    }),
+  ]);
+  for (const rangeKey of ["24h", "7d", "30d", "90d", "365d"]) {
+    const selected = selectBwcObservationMarkers(buildBwcTimeline(payload, rangeKey, now));
+    assert.equal(selected.ok, true, rangeKey);
+    assert.deepEqual(selected.markers.map((marker) => marker.timeZ), [
+      "2026-08-30T00:00:00.000Z",
+      "2026-08-30T06:00:00.000Z",
+    ], rangeKey);
+  }
 });
 
 test("time-domain creation preserves a master range and enforces the 30-minute visible minimum", () => {

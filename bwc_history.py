@@ -308,6 +308,70 @@ def _optional_utc(value: Any, field: str) -> tuple[Optional[datetime], str]:
     return _required_utc(value, field)
 
 
+def _normalize_state_observations(
+    run: Mapping[str, Any],
+    *,
+    start: datetime,
+    start_reason: str,
+    first: datetime,
+    first_z: str,
+    last: datetime,
+    last_z: str,
+) -> list[str]:
+    """Return the exact source timestamps retained for one STATE run.
+
+    Schema-v1 archives created before point evidence was retained contain only
+    the first and last exact source timestamps plus an aggregate confirmation
+    count.  Preserve those exact endpoints during normalization, but never
+    manufacture timestamps for compressed interior confirmations.
+    """
+
+    if "observationsZ" not in run:
+        stored = [first_z] if first == last else [first_z, last_z]
+    else:
+        stored = run["observationsZ"]
+    if not isinstance(stored, list):
+        raise BwcHistoryFormatError("STATE.observationsZ must be a list")
+
+    normalized: list[str] = []
+    observation_times: list[datetime] = []
+    previous: Optional[datetime] = None
+    for index, value in enumerate(stored):
+        observed, observed_z = _required_utc(
+            value, f"STATE.observationsZ[{index}]"
+        )
+        if previous is not None and observed <= previous:
+            raise BwcHistoryFormatError(
+                "STATE.observationsZ must be strictly increasing"
+            )
+        normalized.append(observed_z)
+        observation_times.append(observed)
+        previous = observed
+
+    if start_reason == "RETENTION_CARRY_IN":
+        if last < start:
+            if normalized:
+                raise BwcHistoryFormatError(
+                    "STATE.observationsZ conflicts with aged-out carry-in bounds"
+                )
+            return []
+        if (
+            not normalized
+            or normalized[-1] != last_z
+            or any(observed < start or observed > last for observed in observation_times)
+        ):
+            raise BwcHistoryFormatError(
+                "STATE.observationsZ conflicts with retained observation bounds"
+            )
+        return normalized
+
+    if not normalized or normalized[0] != first_z or normalized[-1] != last_z:
+        raise BwcHistoryFormatError(
+            "STATE.observationsZ endpoints conflict with observation bounds"
+        )
+    return normalized
+
+
 def _normalize_state_run(run: Mapping[str, Any], continuity: timedelta) -> dict[str, Any]:
     state = str(run.get("state") or "").strip().upper()
     raw_risk = str(run.get("rawAhasRisk") or "").strip().upper()
@@ -341,6 +405,16 @@ def _normalize_state_run(run: Mapping[str, Any], continuity: timedelta) -> dict[
     if confirmation_count < 1:
         raise BwcHistoryFormatError("STATE.confirmationCount must be positive")
 
+    observations_z = _normalize_state_observations(
+        run,
+        start=start,
+        start_reason=start_reason,
+        first=first,
+        first_z=first_z,
+        last=last,
+        last_z=last_z,
+    )
+
     basis, basis_class = classify_basis(run.get("basis"))
     stored_basis_class = str(run.get("basisClass") or "").strip().upper()
     if stored_basis_class and stored_basis_class != basis_class:
@@ -355,6 +429,7 @@ def _normalize_state_run(run: Mapping[str, Any], continuity: timedelta) -> dict[
         "startZ": start_z,
         "firstObservedZ": first_z,
         "lastObservedZ": last_z,
+        "observationsZ": observations_z,
         "firstRecordedZ": first_recorded_z,
         "lastRecordedZ": last_recorded_z,
         "confirmationCount": confirmation_count,
@@ -551,6 +626,7 @@ def _new_state_run(
         "startZ": observed_z,
         "firstObservedZ": observed_z,
         "lastObservedZ": observed_z,
+        "observationsZ": [observed_z],
         "firstRecordedZ": recorded_z,
         "lastRecordedZ": recorded_z,
         "confirmationCount": 1,
@@ -651,6 +727,11 @@ def _prune_runs(
             run["startZ"] = _zulu(cutoff)
             clipped += 1
             if run["kind"] == "STATE":
+                run["observationsZ"] = [
+                    observed_z
+                    for observed_z in run["observationsZ"]
+                    if parse_ahas_utc(observed_z) >= cutoff
+                ]
                 if run["startReason"] != "RETENTION_CARRY_IN":
                     run["originalStartReason"] = run["startReason"]
                 run["startReason"] = "RETENTION_CARRY_IN"
@@ -798,6 +879,9 @@ def merge_bwc_history(
                 elif same_state and same_basis:
                     previous_state["lastObservedZ"] = observation["sourceObservedZ"]
                     previous_state["lastRecordedZ"] = recorded_z
+                    previous_state["observationsZ"].append(
+                        observation["sourceObservedZ"]
+                    )
                     previous_state["confirmationCount"] += 1
                     extended += 1
                 else:

@@ -287,6 +287,22 @@ body.getac-preset .bwc-history-zoom-reset{min-width:62px}
 .bwc-history-transition-low{stroke:#42e36f}
 .bwc-history-transition-moderate{stroke:#ffd34d}
 .bwc-history-transition-severe{stroke:#ff4d55}
+.bwc-history-observation-marker{
+  pointer-events:none;
+}
+circle.bwc-history-observation-marker{
+  stroke:#07100c;
+  stroke-width:1.75;
+  paint-order:stroke fill;
+}
+.bwc-history-observation-marker-batch{fill:none;stroke-linecap:round}
+.bwc-history-observation-outline{stroke:#07100c}
+circle.bwc-history-observation-low{fill:#42e36f}
+circle.bwc-history-observation-moderate{fill:#ffe06e}
+circle.bwc-history-observation-severe{fill:#ff6269}
+path.bwc-history-observation-low{stroke:#42e36f}
+path.bwc-history-observation-moderate{stroke:#ffe06e}
+path.bwc-history-observation-severe{stroke:#ff6269}
 .bwc-history-hit-area{fill:transparent;stroke:none;cursor:crosshair;pointer-events:all}
 .bwc-history-chart-zoomed .bwc-history-hit-area{cursor:grab}
 .bwc-history-panning .bwc-history-hit-area{cursor:grabbing}

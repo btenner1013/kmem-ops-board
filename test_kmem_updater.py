@@ -100,6 +100,7 @@ candidate = {
     "startZ": observed,
     "firstObservedZ": observed,
     "lastObservedZ": observed,
+    "observationsZ": [observed],
     "firstRecordedZ": feed_timestamp,
     "lastRecordedZ": feed_timestamp,
     "confirmationCount": 1,
@@ -972,6 +973,10 @@ class BwcActiveOwnerLifecycleTests(GitFixture):
         primary_update_sha = repo.sha("origin/main")
         history_after_primary = self.remote_bwc_history(repo)
         self.assertEqual([run["state"] for run in history_after_primary["runs"]], ["LOW"])
+        self.assertEqual(
+            history_after_primary["runs"][0]["observationsZ"],
+            ["2026-08-28T04:00:00Z"],
+        )
 
         standby = UpdaterCoordinator(
             repo,
@@ -1006,6 +1011,10 @@ class BwcActiveOwnerLifecycleTests(GitFixture):
         self.assertEqual(
             [run["state"] for run in history_after_takeover["runs"]],
             ["LOW", "SEVERE"],
+        )
+        self.assertEqual(
+            [run["observationsZ"] for run in history_after_takeover["runs"]],
+            [["2026-08-28T04:00:00Z"], ["2026-08-28T04:26:00Z"]],
         )
         self.assertEqual(
             history_after_takeover["collectionStartedZ"],

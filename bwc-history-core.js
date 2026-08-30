@@ -7,6 +7,8 @@ const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 const DEFAULT_CONTINUITY_MINUTES = 90;
 const MEMPHIS_TIME_ZONE = "America/Chicago";
+const NORMALIZED_BWC_HISTORIES = new WeakSet();
+const BWC_OBSERVATION_INDEXES = new WeakMap();
 const MONTHS = Object.freeze([
   "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
@@ -88,7 +90,17 @@ function pad2(value) {
 }
 
 function canonicalIso(ms) {
-  return new Date(ms).toISOString();
+  const numericMs = Number(ms);
+  if (!Number.isFinite(numericMs)) return "";
+  let wholeMs = Math.floor(numericMs);
+  let remainingMicroseconds = Math.round((numericMs - wholeMs) * 1000);
+  if (remainingMicroseconds >= 1000) {
+    wholeMs += 1;
+    remainingMicroseconds = 0;
+  }
+  const millisecondsIso = new Date(wholeMs).toISOString();
+  if (remainingMicroseconds === 0) return millisecondsIso;
+  return `${millisecondsIso.slice(0, -1)}${String(remainingMicroseconds).padStart(3, "0")}Z`;
 }
 
 function resultError(code, message, path = "") {
@@ -121,7 +133,9 @@ export function parseAhasUtcTimestamp(value) {
   const hour = Number(match[4]);
   const minute = Number(match[5]);
   const second = Number(match[6]);
-  const millisecond = Number((match[7] || "").padEnd(3, "0").slice(0, 3) || 0);
+  const microsecond = Number((match[7] || "").padEnd(6, "0") || 0);
+  const millisecond = Math.floor(microsecond / 1000);
+  const subMillisecond = (microsecond % 1000) / 1000;
   if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31
       || hour > 23 || minute > 59 || second > 59) return null;
 
@@ -137,7 +151,7 @@ export function parseAhasUtcTimestamp(value) {
       || date.getUTCMinutes() !== minute
       || date.getUTCSeconds() !== second
       || date.getUTCMilliseconds() !== millisecond) return null;
-  return date.getTime();
+  return date.getTime() + subMillisecond;
 }
 
 /**
@@ -458,6 +472,101 @@ function normalizeBasisClass(value, basis) {
   return "UNKNOWN_OPERATIONAL";
 }
 
+function normalizeObservationTimestamps(
+  run,
+  path,
+  firstObservedMs,
+  lastObservedMs,
+  confirmationCount,
+  startReason,
+  startMs,
+) {
+  const supplied = run.observationsZ !== undefined;
+  if (!supplied) {
+    const observationTimesMs = firstObservedMs === lastObservedMs
+      ? [firstObservedMs]
+      : [firstObservedMs, lastObservedMs];
+    return {
+      ok: true,
+      value: {
+        observationTimesMs,
+        observationsComplete: confirmationCount === observationTimesMs.length,
+      },
+    };
+  }
+  if (!Array.isArray(run.observationsZ)) {
+    return resultError(
+      "INVALID_OBSERVATIONS",
+      `${path}.observationsZ must be an array when supplied`,
+      `${path}.observationsZ`,
+    );
+  }
+  if (run.observationsZ.length === 0) {
+    if (startReason !== "RETENTION_CARRY_IN" || lastObservedMs >= startMs) {
+      return resultError(
+        "INVALID_OBSERVATIONS",
+        `${path}.observationsZ may be empty only when all retention carry-in observations precede startZ`,
+        `${path}.observationsZ`,
+      );
+    }
+    return {
+      ok: true,
+      value: {
+        observationsZ: [],
+        observationTimesMs: [],
+        observationsComplete: false,
+      },
+    };
+  }
+
+  const observationTimesMs = [];
+  for (let index = 0; index < run.observationsZ.length; index += 1) {
+    const timestampMs = parseAhasUtcTimestamp(run.observationsZ[index]);
+    if (timestampMs === null) {
+      return resultError(
+        "INVALID_TIMESTAMP",
+        `${path}.observationsZ[${index}] is invalid`,
+        `${path}.observationsZ[${index}]`,
+      );
+    }
+    if (index > 0 && timestampMs <= observationTimesMs[index - 1]) {
+      return resultError(
+        "INVALID_OBSERVATIONS",
+        `${path}.observationsZ must be strictly chronological with no duplicates`,
+        `${path}.observationsZ[${index}]`,
+      );
+    }
+    observationTimesMs.push(timestampMs);
+  }
+  const retentionCarryIn = startReason === "RETENTION_CARRY_IN";
+  const invalidCarryInEvidence = retentionCarryIn && (
+    lastObservedMs < startMs
+    || observationTimesMs.some((timestampMs) => timestampMs < startMs || timestampMs > lastObservedMs)
+    || observationTimesMs[observationTimesMs.length - 1] !== lastObservedMs
+  );
+  const invalidNormalEvidence = !retentionCarryIn && (
+    observationTimesMs[0] !== firstObservedMs
+    || observationTimesMs[observationTimesMs.length - 1] !== lastObservedMs
+  );
+  if (invalidCarryInEvidence || invalidNormalEvidence) {
+    return resultError(
+      "INVALID_OBSERVATIONS",
+      retentionCarryIn
+        ? `${path}.observationsZ must contain retained observations from startZ through lastObservedZ`
+        : `${path}.observationsZ endpoints must match firstObservedZ and lastObservedZ`,
+      `${path}.observationsZ`,
+    );
+  }
+  return {
+    ok: true,
+    value: {
+      observationsZ: observationTimesMs.map(canonicalIso),
+      observationTimesMs,
+      observationsComplete: observationTimesMs.length === confirmationCount,
+    },
+  };
+}
+
 function normalizeStateRun(run, index, continuityMinutes) {
   const path = `runs[${index}]`;
   const state = String(run.state || "").trim().toUpperCase();
@@ -494,6 +603,17 @@ function normalizeStateRun(run, index, continuityMinutes) {
     return resultError("INVALID_CONFIRMATION_COUNT", `${path}.confirmationCount must be a positive integer`, `${path}.confirmationCount`);
   }
 
+  const observations = normalizeObservationTimestamps(
+    run,
+    path,
+    firstObservedMs,
+    lastObservedMs,
+    confirmationCount,
+    startReason,
+    startMs,
+  );
+  if (!observations.ok) return observations;
+
   const basis = String(run.basis || "UNKNOWN").trim().toUpperCase() || "UNKNOWN";
   const normalized = {
     kind: "STATE",
@@ -506,6 +626,7 @@ function normalizeStateRun(run, index, continuityMinutes) {
     firstObservedMs,
     lastObservedMs,
     confirmationCount,
+    ...observations.value,
     startReason,
     source: String(run.source || "USAHAS").trim().toUpperCase(),
     basis,
@@ -592,6 +713,11 @@ export function normalizeBwcHistory(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return resultError("INVALID_PAYLOAD", "BWC history must be an object");
   }
+  // Values produced here contain validated numeric timestamp ledgers. Brand
+  // those exact objects in memory so repeated viewport renders do not parse a
+  // full year of immutable source timestamps again. Raw caller objects are
+  // never cached and therefore continue to be validated on every call.
+  if (NORMALIZED_BWC_HISTORIES.has(payload)) return { ok: true, value: payload };
   if (payload.schemaVersion !== BWC_HISTORY_SCHEMA_VERSION) {
     return resultError(
       "UNSUPPORTED_SCHEMA",
@@ -670,23 +796,30 @@ export function normalizeBwcHistory(payload) {
   }
 
   const derivedCollectionMs = collectionStartedMs ?? (runs.length ? runs[0].startMs : null);
-  return {
-    ok: true,
-    value: {
-      schemaVersion: BWC_HISTORY_SCHEMA_VERSION,
-      station,
-      product,
-      sourceTimestampField: "DateTime",
-      sourceArea: { type: "ICAO", name: "MEMPHIS INTL" },
-      retentionDays,
-      continuityMinutes,
-      collectionStartedZ: derivedCollectionMs === null ? null : canonicalIso(derivedCollectionMs),
-      collectionStartedMs: derivedCollectionMs,
-      archiveUpdatedZ: archiveUpdatedMs === null ? null : canonicalIso(archiveUpdatedMs),
-      archiveUpdatedMs,
-      runs,
-    },
+  const value = {
+    schemaVersion: BWC_HISTORY_SCHEMA_VERSION,
+    station,
+    product,
+    sourceTimestampField: "DateTime",
+    sourceArea: { type: "ICAO", name: "MEMPHIS INTL" },
+    retentionDays,
+    continuityMinutes,
+    collectionStartedZ: derivedCollectionMs === null ? null : canonicalIso(derivedCollectionMs),
+    collectionStartedMs: derivedCollectionMs,
+    archiveUpdatedZ: archiveUpdatedMs === null ? null : canonicalIso(archiveUpdatedMs),
+    archiveUpdatedMs,
+    runs,
   };
+  for (const run of runs) {
+    if (Array.isArray(run.observationsZ)) Object.freeze(run.observationsZ);
+    if (Array.isArray(run.observationTimesMs)) Object.freeze(run.observationTimesMs);
+    Object.freeze(run);
+  }
+  Object.freeze(runs);
+  Object.freeze(value.sourceArea);
+  Object.freeze(value);
+  NORMALIZED_BWC_HISTORIES.add(value);
+  return { ok: true, value };
 }
 
 function resolveRange(range, nowValue) {
@@ -811,6 +944,83 @@ export function buildBwcTimeline(historyPayload, range = "24h", nowValue = Date.
     coverageMs: knownCoverageMs,
     unknownMs,
   };
+}
+
+function observationMarkerIndex(history) {
+  const cached = BWC_OBSERVATION_INDEXES.get(history);
+  if (cached) return cached;
+
+  const all = [];
+  for (const run of history.runs) {
+    if (run?.kind !== "STATE" || !BWC_STATES.includes(run.state)) continue;
+    const hasObservationLedger = Array.isArray(run.observationsZ);
+    const exactTimes = hasObservationLedger
+      ? (Array.isArray(run.observationTimesMs) ? run.observationTimesMs : [])
+      : [run.firstObservedMs, run.lastObservedMs].filter((value, index, values) => (
+          Number.isFinite(value) && values.indexOf(value) === index
+        ));
+    for (let index = 0; index < exactTimes.length; index += 1) {
+      const timeMs = Number(exactTimes[index]);
+      if (!Number.isFinite(timeMs)) continue;
+      let recordedMs = null;
+      if (timeMs === run.firstObservedMs && Number.isFinite(run.firstRecordedMs)) {
+        recordedMs = run.firstRecordedMs;
+      } else if (timeMs === run.lastObservedMs && Number.isFinite(run.lastRecordedMs)) {
+        recordedMs = run.lastRecordedMs;
+      }
+      all.push(Object.freeze({
+        kind: "STATE",
+        state: run.state,
+        timeMs,
+        timeZ: canonicalIso(timeMs),
+        recordedMs,
+        recordedZ: recordedMs === null ? "" : canonicalIso(recordedMs),
+        source: run.source,
+        basis: run.basis,
+        basisClass: run.basisClass,
+        recordedVia: run.recordedVia,
+        startReason: run.startReason,
+        confirmationCount: run.confirmationCount,
+        observationIndex: index,
+        observationsComplete: Boolean(run.observationsComplete),
+      }));
+    }
+  }
+  all.sort((left, right) => left.timeMs - right.timeMs);
+  Object.freeze(all);
+  const index = Object.freeze({ all });
+  BWC_OBSERVATION_INDEXES.set(history, index);
+  return index;
+}
+
+function lowerObservationBound(markers, targetMs, afterEqual = false) {
+  let low = 0;
+  let high = markers.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (markers[middle].timeMs < targetMs
+        || (afterEqual && markers[middle].timeMs === targetMs)) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+/** Select exact, retained STATE observation evidence for the visible UTC range. */
+export function selectBwcObservationMarkers(timeline) {
+  if (!timeline?.range || !Array.isArray(timeline?.history?.runs)) {
+    return resultError("INVALID_TIMELINE", "A built BWC timeline with normalized history is required");
+  }
+  const startMs = finiteEpoch(timeline.range.startMs ?? timeline.range.startZ);
+  const endMs = finiteEpoch(timeline.range.endMs ?? timeline.range.endZ);
+  if (startMs === null || endMs === null || endMs <= startMs) {
+    return resultError("INVALID_RANGE", "The BWC marker range is invalid", "range");
+  }
+
+  const all = observationMarkerIndex(timeline.history).all;
+  const first = lowerObservationBound(all, startMs);
+  const afterLast = lowerObservationBound(all, endMs, true);
+  const markers = all.slice(first, afterLast);
+  return { ok: true, markers };
 }
 
 function isConfirmedTransition(previous, current) {
@@ -1112,6 +1322,7 @@ if (typeof window !== "undefined") {
     selectBwcUtcTicks,
     normalizeBwcHistory,
     buildBwcTimeline,
+    selectBwcObservationMarkers,
     calculateBwcStatistics,
     findLastConfirmedChange,
     countSevereEpisodes,

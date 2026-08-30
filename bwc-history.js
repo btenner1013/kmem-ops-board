@@ -12,6 +12,7 @@ import {
   normalizeBwcHistory,
   panBwcTimeDomain,
   resetBwcTimeDomain,
+  selectBwcObservationMarkers,
   selectBwcUtcTicks,
   zoomBwcTimeDomain,
 } from "./bwc-history-core.js";
@@ -20,6 +21,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const RANGE_KEYS = new Set(["24h", "7d", "30d", "90d", "365d"]);
 const STATE_NAMES = ["LOW", "MODERATE", "SEVERE", "UNKNOWN"];
 const DEFAULT_RANGE = "24h";
+const SPARSE_OBSERVATION_MARKER_LIMIT = 500;
 let lastLiveAgeRenderKey = null;
 
 function clearChildren(element) {
@@ -427,7 +429,7 @@ function basisDescription(segment) {
   return `${basis} — ${classification}`;
 }
 
-function showChartTooltip(doc, tooltip, container, event, segment, timestampMs) {
+function showChartTooltip(doc, tooltip, container, event, segment, timestampMs, observation = null) {
   if (!tooltip || !container || !segment) return;
   clearChildren(tooltip);
   const heading = doc.createElement("strong");
@@ -443,6 +445,13 @@ function showChartTooltip(doc, tooltip, container, event, segment, timestampMs) 
     const basis = doc.createElement("span");
     basis.textContent = `Basis: ${basisDescription(segment)}`;
     tooltip.append(heading, zulu, local, source, basis);
+    if (observation) {
+      const evidence = doc.createElement("span");
+      evidence.textContent = observation.observationsComplete
+        ? `Observation ${finiteNumber(observation.observationIndex, 0) + 1} of ${Math.max(1, finiteNumber(observation.confirmationCount, 1))}`
+        : "Exact retained observation timestamp";
+      tooltip.appendChild(evidence);
+    }
   } else {
     heading.textContent = "COVERAGE: UNKNOWN";
     const zulu = doc.createElement("span");
@@ -500,6 +509,17 @@ function svgCoordinate(value) {
   return Number(finiteNumber(value, 0).toFixed(3)).toString();
 }
 
+function observationMarkerPath(observations, xForTime, y) {
+  const commands = new Array(observations.length);
+  const yCoordinate = svgCoordinate(y);
+  for (let index = 0; index < observations.length; index += 1) {
+    // A zero-length subpath with a round linecap is a circle centered exactly
+    // at its moveto coordinate. This retains every dot while bounding SVG DOM.
+    commands[index] = `M ${svgCoordinate(xForTime(observations[index].timeMs))} ${yCoordinate} h 0`;
+  }
+  return commands.join(" ");
+}
+
 export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   if (!container || !timeline?.range) return null;
   clearChildren(container);
@@ -529,7 +549,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   const svg = createSvgElement(doc, "svg", {
     viewBox: `0 0 ${width} ${height}`,
     role: "img",
-    "aria-label": "USAHAS AHAS risk step chart with LOW, MODERATE, SEVERE, and unknown coverage",
+    "aria-label": "USAHAS AHAS risk step chart with exact observation markers and LOW, MODERATE, SEVERE, and unknown coverage",
     preserveAspectRatio: "xMidYMid meet",
   });
   svg.classList.add("bwc-history-svg");
@@ -594,6 +614,8 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   const rangeEnd = finiteNumber(timeline.range.endMs, NaN);
   const durationMs = rangeEnd - rangeStart;
   const xForTime = (timeMs) => plot.left + ((timeMs - rangeStart) / durationMs) * plot.width;
+  const markerResult = selectBwcObservationMarkers(timeline);
+  const observations = markerResult?.ok ? markerResult.markers : [];
 
   // Draw horizontal plateaus separately from thinner vertical changes. This
   // preserves the exact H/V step geometry while keeping short real states
@@ -626,6 +648,15 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     }));
   }
 
+  const renderedObservations = { LOW: [], MODERATE: [], SEVERE: [] };
+  const markerRadius = observations.length > 10_000
+    ? 1.75
+    : observations.length > 2_000
+      ? 2.1
+      : observations.length > 500
+        ? 2.6
+        : compact ? 3.25 : 3.5;
+
   if (Number.isFinite(rangeStart) && Number.isFinite(rangeEnd) && durationMs > 0) {
     const tickResult = selectBwcUtcTicks(timeline.range, {
       width: plot.width,
@@ -652,6 +683,60 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     }
   }
 
+  // Keep exact evidence above the step and grid strokes. Sparse views retain
+  // one inspectable circle node per observation. Dense views keep the same
+  // exact centers but batch their round-capped subpaths by state, preventing a
+  // full annual ledger from creating tens of thousands of SVG DOM elements.
+  // The transparent hit area remains the single interaction surface.
+  if (durationMs > 0) {
+    for (const observation of observations) {
+      const y = plot.yByState?.[observation?.state];
+      if (!Number.isFinite(y)) continue;
+      renderedObservations[observation.state].push(observation);
+    }
+
+    if (observations.length <= SPARSE_OBSERVATION_MARKER_LIMIT) {
+      for (const observation of observations) {
+        const y = plot.yByState?.[observation?.state];
+        if (!Number.isFinite(y)) continue;
+        const marker = createSvgElement(doc, "circle", {
+          cx: svgCoordinate(xForTime(observation.timeMs)),
+          cy: svgCoordinate(y),
+          r: markerRadius,
+          class: `bwc-history-observation-marker bwc-history-observation-${String(observation.state || "unknown").toLowerCase()}`,
+          "data-bwc-observation-ms": observation.timeMs,
+          "vector-effect": "non-scaling-stroke",
+          "aria-hidden": "true",
+        });
+        svg.appendChild(marker);
+      }
+    } else {
+      for (const state of ["LOW", "MODERATE", "SEVERE"]) {
+        const stateObservations = renderedObservations[state];
+        const y = plot.yByState?.[state];
+        if (!stateObservations.length || !Number.isFinite(y)) continue;
+        const pathData = observationMarkerPath(stateObservations, xForTime, y);
+        svg.appendChild(createSvgElement(doc, "path", {
+          d: pathData,
+          class: "bwc-history-observation-marker bwc-history-observation-marker-batch bwc-history-observation-outline",
+          "data-bwc-observation-layer": "outline",
+          "stroke-width": svgCoordinate(markerRadius * 2 + 1.75),
+          "vector-effect": "non-scaling-stroke",
+          "aria-hidden": "true",
+        }));
+        svg.appendChild(createSvgElement(doc, "path", {
+          d: pathData,
+          class: `bwc-history-observation-marker bwc-history-observation-marker-batch bwc-history-observation-${state.toLowerCase()}`,
+          "data-bwc-observation-layer": "color",
+          "data-bwc-observation-count": stateObservations.length,
+          "stroke-width": svgCoordinate(markerRadius * 2),
+          "vector-effect": "non-scaling-stroke",
+          "aria-hidden": "true",
+        }));
+      }
+    }
+  }
+
   const interaction = createSvgElement(doc, "rect", {
     x: plot.left,
     y: Math.max(0, plot.top - 10),
@@ -665,7 +750,45 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   container.insertBefore(svg, tooltip || null);
 
   let pinned = false;
-  let lastSegment = null;
+  let lastInspection = null;
+  function nearestObservation(event, rect) {
+    const clientX = Number(event?.clientX);
+    const clientY = Number(event?.clientY);
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY) || !rect?.width || !rect?.height) return null;
+    const svgX = (clientX - rect.left) * width / rect.width;
+    const svgY = (clientY - rect.top) * height / rect.height;
+    const targetTimeMs = rangeStart + Math.max(0, Math.min(1, (svgX - plot.left) / plot.width)) * durationMs;
+    const scaleX = rect.width / width;
+    const scaleY = rect.height / height;
+    const thresholdPx = event?.pointerType === "touch" ? 22 : compact ? 16 : 12;
+    let nearest = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const state of ["LOW", "MODERATE", "SEVERE"]) {
+      const stateMarkers = renderedObservations[state];
+      let low = 0;
+      let high = stateMarkers.length;
+      while (low < high) {
+        const middle = (low + high) >> 1;
+        if (stateMarkers[middle].timeMs < targetTimeMs) low = middle + 1;
+        else high = middle;
+      }
+      for (const index of [low - 1, low]) {
+        const observation = stateMarkers[index];
+        if (!observation) continue;
+        const markerX = xForTime(observation.timeMs);
+        const markerY = plot.yByState?.[observation.state];
+        const distance = Math.hypot(
+          (markerX - svgX) * scaleX,
+          (markerY - svgY) * scaleY,
+        );
+        if (distance <= thresholdPx && distance < nearestDistance) {
+          nearest = observation;
+          nearestDistance = distance;
+        }
+      }
+    }
+    return nearest;
+  }
   function inspect(event, shouldPin = false) {
     if (!(durationMs > 0)) return;
     if (container.classList?.contains("bwc-history-panning")) {
@@ -677,11 +800,22 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     const svgX = (finiteNumber(event?.clientX, rect.left) - rect.left) * width / rect.width;
     const ratio = Math.max(0, Math.min(1, (svgX - plot.left) / plot.width));
     const timestampMs = rangeStart + ratio * durationMs;
-    const segment = findTimelineSegmentAt(timeline.segments, Math.min(timestampMs, rangeEnd - 1));
+    const observation = nearestObservation(event, rect);
+    const timelineSegment = findTimelineSegmentAt(timeline.segments, Math.min(timestampMs, rangeEnd - 1));
+    const segment = observation || timelineSegment;
     if (!segment) return;
-    lastSegment = segment;
+    const inspectedTimeMs = observation?.timeMs ?? timestampMs;
+    lastInspection = { segment: timelineSegment || segment, observation, timeMs: inspectedTimeMs };
     if (shouldPin) pinned = true;
-    showChartTooltip(doc, tooltip, container, event, segment, timestampMs);
+    showChartTooltip(
+      doc,
+      tooltip,
+      container,
+      event,
+      segment,
+      inspectedTimeMs,
+      observation,
+    );
   }
   interaction.addEventListener("pointermove", (event) => inspect(event));
   interaction.addEventListener("pointerleave", () => {
@@ -704,11 +838,24 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     }
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    const segment = lastSegment || timeline.segments?.find((item) => item.kind === "STATE") || timeline.segments?.[0];
+    const fallbackSegment = timeline.segments?.find((item) => item.kind === "STATE") || timeline.segments?.[0];
+    const inspection = lastInspection || (fallbackSegment ? {
+      segment: fallbackSegment,
+      observation: null,
+      timeMs: (finiteNumber(fallbackSegment.startMs) + finiteNumber(fallbackSegment.endMs)) / 2,
+    } : null);
+    const segment = inspection?.observation || inspection?.segment;
     if (!segment) return;
     pinned = true;
-    const midpoint = (finiteNumber(segment.startMs) + finiteNumber(segment.endMs)) / 2;
-    showChartTooltip(doc, tooltip, container, null, segment, midpoint);
+    showChartTooltip(
+      doc,
+      tooltip,
+      container,
+      null,
+      segment,
+      inspection.timeMs,
+      inspection.observation,
+    );
   });
   return svg;
 }
@@ -787,6 +934,8 @@ export function initializeBwcHistory(doc = document) {
   let history = null;
   let loadError = null;
   let renderFrame = 0;
+  let viewportRenderFrame = 0;
+  let viewportRenderQueued = false;
   let masterRange = null;
   let timeDomain = null;
   let viewportRangeKey = null;
@@ -851,10 +1000,35 @@ export function initializeBwcHistory(doc = document) {
     return true;
   }
 
-  function applyViewport(nextDomain) {
+  function cancelScheduledViewportRender() {
+    if (viewportRenderFrame && view.cancelAnimationFrame) {
+      view.cancelAnimationFrame(viewportRenderFrame);
+    }
+    viewportRenderFrame = 0;
+    viewportRenderQueued = false;
+  }
+
+  function scheduleViewportRender() {
+    if (viewportRenderQueued) return true;
+    viewportRenderQueued = true;
+    const schedule = view.requestAnimationFrame || ((callback) => { callback(); return 0; });
+    const frame = schedule(() => {
+      viewportRenderQueued = false;
+      viewportRenderFrame = 0;
+      if (!overlay.hidden) renderChartViewport();
+    });
+    // A synchronous test/fallback scheduler may have already run the callback.
+    if (viewportRenderQueued) viewportRenderFrame = frame;
+    return true;
+  }
+
+  function applyViewport(nextDomain, deferRender = false) {
     if (!nextDomain?.ok || sameVisibleDomain(timeDomain, nextDomain)) return false;
     timeDomain = nextDomain;
     hideChartTooltip();
+    updateViewportControls();
+    if (deferRender) return scheduleViewportRender();
+    cancelScheduledViewportRender();
     return renderChartViewport();
   }
 
@@ -863,14 +1037,14 @@ export function initializeBwcHistory(doc = document) {
     return applyViewport(resetBwcTimeDomain(timeDomain));
   }
 
-  function zoomViewport(factor, anchor = 0.5) {
+  function zoomViewport(factor, anchor = 0.5, deferRender = false) {
     if (!timeDomain?.ok) return false;
-    return applyViewport(zoomBwcTimeDomain(timeDomain, factor, anchor));
+    return applyViewport(zoomBwcTimeDomain(timeDomain, factor, anchor), deferRender);
   }
 
-  function panViewport(deltaMs) {
+  function panViewport(deltaMs, deferRender = false) {
     if (!timeDomain?.ok || timeDomain.isFullRange) return false;
-    return applyViewport(panBwcTimeDomain(timeDomain, deltaMs));
+    return applyViewport(panBwcTimeDomain(timeDomain, deltaMs), deferRender);
   }
 
   updateViewportControls();
@@ -895,6 +1069,7 @@ export function initializeBwcHistory(doc = document) {
   }
 
   function render(resetDomain = false) {
+    cancelScheduledViewportRender();
     renderCurrent(doc, current, view.kmemWeatherData);
     if (!history) {
       if (loadError) clearHistoryPresentation("BWC HISTORY UNAVAILABLE");
@@ -991,6 +1166,7 @@ export function initializeBwcHistory(doc = document) {
   function close() {
     if (renderFrame && view.cancelAnimationFrame) view.cancelAnimationFrame(renderFrame);
     renderFrame = 0;
+    cancelScheduledViewportRender();
     if (panSession) {
       try { chart.releasePointerCapture?.(panSession.pointerId); } catch { /* capture may already be released */ }
       panSession = null;
@@ -1015,7 +1191,7 @@ export function initializeBwcHistory(doc = document) {
     const deltaPixels = Math.abs(event.deltaY) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 240 : 1);
     const strength = Math.max(0.2, Math.min(2, deltaPixels / 100));
     const factor = Math.pow(1.25, event.deltaY < 0 ? strength : -strength);
-    zoomViewport(factor, anchor);
+    zoomViewport(factor, anchor, true);
   }, { passive: false });
 
   chart.addEventListener("pointerdown", (event) => {
@@ -1044,7 +1220,7 @@ export function initializeBwcHistory(doc = document) {
     chart.classList.add("bwc-history-panning");
     hideChartTooltip();
     event.preventDefault();
-    panViewport(-(deltaX / panSession.plotWidth) * timeDomain.durationMs);
+    panViewport(-(deltaX / panSession.plotWidth) * timeDomain.durationMs, true);
   });
 
   function endPan(event) {
@@ -1110,6 +1286,7 @@ export function initializeBwcHistory(doc = document) {
   }
   view.addEventListener?.("resize", () => {
     if (overlay.hidden || !history) return;
+    cancelScheduledViewportRender();
     if (renderFrame && view.cancelAnimationFrame) view.cancelAnimationFrame(renderFrame);
     const schedule = view.requestAnimationFrame || ((callback) => { callback(); return 0; });
     renderFrame = schedule(() => {
