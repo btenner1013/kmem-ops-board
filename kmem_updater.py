@@ -53,6 +53,7 @@ GENERATED_FILES = (
     "weather.json",
     "radar.gif",
     "atis_history.json",
+    "bwc_history.json",
     "taf_current.json",
     STATUS_FILE,
     LEASE_FILE,

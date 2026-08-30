@@ -27,6 +27,9 @@ RADAR_GIF_URL = "https://radar.weather.gov/ridge/standard/KNQA_loop.gif"
 RADAR_GIF_PATH = os.path.join(REPO_DIR, "radar.gif")
 ATIS_HISTORY_PATH = os.path.join(REPO_DIR, "atis_history.json")
 ATIS_HISTORY_RETENTION_HOURS = 96
+BWC_HISTORY_PATH = os.path.join(REPO_DIR, "bwc_history.json")
+BWC_HISTORY_RETENTION_DAYS = 365
+BWC_HISTORY_CONTINUITY_MINUTES = 90
 TAF_CURRENT_PATH = os.path.join(REPO_DIR, "taf_current.json")
 LOCAL_CACHE_BASE = (
     os.environ.get("LOCALAPPDATA")
@@ -4847,6 +4850,49 @@ def maintain_atis_history_safely(live_candidates, now_z, maintainer=None):
         return None
 
 
+def maintain_bwc_history_safely(direct_candidate, now_z, maintainer=None):
+    """Maintain supplemental BWC/AHAS history without risking weather output."""
+    try:
+        if maintainer is None:
+            from bwc_history import maintain_bwc_history
+
+            maintainer = maintain_bwc_history
+        result = maintainer(
+            BWC_HISTORY_PATH,
+            direct_candidate,
+            now_z=now_z,
+            station="KMEM",
+            retention_days=BWC_HISTORY_RETENTION_DAYS,
+            continuity_minutes=BWC_HISTORY_CONTINUITY_MINUTES,
+        )
+        if result is None:
+            print("BWC history maintenance failed safely: no result returned")
+            return None
+        if not result.success:
+            print(f"BWC history maintenance failed safely: {result.error or 'unknown error'}")
+        elif result.changed:
+            print(
+                "BWC history updated:",
+                f"appended={getattr(result, 'appended', 0)}",
+                f"extended={getattr(result, 'extended', 0)}",
+                f"pruned={getattr(result, 'pruned', 0)}",
+                f"rejected={getattr(result, 'rejected', 0)}",
+            )
+        else:
+            print(
+                "BWC history unchanged:",
+                f"duplicates={getattr(result, 'duplicates', 0)}",
+                f"pruned={getattr(result, 'pruned', 0)}",
+                f"rejected={getattr(result, 'rejected', 0)}",
+            )
+        if result.warning:
+            print(f"BWC history warning: {result.warning}")
+        return result
+    except Exception as error:
+        print(f"BWC history maintenance failed safely: {error}")
+        return None
+
+
 def maintain_taf_current_safely(now_z=None, maintainer=None):
     """Maintain the supplemental current-TAF snapshot without operational impact."""
     try:
@@ -5060,7 +5106,8 @@ def build_weather_json():
     wx_summary = summarize_weather_alerts(wx_alerts)
     lightning_summary = build_lightning_summary(metar, taf, current_atis_text)
 
-    ahas_data = fetch_ahas_bwc(now_z)
+    ahas_direct_candidate = fetch_ahas_bwc(now_z)
+    ahas_data = ahas_direct_candidate
 
     if not is_good_bwc(ahas_data):
         if is_good_bwc(previous_data):
@@ -5249,6 +5296,7 @@ def build_weather_json():
     snapshot_current_weather_before_overwrite(weather_path)
     write_weather_json(weather_path, data)
 
+    maintain_bwc_history_safely(ahas_direct_candidate, now_z)
     maintain_atis_history_safely(atis_history_candidates, now_z)
 
     if should_save_last_good(data):

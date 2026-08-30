@@ -19,7 +19,7 @@ test("the board creates the exact Aviation Weather Lookup quick-link button", ()
   assert.match(indexHtml, /aviationWeather\.title="Aviation Weather Lookup"/);
   assert.match(indexHtml, /setAttribute\("aria-label","Aviation Weather Lookup"\)/);
   assert.match(indexHtml, /aviationWeather\.textContent="🌤️"/u);
-  assert.match(indexHtml, /appendChild\(hazard\);\s*wrap\.appendChild\(aviationWeather\);\s*wrap\.appendChild\(flightPlan\)/);
+  assert.match(indexHtml, /appendChild\(hazard\);\s*wrap\.appendChild\(bwcHistory\);\s*wrap\.appendChild\(aviationWeather\);\s*wrap\.appendChild\(flightPlan\)/);
 });
 
 test("the lookup panel has accessible dialog and close contracts", () => {

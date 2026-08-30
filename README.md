@@ -101,9 +101,14 @@ display_control.html               Local/browser display tuning controls
 control.html                       Manual/local control page
 manual_alert.json                  Manual alert/default state file
 weather.json                       Current board data pushed to GitHub Pages
+bwc_history.json                   Rolling live USAHAS AHAS-risk archive (generated after first valid observation)
 host_status.json                   Generic updater heartbeat/status
 updater_lease.json                 Remote PRIMARY/BACKUP ownership lease
 update_weather_local.py            Generation-only weather engine
+bwc_history.py                     BWC/AHAS archive merge, retention, and atomic-write logic
+bwc-history-core.js                Pure browser timeline, statistics, age, and SVG calculations
+bwc-history.js                     Main-board BWC history modal and live-age controller
+bwc-history.css                    Responsive BWC history presentation
 kmem_updater.py                    Safe sync/lease/heartbeat coordinator
 updater_git.py                     Fast-forward-only Git and local lock helpers
 nms_kmem_mil_notams_test.py        FAA NMS staging pull/export helper
@@ -266,8 +271,9 @@ The generation engine:
 1. Pulls/parses weather sources.
 2. Runs the NMS helper for MIL NOTAM/FICON/RWY closure display data.
 3. Builds weather.json.
-4. Saves local and repo last-good backups when data passes quality checks.
-5. Returns control to the lease-aware coordinator for scoped publication.
+4. Safely maintains supplemental ATIS and BWC/AHAS history artifacts.
+5. Saves local and repo last-good backups when data passes quality checks.
+6. Returns control to the lease-aware coordinator for scoped publication.
 ```
 
 ### D-ATIS source selection
@@ -288,6 +294,25 @@ persisted ATIS timestamp wins while other fields retain their normal cache prior
 `weather.json` records the selection policy, providers checked, candidate identities/times,
 and selected provider in the `atisSource*`, `atisLiveCandidate*`, and `atisSelectedSource`
 fields for troubleshooting.
+
+### BWC / USAHAS AHAS-risk history
+
+The existing `BWC` tile displays USAHAS `AHASRISK`. The tile's elapsed age is calculated
+in the browser from the USAHAS source `DateTime` stored as `bwcUpdatedZ`; it does not use
+the weather generation time, Git commit time, or browser fetch time. The existing board
+clock updates the displayed whole-minute age without another recurring timer or request.
+
+The `🦅` quick-link opens a history modal on the main Ops Board. The archive is supplemental
+and loads only when the modal is first opened. It begins with the first valid direct live
+USAHAS XML observation recorded after deployment—there is no historical backfill. Known
+states are `LOW`, `MODERATE`, and `SEVERE`; source `NO DATA` is unknown coverage, never a
+known `NONE` state. Versioned run-length history retains a maximum rolling 365×24 hours in
+UTC and stops known continuity after 90 minutes without a valid confirming observation.
+
+The modal labels the product `USAHAS AHAS RISK — NOT OFFICIAL AIRFIELD BWC`, calculates
+percentages by time including unknown coverage, and never replaces the current live tile.
+Only the active lease owner maintains `bwc_history.json`; history failures cannot prevent
+`weather.json` or the current BWC from being published.
 
 ### Host heartbeat
 
@@ -464,6 +489,7 @@ Altimeter, ceiling, visibility, wind, temperature/dewpoint
 Arrival/departure runways and flow
 ATIS-driven runway closure quick-look
 Lightning / BWC / RCR-RCC
+BWC source age and on-demand rolling AHAS-risk history
 Compact WX alert
 METAR / TAF raw text
 Radar

@@ -236,3 +236,15 @@ test("unknown runway state is amber and does not use the flashing closure class"
     /closed==="UNKNOWN"[\s\S]*classList\.add\("closed-unknown"\)[\s\S]*textContent="UNKNOWN"/,
   );
 });
+
+test("live BWC keeps source time visible and delegates age updates to the board clock", () => {
+  const clockSource = sourceBetween("function updateClock()", "function fitClockPanels");
+  const bwcSource = sourceBetween("function setBwcDisplay", "function setLightningDisplay");
+
+  assert.match(clockSource, /window\.kmemUpdateBwcAge\?\.\(\)/);
+  assert.match(bwcSource, /className="bwc-stamp-source"/);
+  assert.match(bwcSource, /age\.id="bwcAge"/);
+  assert.match(bwcSource, /window\.kmemUpdateBwcAge\?\.\(true\)/);
+  assert.doesNotMatch(indexHtml, /\.bwc-stamp\{ display:none !important; \}/);
+  assert.match(indexHtml, /\.bwc-age/);
+});

@@ -19,6 +19,46 @@ REPO_DIR = Path(__file__).resolve().parent
 
 
 class WeatherGeneratorContractTests(unittest.TestCase):
+    def test_bwc_history_failure_is_isolated_from_operational_weather(self):
+        candidate = {
+            "bwcFetchStatus": "PARSED_DIRECT_XML",
+            "bwcAhasRisk": "LOW",
+            "bwcUpdatedZ": "2026-08-30 03:12:00.000",
+            "bwcBasedOn": "NEXRAD",
+            "bwcSource": "AHAS",
+        }
+
+        def failing_maintainer(*_args, **_kwargs):
+            raise OSError("archive unavailable")
+
+        with mock.patch("builtins.print") as output:
+            result = updater.maintain_bwc_history_safely(
+                candidate,
+                updater.datetime(2026, 8, 30, 3, 15, tzinfo=updater.timezone.utc),
+                failing_maintainer,
+            )
+
+        self.assertIsNone(result)
+        self.assertTrue(
+            any(
+                "BWC history maintenance failed safely" in str(call)
+                for call in output.call_args_list
+            )
+        )
+
+    def test_weather_build_maintains_bwc_history_from_direct_pre_fallback_candidate(self):
+        source = inspect.getsource(updater.build_weather_json)
+        self.assertIn("ahas_direct_candidate = fetch_ahas_bwc(now_z)", source)
+        self.assertIn("ahas_data = ahas_direct_candidate", source)
+        self.assertIn(
+            "maintain_bwc_history_safely(ahas_direct_candidate, now_z)",
+            source,
+        )
+        self.assertLess(
+            source.index("write_weather_json(weather_path, data)"),
+            source.index("maintain_bwc_history_safely(ahas_direct_candidate, now_z)"),
+        )
+
     def test_weather_write_failure_is_fatal_and_stops_optional_generation(self):
         with (
             mock.patch.object(

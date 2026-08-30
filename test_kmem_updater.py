@@ -52,6 +52,93 @@ from updater_git import (
 FIXED_NOW = datetime(2026, 8, 28, 4, 0, tzinfo=timezone.utc)
 
 
+BWC_LIFECYCLE_GENERATOR = """import json
+import os
+from pathlib import Path
+
+role = os.environ["KMEM_UPDATER_ROLE"]
+history_path = Path("bwc_history.json")
+if history_path.exists():
+    history = json.loads(history_path.read_text(encoding="utf-8"))
+else:
+    history = {
+        "schemaVersion": 1,
+        "station": "KMEM",
+        "product": "USAHAS_AHAS_RISK",
+        "retentionDays": 365,
+        "continuityMinutes": 90,
+        "collectionStartedZ": "2026-08-28T04:00:00Z",
+        "archiveUpdatedZ": "2026-08-28T04:00:00Z",
+        "runs": [],
+    }
+
+runs = history["runs"]
+backup_seen = any(
+    item.get("state") == "SEVERE" and item.get("startZ") == "2026-08-28T04:26:00Z"
+    for item in runs
+)
+if role == "BACKUP":
+    feed_timestamp = "2026-08-28T04:26:00Z"
+    state = "SEVERE"
+    observed = "2026-08-28T04:26:00Z"
+    start_reason = "STATE_CHANGE"
+elif backup_seen:
+    feed_timestamp = "2026-08-28T04:27:00Z"
+    state = "SEVERE"
+    observed = "2026-08-28T04:26:00Z"
+    start_reason = "STATE_CHANGE"
+else:
+    feed_timestamp = "2026-08-28T04:00:00Z"
+    state = "LOW"
+    observed = "2026-08-28T04:00:00Z"
+    start_reason = "ARCHIVE_START"
+
+candidate = {
+    "kind": "STATE",
+    "state": state,
+    "rawAhasRisk": state,
+    "startZ": observed,
+    "firstObservedZ": observed,
+    "lastObservedZ": observed,
+    "firstRecordedZ": feed_timestamp,
+    "lastRecordedZ": feed_timestamp,
+    "confirmationCount": 1,
+    "startReason": start_reason,
+    "source": "USAHAS",
+    "basis": "NEXRAD",
+    "basisClass": "OBSERVED_OPERATIONAL",
+}
+identity = (candidate["state"], candidate["startZ"])
+if not any((item.get("state"), item.get("startZ")) == identity for item in runs):
+    runs.append(candidate)
+    history["archiveUpdatedZ"] = feed_timestamp
+    history_path.write_text(
+        json.dumps(history, indent=2, sort_keys=True) + "\\n",
+        encoding="utf-8",
+    )
+
+payload = {
+    "allFeedsUpdatedZ": feed_timestamp,
+    "atisSelectedSource": "TEST",
+    "atisSourcePolicy": "NEWEST_HEADER_TIME",
+    "atisSourcesChecked": ["TEST"],
+    "atisLiveCandidateCount": 1,
+    "atisLiveCandidates": [{"source": "TEST"}],
+    "bwc": state,
+    "bwcAhasRisk": state,
+    "bwcUpdatedZ": observed,
+    "workflowMetadata": {
+        "lastWorkflowActor": "KMEM_" + role + "_UPDATER",
+        "lastWorkflowTimestampZ": feed_timestamp,
+    },
+}
+Path("weather.json").write_text(
+    json.dumps(payload, sort_keys=True) + "\\n",
+    encoding="utf-8",
+)
+"""
+
+
 def run_git(cwd, *args, check=True):
     result = subprocess.run(
         ["git", *args],
@@ -846,6 +933,191 @@ class RemoteLeaseTests(GitFixture):
             ownership.scratch.close()
 
 
+class BwcActiveOwnerLifecycleTests(GitFixture):
+    def install_bwc_lifecycle_generator(self):
+        write(self.writer / "update_weather_local.py", BWC_LIFECYCLE_GENERATOR)
+        run_git(self.writer, "add", "--", "update_weather_local.py")
+        run_git(self.writer, "commit", "-m", "install BWC lifecycle test generator")
+        run_git(self.writer, "push", "origin", "main")
+
+        repo = GitRepository(self.primary, fetch_attempts=1)
+        self.assertTrue(repo.sync().advanced)
+        return repo, repo.sha("HEAD")
+
+    def remote_bwc_history(self, repo):
+        return repo.read_json("origin/main", "bwc_history.json")
+
+    def commit_paths(self, sha):
+        output = run_git(
+            self.primary,
+            "show",
+            "--pretty=format:",
+            "--name-only",
+            sha,
+        ).stdout
+        return {line.strip() for line in output.splitlines() if line.strip()}
+
+    def test_bwc_history_primary_standby_takeover_return_is_atomic_and_deduplicated(self):
+        repo, lifecycle_base_sha = self.install_bwc_lifecycle_generator()
+
+        primary = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW,
+            python_executable=sys.executable,
+        )
+        self.assertEqual(primary.run_once(), 0)
+        repo.fetch()
+        primary_update_sha = repo.sha("origin/main")
+        history_after_primary = self.remote_bwc_history(repo)
+        self.assertEqual([run["state"] for run in history_after_primary["runs"]], ["LOW"])
+
+        standby = UpdaterCoordinator(
+            repo,
+            "BACKUP",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW + timedelta(minutes=10),
+            python_executable=sys.executable,
+        )
+        standby_origin_sha = repo.sha("origin/main")
+        with mock.patch.object(
+            standby,
+            "_run_generator",
+            side_effect=AssertionError("healthy BACKUP standby must not generate"),
+        ) as generator:
+            self.assertEqual(standby.run_once(), 0)
+        generator.assert_not_called()
+        repo.fetch()
+        self.assertEqual(repo.sha("origin/main"), standby_origin_sha)
+        self.assertEqual(self.remote_bwc_history(repo), history_after_primary)
+
+        takeover = UpdaterCoordinator(
+            repo,
+            "BACKUP",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW + timedelta(minutes=26),
+            python_executable=sys.executable,
+        )
+        self.assertEqual(takeover.run_once(), 0)
+        repo.fetch()
+        backup_update_sha = repo.sha("origin/main")
+        history_after_takeover = self.remote_bwc_history(repo)
+        self.assertEqual(
+            [run["state"] for run in history_after_takeover["runs"]],
+            ["LOW", "SEVERE"],
+        )
+        self.assertEqual(
+            history_after_takeover["collectionStartedZ"],
+            history_after_primary["collectionStartedZ"],
+        )
+        self.assertEqual(history_after_takeover["runs"][0], history_after_primary["runs"][0])
+
+        returned_primary = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW + timedelta(minutes=27),
+            python_executable=sys.executable,
+        )
+        self.assertEqual(returned_primary.run_once(), 0)
+        repo.fetch()
+        self.assertEqual(self.remote_bwc_history(repo), history_after_takeover)
+        self.assertEqual(
+            repo.read_json("origin/main", "host_status.json")["activeRole"],
+            "PRIMARY",
+        )
+
+        lifecycle_commits = run_git(
+            self.primary,
+            "rev-list",
+            "--reverse",
+            f"{lifecycle_base_sha}..origin/main",
+        ).stdout.splitlines()
+        bwc_commits = []
+        for sha in lifecycle_commits:
+            paths = self.commit_paths(sha)
+            self.assertNotEqual(paths, {"bwc_history.json"})
+            if "bwc_history.json" not in paths:
+                continue
+            bwc_commits.append(sha)
+            message = run_git(
+                self.primary,
+                "show",
+                "-s",
+                "--format=%s",
+                sha,
+            ).stdout.strip()
+            self.assertTrue(message.startswith("KMEM weather update "))
+            self.assertTrue(
+                {"bwc_history.json", "weather.json", "host_status.json", "updater_lease.json"}
+                .issubset(paths)
+            )
+        self.assertEqual(bwc_commits, [primary_update_sha, backup_update_sha])
+
+    def test_bwc_history_lease_loss_prevents_generated_publication(self):
+        repo, lifecycle_base_sha = self.install_bwc_lifecycle_generator()
+        coordinator = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW,
+            python_executable=sys.executable,
+        )
+        repo.fetch()
+        ownership = coordinator.acquire_lease()
+        self.assertIsNotNone(ownership)
+
+        mover = None
+        try:
+            repo.fetch()
+            mover = repo.make_scratch_clone("origin/main", self.runtime)
+            mover.run(["config", "user.name", "KMEM Test"])
+            mover.run(["config", "user.email", "kmem-test@example.invalid"])
+            replacement = active_lease(
+                "BACKUP",
+                mover.base_sha,
+                FIXED_NOW + timedelta(minutes=1),
+                "replacement-owner",
+            )
+            mover.write_json("updater_lease.json", replacement)
+            lost_lease_sha = mover.commit(
+                ["updater_lease.json"],
+                "replace updater lease during BWC generation",
+            )
+            self.assertTrue(mover.push_main())
+
+            with mock.patch.object(
+                coordinator,
+                "_run_generator",
+                wraps=coordinator._run_generator,
+            ) as generator:
+                with self.assertRaises(GitSafetyError) as raised:
+                    coordinator.publish_owned_cycle(ownership, FIXED_NOW)
+            generator.assert_called_once()
+            self.assertEqual(raised.exception.code, "REMOTE_MOVED_DURING_RUN")
+
+            repo.fetch()
+            self.assertEqual(repo.sha("origin/main"), lost_lease_sha)
+            self.assertIsNone(self.remote_bwc_history(repo))
+            self.assertEqual(
+                run_git(self.primary, "show", "origin/main:weather.json").stdout,
+                "{}\n",
+            )
+            commits = run_git(
+                self.primary,
+                "rev-list",
+                f"{lifecycle_base_sha}..origin/main",
+            ).stdout.splitlines()
+            self.assertFalse(
+                any("bwc_history.json" in self.commit_paths(sha) for sha in commits)
+            )
+        finally:
+            if mover is not None:
+                mover.close()
+            ownership.scratch.close()
+
+
 class HeartbeatAndRoleTests(unittest.TestCase):
     def status(self, age_minutes, role="PRIMARY", **extra):
         value = {
@@ -1210,7 +1482,15 @@ class StaticSafetyTests(unittest.TestCase):
     def test_generated_allowlist_is_exact(self):
         self.assertEqual(
             set(GENERATED_FILES),
-            {"weather.json", "radar.gif", "atis_history.json", "taf_current.json", "host_status.json", "updater_lease.json"},
+            {
+                "weather.json",
+                "radar.gif",
+                "atis_history.json",
+                "bwc_history.json",
+                "taf_current.json",
+                "host_status.json",
+                "updater_lease.json",
+            },
         )
 
     def test_runtime_sources_contain_no_destructive_git_commands(self):
