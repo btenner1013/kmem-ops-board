@@ -658,6 +658,42 @@ test("a nonparticipating airport gets a clean ATIS-unavailable state rather than
   assert.equal(providerFailure.headline, "SOURCE UNAVAILABLE");
 });
 
+test("a non-KMEM ATIS miss contacts only ATIS.info and does not become provider or history data", async () => {
+  const calls = [];
+  const response = await lookupAviationWeather({
+    station: "LFPG",
+    product: "ATIS",
+    range: "recent",
+    now: NOW,
+    fetchImpl: async (input) => {
+      calls.push(String(input));
+      return jsonResponse({ error: "No results found" }, 404);
+    },
+  });
+  assert.equal(response.state, "unsupported");
+  assert.equal(response.headline, "ATIS NOT AVAILABLE FOR LFPG");
+  assert.deepEqual(response.reports, []);
+  assert.deepEqual(calls, ["https://atis.info/api/LFPG"]);
+  assert.equal("externalReference" in response, false);
+  assert.doesNotMatch(JSON.stringify(response), /atis\.guru/i);
+
+  calls.length = 0;
+  const history = await lookupAviationWeather({
+    station: "LFPG",
+    product: "ATIS",
+    range: "96",
+    now: NOW,
+    fetchImpl: async (input) => {
+      calls.push(String(input));
+      throw new Error("history must not request a provider");
+    },
+  });
+  assert.equal(history.state, "unsupported");
+  assert.equal(history.headline, "HISTORICAL ATIS UNAVAILABLE");
+  assert.deepEqual(calls, []);
+  assert.doesNotMatch(JSON.stringify(history), /atis\.guru/i);
+});
+
 test("one failed METAR provider is isolated when the KMEM operational feed is valid", async () => {
   const calls = [];
   const response = await lookupAviationWeather({

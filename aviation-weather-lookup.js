@@ -3,6 +3,7 @@ import {
   decodeMetarReport,
   decodeTafReport,
   formatStationLocalTime,
+  isValidIcao,
   lookupAviationWeather,
   normalizeIcao,
 } from "./aviation-weather-lookup-core.js";
@@ -11,6 +12,10 @@ const PRODUCT_NAMES = new Set(["ATIS", "METAR", "TAF"]);
 const LOOKUP_TIMEOUT_MS = 30000;
 const TAF_SNAPSHOT_SCHEMA_VERSION = 1;
 const TAF_SNAPSHOT_SOURCE_POLICY = "NOAA_AWC_COMPLETE_CURRENT_CACHE";
+const ATIS_GURU_REFERENCE_BASE_URL = "https://atis.guru/atis/";
+const ATIS_GURU_REFERENCE_LABEL = "ATIS.guru reference ↗";
+const ATIS_GURU_REFERENCE_WARNING = "External reference only — currentness not validated";
+const ATIS_GURU_REFERENCE_STATES = new Set(["unsupported", "unavailable", "empty", "error"]);
 
 export function applyLookupDialogState(elements, open, scheduleFocus = (callback) => callback()) {
   const { overlay, body, focusTarget, returnFocus } = elements || {};
@@ -27,6 +32,47 @@ export function formatZulu(timestamp) {
   return Number.isFinite(date.getTime())
     ? `${date.toISOString().slice(8, 10)}${date.toISOString().slice(11, 16).replace(":", "")}Z`
     : "TIME UNKNOWN";
+}
+
+export function getAtisGuruReference({ station, product, range, response } = {}) {
+  const icao = normalizeIcao(station);
+  const reports = Array.isArray(response?.reports) ? response.reports : [];
+  if (
+    !isValidIcao(icao)
+    || icao === "KMEM"
+    || String(product || "").trim().toUpperCase() !== "ATIS"
+    || String(range || "") !== "recent"
+    || !ATIS_GURU_REFERENCE_STATES.has(response?.state)
+    || reports.length
+  ) {
+    return null;
+  }
+  return {
+    href: `${ATIS_GURU_REFERENCE_BASE_URL}${icao}`,
+    label: ATIS_GURU_REFERENCE_LABEL,
+    warning: ATIS_GURU_REFERENCE_WARNING,
+    target: "_blank",
+    rel: "noopener noreferrer",
+  };
+}
+
+export function renderAtisGuruReference(container, reference) {
+  if (!container || !reference) return null;
+  const ownerDocument = container.ownerDocument || document;
+  const block = ownerDocument.createElement("div");
+  block.className = "aviation-lookup-external-reference";
+
+  const link = ownerDocument.createElement("a");
+  link.textContent = reference.label;
+  link.setAttribute("href", reference.href);
+  link.setAttribute("target", reference.target);
+  link.setAttribute("rel", reference.rel);
+
+  const warning = ownerDocument.createElement("span");
+  warning.textContent = reference.warning;
+  block.append(link, warning);
+  container.appendChild(block);
+  return block;
 }
 
 function clearChildren(element) {
@@ -339,6 +385,13 @@ export function initializeAviationWeatherLookup(doc = document) {
       ? "error"
       : "warning";
     setStatus(status, response.headline, response.detail, tone);
+    const externalReference = getAtisGuruReference({
+      station,
+      product,
+      range: rangeSelect.value,
+      response,
+    });
+    if (externalReference) renderAtisGuruReference(results, externalReference);
   }
 
   function open(opener) {

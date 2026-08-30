@@ -3,16 +3,43 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
+  lookupAviationWeather,
+} from "../aviation-weather-lookup-core.js";
+
+import {
   applyLookupDialogState,
   fetchCurrentTafSnapshot,
   formatReportIdentity,
   formatZulu,
+  getAtisGuruReference,
+  renderAtisGuruReference,
   toggleDecodedReport,
 } from "../aviation-weather-lookup.js";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const lookupCss = readFileSync(new URL("../aviation-weather-lookup.css", import.meta.url), "utf8");
 const lookupJs = readFileSync(new URL("../aviation-weather-lookup.js", import.meta.url), "utf8");
+
+const atisUnavailable = (station) => ({
+  state: "unsupported",
+  headline: `ATIS NOT AVAILABLE FOR ${station}`,
+  detail: `No participating current D-ATIS source returned a broadcast for ${station}.`,
+  reports: [],
+});
+
+function fakeElement(tagName) {
+  const attributes = new Map();
+  return {
+    tagName: String(tagName).toUpperCase(),
+    className: "",
+    textContent: "",
+    children: [],
+    append(...children) { this.children.push(...children); },
+    appendChild(child) { this.children.push(child); return child; },
+    setAttribute(name, value) { attributes.set(name, String(value)); },
+    getAttribute(name) { return attributes.get(name) || null; },
+  };
+}
 
 test("the board creates the exact Aviation Weather Lookup quick-link button", () => {
   assert.match(indexHtml, /aviationWeather\.id="aviationWeatherLookupButton"/);
@@ -117,6 +144,100 @@ test("the panel defaults to KMEM, ATIS, and Most recent", () => {
   assert.match(indexHtml, /<option value="recent" selected>Most recent<\/option>/);
 });
 
+test("valid non-KMEM current ATIS misses offer only the exact external reference metadata", () => {
+  const lfpg = getAtisGuruReference({
+    station: " lfpg ",
+    product: "ATIS",
+    range: "recent",
+    response: atisUnavailable("LFPG"),
+  });
+  assert.deepEqual(lfpg, {
+    href: "https://atis.guru/atis/LFPG",
+    label: "ATIS.guru reference ↗",
+    warning: "External reference only — currentness not validated",
+    target: "_blank",
+    rel: "noopener noreferrer",
+  });
+
+  const egll = getAtisGuruReference({
+    station: "EGLL",
+    product: "ATIS",
+    range: "recent",
+    response: atisUnavailable("EGLL"),
+  });
+  assert.equal(egll.href, "https://atis.guru/atis/EGLL");
+  assert.deepEqual(Object.keys(egll), ["href", "label", "warning", "target", "rel"]);
+});
+
+test("current ATIS.info success suppresses the external reference", async () => {
+  const calls = [];
+  const success = await lookupAviationWeather({
+    station: "LFPG",
+    product: "ATIS",
+    range: "recent",
+    now: new Date("2026-08-27T12:00:00Z"),
+    fetchImpl: async (input) => {
+      calls.push(String(input));
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return [{
+            airport: "LFPG",
+            type: "ARR",
+            code: "A",
+            time: "1150",
+            updatedAt: "2026-08-27T11:50:00Z",
+            datis: "LFPG ARR ATIS A 1150Z. EXPECT ILS APPROACH. QNH 1018. ADVISE ON INITIAL CONTACT YOU HAVE A.",
+          }];
+        },
+      };
+    },
+  });
+  assert.equal(success.state, "success");
+  assert.deepEqual(calls, ["https://atis.info/api/LFPG"]);
+  assert.equal(getAtisGuruReference({ station: "LFPG", product: "ATIS", range: "recent", response: success }), null);
+});
+
+test("external reference is suppressed for invalid input, KMEM, history, METAR, and TAF", () => {
+  assert.equal(getAtisGuruReference({ station: "LFP1", product: "ATIS", range: "recent", response: atisUnavailable("LFP1") }), null);
+  assert.equal(getAtisGuruReference({ station: "KMEM", product: "ATIS", range: "recent", response: atisUnavailable("KMEM") }), null);
+  assert.equal(getAtisGuruReference({ station: "LFPG", product: "ATIS", range: "96", response: atisUnavailable("LFPG") }), null);
+  assert.equal(getAtisGuruReference({ station: "LFPG", product: "METAR", range: "recent", response: atisUnavailable("LFPG") }), null);
+  assert.equal(getAtisGuruReference({ station: "LFPG", product: "TAF", range: "recent", response: atisUnavailable("LFPG") }), null);
+  assert.equal(
+    getAtisGuruReference({ station: "LFPG", product: "ATIS", range: "recent", response: { ...atisUnavailable("LFPG"), state: "error" } })?.href,
+    "https://atis.guru/atis/LFPG",
+  );
+});
+
+test("external reference renders a user-clicked safe link with its warning immediately adjacent", () => {
+  const ownerDocument = { createElement: fakeElement };
+  const container = fakeElement("div");
+  container.ownerDocument = ownerDocument;
+  const reference = getAtisGuruReference({
+    station: "LFPG",
+    product: "ATIS",
+    range: "recent",
+    response: atisUnavailable("LFPG"),
+  });
+  const block = renderAtisGuruReference(container, reference);
+  assert.equal(container.children[0], block);
+  assert.equal(block.className, "aviation-lookup-external-reference");
+  assert.equal(block.children.length, 2);
+  const [link, warning] = block.children;
+  assert.equal(link.tagName, "A");
+  assert.equal(link.textContent, "ATIS.guru reference ↗");
+  assert.equal(link.getAttribute("href"), "https://atis.guru/atis/LFPG");
+  assert.equal(link.getAttribute("target"), "_blank");
+  assert.equal(link.getAttribute("rel"), "noopener noreferrer");
+  assert.equal(warning.tagName, "SPAN");
+  assert.equal(warning.textContent, "External reference only — currentness not validated");
+  assert.match(lookupJs, /block\.append\(link, warning\)/);
+  assert.doesNotMatch(lookupJs, /fetch\([^)]*atis\.guru/i);
+  assert.doesNotMatch(lookupJs, /prefetch|<iframe|createElement\("iframe"\)/i);
+});
+
 test("the product and range selectors contain every requested choice", () => {
   for (const product of ["ATIS", "METAR", "TAF"]) {
     assert.match(indexHtml, new RegExp(`data-aviation-product="${product}"`));
@@ -209,6 +330,8 @@ test("lookup styling is fixed, internally scrollable, and responsive", () => {
   assert.match(lookupCss, /\.aviation-lookup-overlay\{[\s\S]*position:fixed/);
   assert.match(lookupCss, /\.aviation-lookup-results\{[\s\S]*overflow:auto/);
   assert.match(lookupCss, /@media \(max-width:700px\)/);
+  assert.match(lookupCss, /\.aviation-lookup-external-reference\{[\s\S]*flex-wrap:wrap/);
+  assert.match(lookupCss, /@media \(max-width:700px\)\{[\s\S]*\.aviation-lookup-external-reference\{align-items:flex-start;flex-direction:column/);
   assert.match(lookupCss, /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
   assert.doesNotMatch(lookupCss, /aviation-lookup-results:empty/);
   assert.match(indexHtml, /<script type="module" src="\.\/aviation-weather-lookup\.js"><\/script>/);

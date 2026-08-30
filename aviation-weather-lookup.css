@@ -206,6 +206,34 @@ body.aviation-lookup-open{overflow:hidden!important}
   padding:10px 12px 14px;
 }
 
+.aviation-lookup-external-reference{
+  display:flex;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:4px 10px;
+  max-width:100%;
+  padding:8px 10px;
+  border:1px solid rgba(255,204,0,.42);
+  border-radius:5px;
+  background:rgba(255,204,0,.07);
+  font-size:.78rem;
+  line-height:1.35;
+}
+
+.aviation-lookup-external-reference a{
+  color:#ffe06a;
+  font-weight:900;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+
+.aviation-lookup-external-reference a:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:3px;
+}
+
+.aviation-lookup-external-reference span{color:#cbd2d8}
+
 .aviation-lookup-result{
   margin:0 0 9px;
   border:1px solid rgba(255,255,255,.19);
@@ -319,6 +347,7 @@ body.aviation-lookup-open{overflow:hidden!important}
   .aviation-lookup-submit{grid-column:1/-1}
   .aviation-lookup-status{align-items:flex-start;flex-direction:column;gap:3px;padding:8px 10px}
   .aviation-lookup-results{padding:8px 10px 12px}
+  .aviation-lookup-external-reference{align-items:flex-start;flex-direction:column;gap:3px}
   .aviation-lookup-result-meta{align-items:flex-start;flex-direction:column;gap:3px}
   .aviation-lookup-result-times{align-items:flex-start;text-align:left}
 }
