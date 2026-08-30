@@ -710,6 +710,8 @@ test("modal styling stays fixed, internally scrollable, touch friendly, and resp
   assert.match(historyCss, /overflow-x:hidden/);
   assert.match(historyCss, /@media \(max-width:700px\)/);
   assert.match(historyCss, /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
+  assert.match(historyCss, /@media \(max-width:700px\)\{[\s\S]*?\.bwc-history-panel\{\s*width:100%;/);
+  assert.match(historyCss, /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)\{[\s\S]*?\.bwc-history-panel\{width:100%;/);
   assert.match(historyCss, /@media \(max-width:700px\) and \(orientation:landscape\)/);
   assert.match(historyCss, /\.bwc-history-range-strip\{[\s\S]*overflow-x:auto/);
   assert.match(historyCss, /\.bwc-history-chart\{[\s\S]*min-width:0/);

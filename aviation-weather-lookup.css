@@ -331,7 +331,7 @@ body.aviation-lookup-open{overflow:hidden!important}
 @media (max-width:700px){
   .aviation-lookup-overlay{padding:0}
   .aviation-lookup-panel{
-    width:100vw;
+    width:100%;
     height:100dvh;
     max-height:100dvh;
     border-width:0;
@@ -354,7 +354,7 @@ body.aviation-lookup-open{overflow:hidden!important}
 
 @media (max-width:950px) and (max-height:520px) and (orientation:landscape){
   .aviation-lookup-overlay{padding:5px}
-  .aviation-lookup-panel{width:calc(100vw - 10px);max-height:calc(100dvh - 10px)}
+  .aviation-lookup-panel{width:100%;max-height:calc(100dvh - 10px)}
   .aviation-lookup-header{padding:5px 9px}
   .aviation-lookup-form{grid-template-columns:110px minmax(210px,1fr) 150px auto;padding:6px 9px;gap:7px}
   .aviation-lookup-input,.aviation-lookup-select,.aviation-lookup-submit,.aviation-lookup-product{min-height:30px;padding:4px 7px}

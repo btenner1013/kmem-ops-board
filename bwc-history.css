@@ -378,7 +378,7 @@ body.getac-preset .bwc-history-zoom-reset{min-width:62px}
 @media (max-width:700px){
   .bwc-history-overlay{padding:0}
   .bwc-history-panel{
-    width:100vw;
+    width:100%;
     height:100dvh;
     max-height:100dvh;
     border-width:0;
@@ -405,7 +405,7 @@ body.getac-preset .bwc-history-zoom-reset{min-width:62px}
 
 @media (max-width:950px) and (max-height:520px) and (orientation:landscape){
   .bwc-history-overlay{padding:5px}
-  .bwc-history-panel{width:calc(100vw - 10px);max-height:calc(100dvh - 10px)}
+  .bwc-history-panel{width:100%;max-height:calc(100dvh - 10px)}
   .bwc-history-header{padding:5px 9px}
   .bwc-history-disclaimer{font-size:.58rem}
   .bwc-history-close{width:34px;height:34px}

@@ -333,8 +333,26 @@ test("lookup styling is fixed, internally scrollable, and responsive", () => {
   assert.match(lookupCss, /\.aviation-lookup-external-reference\{[\s\S]*flex-wrap:wrap/);
   assert.match(lookupCss, /@media \(max-width:700px\)\{[\s\S]*\.aviation-lookup-external-reference\{align-items:flex-start;flex-direction:column/);
   assert.match(lookupCss, /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
+  assert.match(lookupCss, /@media \(max-width:700px\)\{[\s\S]*?\.aviation-lookup-panel\{\s*width:100%;/);
+  assert.match(lookupCss, /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)\{[\s\S]*?\.aviation-lookup-panel\{width:100%;/);
   assert.doesNotMatch(lookupCss, /aviation-lookup-results:empty/);
   assert.match(indexHtml, /<script type="module" src="\.\/aviation-weather-lookup\.js"><\/script>/);
+});
+
+test("responsive board widths exclude the vertical scrollbar gutter", () => {
+  assert.match(indexHtml, /\.board\{\s*height:100vh;\s*width:100%;/);
+  assert.match(
+    indexHtml,
+    /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)\{\s*html,body\{ width:100% !important; max-width:100% !important;/,
+  );
+  assert.match(
+    indexHtml,
+    /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)\{\s*html,body\{[^}]*width:100% !important; max-width:100% !important;[^}]*\}\s*\.board\{[^}]*width:100% !important; max-width:100% !important;/,
+  );
+  assert.match(
+    indexHtml,
+    /\/\* Phone-first compact board\.[\s\S]*?html,body\{\s*width:100% !important;\s*max-width:100% !important;[\s\S]*?\.board\{[\s\S]*?width:100% !important;\s*max-width:100% !important;/,
+  );
 });
 
 test("print layout is black-and-white lookup-only output", () => {
