@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "station": "KMEM",
+  "product": "USAHAS_AHAS_RISK",
+  "sourceArea": {
+    "type": "ICAO",
+    "name": "MEMPHIS INTL"
+  },
+  "sourceTimestampField": "DateTime",
+  "retentionDays": 365,
+  "continuityMinutes": 90,
+  "collectionStartedZ": "2026-08-30T04:15:42.295283Z",
+  "archiveUpdatedZ": "2026-08-30T04:15:42.295283Z",
+  "runs": [
+    {
+      "kind": "STATE",
+      "state": "SEVERE",
+      "rawAhasRisk": "SEVERE",
+      "startZ": "2026-08-30T04:12:00Z",
+      "firstObservedZ": "2026-08-30T04:12:00Z",
+      "lastObservedZ": "2026-08-30T04:12:00Z",
+      "firstRecordedZ": "2026-08-30T04:15:42.295283Z",
+      "lastRecordedZ": "2026-08-30T04:15:42.295283Z",
+      "confirmationCount": 1,
+      "startReason": "ARCHIVE_START",
+      "source": "USAHAS",
+      "basis": "NEXRAD",
+      "basisClass": "OBSERVED_OPERATIONAL"
+    }
+  ]
+}
