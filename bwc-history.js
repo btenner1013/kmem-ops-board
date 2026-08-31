@@ -1,5 +1,6 @@
 import {
   buildBwcTimeline,
+  buildBwcCsvExport,
   buildStepPaths,
   calculateBwcAge,
   calculateBwcStatistics,
@@ -7,6 +8,7 @@ import {
   describeArchiveAvailability,
   findLastConfirmedChange,
   formatBwcMemphisTime,
+  formatBwcDuration,
   formatBwcZuluTime,
   getBwcRange,
   normalizeBwcHistory,
@@ -14,11 +16,27 @@ import {
   resetBwcTimeDomain,
   selectBwcObservationMarkers,
   selectBwcUtcTicks,
+  summarizeBwcHistory,
   zoomBwcTimeDomain,
 } from "./bwc-history-core.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const RANGE_KEYS = new Set(["24h", "7d", "30d", "90d", "365d"]);
+const SUMMARY_MODES = new Set(["daily", "monthly", "seasonal"]);
+const RANGE_EXPORT_LABELS = Object.freeze({
+  "24h": "24HR",
+  "7d": "7DAYS",
+  "30d": "30DAYS",
+  "90d": "90DAYS",
+  "365d": "1YEAR",
+});
+const RANGE_UI_LABELS = Object.freeze({
+  "24h": "24 HR",
+  "7d": "7 DAYS",
+  "30d": "30 DAYS",
+  "90d": "90 DAYS",
+  "365d": "1 YEAR",
+});
 const STATE_NAMES = ["LOW", "MODERATE", "SEVERE", "UNKNOWN"];
 const DEFAULT_RANGE = "24h";
 const SPARSE_OBSERVATION_MARKER_LIMIT = 500;
@@ -337,6 +355,171 @@ function renderStatistics(doc, element, statistics) {
     String(Math.max(0, finiteNumber(statistics?.severeEpisodes, 0))),
     "bwc-history-stat-row bwc-history-stat-summary",
   );
+}
+
+function summaryModeTitle(mode) {
+  if (mode === "monthly") return "Monthly";
+  if (mode === "seasonal") return "Seasonal";
+  return "Daily";
+}
+
+function summaryList(summary, mode) {
+  const value = summary?.[mode];
+  const rows = Array.isArray(value) ? value : value?.summaries;
+  return Array.isArray(rows)
+    ? [...rows].sort((left, right) => finiteNumber(right?.representedStartMs ?? right?.startMs, 0)
+        - finiteNumber(left?.representedStartMs ?? left?.startMs, 0))
+    : [];
+}
+
+function percentageText(value) {
+  return `${Math.max(0, Math.min(100, finiteNumber(value, 0))).toFixed(1)}%`;
+}
+
+function representedText(bucket) {
+  const days = Math.max(0, finiteNumber(bucket?.representedDays, finiteNumber(bucket?.representedMs, 0) / 86_400_000));
+  const effectivelyWhole = Math.abs(days - Math.round(days)) < 0.0005;
+  const precision = days > 0 && days < 0.1 ? 2 : effectivelyWhole ? 0 : 1;
+  const dayLabel = Math.abs(days - 1) < 0.05 ? "DAY" : "DAYS";
+  const completeness = bucket?.isComplete ? "COMPLETE" : "PARTIAL";
+  return `${days.toFixed(precision)} ${dayLabel} · ${completeness}`;
+}
+
+function displayedStatePercentages(bucket) {
+  const raw = STATE_NAMES.map((state, index) => ({
+    state,
+    index,
+    units: Math.max(0, finiteNumber(bucket?.percentages?.[state], 0)) * 10,
+  }));
+  const totalRaw = raw.reduce((sum, item) => sum + item.units, 0);
+  if (!(totalRaw > 0)) return Object.fromEntries(STATE_NAMES.map((state) => [state, state === "UNKNOWN" ? 100 : 0]));
+  const scaled = raw.map((item) => ({ ...item, units: item.units * 1000 / totalRaw }));
+  const allocated = scaled.map((item) => Math.floor(item.units));
+  let remaining = 1000 - allocated.reduce((sum, units) => sum + units, 0);
+  const order = [...scaled].sort((left, right) => (
+    (right.units - Math.floor(right.units)) - (left.units - Math.floor(left.units))
+    || left.index - right.index
+  ));
+  for (let index = 0; index < remaining; index += 1) allocated[order[index % order.length].index] += 1;
+  return Object.fromEntries(STATE_NAMES.map((state, index) => [state, allocated[index] / 10]));
+}
+
+function stateDurationText(bucket, state, displayPercentages) {
+  const duration = finiteNumber(bucket?.durationsMs?.[state], 0);
+  return `${formatBwcDuration(duration)} · ${percentageText(displayPercentages?.[state])}`;
+}
+
+function appendSummaryCell(doc, row, value, { header = false, className = "" } = {}) {
+  const cell = doc.createElement(header ? "th" : "td");
+  if (header) cell.setAttribute("scope", "row");
+  if (className) cell.className = className;
+  cell.textContent = String(value ?? "");
+  row.appendChild(cell);
+  return cell;
+}
+
+function summaryColumns(mode) {
+  const common = ["PEAK", "REPRESENTED", "LOW", "MODERATE", "SEVERE", "UNKNOWN", "KNOWN", "CHANGES", "SEVERE EP."];
+  if (mode === "daily") return ["DATE", ...common, "EXACT OBS."];
+  return [mode === "seasonal" ? "SEASON" : "MONTH", ...common, "SEVERE DAYS", "EXACT OBS."];
+}
+
+function appendSummaryBucket(doc, tbody, bucket, mode) {
+  const row = doc.createElement("tr");
+  const peak = String(bucket?.peakState || "UNKNOWN").toUpperCase();
+  appendSummaryCell(doc, row, bucket?.label || bucket?.key || "UNKNOWN", { header: true });
+  appendSummaryCell(doc, row, peak, { className: `bwc-history-summary-peak-${peak.toLowerCase()}` });
+  appendSummaryCell(doc, row, representedText(bucket), {
+    className: bucket?.isComplete ? "bwc-history-summary-complete" : "bwc-history-summary-partial",
+  });
+  const displayPercentages = displayedStatePercentages(bucket);
+  for (const state of STATE_NAMES) appendSummaryCell(doc, row, stateDurationText(bucket, state, displayPercentages));
+  appendSummaryCell(doc, row, percentageText(bucket?.coveragePercent));
+  appendSummaryCell(doc, row, Math.max(0, finiteNumber(bucket?.changeCount, 0)));
+  appendSummaryCell(doc, row, Math.max(0, finiteNumber(bucket?.severeEpisodes, 0)));
+  if (mode !== "daily") appendSummaryCell(doc, row, Math.max(0, finiteNumber(bucket?.severeDays, 0)));
+  appendSummaryCell(doc, row, Math.max(0, finiteNumber(bucket?.observationCount, 0)));
+  tbody.appendChild(row);
+}
+
+export function renderBwcSummaryTable(doc, content, context, summary, mode = "daily", rangeLabel = "SELECTED RANGE") {
+  if (!content) return false;
+  const normalizedMode = SUMMARY_MODES.has(mode) ? mode : "daily";
+  const rows = summaryList(summary, normalizedMode);
+  clearChildren(content);
+  content.setAttribute("aria-label", `${summaryModeTitle(normalizedMode)} BWC history summary table`);
+  if (context) {
+    const unit = normalizedMode === "daily" ? "LOCAL DAYS" : normalizedMode === "monthly" ? "LOCAL MONTHS" : "METEOROLOGICAL SEASONS";
+    context.textContent = `${rangeLabel} SELECTED · ${rows.length} ${unit} · AMERICA/CHICAGO · EXACT RETAINED OBSERVATIONS ONLY`;
+  }
+  if (!summary?.ok || !rows.length) {
+    const empty = doc.createElement("div");
+    empty.className = "bwc-history-summary-empty";
+    empty.textContent = "NO RETAINED BWC ARCHIVE DATA IN THIS SELECTED RANGE";
+    content.appendChild(empty);
+    return false;
+  }
+  const table = doc.createElement("table");
+  table.className = `bwc-history-summary-table bwc-history-summary-table-${normalizedMode}`;
+  const caption = doc.createElement("caption");
+  caption.className = "bwc-history-summary-caption";
+  caption.textContent = `${summaryModeTitle(normalizedMode)} BWC summary using Memphis local calendar boundaries`;
+  const thead = doc.createElement("thead");
+  const headerRow = doc.createElement("tr");
+  for (const label of summaryColumns(normalizedMode)) {
+    const heading = doc.createElement("th");
+    heading.setAttribute("scope", "col");
+    heading.textContent = label;
+    headerRow.appendChild(heading);
+  }
+  thead.appendChild(headerRow);
+  const tbody = doc.createElement("tbody");
+  for (const bucket of rows) appendSummaryBucket(doc, tbody, bucket, normalizedMode);
+  table.append(caption, thead, tbody);
+  content.appendChild(table);
+  return true;
+}
+
+export function updateBwcSummaryModeButtons(buttons, mode) {
+  const activeMode = SUMMARY_MODES.has(mode) ? mode : "daily";
+  for (const button of buttons || []) {
+    const selected = button?.dataset?.bwcSummaryMode === activeMode;
+    button?.classList?.toggle("bwc-history-summary-tab-active", selected);
+    button?.setAttribute?.("aria-pressed", String(selected));
+  }
+  return activeMode;
+}
+
+export function downloadBwcCsv(doc, view, exportResult) {
+  const content = String(exportResult?.content || "");
+  const filename = String(exportResult?.filename || "");
+  const BlobConstructor = view?.Blob;
+  const urlApi = view?.URL;
+  if (!doc?.body || !content || !filename || typeof BlobConstructor !== "function"
+      || typeof urlApi?.createObjectURL !== "function" || typeof urlApi?.revokeObjectURL !== "function") {
+    return { ok: false, error: "CSV download is unavailable in this browser" };
+  }
+  let objectUrl = "";
+  let link = null;
+  try {
+    const blob = new BlobConstructor([content], { type: exportResult?.mimeType || "text/csv;charset=utf-8" });
+    objectUrl = urlApi.createObjectURL(blob);
+    link = doc.createElement("a");
+    link.href = objectUrl;
+    link.download = filename;
+    link.hidden = true;
+    doc.body.appendChild(link);
+    link.click();
+  } catch (error) {
+    if (link?.parentNode) link.parentNode.removeChild(link);
+    if (objectUrl) urlApi.revokeObjectURL(objectUrl);
+    return { ok: false, error: error?.message || "CSV download failed" };
+  }
+  if (link?.parentNode) link.parentNode.removeChild(link);
+  const revoke = () => urlApi.revokeObjectURL(objectUrl);
+  if (typeof view?.setTimeout === "function") view.setTimeout(revoke, 0);
+  else revoke();
+  return { ok: true, filename };
 }
 
 export function availabilityLines(description, history, statistics) {
@@ -994,9 +1177,15 @@ export function initializeBwcHistory(doc = document) {
   const zoomInButton = doc.getElementById("bwcHistoryZoomIn");
   const zoomResetButton = doc.getElementById("bwcHistoryZoomReset");
   const zoomStatus = doc.getElementById("bwcHistoryZoomStatus");
+  const exportButton = doc.getElementById("bwcHistoryExportCsv");
+  const summaryContent = doc.getElementById("bwcHistorySummaryContent");
+  const summaryContext = doc.getElementById("bwcHistorySummaryContext");
+  const exportStatus = doc.getElementById("bwcHistoryExportStatus");
   const rangeButtons = [...doc.querySelectorAll("[data-bwc-range]")];
+  const summaryButtons = [...doc.querySelectorAll("[data-bwc-summary-mode]")];
   if (!overlay || !panel || !closeButton || !status || !chart || !current || !lastChange || !stats || !archive || !legend
-      || !zoomOutButton || !zoomInButton || !zoomResetButton || !zoomStatus || !rangeButtons.length) return null;
+      || !zoomOutButton || !zoomInButton || !zoomResetButton || !zoomStatus || !exportButton || !summaryContent
+      || !summaryContext || !exportStatus || !rangeButtons.length || !summaryButtons.length) return null;
 
   const view = doc.defaultView || window;
   const loader = createBwcHistoryLoader({
@@ -1014,9 +1203,20 @@ export function initializeBwcHistory(doc = document) {
   let timeDomain = null;
   let viewportRangeKey = null;
   let panSession = null;
+  let summaryMode = "daily";
+  let selectedTimeline = null;
+  let selectedSummary = null;
 
   renderLegend(doc, legend);
   updateRangeButtons(rangeButtons, activeRange);
+  updateBwcSummaryModeButtons(summaryButtons, summaryMode);
+
+  function updateSummaryPresentation() {
+    const rangeLabel = RANGE_UI_LABELS[activeRange] || String(activeRange).toUpperCase();
+    exportButton.disabled = !selectedTimeline || !selectedSummary?.ok;
+    exportButton.setAttribute("aria-label", `Export selected ${rangeLabel} BWC history as CSV`);
+    renderBwcSummaryTable(doc, summaryContent, summaryContext, selectedSummary, summaryMode, rangeLabel);
+  }
 
   function updateViewportControls() {
     const ready = Boolean(history && timeDomain?.ok);
@@ -1127,6 +1327,8 @@ export function initializeBwcHistory(doc = document) {
     masterRange = null;
     timeDomain = null;
     viewportRangeKey = null;
+    selectedTimeline = null;
+    selectedSummary = null;
     hideChartTooltip();
     setEmptyChart(doc, chart, message);
     clearChildren(lastChange);
@@ -1139,6 +1341,9 @@ export function initializeBwcHistory(doc = document) {
     const detail = doc.createElement("span");
     detail.textContent = message;
     archive.append(heading, detail);
+    exportButton.disabled = true;
+    exportStatus.textContent = "";
+    updateSummaryPresentation();
     updateViewportControls();
   }
 
@@ -1185,6 +1390,12 @@ export function initializeBwcHistory(doc = document) {
     // Summary/statistics semantics remain tied to the selected master range;
     // only the chart and tooltip consume the zoomed visible range.
     const statistics = calculateBwcStatistics(masterTimeline);
+    selectedTimeline = masterTimeline;
+    try {
+      selectedSummary = summarizeBwcHistory(masterTimeline);
+    } catch {
+      selectedSummary = null;
+    }
     if (staleArchive(history, nowMs)) {
       setStatus(status, "BWC HISTORY UNAVAILABLE", "The archive is stale; preserved historical coverage is shown below.", "error");
     } else if (!history.runs?.length) {
@@ -1196,6 +1407,8 @@ export function initializeBwcHistory(doc = document) {
     renderLastChange(doc, lastChange, masterTimeline);
     renderStatistics(doc, stats, statistics);
     renderAvailability(doc, archive, history, statistics, nowMs);
+    exportStatus.textContent = "";
+    updateSummaryPresentation();
   }
 
   function refreshCurrent() {
@@ -1255,6 +1468,27 @@ export function initializeBwcHistory(doc = document) {
   zoomOutButton.addEventListener("click", () => zoomViewport(0.5));
   zoomInButton.addEventListener("click", () => zoomViewport(2));
   zoomResetButton.addEventListener("click", resetViewport);
+
+  exportButton.addEventListener("click", () => {
+    if (!selectedTimeline || exportButton.disabled) return;
+    let exportResult;
+    try {
+      exportResult = buildBwcCsvExport(selectedTimeline, {
+        rangeLabel: RANGE_EXPORT_LABELS[activeRange] || String(activeRange).toUpperCase(),
+        dateValue: currentBoardNowMs(view),
+      });
+    } catch {
+      exportResult = null;
+    }
+    if (!exportResult?.ok) {
+      exportStatus.textContent = "CSV EXPORT UNAVAILABLE";
+      return;
+    }
+    const downloaded = downloadBwcCsv(doc, view, exportResult);
+    exportStatus.textContent = downloaded.ok
+      ? `DOWNLOADED ${downloaded.filename}`
+      : "CSV EXPORT UNAVAILABLE";
+  });
 
   chart.addEventListener("wheel", (event) => {
     if (!history || !timeDomain?.ok || event.deltaY === 0) return;
@@ -1358,6 +1592,15 @@ export function initializeBwcHistory(doc = document) {
       if (history) render(true);
     });
   }
+  for (const summaryButton of summaryButtons) {
+    summaryButton.addEventListener("click", () => {
+      const nextMode = summaryButton.dataset.bwcSummaryMode;
+      if (!SUMMARY_MODES.has(nextMode)) return;
+      summaryMode = updateBwcSummaryModeButtons(summaryButtons, nextMode);
+      exportStatus.textContent = "";
+      updateSummaryPresentation();
+    });
+  }
   view.addEventListener?.("resize", () => {
     if (overlay.hidden || !history) return;
     cancelScheduledViewportRender();
@@ -1365,7 +1608,10 @@ export function initializeBwcHistory(doc = document) {
     const schedule = view.requestAnimationFrame || ((callback) => { callback(); return 0; });
     renderFrame = schedule(() => {
       renderFrame = 0;
-      render();
+      // Resize changes chart geometry, not the selected archive range. Keep
+      // the cached master-range summary/export intact and redraw only the
+      // visible chart viewport.
+      renderChartViewport();
     });
   });
 
@@ -1379,6 +1625,7 @@ export function initializeBwcHistory(doc = document) {
     pan: panViewport,
     resetViewport,
     get activeRange() { return activeRange; },
+    get summaryMode() { return summaryMode; },
     get timeDomain() { return timeDomain; },
     get historyLoaded() { return Boolean(history); },
   };

@@ -7,11 +7,14 @@ import {
   availabilityLines,
   bwcPlotPointerRatio,
   createBwcHistoryLoader,
+  downloadBwcCsv,
   findTimelineSegmentAt,
   formatCurrentBwc,
   historyFailureArchiveMessage,
   initializeBwcHistory,
   renderBwcHistoryChart,
+  renderBwcSummaryTable,
+  updateBwcSummaryModeButtons,
   updateLiveBwcAge,
 } from "../bwc-history.js";
 
@@ -202,6 +205,10 @@ class FakeNode extends FakeEventTarget {
     if (this.capturedPointerId === pointerId) this.capturedPointerId = null;
   }
   focus() { this.ownerDocument.activeElement = this; }
+  click() {
+    this.ownerDocument.lastClicked = this;
+    this.dispatchEvent({ type: "click" });
+  }
 }
 
 class FakeDocument extends FakeEventTarget {
@@ -211,6 +218,8 @@ class FakeDocument extends FakeEventTarget {
     this.baseURI = "https://example.test/board/index.html";
     this.elements = new Map();
     this.rangeButtons = [];
+    this.summaryButtons = [];
+    this.lastClicked = null;
     this.body = new FakeNode(this, "body");
     this.activeElement = this.body;
   }
@@ -223,7 +232,11 @@ class FakeDocument extends FakeEventTarget {
     return node;
   }
   getElementById(id) { return this.elements.get(id) || null; }
-  querySelectorAll(selector) { return selector === "[data-bwc-range]" ? this.rangeButtons : []; }
+  querySelectorAll(selector) {
+    if (selector === "[data-bwc-range]") return this.rangeButtons;
+    if (selector === "[data-bwc-summary-mode]") return this.summaryButtons;
+    return [];
+  }
   register(id, tagName = "div") {
     const element = this.createElement(tagName);
     element.setAttribute("id", id);
@@ -269,25 +282,50 @@ function behavioralBwcFixture() {
   view.getBoardNowMs = () => nowMs;
   view.requestAnimationFrame = (callback) => { callback(); return 1; };
   view.cancelAnimationFrame = () => {};
-  view.fetch = async () => ({ ok: true, async json() { return archive; } });
+  view.setTimeout = (callback) => { callback(); return 1; };
+  view.Blob = class FakeBlob {
+    constructor(parts, options) { this.parts = parts; this.type = options?.type; }
+  };
+  view.createdObjectUrls = [];
+  view.revokedObjectUrls = [];
+  view.URL = {
+    createObjectURL(blob) {
+      view.createdObjectUrls.push(blob);
+      return `blob:fake-${view.createdObjectUrls.length}`;
+    },
+    revokeObjectURL(url) { view.revokedObjectUrls.push(url); },
+  };
+  view.fetchCount = 0;
+  view.fetch = async () => {
+    view.fetchCount += 1;
+    return { ok: true, async json() { return archive; } };
+  };
 
   const doc = new FakeDocument(view);
   for (const id of [
     "bwcHistoryOverlay", "bwcHistoryPanel", "bwcHistoryCloseButton", "bwcHistoryStatus",
     "bwcHistoryChart", "bwcHistoryTooltip", "bwcHistoryCurrent", "bwcHistoryLastChange",
     "bwcHistoryStats", "bwcHistoryArchive", "bwcHistoryLegend", "bwcHistoryZoomOut",
-    "bwcHistoryZoomIn", "bwcHistoryZoomReset", "bwcHistoryZoomStatus",
-  ]) doc.register(id, id.includes("Button") || id.includes("Zoom") && id !== "bwcHistoryZoomStatus" ? "button" : "div");
+    "bwcHistoryZoomIn", "bwcHistoryZoomReset", "bwcHistoryZoomStatus", "bwcHistoryExportCsv",
+    "bwcHistorySummaryContent", "bwcHistorySummaryContext", "bwcHistoryExportStatus",
+  ]) doc.register(id, id.includes("Button") || id.includes("Zoom") && id !== "bwcHistoryZoomStatus" || id === "bwcHistoryExportCsv" ? "button" : "div");
   doc.getElementById("bwcHistoryOverlay").hidden = true;
   doc.getElementById("bwcHistoryTooltip").hidden = true;
   doc.getElementById("bwcHistoryChart").clientWidth = 820;
   doc.getElementById("bwcHistoryChart").clientHeight = 286;
   doc.getElementById("bwcHistoryTooltip").offsetWidth = 230;
   doc.getElementById("bwcHistoryTooltip").offsetHeight = 96;
+  doc.getElementById("bwcHistoryExportCsv").disabled = true;
   for (const range of ["24h", "7d"]) {
     const button = doc.createElement("button");
     button.dataset.bwcRange = range;
     doc.rangeButtons.push(button);
+  }
+  for (const mode of ["daily", "monthly", "seasonal"]) {
+    const button = doc.createElement("button");
+    button.dataset.bwcSummaryMode = mode;
+    button.className = "bwc-history-summary-tab";
+    doc.summaryButtons.push(button);
   }
   return { archive, doc, nowMs, view };
 }
@@ -333,9 +371,96 @@ test("the BWC history panel exposes the agreed accessible modal contract", () =>
     "bwcHistoryStats",
     "bwcHistoryArchive",
     "bwcHistoryLegend",
+    "bwcHistoryAnalysis",
+    "bwcHistoryExportCsv",
+    "bwcHistorySummaryDaily",
+    "bwcHistorySummaryMonthly",
+    "bwcHistorySummarySeasonal",
+    "bwcHistorySummaryContext",
+    "bwcHistoryExportStatus",
+    "bwcHistorySummaryContent",
   ]) {
     assert.match(indexHtml, new RegExp(`id="${id}"`));
   }
+});
+
+test("archive summary controls are compact native buttons with accessible selected state", () => {
+  assert.match(indexHtml, /id="bwcHistoryAnalysis"[^>]*aria-labelledby="bwcHistoryAnalysisHeading"/);
+  assert.match(indexHtml, /id="bwcHistoryAnalysisHeading"[^>]*>RETAINED ARCHIVE SUMMARY</);
+  assert.match(indexHtml, /id="bwcHistoryExportCsv"[^>]*type="button"[^>]*disabled>EXPORT CSV</);
+  assert.match(indexHtml, /id="bwcHistoryExportCsv"[^>]*aria-describedby="bwcHistorySummaryContext bwcHistoryExportStatus"/);
+  assert.match(indexHtml, /class="bwc-history-summary-tabs" role="group" aria-label="BWC history summary period"/);
+  for (const [mode, selected] of [["daily", "true"], ["monthly", "false"], ["seasonal", "false"]]) {
+    assert.match(indexHtml, new RegExp(`data-bwc-summary-mode="${mode}"[^>]*aria-pressed="${selected}"[^>]*aria-controls="bwcHistorySummaryContent"`));
+  }
+  assert.match(indexHtml, /id="bwcHistorySummaryContent"[^>]*role="region"[^>]*tabindex="0"/);
+  assert.match(indexHtml, /AMERICA\/CHICAGO · EXACT RETAINED OBSERVATIONS ONLY/);
+});
+
+test("summary renderer exposes truthful metrics in semantic daily, monthly, and seasonal tables", () => {
+  const doc = new FakeDocument(new FakeEventTarget());
+  const content = doc.createElement("div");
+  const context = doc.createElement("span");
+  const base = {
+    representedStartMs: 100,
+    representedEndMs: 200,
+    representedMs: 86_400_000,
+    representedDays: 1,
+    isComplete: false,
+    durationsMs: { LOW: 21_600_000, MODERATE: 21_600_000, SEVERE: 10_800_000, UNKNOWN: 32_400_000 },
+    percentages: { LOW: 8.7, MODERATE: 4.3, SEVERE: 6.5, UNKNOWN: 80.4 },
+    coveragePercent: 19.6,
+    peakState: "SEVERE",
+    changeCount: 3,
+    severeEpisodes: 1,
+    observationCount: 7,
+    severeDays: 1,
+  };
+  const summary = {
+    ok: true,
+    daily: [{ ...base, key: "2026-08-30", label: "30 AUG 2026" }],
+    monthly: [{ ...base, representedDays: 63.4, key: "2026-08", label: "AUG 2026" }],
+    seasonal: [{ ...base, representedDays: 63.4, key: "SUMMER-2026", label: "SUMMER 2026" }],
+  };
+  for (const [mode, label] of [["daily", "30 AUG 2026"], ["monthly", "AUG 2026"], ["seasonal", "SUMMER 2026"]]) {
+    assert.equal(renderBwcSummaryTable(doc, content, context, summary, mode, "24 HR"), true);
+    const table = content.querySelector(`.bwc-history-summary-table-${mode}`);
+    assert.ok(table);
+    assert.match(table.textContent, new RegExp(label));
+    assert.match(table.textContent, /SEVERE/);
+    assert.match(table.textContent, /PARTIAL/);
+    assert.match(table.textContent, /80\.5%/, "display rounding keeps the four state percentages at exactly 100.0%");
+    assert.match(table.textContent, /19\.6%/);
+    if (mode !== "daily") assert.match(table.textContent, /63\.4 DAYS · PARTIAL/);
+    assert.match(context.textContent, /24 HR SELECTED/);
+    assert.match(context.textContent, /AMERICA\/CHICAGO/);
+  }
+  const buttons = ["daily", "monthly", "seasonal"].map((mode) => {
+    const button = doc.createElement("button");
+    button.dataset.bwcSummaryMode = mode;
+    return button;
+  });
+  assert.equal(updateBwcSummaryModeButtons(buttons, "monthly"), "monthly");
+  assert.deepEqual(buttons.map((button) => button.getAttribute("aria-pressed")), ["false", "true", "false"]);
+  assert.equal(buttons[1].classList.contains("bwc-history-summary-tab-active"), true);
+});
+
+test("CSV download helper creates one local blob download and revokes it", () => {
+  const { doc, view } = behavioralBwcFixture();
+  const result = downloadBwcCsv(doc, view, {
+    content: "\ufeffrecord_type,state\r\nSTATE,LOW\r\n",
+    filename: "KMEM_BWC_HISTORY_2026-08-30_24HR.csv",
+    mimeType: "text/csv;charset=utf-8",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(view.createdObjectUrls.length, 1);
+  assert.equal(view.createdObjectUrls[0].parts[0], "\ufeffrecord_type,state\r\nSTATE,LOW\r\n");
+  assert.equal(view.createdObjectUrls[0].type, "text/csv;charset=utf-8");
+  assert.equal(view.revokedObjectUrls.length, 1);
+  assert.equal(doc.lastClicked.tagName, "A");
+  assert.equal(doc.lastClicked.download, "KMEM_BWC_HISTORY_2026-08-30_24HR.csv");
+  assert.equal(doc.lastClicked.href, "blob:fake-1");
+  assert.equal(doc.lastClicked.parentNode, null);
 });
 
 test("time-axis controls are compact native buttons with explicit chart relationships", () => {
@@ -426,7 +551,7 @@ test("history loader caches an unavailable result and reports HTTP/schema failur
 });
 
 test("controller events drive the visible viewport while preserving the selected master range", async () => {
-  const { doc } = behavioralBwcFixture();
+  const { doc, view } = behavioralBwcFixture();
   const controller = initializeBwcHistory(doc);
   assert.ok(controller, "the complete fake view should initialize the real controller");
   assert.equal(controller.historyLoaded, false, "history remains lazy until the dialog opens");
@@ -442,6 +567,9 @@ test("controller events drive the visible viewport while preserving the selected
   const zoomIn = doc.getElementById("bwcHistoryZoomIn");
   const zoomOut = doc.getElementById("bwcHistoryZoomOut");
   const zoomReset = doc.getElementById("bwcHistoryZoomReset");
+  const exportButton = doc.getElementById("bwcHistoryExportCsv");
+  const summaryContent = doc.getElementById("bwcHistorySummaryContent");
+  const summaryContext = doc.getElementById("bwcHistorySummaryContext");
   const initial = controller.timeDomain;
   const initialStatistics = stats.textContent;
   assert.equal(initial.ok, true);
@@ -449,6 +577,37 @@ test("controller events drive the visible viewport while preserving the selected
   assert.equal(initial.durationMs, 24 * 60 * 60 * 1000);
   assert.equal(Number(chart.dataset.bwcMasterEndMs) - Number(chart.dataset.bwcMasterStartMs), initial.durationMs);
   assert.equal(Number(chart.dataset.bwcVisibleDurationMs), initial.durationMs);
+  assert.equal(exportButton.disabled, false, "loaded selected-range data enables user-clicked CSV export");
+  assert.ok(summaryContent.querySelector(".bwc-history-summary-table-daily"));
+  assert.match(summaryContext.textContent, /24 HR SELECTED/);
+  assert.equal(controller.summaryMode, "daily");
+  assert.equal(view.fetchCount, 1);
+
+  const chartBeforeSummaryMode = chart.querySelector(".bwc-history-svg");
+  const domainBeforeSummaryMode = controller.timeDomain;
+  const statsBeforeSummaryMode = stats.textContent;
+  const monthlySummaryButton = doc.summaryButtons.find((button) => button.dataset.bwcSummaryMode === "monthly");
+  monthlySummaryButton.dispatchEvent({ type: "click" });
+  assert.equal(controller.summaryMode, "monthly");
+  assert.equal(monthlySummaryButton.getAttribute("aria-pressed"), "true");
+  assert.ok(summaryContent.querySelector(".bwc-history-summary-table-monthly"));
+  assert.strictEqual(chart.querySelector(".bwc-history-svg"), chartBeforeSummaryMode, "summary mode does not recreate the chart");
+  assert.strictEqual(controller.timeDomain, domainBeforeSummaryMode, "summary mode does not alter zoom/pan state");
+  assert.equal(stats.textContent, statsBeforeSummaryMode, "existing duration statistics remain unchanged");
+
+  exportButton.dispatchEvent({ type: "click" });
+  assert.equal(view.fetchCount, 1, "CSV export reuses the loaded archive without another request");
+  assert.equal(view.createdObjectUrls.length, 1);
+  assert.equal(doc.lastClicked.download, "KMEM_BWC_HISTORY_2026-08-30_24HR.csv");
+  assert.match(view.createdObjectUrls[0].parts[0], /^\ufeffrecord_type,/);
+
+  const summaryTableBeforeResize = summaryContent.querySelector(".bwc-history-summary-table-monthly");
+  view.dispatchEvent({ type: "resize" });
+  assert.strictEqual(
+    summaryContent.querySelector(".bwc-history-summary-table-monthly"),
+    summaryTableBeforeResize,
+    "responsive chart redraw keeps the cached selected-range summary table",
+  );
 
   const firstHitArea = chart.querySelector(".bwc-history-hit-area");
   const firstPlotRect = firstHitArea.getBoundingClientRect();
@@ -533,6 +692,10 @@ test("controller events drive the visible viewport while preserving the selected
   const sevenDayButton = doc.rangeButtons.find((button) => button.dataset.bwcRange === "7d");
   sevenDayButton.dispatchEvent({ type: "click" });
   assert.equal(controller.activeRange, "7d");
+  assert.equal(controller.summaryMode, "monthly", "range changes preserve the selected summary mode");
+  assert.match(summaryContext.textContent, /7 DAYS SELECTED/);
+  assert.match(exportButton.getAttribute("aria-label"), /selected 7 DAYS/);
+  assert.ok(summaryContent.querySelector(".bwc-history-summary-table-monthly"));
   assert.equal(controller.timeDomain.isFullRange, true);
   assert.equal(controller.timeDomain.durationMs, 7 * 24 * 60 * 60 * 1000);
   assert.equal(Number(chart.dataset.bwcMasterEndMs) - Number(chart.dataset.bwcMasterStartMs), controller.timeDomain.durationMs);
@@ -1120,6 +1283,14 @@ test("modal styling stays fixed, internally scrollable, touch friendly, and resp
   assert.match(historyCss, /\.bwc-history-chart\{[\s\S]*min-width:0/);
   assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*pointer-events:none/);
   assert.match(historyCss, /\.bwc-history-observation-focus-target\{[\s\S]*pointer-events:none/);
+  assert.match(historyCss, /\.bwc-history-analysis\{[\s\S]*min-width:0;[\s\S]*max-width:100%/);
+  assert.match(historyCss, /\.bwc-history-summary-content\{[\s\S]*max-width:calc\(100% - 18px\);[\s\S]*overflow:auto/);
+  assert.match(historyCss, /\.bwc-history-summary-table\{[\s\S]*min-width:800px/);
+  assert.match(historyCss, /\.bwc-history-summary-table thead th\{position:sticky;top:0;z-index:1\}/);
+  assert.doesNotMatch(historyCss, /\.bwc-history-summary-table th\{\s*position:sticky/);
+  assert.match(historyCss, /@media \(max-width:700px\)\{[\s\S]*\.bwc-history-export-button,\.bwc-history-summary-tab\{min-height:42px/);
+  assert.match(historyCss, /body\.getac-preset \.bwc-history-export-button,[\s\S]*min-height:40px/);
+  assert.doesNotMatch(historyCss, /bwc-history-(?:analysis|summary|export)[^{]*\{[^}]*100vw/);
   assert.doesNotMatch(historyCss, /width:\s*\d{4,}px/);
 });
 

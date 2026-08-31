@@ -1028,6 +1028,22 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
           <section id="bwcHistoryLegend" class="bwc-history-legend" aria-label="BWC chart legend"></section>
         </div>
       </div>
+      <section id="bwcHistoryAnalysis" class="bwc-history-analysis" aria-labelledby="bwcHistoryAnalysisHeading">
+        <div class="bwc-history-analysis-toolbar">
+          <h3 id="bwcHistoryAnalysisHeading" class="bwc-history-analysis-heading">RETAINED ARCHIVE SUMMARY</h3>
+          <button id="bwcHistoryExportCsv" class="bwc-history-export-button" type="button" aria-label="Export selected BWC history as CSV" aria-describedby="bwcHistorySummaryContext bwcHistoryExportStatus" disabled>EXPORT CSV</button>
+        </div>
+        <div class="bwc-history-analysis-controls">
+          <div class="bwc-history-summary-tabs" role="group" aria-label="BWC history summary period">
+            <button id="bwcHistorySummaryDaily" class="bwc-history-summary-tab bwc-history-summary-tab-active" type="button" data-bwc-summary-mode="daily" aria-pressed="true" aria-controls="bwcHistorySummaryContent">DAILY</button>
+            <button id="bwcHistorySummaryMonthly" class="bwc-history-summary-tab" type="button" data-bwc-summary-mode="monthly" aria-pressed="false" aria-controls="bwcHistorySummaryContent">MONTHLY</button>
+            <button id="bwcHistorySummarySeasonal" class="bwc-history-summary-tab" type="button" data-bwc-summary-mode="seasonal" aria-pressed="false" aria-controls="bwcHistorySummaryContent">SEASONAL</button>
+          </div>
+          <span id="bwcHistorySummaryContext" class="bwc-history-summary-status">SELECTED RANGE · AMERICA/CHICAGO · EXACT RETAINED OBSERVATIONS ONLY</span>
+          <span id="bwcHistoryExportStatus" class="bwc-history-export-status" role="status" aria-live="polite"></span>
+        </div>
+        <div id="bwcHistorySummaryContent" class="bwc-history-summary-content" role="region" tabindex="0" aria-label="Daily BWC history summary table" aria-describedby="bwcHistorySummaryContext"></div>
+      </section>
     </div>
   </section>
 </div>
