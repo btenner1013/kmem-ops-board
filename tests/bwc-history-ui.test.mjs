@@ -480,11 +480,7 @@ test("controller events drive the visible viewport while preserving the selected
     clientX: tooltipRect.left + tooltipRect.width * tooltipRatio,
     clientY: 120,
   });
-  const inspectedMs = wheelDomain.startMs + wheelDomain.durationMs * tooltipRatio;
-  assert.equal(tooltip.hidden, false);
-  assert.equal(tooltip.children[0].textContent, "AHAS RISK: MODERATE");
-  assert.equal(tooltip.children[1].textContent, expectedZuluTime(inspectedMs));
-  assert.match(tooltip.textContent, /NEXBAM — model-backed/);
+  assert.equal(tooltip.hidden, true, "chart background and step context do not expose observation metadata");
 
   const panHitArea = chart.querySelector(".bwc-history-hit-area");
   const panRect = panHitArea.getBoundingClientRect();
@@ -709,7 +705,7 @@ test("timeline lookup is deterministic at boundaries and across gaps", () => {
   assert.equal(findTimelineSegmentAt(segments, 400), null);
 });
 
-test("SVG observation markers use exact UTC geometry and snap pointer and keyboard inspection", () => {
+test("only exact SVG observation dots own mouse, keyboard, and touch tooltips", () => {
   const view = new FakeEventTarget();
   const doc = new FakeDocument(view);
   const chart = doc.createElement("div");
@@ -773,26 +769,172 @@ test("SVG observation markers use exact UTC geometry and snap pointer and keyboa
   hitArea.dispatchEvent({
     type: "pointermove",
     pointerType: "mouse",
-    clientX: Number(first.getAttribute("cx")) + 5,
-    clientY: Number(first.getAttribute("cy")) - 4,
+    clientX: Number(first.getAttribute("cx")) + 2,
+    clientY: Number(first.getAttribute("cy")) - 2,
   });
-  assert.equal(tooltip.children[1].textContent, expectedZuluTime(lowTimes[0]));
-  assert.match(tooltip.textContent, /Observation 1 of 2/);
-
-  tooltip.hidden = true;
-  hitArea.dispatchEvent({ type: "keydown", key: "Enter" });
   assert.equal(tooltip.hidden, false);
-  assert.equal(tooltip.children[1].textContent, expectedZuluTime(lowTimes[0]), "keyboard inspection retains exact snapped marker time");
+  assert.equal(tooltip.children.length, 5, "the detailed tooltip contains only exact observation fields");
+  assert.equal(tooltip.children[0].textContent, "AHAS RISK: LOW");
+  assert.equal(tooltip.children[1].textContent, expectedZuluTime(lowTimes[0]));
+  assert.match(tooltip.children[2].textContent, /CDT|CST/);
+  assert.equal(tooltip.children[3].textContent, "Source: USAHAS");
+  assert.equal(tooltip.children[4].textContent, "Basis: NEXRAD — observed-backed");
+  assert.doesNotMatch(tooltip.textContent, /Observation \d+ of|Exact retained|COVERAGE: UNKNOWN/);
+  assert.ok(Number.parseFloat(tooltip.style.left) >= 8);
+  assert.ok(Number.parseFloat(tooltip.style.top) >= 8);
+  assert.ok(Number.parseFloat(tooltip.style.left) + tooltip.offsetWidth <= chart.clientWidth - 8);
+  assert.ok(Number.parseFloat(tooltip.style.top) + tooltip.offsetHeight <= chart.clientHeight - 8);
 
-  const freeInspectionMs = Date.parse("2026-08-30T12:45:00Z");
+  const plateauInspectionMs = Date.parse("2026-08-30T12:45:00Z");
   hitArea.dispatchEvent({
     type: "pointermove",
     pointerType: "mouse",
-    clientX: plotLeft + ((freeInspectionMs - rangeStart) / (rangeEnd - rangeStart)) * plotWidth,
+    clientX: plotLeft + ((plateauInspectionMs - rangeStart) / (rangeEnd - rangeStart)) * plotWidth,
+    clientY: Number(first.getAttribute("cy")),
+  });
+  assert.equal(tooltip.hidden, true, "hovering a horizontal step plateau does not show the detailed tooltip");
+
+  hitArea.dispatchEvent({
+    type: "pointermove",
+    pointerType: "mouse",
+    clientX: plotLeft + plotWidth * 0.6,
     clientY: 120,
   });
-  assert.equal(tooltip.children[1].textContent, expectedZuluTime(freeInspectionMs), "inspection away from dots keeps continuous timeline behavior");
-  assert.equal(svg.children.at(-1), hitArea, "the existing transparent interaction surface stays above noninteractive markers");
+  assert.equal(tooltip.hidden, true, "hovering blank chart space does not show the detailed tooltip");
+
+  const transitionX = plotLeft + ((severeTimes[0] - rangeStart) / (rangeEnd - rangeStart)) * plotWidth;
+  hitArea.dispatchEvent({
+    type: "pointermove",
+    pointerType: "mouse",
+    clientX: transitionX,
+    clientY: (18 + (286 - 34)) / 2,
+  });
+  assert.equal(tooltip.hidden, true, "hovering a vertical state transition does not show the detailed tooltip");
+
+  hitArea.dispatchEvent({ type: "keydown", key: "Enter" });
+  assert.equal(tooltip.hidden, true, "the chart navigation surface cannot fabricate a keyboard observation");
+  hitArea.dispatchEvent({ type: "keydown", key: " " });
+  assert.equal(tooltip.hidden, true);
+
+  const focusTarget = svg.querySelector(".bwc-history-observation-focus-target");
+  assert.ok(focusTarget, "one bounded focus proxy exposes exact dots to keyboard users");
+  assert.equal(focusTarget.getAttribute("tabindex"), "0");
+  assert.equal(focusTarget.getAttribute("role"), "button");
+  assert.equal(focusTarget.getAttribute("data-bwc-observation-ms"), String(lowTimes[0]));
+  focusTarget.dispatchEvent({ type: "focus" });
+  assert.equal(tooltip.hidden, false);
+  assert.equal(tooltip.children[1].textContent, expectedZuluTime(lowTimes[0]), "focus shows the exact retained dot time");
+  focusTarget.dispatchEvent({ type: "keydown", key: "ArrowRight" });
+  assert.equal(focusTarget.getAttribute("data-bwc-observation-ms"), String(lowTimes[1]));
+  assert.equal(tooltip.children[1].textContent, expectedZuluTime(lowTimes[1]));
+  focusTarget.dispatchEvent({ type: "keydown", key: "End" });
+  assert.equal(focusTarget.getAttribute("data-bwc-observation-ms"), String(severeTimes[1]));
+  assert.equal(tooltip.children[0].textContent, "AHAS RISK: SEVERE");
+  focusTarget.dispatchEvent({ type: "keydown", key: "Home" });
+  assert.equal(focusTarget.getAttribute("data-bwc-observation-ms"), String(lowTimes[0]));
+  let focusEscapeStopped = false;
+  const focusEscape = {
+    type: "keydown", key: "Escape",
+    stopPropagation() { focusEscapeStopped = true; },
+  };
+  focusTarget.dispatchEvent(focusEscape);
+  assert.equal(tooltip.hidden, true, "Escape dismisses a keyboard tooltip");
+  assert.equal(focusEscape.defaultPrevented, true);
+  assert.equal(focusEscapeStopped, true, "the first Escape does not bubble through and close the modal");
+  let secondFocusEscapeStopped = false;
+  const secondFocusEscape = {
+    type: "keydown", key: "Escape",
+    stopPropagation() { secondFocusEscapeStopped = true; },
+  };
+  focusTarget.dispatchEvent(secondFocusEscape);
+  assert.equal(secondFocusEscape.defaultPrevented, false);
+  assert.equal(secondFocusEscapeStopped, false, "a second Escape remains available to close the modal");
+  focusTarget.dispatchEvent({ type: "focus" });
+  focusTarget.dispatchEvent({ type: "blur" });
+  assert.equal(tooltip.hidden, true, "blur dismisses a keyboard tooltip");
+
+  const tapX = Number(first.getAttribute("cx"));
+  const tapY = Number(first.getAttribute("cy"));
+  hitArea.dispatchEvent({
+    type: "pointerdown", pointerType: "touch", pointerId: 7, clientX: tapX, clientY: tapY,
+  });
+  hitArea.dispatchEvent({ type: "click", clientX: tapX, clientY: tapY });
+  assert.equal(tooltip.hidden, false, "tapping an exact dot shows its detailed tooltip");
+  assert.equal(tooltip.children[1].textContent, expectedZuluTime(lowTimes[0]));
+
+  let hitEscapeStopped = false;
+  const hitEscape = {
+    type: "keydown", key: "Escape",
+    stopPropagation() { hitEscapeStopped = true; },
+  };
+  hitArea.dispatchEvent(hitEscape);
+  assert.equal(tooltip.hidden, true);
+  assert.equal(hitEscape.defaultPrevented, true);
+  assert.equal(hitEscapeStopped, true, "chart navigation Escape dismisses a pinned dot tooltip before modal close");
+  const secondHitEscape = { type: "keydown", key: "Escape" };
+  hitArea.dispatchEvent(secondHitEscape);
+  assert.equal(secondHitEscape.defaultPrevented, false, "the next chart-navigation Escape can reach modal close logic");
+
+  hitArea.dispatchEvent({
+    type: "pointerdown", pointerType: "touch", pointerId: 9, clientX: tapX, clientY: tapY,
+  });
+  hitArea.dispatchEvent({ type: "click", clientX: tapX, clientY: tapY });
+  assert.equal(tooltip.hidden, false);
+
+  hitArea.dispatchEvent({
+    type: "pointerdown", pointerType: "touch", pointerId: 8, clientX: plotLeft + plotWidth / 2, clientY: 120,
+  });
+  hitArea.dispatchEvent({ type: "click", clientX: plotLeft + plotWidth / 2, clientY: 120 });
+  assert.equal(tooltip.hidden, true, "tapping blank chart space dismisses rather than fabricates metadata");
+  assert.equal(svg.children.at(-1), focusTarget, "a single focus proxy stays above the pointer hit surface");
+  assert.equal(svg.children.at(-2), hitArea);
+});
+
+test("UNKNOWN coverage bands never expose an observation tooltip without a retained dot", () => {
+  const view = new FakeEventTarget();
+  const doc = new FakeDocument(view);
+  const chart = doc.createElement("div");
+  chart.clientWidth = 820;
+  chart.clientHeight = 286;
+  const tooltip = doc.createElement("div");
+  tooltip.hidden = true;
+  const rangeStart = Date.parse("2026-08-30T12:00:00Z");
+  const gapStart = Date.parse("2026-08-30T12:30:00Z");
+  const gapEnd = Date.parse("2026-08-30T13:30:00Z");
+  const rangeEnd = Date.parse("2026-08-30T14:00:00Z");
+  const observationTime = Date.parse("2026-08-30T12:15:00Z");
+  const svg = renderBwcHistoryChart(doc, chart, tooltip, {
+    range: { startMs: rangeStart, endMs: rangeEnd, durationMs: rangeEnd - rangeStart },
+    history: { runs: [{
+      kind: "STATE", state: "LOW", firstObservedMs: observationTime, lastObservedMs: observationTime,
+      observationsZ: [new Date(observationTime).toISOString()], observationTimesMs: [observationTime],
+      observationsComplete: true, confirmationCount: 1, source: "USAHAS",
+      basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL",
+    }] },
+    segments: [
+      { kind: "STATE", state: "LOW", startMs: rangeStart, endMs: gapStart, source: "USAHAS", basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL" },
+      { kind: "UNKNOWN", startMs: gapStart, endMs: gapEnd, reason: "FRESHNESS_GAP" },
+      { kind: "STATE", state: "LOW", startMs: gapEnd, endMs: rangeEnd, source: "USAHAS", basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL" },
+    ],
+  });
+  assert.equal(svg.querySelectorAll(".bwc-history-unknown-band").length, 1);
+  const marker = svg.querySelector(".bwc-history-observation-marker");
+  const hitArea = svg.querySelector(".bwc-history-hit-area");
+  hitArea.dispatchEvent({
+    type: "pointermove", pointerType: "mouse",
+    clientX: Number(marker.getAttribute("cx")), clientY: Number(marker.getAttribute("cy")),
+  });
+  assert.equal(tooltip.hidden, false);
+  const plotLeft = 58;
+  const plotWidth = 820 - 58 - 14;
+  const gapMiddle = (gapStart + gapEnd) / 2;
+  hitArea.dispatchEvent({
+    type: "pointermove", pointerType: "mouse",
+    clientX: plotLeft + ((gapMiddle - rangeStart) / (rangeEnd - rangeStart)) * plotWidth,
+    clientY: 120,
+  });
+  assert.equal(tooltip.hidden, true);
+  assert.doesNotMatch(tooltip.textContent, /COVERAGE: UNKNOWN|FRESHNESS GAP/);
 });
 
 test("marker geometry remains UTC-anchored across viewport ranges and dense compact rendering keeps every point", () => {
@@ -869,14 +1011,26 @@ test("marker geometry remains UTC-anchored across viewport ranges and dense comp
   const denseTargetIndex = Math.floor(denseTimes.length / 2);
   const denseTargetX = 48 + ((denseTimes[denseTargetIndex] - denseStart) / (denseEnd - denseStart)) * (360 - 48 - 14);
   const denseTargetY = (18 + (230 - 34)) / 2;
-  compactSvg.querySelector(".bwc-history-hit-area").dispatchEvent({
-    type: "pointermove",
-    pointerType: "touch",
-    clientX: denseTargetX,
-    clientY: denseTargetY,
+  const denseHitArea = compactSvg.querySelector(".bwc-history-hit-area");
+  denseHitArea.dispatchEvent({
+    type: "pointerdown", pointerType: "touch", pointerId: 21,
+    clientX: denseTargetX, clientY: denseTargetY,
   });
-  assert.equal(compactTooltip.hidden, false, "dense nearest-point inspection remains usable");
+  denseHitArea.dispatchEvent({ type: "click", clientX: denseTargetX, clientY: denseTargetY });
+  assert.equal(compactTooltip.hidden, false, "dense exact-dot tap inspection remains usable");
   assert.equal(compactTooltip.children[1].textContent, expectedZuluTime(denseTimes[denseTargetIndex]));
+  const denseFocusTargets = compactSvg.querySelectorAll(".bwc-history-observation-focus-target");
+  assert.equal(denseFocusTargets.length, 1, "annual views add one focus node, not one node per observation");
+  denseFocusTargets[0].dispatchEvent({ type: "focus" });
+  denseFocusTargets[0].dispatchEvent({ type: "keydown", key: "End" });
+  assert.equal(denseFocusTargets[0].getAttribute("data-bwc-observation-ms"), String(denseTimes.at(-1)));
+  assert.equal(compactTooltip.children[1].textContent, expectedZuluTime(denseTimes.at(-1)));
+
+  denseHitArea.dispatchEvent({
+    type: "pointerdown", pointerType: "touch", pointerId: 22, clientX: 200, clientY: 30,
+  });
+  denseHitArea.dispatchEvent({ type: "click", clientX: 200, clientY: 30 });
+  assert.equal(compactTooltip.hidden, true, "dense blank space has no observation tooltip");
 });
 
 test("plot-relative pointer ratios exclude the Y-axis gutter and clamp to the visible plot", () => {
@@ -928,7 +1082,7 @@ test("viewport interactions zoom, pan, reset, and keep summaries on the master r
   assert.match(historyJs, /renderChartViewport\(nowMs\)/);
 });
 
-test("chart rendering is dependency-free SVG with unknown gaps and pointer/tap inspection", () => {
+test("chart rendering is dependency-free SVG with unknown gaps and observation-only interaction", () => {
   assert.match(historyJs, /createElementNS\(SVG_NS, name\)/);
   assert.match(historyJs, /createSvgElement\(doc, "svg"/);
   assert.match(historyJs, /createSvgElement\(doc, "path"/);
@@ -938,9 +1092,12 @@ test("chart rendering is dependency-free SVG with unknown gaps and pointer/tap i
   assert.match(historyJs, /selectBwcObservationMarkers\(timeline\)/);
   assert.match(historyJs, /createSvgElement\(doc, "circle"/);
   assert.match(historyJs, /bwc-history-observation-marker/);
+  assert.match(historyJs, /bwc-history-observation-focus-target/);
   assert.match(historyJs, /`M \$\{svgCoordinate\(x1\)\} \$\{svgCoordinate\(y\)\} H \$\{svgCoordinate\(x2\)\}`/);
   assert.match(historyJs, /addEventListener\("pointermove"/);
   assert.match(historyJs, /addEventListener\("click"/);
+  assert.doesNotMatch(historyJs, /const timelineSegment = findTimelineSegmentAt/);
+  assert.doesNotMatch(historyJs, /Exact retained observation timestamp|Observation \$\{/);
   assert.match(historyJs, /America\/Chicago|formatBwcMemphisTime/);
   assert.doesNotMatch(historyJs, /(?:from\s+["']d3|\bnew\s+Chart\s*\(|from\s+["']chart\.js|highcharts|plotly)/i);
 });
@@ -962,6 +1119,7 @@ test("modal styling stays fixed, internally scrollable, touch friendly, and resp
   assert.match(historyCss, /\.bwc-history-range-strip\{[\s\S]*overflow-x:auto/);
   assert.match(historyCss, /\.bwc-history-chart\{[\s\S]*min-width:0/);
   assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*pointer-events:none/);
+  assert.match(historyCss, /\.bwc-history-observation-focus-target\{[\s\S]*pointer-events:none/);
   assert.doesNotMatch(historyCss, /width:\s*\d{4,}px/);
 });
 

@@ -82,7 +82,8 @@ body.bwc-history-open{overflow:hidden!important}
 .bwc-history-close:focus-visible,
 .bwc-history-range-button:focus-visible,
 #bwcHistoryButton:focus-visible,
-.bwc-history-hit-area:focus-visible{
+.bwc-history-hit-area:focus-visible,
+.bwc-history-observation-focus-target:focus-visible{
   outline:3px solid #fff;
   outline-offset:2px;
 }
@@ -303,6 +304,17 @@ circle.bwc-history-observation-severe{fill:#ff6269}
 path.bwc-history-observation-low{stroke:#42e36f}
 path.bwc-history-observation-moderate{stroke:#ffe06e}
 path.bwc-history-observation-severe{stroke:#ff6269}
+.bwc-history-observation-focus-target{
+  fill:transparent;
+  stroke:transparent;
+  stroke-width:2.5;
+  pointer-events:none;
+  outline:none;
+}
+.bwc-history-observation-focus-target:focus-visible{
+  fill:rgba(255,255,255,.14);
+  stroke:#fff;
+}
 .bwc-history-hit-area{fill:transparent;stroke:none;cursor:crosshair;pointer-events:all}
 .bwc-history-chart-zoomed .bwc-history-hit-area{cursor:grab}
 .bwc-history-panning .bwc-history-hit-area{cursor:grabbing}

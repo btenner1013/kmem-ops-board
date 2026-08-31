@@ -429,37 +429,24 @@ function basisDescription(segment) {
   return `${basis} — ${classification}`;
 }
 
-function showChartTooltip(doc, tooltip, container, event, segment, timestampMs, observation = null) {
-  if (!tooltip || !container || !segment) return;
+function showChartTooltip(doc, tooltip, container, event, observation) {
+  const time = Number(observation?.timeMs);
+  if (!tooltip || !container || observation?.kind !== "STATE" || !Number.isFinite(time)) {
+    if (tooltip) tooltip.hidden = true;
+    return false;
+  }
   clearChildren(tooltip);
   const heading = doc.createElement("strong");
-  const time = Number.isFinite(Number(timestampMs)) ? Number(timestampMs) : finiteNumber(segment.startMs, NaN);
-  if (segment.kind === "STATE") {
-    heading.textContent = `AHAS RISK: ${String(segment.state || "UNKNOWN").toUpperCase()}`;
-    const zulu = doc.createElement("span");
-    zulu.textContent = safeFormat(formatBwcZuluTime, time);
-    const local = doc.createElement("span");
-    local.textContent = safeFormat(formatBwcMemphisTime, time, "LOCAL TIME UNKNOWN");
-    const source = doc.createElement("span");
-    source.textContent = "Source: USAHAS";
-    const basis = doc.createElement("span");
-    basis.textContent = `Basis: ${basisDescription(segment)}`;
-    tooltip.append(heading, zulu, local, source, basis);
-    if (observation) {
-      const evidence = doc.createElement("span");
-      evidence.textContent = observation.observationsComplete
-        ? `Observation ${finiteNumber(observation.observationIndex, 0) + 1} of ${Math.max(1, finiteNumber(observation.confirmationCount, 1))}`
-        : "Exact retained observation timestamp";
-      tooltip.appendChild(evidence);
-    }
-  } else {
-    heading.textContent = "COVERAGE: UNKNOWN";
-    const zulu = doc.createElement("span");
-    zulu.textContent = safeFormat(formatBwcZuluTime, time);
-    const reason = doc.createElement("span");
-    reason.textContent = String(segment.reason || "NO CONFIRMED USAHAS OBSERVATION").replaceAll("_", " ");
-    tooltip.append(heading, zulu, reason);
-  }
+  heading.textContent = `AHAS RISK: ${String(observation.state || "UNKNOWN").toUpperCase()}`;
+  const zulu = doc.createElement("span");
+  zulu.textContent = safeFormat(formatBwcZuluTime, time);
+  const local = doc.createElement("span");
+  local.textContent = safeFormat(formatBwcMemphisTime, time, "LOCAL TIME UNKNOWN");
+  const source = doc.createElement("span");
+  source.textContent = `Source: ${String(observation.source || "USAHAS").trim().toUpperCase()}`;
+  const basis = doc.createElement("span");
+  basis.textContent = `Basis: ${basisDescription(observation)}`;
+  tooltip.append(heading, zulu, local, source, basis);
   tooltip.hidden = false;
 
   const containerRect = container.getBoundingClientRect?.() || { left: 0, top: 0, width: 0, height: 0 };
@@ -471,6 +458,7 @@ function showChartTooltip(doc, tooltip, container, event, segment, timestampMs, 
   const clampedY = Math.max(8, Math.min(y - 12, Math.max(8, finiteNumber(containerRect.height, 0) - tooltipHeight - 8)));
   tooltip.style.left = `${clampedX}px`;
   tooltip.style.top = `${clampedY}px`;
+  return true;
 }
 
 function chartPlot(stepLayout, dimensions) {
@@ -525,6 +513,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   clearChildren(container);
   if (tooltip) {
     tooltip.hidden = true;
+    tooltip.setAttribute?.("role", "tooltip");
     container.appendChild(tooltip);
   }
 
@@ -548,7 +537,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   const plot = chartPlot(stepLayout, dimensions);
   const svg = createSvgElement(doc, "svg", {
     viewBox: `0 0 ${width} ${height}`,
-    role: "img",
+    role: "group",
     "aria-label": "USAHAS AHAS risk step chart with exact observation markers and LOW, MODERATE, SEVERE, and unknown coverage",
     preserveAspectRatio: "xMidYMid meet",
   });
@@ -684,10 +673,11 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   }
 
   // Keep exact evidence above the step and grid strokes. Sparse views retain
-  // one inspectable circle node per observation. Dense views keep the same
+  // one visible circle node per observation. Dense views keep the same
   // exact centers but batch their round-capped subpaths by state, preventing a
   // full annual ledger from creating tens of thousands of SVG DOM elements.
-  // The transparent hit area remains the single interaction surface.
+  // Pointer hit testing stays on one transparent interaction surface and one
+  // movable focus proxy exposes the exact observations to keyboard users.
   if (durationMs > 0) {
     for (const observation of observations) {
       const y = plot.yByState?.[observation?.state];
@@ -744,14 +734,80 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     height: plot.height + 20,
     class: "bwc-history-hit-area",
     tabindex: 0,
-    "aria-label": "Inspect BWC history chart; use the mouse wheel to zoom and drag to pan when zoomed",
+    "aria-label": "BWC history chart navigation; use the mouse wheel to zoom and drag or use the arrow keys to pan when zoomed",
   });
   svg.appendChild(interaction);
+
+  const focusTarget = observations.length ? createSvgElement(doc, "circle", {
+    r: svgCoordinate(markerRadius + 3.5),
+    class: "bwc-history-observation-focus-target",
+    tabindex: 0,
+    role: "button",
+    "aria-roledescription": "BWC observation marker",
+    "aria-keyshortcuts": "ArrowLeft ArrowRight Home End Enter Space Escape",
+    "vector-effect": "non-scaling-stroke",
+  }) : null;
+  if (focusTarget && tooltip?.getAttribute?.("id")) {
+    focusTarget.setAttribute("aria-controls", tooltip.getAttribute("id"));
+  }
+  if (focusTarget) svg.appendChild(focusTarget);
   container.insertBefore(svg, tooltip || null);
 
   let pinned = false;
-  let lastInspection = null;
-  function nearestObservation(event, rect) {
+  let focusIndex = 0;
+  let lastPointerType = "mouse";
+  function hideTooltip() {
+    pinned = false;
+    if (tooltip) tooltip.hidden = true;
+  }
+  function observationLabel(observation, index) {
+    return [
+      `BWC observation ${index + 1} of ${observations.length}`,
+      String(observation?.state || "UNKNOWN").toUpperCase(),
+      safeFormat(formatBwcZuluTime, observation?.timeMs),
+      safeFormat(formatBwcMemphisTime, observation?.timeMs, "LOCAL TIME UNKNOWN"),
+      `Source ${String(observation?.source || "USAHAS").trim().toUpperCase()}`,
+      `Basis ${basisDescription(observation)}`,
+      "Use Left and Right Arrow keys for adjacent observations",
+    ].join("; ");
+  }
+  function updateFocusTarget(index) {
+    if (!focusTarget || !observations.length) return null;
+    focusIndex = Math.max(0, Math.min(observations.length - 1, index));
+    const observation = observations[focusIndex];
+    const y = plot.yByState?.[observation?.state];
+    if (!Number.isFinite(y)) return null;
+    focusTarget.setAttribute("cx", svgCoordinate(xForTime(observation.timeMs)));
+    focusTarget.setAttribute("cy", svgCoordinate(y));
+    focusTarget.setAttribute("data-bwc-observation-ms", observation.timeMs);
+    focusTarget.setAttribute("data-bwc-observation-index", focusIndex);
+    focusTarget.setAttribute("aria-label", observationLabel(observation, focusIndex));
+    return observation;
+  }
+  function eventAtObservation(observation) {
+    const rect = svg.getBoundingClientRect?.();
+    const y = plot.yByState?.[observation?.state];
+    if (!rect?.width || !rect?.height || !Number.isFinite(y)) return null;
+    return {
+      clientX: rect.left + xForTime(observation.timeMs) * rect.width / width,
+      clientY: rect.top + y * rect.height / height,
+    };
+  }
+  function showObservation(observation, event = null, shouldPin = false) {
+    if (!observation) {
+      hideTooltip();
+      return false;
+    }
+    if (shouldPin) pinned = true;
+    return showChartTooltip(
+      doc,
+      tooltip,
+      container,
+      event || eventAtObservation(observation),
+      observation,
+    );
+  }
+  function nearestObservation(event, rect, pointerType = event?.pointerType) {
     const clientX = Number(event?.clientX);
     const clientY = Number(event?.clientY);
     if (!Number.isFinite(clientX) || !Number.isFinite(clientY) || !rect?.width || !rect?.height) return null;
@@ -760,7 +816,11 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     const targetTimeMs = rangeStart + Math.max(0, Math.min(1, (svgX - plot.left) / plot.width)) * durationMs;
     const scaleX = rect.width / width;
     const scaleY = rect.height / height;
-    const thresholdPx = event?.pointerType === "touch" ? 22 : compact ? 16 : 12;
+    const thresholdPx = pointerType === "touch"
+      ? 22
+      : pointerType === "pen"
+        ? 14
+        : Math.max(4, markerRadius * Math.min(scaleX, scaleY) + 1.5);
     let nearest = null;
     let nearestDistance = Number.POSITIVE_INFINITY;
     for (const state of ["LOW", "MODERATE", "SEVERE"]) {
@@ -789,35 +849,31 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     }
     return nearest;
   }
-  function inspect(event, shouldPin = false) {
+  function inspect(event, shouldPin = false, pointerType = event?.pointerType) {
     if (!(durationMs > 0)) return;
     if (container.classList?.contains("bwc-history-panning")) {
-      if (tooltip) tooltip.hidden = true;
+      hideTooltip();
       return;
     }
     const rect = svg.getBoundingClientRect?.();
     if (!rect?.width) return;
-    const svgX = (finiteNumber(event?.clientX, rect.left) - rect.left) * width / rect.width;
-    const ratio = Math.max(0, Math.min(1, (svgX - plot.left) / plot.width));
-    const timestampMs = rangeStart + ratio * durationMs;
-    const observation = nearestObservation(event, rect);
-    const timelineSegment = findTimelineSegmentAt(timeline.segments, Math.min(timestampMs, rangeEnd - 1));
-    const segment = observation || timelineSegment;
-    if (!segment) return;
-    const inspectedTimeMs = observation?.timeMs ?? timestampMs;
-    lastInspection = { segment: timelineSegment || segment, observation, timeMs: inspectedTimeMs };
-    if (shouldPin) pinned = true;
-    showChartTooltip(
-      doc,
-      tooltip,
-      container,
-      event,
-      segment,
-      inspectedTimeMs,
-      observation,
-    );
+    const observation = nearestObservation(event, rect, pointerType);
+    if (!observation) {
+      hideTooltip();
+      return;
+    }
+    showObservation(observation, event, shouldPin);
   }
-  interaction.addEventListener("pointermove", (event) => inspect(event));
+  interaction.addEventListener("pointerdown", (event) => {
+    lastPointerType = event.pointerType || "mouse";
+  });
+  interaction.addEventListener("pointermove", (event) => {
+    const pointerType = event.pointerType || "mouse";
+    lastPointerType = pointerType;
+    if (pointerType === "touch") return;
+    pinned = false;
+    inspect(event, false, pointerType);
+  });
   interaction.addEventListener("pointerleave", () => {
     if (!pinned && tooltip) tooltip.hidden = true;
   });
@@ -828,35 +884,53 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
       event.stopPropagation();
       return;
     }
-    inspect(event, true);
+    inspect(event, true, event.pointerType || lastPointerType);
   });
   interaction.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      pinned = false;
-      if (tooltip) tooltip.hidden = true;
+      const tooltipWasVisible = Boolean(tooltip && !tooltip.hidden);
+      hideTooltip();
+      if (tooltipWasVisible) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       return;
     }
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    const fallbackSegment = timeline.segments?.find((item) => item.kind === "STATE") || timeline.segments?.[0];
-    const inspection = lastInspection || (fallbackSegment ? {
-      segment: fallbackSegment,
-      observation: null,
-      timeMs: (finiteNumber(fallbackSegment.startMs) + finiteNumber(fallbackSegment.endMs)) / 2,
-    } : null);
-    const segment = inspection?.observation || inspection?.segment;
-    if (!segment) return;
-    pinned = true;
-    showChartTooltip(
-      doc,
-      tooltip,
-      container,
-      null,
-      segment,
-      inspection.timeMs,
-      inspection.observation,
-    );
+    hideTooltip();
   });
+  if (focusTarget) {
+    updateFocusTarget(0);
+    focusTarget.addEventListener("focus", () => {
+      const observation = updateFocusTarget(focusIndex);
+      showObservation(observation, null, true);
+    });
+    focusTarget.addEventListener("blur", hideTooltip);
+    focusTarget.addEventListener("keydown", (event) => {
+      let nextIndex = focusIndex;
+      if (event.key === "ArrowLeft") nextIndex -= 1;
+      else if (event.key === "ArrowRight") nextIndex += 1;
+      else if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = observations.length - 1;
+      else if (event.key === "Escape") {
+        const tooltipWasVisible = Boolean(tooltip && !tooltip.hidden);
+        hideTooltip();
+        if (tooltipWasVisible) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      } else if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showObservation(observations[focusIndex], null, true);
+        return;
+      } else return;
+      event.preventDefault();
+      const observation = updateFocusTarget(nextIndex);
+      showObservation(observation, null, true);
+    });
+  }
   return svg;
 }
 
