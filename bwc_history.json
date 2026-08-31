@@ -10,7 +10,7 @@
   "retentionDays": 365,
   "continuityMinutes": 90,
   "collectionStartedZ": "2026-08-30T04:15:42.295283Z",
-  "archiveUpdatedZ": "2026-08-31T04:55:39.999465Z",
+  "archiveUpdatedZ": "2026-08-31T05:05:40.039178Z",
   "runs": [
     {
       "kind": "STATE",
@@ -1026,6 +1026,24 @@
       "source": "USAHAS",
       "basis": "NEXBAM",
       "basisClass": "MODEL_OPERATIONAL"
+    },
+    {
+      "kind": "STATE",
+      "state": "MODERATE",
+      "rawAhasRisk": "MODERATE",
+      "startZ": "2026-08-31T05:00:00Z",
+      "firstObservedZ": "2026-08-31T05:00:00Z",
+      "lastObservedZ": "2026-08-31T05:00:00Z",
+      "observationsZ": [
+        "2026-08-31T05:00:00Z"
+      ],
+      "firstRecordedZ": "2026-08-31T05:05:40.039178Z",
+      "lastRecordedZ": "2026-08-31T05:05:40.039178Z",
+      "confirmationCount": 1,
+      "startReason": "BASIS_CHANGE",
+      "source": "USAHAS",
+      "basis": "NEXRAD",
+      "basisClass": "OBSERVED_OPERATIONAL"
     }
   ]
 }
