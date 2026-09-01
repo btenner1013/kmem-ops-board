@@ -7,14 +7,18 @@ import {
   lookupAviationWeather,
   normalizeIcao,
 } from "./aviation-weather-lookup-core.js";
-import { meteogramLookupRequest } from "./weather-meteogram-core.js";
-import { renderAviationMeteogram } from "./weather-meteogram.js";
+import { meteogramLookupRequest, parseNwsGridForecast } from "./weather-meteogram-core.js";
+import { meteogramForecastSourceState, renderAviationMeteogram } from "./weather-meteogram.js";
 
 const PRODUCT_NAMES = new Set(["ATIS", "METAR", "TAF", "METEOGRAM"]);
 const LOOKUP_TIMEOUT_MS = 30000;
 const METEOGRAM_REFRESH_MS = 5 * 60 * 1000;
 const TAF_SNAPSHOT_SCHEMA_VERSION = 1;
 const TAF_SNAPSHOT_SOURCE_POLICY = "NOAA_AWC_COMPLETE_CURRENT_CACHE";
+const NWS_KMEM_POINT = Object.freeze({ latitude: 35.0424, longitude: -89.9767 });
+const NWS_KMEM_POINT_URL = `https://api.weather.gov/points/${NWS_KMEM_POINT.latitude},${NWS_KMEM_POINT.longitude}`;
+const NWS_KMEM_STATION_URL = "https://api.weather.gov/stations/KMEM";
+const NWS_GRID_PATH_PATTERN = /^\/gridpoints\/[A-Z0-9]{3}\/\d+,\d+$/;
 const ATIS_GURU_REFERENCE_BASE_URL = "https://atis.guru/atis/";
 const ATIS_GURU_REFERENCE_LABEL = "ATIS.guru reference ↗";
 const ATIS_GURU_REFERENCE_WARNING = "External reference only — currentness not validated";
@@ -166,6 +170,77 @@ export async function fetchCurrentTafSnapshot({
       issuanceTime: report.issueTime,
       source: "NOAA Aviation Weather Center current TAF cache",
     }));
+}
+
+function validatedNwsGridUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value);
+    if (
+      url.protocol !== "https:"
+      || url.hostname !== "api.weather.gov"
+      || url.port
+      || url.username
+      || url.password
+      || url.search
+      || url.hash
+      || !NWS_GRID_PATH_PATTERN.test(url.pathname)
+    ) {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function isNwsGridPayload(payload) {
+  return Boolean(
+    payload
+    && !Array.isArray(payload)
+    && payload.type === "Feature"
+    && payload.properties
+    && typeof payload.properties === "object"
+    && !Array.isArray(payload.properties),
+  );
+}
+
+export async function fetchNwsMeteogramSupplement({
+  station,
+  signal,
+  fetchImpl = fetch,
+  fetchedAt = () => new Date(),
+} = {}) {
+  if (normalizeIcao(station) !== "KMEM") return null;
+  const requestOptions = {
+    signal,
+    headers: { Accept: "application/geo+json" },
+  };
+  const pointResponse = await fetchImpl(NWS_KMEM_POINT_URL, requestOptions);
+  if (!pointResponse?.ok) throw new Error(`NWS point HTTP ${pointResponse?.status || "ERROR"}`);
+  const pointPayload = await pointResponse.json();
+  const sourceUrl = validatedNwsGridUrl(pointPayload?.properties?.forecastGridData);
+  if (!sourceUrl) throw new Error("NWS point response has an invalid forecastGridData URL");
+
+  const gridResponse = await fetchImpl(sourceUrl, requestOptions);
+  if (!gridResponse?.ok) throw new Error(`NWS grid HTTP ${gridResponse?.status || "ERROR"}`);
+  const payload = await gridResponse.json();
+  if (!isNwsGridPayload(payload)) throw new Error("NWS grid response is malformed");
+
+  const fetchedDate = fetchedAt();
+  const fetchedZ = fetchedDate instanceof Date ? fetchedDate.toISOString() : new Date(fetchedDate).toISOString();
+  const envelope = {
+    payload,
+    sourceUrl,
+    pointUrl: NWS_KMEM_POINT_URL,
+    stationUrl: NWS_KMEM_STATION_URL,
+    fetchedZ,
+    point: { ...NWS_KMEM_POINT },
+  };
+  if (!parseNwsGridForecast(envelope, { station: "KMEM", now: fetchedDate })) {
+    throw new Error("NWS grid response failed identity, validity, or field validation");
+  }
+  return envelope;
 }
 
 export function toggleDecodedReport(toggle, panel) {
@@ -417,7 +492,18 @@ export function initializeAviationWeatherLookup(doc = document) {
     const tafResponsePromise = product === "METEOGRAM"
       ? lookupAviationWeather({ ...lookupOptions, product: "TAF", range: "recent" })
       : Promise.resolve(null);
-    const [response, tafResponse] = await Promise.all([responsePromise, tafResponsePromise]);
+    const supplementalForecastPromise = product === "METEOGRAM" && station === "KMEM"
+      ? fetchNwsMeteogramSupplement({
+        station,
+        signal: controller.signal,
+        fetchImpl: view.fetch.bind(view),
+      }).catch(() => null)
+      : Promise.resolve(null);
+    const [response, tafResponse, supplementalForecast] = await Promise.all([
+      responsePromise,
+      tafResponsePromise,
+      supplementalForecastPromise,
+    ]);
     clearTimeout(timeout);
     if (currentRequest !== requestNumber) return;
     if (activeController === controller) activeController = null;
@@ -432,6 +518,7 @@ export function initializeAviationWeatherLookup(doc = document) {
           station,
           rangeLabel,
           tafReports: tafResponse?.state === "success" ? tafResponse.reports : [],
+          supplementalForecast,
           now: lookupNow,
           doc,
           view,
@@ -441,18 +528,34 @@ export function initializeAviationWeatherLookup(doc = document) {
           setStatus(status, "INSUFFICIENT HISTORY", "No complete METAR/SPECI observations could be plotted.", "warning");
           return;
         }
+        const forecastSources = meteogramForecastSourceState(activeMeteogram.model);
+        const normalizedSupplementAvailable = forecastSources.hasNws;
+        const futureDetail = forecastSources.hasTaf && forecastSources.hasNws
+          ? "The future side combines current valid TAF aviation fields with separately sourced NWS grid supplemental fields; TEMPO/PROB remain conditional and uncoded values stay missing."
+          : forecastSources.hasTaf
+            ? "The future side uses current valid TAF aviation fields; NWS supplemental fields are unavailable and remain missing."
+            : forecastSources.hasNws
+              ? "Current TAF aviation fields are unavailable or not safely plotted; only separately sourced NWS grid supplemental fields are shown where valid."
+              : activeMeteogram.model.taf?.warning
+                || "No current forecast fields are safely available; exact METAR/SPECI history remains displayed.";
         setStatus(
           status,
-          `${activeMeteogram.model.observations.length} OBS · ${activeMeteogram.model.forecasts.length} TAF FCST`,
+          `${activeMeteogram.model.observations.length} OBS · ${activeMeteogram.model.forecasts.length} FCST`,
           [
             response.detail,
             tafResponse?.detail,
-            activeMeteogram.model.forecasts.length
-              ? "The future side is rebuilt from the current valid TAF; TEMPO/PROB remain conditional and uncoded values stay missing."
-              : activeMeteogram.model.taf?.warning
-                || "Current TAF unavailable; exact METAR/SPECI history remains displayed without a forecast projection.",
+            normalizedSupplementAvailable
+              ? "NWS supplemental grid forecast available."
+              : "NWS supplemental grid forecast unavailable; unsupported values remain missing.",
+            futureDetail,
           ].filter(Boolean).join(" "),
-          response.partialFailures || tafResponse?.partialFailures || !activeMeteogram.model.forecasts.length ? "warning" : "success",
+          response.partialFailures
+            || tafResponse?.partialFailures
+            || !activeMeteogram.model.forecasts.length
+            || !normalizedSupplementAvailable
+            || !forecastSources.hasTaf
+            ? "warning"
+            : "success",
         );
         currentReports = [...response.reports, ...(tafResponse?.state === "success" ? tafResponse.reports : [])];
         printButton.disabled = false;

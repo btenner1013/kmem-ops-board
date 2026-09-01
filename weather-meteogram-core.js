@@ -12,8 +12,13 @@ const MPH_PER_KNOT = 1.150779448;
 const HPA_PER_INHG = 33.8638866667;
 const KNOTS_PER_METRE_PER_SECOND = 1.943844492;
 const METRES_PER_STATUTE_MILE = 1609.344;
+const MILLIMETRES_PER_INCH = 25.4;
+const NWS_AMOUNT_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const MAX_ROUTINE_PRECIP_INTERVAL_MS = 90 * 60 * 1000;
 const METEOGRAM_MAX_FORECAST_HOURS = 36;
 const METEOGRAM_MIN_SAMPLE_SPACING_MS = 30 * 60 * 1000;
+const METEOGRAM_MAX_FORECAST_MS = METEOGRAM_MAX_FORECAST_HOURS * 60 * 60 * 1000;
+const NWS_GRID_SOURCE = "NOAA/NWS forecast grid";
 
 function normalizedRaw(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -23,6 +28,44 @@ function finiteNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function finiteJsonNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function isoTimestamp(value) {
+  if (typeof value !== "string" || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value.trim())) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+function isoDurationMilliseconds(value) {
+  const match = String(value || "").trim().match(
+    /^P(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/i,
+  );
+  if (!match || !match.slice(1).some((part) => part !== undefined)) return null;
+  const [days, hours, minutes, seconds] = match.slice(1).map((part) => part === undefined ? 0 : Number(part));
+  if (![days, hours, minutes, seconds].every((part) => Number.isFinite(part) && part >= 0)) return null;
+  const milliseconds = (((days * 24 + hours) * 60 + minutes) * 60 + seconds) * 1000;
+  return Number.isFinite(milliseconds) && milliseconds > 0 ? milliseconds : null;
+}
+
+function parsedValidTime(value) {
+  const parts = String(value || "").trim().split("/");
+  if (parts.length !== 2) return null;
+  const startZ = isoTimestamp(parts[0]);
+  if (!startZ) return null;
+  const startMs = Date.parse(startZ);
+  const durationMs = isoDurationMilliseconds(parts[1]);
+  let endMs = durationMs === null ? Date.parse(isoTimestamp(parts[1]) || "") : startMs + durationMs;
+  if (!Number.isFinite(endMs) || endMs <= startMs) return null;
+  return {
+    validStartZ: startZ,
+    validEndZ: new Date(endMs).toISOString(),
+    startMs,
+    endMs,
+  };
 }
 
 function signedTemperature(token) {
@@ -326,6 +369,213 @@ function ceilToUtcHour(value) {
   return date;
 }
 
+function officialNwsUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    return url.protocol === "https:" && url.hostname === "api.weather.gov" ? url.toString() : "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+function officialNwsGridIdentity(value) {
+  const sourceUrl = officialNwsUrl(value);
+  if (!sourceUrl) return null;
+  const url = new URL(sourceUrl);
+  const match = /^\/gridpoints\/([A-Z0-9]{3})\/(\d+),(\d+)$/.exec(url.pathname);
+  if (!match || url.search || url.hash || url.username || url.password || url.port) return null;
+  return {
+    sourceUrl,
+    id: match[1],
+    x: Number(match[2]),
+    y: Number(match[3]),
+  };
+}
+
+function intervalInsideGlobalValidity(interval, globalValidity) {
+  return interval.startMs >= globalValidity.startMs && interval.endMs <= globalValidity.endMs;
+}
+
+function normalizedNwsStateIntervals(field, {
+  expectedUnit,
+  valueKey,
+  nowMs,
+  maximumEndMs,
+  globalValidity,
+  provenance,
+}) {
+  if (!field || field.uom !== expectedUnit || !Array.isArray(field.values)) return [];
+  const intervals = [];
+  for (const entry of field.values) {
+    const interval = parsedValidTime(entry?.validTime);
+    const value = finiteJsonNumber(entry?.value);
+    if (!interval || !intervalInsideGlobalValidity(interval, globalValidity) || value === null) continue;
+    if (interval.endMs <= nowMs || interval.startMs >= maximumEndMs) continue;
+    const cappedEndMs = Math.min(interval.endMs, maximumEndMs);
+    if (cappedEndMs <= Math.max(interval.startMs, nowMs)) continue;
+    intervals.push({
+      validStartZ: interval.validStartZ,
+      validEndZ: new Date(cappedEndMs).toISOString(),
+      [valueKey]: value,
+      ...provenance,
+    });
+  }
+  intervals.sort((left, right) => Date.parse(left.validStartZ) - Date.parse(right.validStartZ));
+  for (let index = 1; index < intervals.length; index += 1) {
+    if (Date.parse(intervals[index].validStartZ) < Date.parse(intervals[index - 1].validEndZ)) return [];
+  }
+  return intervals;
+}
+
+function normalizedNwsAmountIntervals(field, {
+  nowMs,
+  maximumEndMs,
+  globalValidity,
+  provenance,
+}) {
+  if (!field || field.uom !== "wmoUnit:mm" || !Array.isArray(field.values)) return [];
+  const intervals = [];
+  for (const entry of field.values) {
+    const interval = parsedValidTime(entry?.validTime);
+    if (!interval) return [];
+    const amountMm = finiteJsonNumber(entry?.value);
+    if (amountMm === null || amountMm < 0) continue;
+    if (interval.endMs <= nowMs || interval.startMs >= maximumEndMs) continue;
+    if (!intervalInsideGlobalValidity(interval, globalValidity)) continue;
+    const start = new Date(interval.startMs);
+    const isOfficialSixHourTotal = interval.endMs - interval.startMs === NWS_AMOUNT_INTERVAL_MS
+      && start.getUTCMinutes() === 0
+      && start.getUTCSeconds() === 0
+      && start.getUTCMilliseconds() === 0
+      && start.getUTCHours() % 6 === 0;
+    if (!isOfficialSixHourTotal) continue;
+    // An accumulation that has already begun is not a truthful remaining-forecast amount.
+    // Amount intervals are never clipped or split because the source total belongs to the
+    // complete valid period.
+    if (interval.startMs < nowMs || interval.endMs > maximumEndMs) continue;
+    intervals.push({
+      validStartZ: interval.validStartZ,
+      validEndZ: interval.validEndZ,
+      amountMm,
+      amountIn: amountMm / MILLIMETRES_PER_INCH,
+      ...provenance,
+    });
+  }
+  intervals.sort((left, right) => Date.parse(left.validStartZ) - Date.parse(right.validStartZ));
+  for (let index = 1; index < intervals.length; index += 1) {
+    if (Date.parse(intervals[index].validStartZ) < Date.parse(intervals[index - 1].validEndZ)) return [];
+  }
+  return intervals;
+}
+
+export function parseNwsGridForecast(input, {
+  station: stationValue = "KMEM",
+  now = new Date(),
+} = {}) {
+  const envelope = input && typeof input === "object" ? input : {};
+  const payload = envelope.payload && typeof envelope.payload === "object" ? envelope.payload : envelope;
+  const properties = payload?.properties;
+  const station = normalizeIcao(stationValue);
+  const nowDate = new Date(now);
+  if (!isValidIcao(station) || !properties || !Number.isFinite(nowDate.getTime())) return null;
+
+  const sourceIdentity = officialNwsGridIdentity(envelope.sourceUrl || payload.id || payload["@id"] || properties["@id"]);
+  const sourceUrl = sourceIdentity?.sourceUrl || "";
+  const pointUrl = officialNwsUrl(envelope.pointUrl);
+  const stationUrl = officialNwsUrl(envelope.stationUrl);
+  const updateZ = isoTimestamp(properties.updateTime);
+  const globalValidity = parsedValidTime(properties.validTimes);
+  const gridId = String(properties.gridId || "").trim().toUpperCase();
+  const gridX = finiteNumber(properties.gridX);
+  const gridY = finiteNumber(properties.gridY);
+  if (
+    !sourceUrl
+    || !updateZ
+    || !globalValidity
+    || !gridId
+    || gridX === null
+    || gridY === null
+    || sourceIdentity.id !== gridId
+    || sourceIdentity.x !== gridX
+    || sourceIdentity.y !== gridY
+  ) return null;
+
+  const latitude = finiteNumber(envelope.point?.latitude);
+  const longitude = finiteNumber(envelope.point?.longitude);
+  const fetchedZ = isoTimestamp(envelope.fetchedZ);
+  const maximumEndMs = nowDate.getTime() + METEOGRAM_MAX_FORECAST_MS;
+  const grid = {
+    id: gridId,
+    x: gridX,
+    y: gridY,
+    latitude,
+    longitude,
+  };
+  const provenance = {
+    product: "NWS_GRID",
+    source: NWS_GRID_SOURCE,
+    sourceUrl,
+    updateZ,
+    grid,
+  };
+  const options = {
+    nowMs: nowDate.getTime(),
+    maximumEndMs,
+    globalValidity,
+    provenance,
+  };
+  const temperatureIntervals = normalizedNwsStateIntervals(properties.temperature, {
+    ...options,
+    expectedUnit: "wmoUnit:degC",
+    valueKey: "valueC",
+  });
+  const dewPointIntervals = normalizedNwsStateIntervals(properties.dewpoint, {
+    ...options,
+    expectedUnit: "wmoUnit:degC",
+    valueKey: "valueC",
+  });
+  const quantitativePrecipitationIntervals = normalizedNwsAmountIntervals(
+    properties.quantitativePrecipitation,
+    options,
+  );
+  const snowfallAmountIntervals = normalizedNwsAmountIntervals(properties.snowfallAmount, options);
+  return {
+    product: "NWS_GRID",
+    station,
+    source: NWS_GRID_SOURCE,
+    sourceUrl,
+    pointUrl,
+    stationUrl,
+    fetchedZ,
+    updateZ,
+    validStartZ: globalValidity.validStartZ,
+    validEndZ: globalValidity.validEndZ,
+    grid,
+    temperatureIntervals,
+    dewPointIntervals,
+    quantitativePrecipitationIntervals,
+    snowfallAmountIntervals,
+  };
+}
+
+function blankPrecipitationState() {
+  return {
+    rainObserved: false,
+    snowObserved: false,
+    rainForecast: false,
+    snowForecast: false,
+    conditionalRainForecast: false,
+    conditionalSnowForecast: false,
+    liquidEquivalentIn: null,
+    liquidTrace: false,
+    liquidInterval: null,
+    precipitationNotAvailable: false,
+    snowDepthIncreaseIn: null,
+    snowDepthIncreaseInterval: null,
+    snowDepthIn: null,
+  };
+}
+
 function timeInside(value, start, end) {
   const timestamp = new Date(value).getTime();
   return Number.isFinite(timestamp) && timestamp >= start.getTime() && timestamp < end.getTime();
@@ -387,6 +637,7 @@ export function buildTafForecastBuckets(tafReport, {
   station: stationValue,
   now = new Date(),
   latestObservedZ = null,
+  additionalTimestamps = [],
 } = {}) {
   const station = normalizeIcao(stationValue || tafReport?.station);
   const nowDate = new Date(now);
@@ -466,6 +717,12 @@ export function buildTafForecastBuckets(tafReport, {
       timestamps.add(date.toISOString());
     }
   }
+  for (const timestamp of Array.isArray(additionalTimestamps) ? additionalTimestamps : []) {
+    const date = new Date(timestamp);
+    if (Number.isFinite(date.getTime()) && date >= forecastStart && date < forecastEnd) {
+      timestamps.add(date.toISOString());
+    }
+  }
   const forecastStartIso = forecastStart.toISOString();
   const latestObservedTime = Date.parse(latestObservedZ);
   const recentObservation = Number.isFinite(latestObservedTime)
@@ -496,15 +753,11 @@ export function buildTafForecastBuckets(tafReport, {
     const becoming = becomingForecasts(decoded, validZ);
     const weatherCodes = [...state.weatherCodes];
     const precipitation = {
-      rainObserved: false,
-      snowObserved: false,
+      ...blankPrecipitationState(),
       rainForecast: weatherCodes.some((code) => /RA|DZ/.test(code)),
       snowForecast: weatherCodes.some((code) => /SN|SG|PL|GS/.test(code)),
       conditionalRainForecast: conditional.some((entry) => entry.conditions.weatherCodes?.some((code) => /RA|DZ/.test(code))),
       conditionalSnowForecast: conditional.some((entry) => entry.conditions.weatherCodes?.some((code) => /SN|SG|PL|GS/.test(code))),
-      liquidEquivalentIn: null,
-      liquidTrace: false,
-      snowDepthIn: null,
     };
     const value = {
       ...state,
@@ -526,6 +779,17 @@ export function buildTafForecastBuckets(tafReport, {
       becoming,
       weatherCodes,
       precipitation,
+      fieldProvenance: {
+        temperature: exactTemperature ? {
+          product: "TAF",
+          source: tafReport.source || "Current TAF",
+          sourceUrl: "",
+          updateZ: decoded.issuanceUtc,
+          validStartZ: validZ,
+          validEndZ: validZ,
+        } : null,
+        dewPoint: null,
+      },
     };
     value.weather = weatherPresentation(weatherCodes, value.clouds);
     return value;
@@ -537,19 +801,44 @@ export function buildTafForecastBuckets(tafReport, {
   };
 }
 
-function parsePrecipitation(raw, weatherCodes) {
+function parsePrecipitation(raw, weatherCodes, observedZ) {
+  const normalized = normalizedRaw(raw);
   const rainObserved = weatherCodes.some((code) => /RA|DZ/.test(code));
   const snowObserved = weatherCodes.some((code) => /SN|SG|PL|GS/.test(code));
-  const hourly = normalizedRaw(raw).match(/\bP(\d{4})\b/);
-  const liquidEquivalentIn = hourly ? Number(hourly[1]) / 100 : null;
+  const precipitationNotAvailable = /\bPNO\b/.test(normalized);
+  const hourly = precipitationNotAvailable ? null : normalized.match(/\bP(\d{4})\b/);
   const liquidTrace = Boolean(hourly && hourly[1] === "0000");
-  const snowDepth = normalizedRaw(raw).match(/\b4\/(\d{3})\b/);
+  const liquidEquivalentIn = hourly && !liquidTrace ? Number(hourly[1]) / 100 : null;
+  const rapidSnow = normalized.match(/\bSNINCR\s+(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\b/);
+  const snowDepth = normalized.match(/\b4\/(\d{3})\b/);
+  const observedMs = Date.parse(observedZ);
+  const snowDepthIncreaseIn = rapidSnow ? Number(rapidSnow[1]) : null;
+  const snowDepthIncreaseInterval = snowDepthIncreaseIn === null || !Number.isFinite(observedMs)
+    ? null
+    : {
+      validStartZ: new Date(observedMs - 60 * 60 * 1000).toISOString(),
+      validEndZ: new Date(observedMs).toISOString(),
+      sourceToken: rapidSnow[0],
+      semantics: "PRECEDING_ONE_HOUR",
+    };
   return {
+    ...blankPrecipitationState(),
     rainObserved,
     snowObserved,
     liquidEquivalentIn,
     liquidTrace,
-    snowDepthIn: snowDepth ? Number(snowDepth[1]) : null,
+    precipitationNotAvailable,
+    liquidInterval: hourly ? {
+      validStartZ: null,
+      validEndZ: observedZ,
+      sourceToken: hourly[0],
+      semantics: "SINCE_PREVIOUS_ROUTINE_METAR",
+    } : null,
+    snowDepthIncreaseIn,
+    snowDepthIncreaseInterval,
+    // 4/sss is depth on the ground, never an amount of new snowfall.  The
+    // second SNINCR value is also depth and is retained only as such.
+    snowDepthIn: snowDepth ? Number(snowDepth[1]) : rapidSnow ? Number(rapidSnow[2]) : null,
   };
 }
 
@@ -570,6 +859,9 @@ function completenessScore(value) {
     + (value.windDirectionDeg !== null || value.windVariable ? 1 : 0)
     + (value.clouds.layers.length || value.clouds.clear ? 1 : 0)
     + (value.weatherCodes.length ? 1 : 0)
+    + (value.precipitation.liquidEquivalentIn !== null || value.precipitation.liquidTrace ? 1 : 0)
+    + (value.precipitation.snowDepthIncreaseIn !== null ? 1 : 0)
+    + (value.precipitation.snowDepthIn !== null ? 0.25 : 0)
     + (value.reportType === "SPECI" ? 0.25 : 0);
 }
 
@@ -631,7 +923,7 @@ export function parseMeteogramObservation(report) {
     visibilityDisplay: visibility.display,
     clouds,
     weatherCodes,
-    precipitation: parsePrecipitation(raw, weatherCodes),
+    precipitation: parsePrecipitation(raw, weatherCodes, observed.toISOString()),
     revised: false,
   };
   value.weather = weatherPresentation(weatherCodes, clouds);
@@ -640,7 +932,250 @@ export function parseMeteogramObservation(report) {
   return value;
 }
 
-export function buildMeteogramModel(reports, { station: stationValue, tafReports = [], now = new Date() } = {}) {
+function withKnownObservedAccumulationIntervals(observations) {
+  let previousRoutineZ = null;
+  return observations.map((observation) => {
+    let next = observation;
+    if (observation.precipitation.liquidInterval) {
+      const previousMs = Date.parse(previousRoutineZ);
+      const observedMs = Date.parse(observation.observedZ);
+      const elapsedMs = observedMs - previousMs;
+      const validStartZ = Number.isFinite(previousMs)
+        && Number.isFinite(observedMs)
+        && elapsedMs > 0
+        && elapsedMs <= MAX_ROUTINE_PRECIP_INTERVAL_MS
+        ? previousRoutineZ
+        : null;
+      next = {
+        ...observation,
+        precipitation: {
+          ...observation.precipitation,
+          liquidInterval: {
+            ...observation.precipitation.liquidInterval,
+            validStartZ,
+            semantics: validStartZ ? "SINCE_PREVIOUS_ROUTINE_METAR" : "START_UNAVAILABLE",
+          },
+        },
+      };
+    }
+    if (observation.reportType === "METAR") previousRoutineZ = observation.observedZ;
+    return next;
+  });
+}
+
+function observedAmountInterval(observation, interval, amountIn, trace = false) {
+  return {
+    validStartZ: interval.validStartZ,
+    validEndZ: interval.validEndZ,
+    amountIn,
+    trace,
+    sourceToken: interval.sourceToken,
+    semantics: interval.semantics,
+    observationZ: observation.observedZ,
+    reportType: observation.reportType,
+    source: observation.source,
+  };
+}
+
+function selectedObservedPrecipitationIntervals(observations) {
+  const groups = new Map();
+  const unresolved = [];
+  for (const observation of observations) {
+    const precipitation = observation.precipitation;
+    const interval = precipitation.liquidInterval;
+    if (!interval?.validEndZ) continue;
+    if (precipitation.liquidEquivalentIn === null && !precipitation.liquidTrace) continue;
+    const candidate = observedAmountInterval(
+      observation,
+      interval,
+      precipitation.liquidEquivalentIn,
+      precipitation.liquidTrace,
+    );
+    if (!interval.validStartZ) {
+      unresolved.push(candidate);
+      continue;
+    }
+    const values = groups.get(interval.validStartZ) || [];
+    values.push(candidate);
+    groups.set(interval.validStartZ, values);
+  }
+  const selected = [...groups.values()].flatMap((values) => {
+    values.sort((left, right) => Date.parse(left.validEndZ) - Date.parse(right.validEndZ));
+    const closingRoutine = values.filter((value) => value.reportType === "METAR").at(-1);
+    return [closingRoutine || values.at(-1)];
+  }).sort((left, right) => Date.parse(left.validStartZ) - Date.parse(right.validStartZ));
+  // A malformed or ambiguous overlap is omitted instead of being presented as
+  // an additional independent accumulation.
+  const nonOverlapping = [];
+  for (const value of selected) {
+    if (!nonOverlapping.length || Date.parse(value.validStartZ) >= Date.parse(nonOverlapping.at(-1).validEndZ)) {
+      nonOverlapping.push(value);
+    }
+  }
+  return [...nonOverlapping, ...unresolved].sort((left, right) => (
+    Date.parse(left.validStartZ || left.validEndZ) - Date.parse(right.validStartZ || right.validEndZ)
+  ));
+}
+
+function selectedObservedSnowDepthIncreaseIntervals(observations) {
+  const candidates = observations.flatMap((observation) => {
+    const precipitation = observation.precipitation;
+    return precipitation.snowDepthIncreaseInterval && precipitation.snowDepthIncreaseIn !== null
+      ? [observedAmountInterval(observation, precipitation.snowDepthIncreaseInterval, precipitation.snowDepthIncreaseIn)]
+      : [];
+  }).sort((left, right) => Date.parse(left.validEndZ) - Date.parse(right.validEndZ));
+  const selected = [];
+  for (const candidate of candidates) {
+    const previous = selected.at(-1);
+    if (!previous || Date.parse(candidate.validStartZ) >= Date.parse(previous.validEndZ)) {
+      selected.push(candidate);
+    } else {
+      selected[selected.length - 1] = candidate;
+    }
+  }
+  return selected;
+}
+
+function intervalContaining(intervals, timestamp) {
+  const value = Date.parse(timestamp);
+  if (!Number.isFinite(value)) return null;
+  return (intervals || []).find((interval) => (
+    value >= Date.parse(interval.validStartZ) && value < Date.parse(interval.validEndZ)
+  )) || null;
+}
+
+function supplementalFieldProvenance(interval) {
+  if (!interval) return null;
+  return {
+    product: interval.product,
+    source: interval.source,
+    sourceUrl: interval.sourceUrl,
+    updateZ: interval.updateZ,
+    validStartZ: interval.validStartZ,
+    validEndZ: interval.validEndZ,
+    grid: interval.grid,
+  };
+}
+
+function addStateIntervalSampleTimes(target, intervals, nowMs, maximumEndMs) {
+  for (const interval of intervals || []) {
+    const startMs = Date.parse(interval.validStartZ);
+    const endMs = Math.min(Date.parse(interval.validEndZ), maximumEndMs);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= nowMs || startMs >= maximumEndMs) continue;
+    const firstMs = Math.max(startMs, nowMs);
+    if (firstMs < endMs) target.add(new Date(firstMs).toISOString());
+    for (let cursor = ceilToUtcHour(new Date(firstMs)); cursor && cursor.getTime() < endMs; cursor = new Date(cursor.getTime() + 60 * 60 * 1000)) {
+      target.add(cursor.toISOString());
+    }
+    // The end is an explicit validity boundary. Keeping a bucket there ensures
+    // renderers encounter a null for this field instead of connecting the last
+    // valid sample across a source gap.
+    if (endMs >= nowMs && endMs <= maximumEndMs) target.add(new Date(endMs).toISOString());
+  }
+}
+
+function supplementalForecastTimestamps(supplemental, nowDate) {
+  if (!supplemental) return [];
+  const nowMs = nowDate.getTime();
+  const maximumEndMs = nowMs + METEOGRAM_MAX_FORECAST_MS;
+  const timestamps = new Set();
+  addStateIntervalSampleTimes(timestamps, supplemental.temperatureIntervals, nowMs, maximumEndMs);
+  addStateIntervalSampleTimes(timestamps, supplemental.dewPointIntervals, nowMs, maximumEndMs);
+  for (const interval of [
+    ...(supplemental.quantitativePrecipitationIntervals || []),
+    ...(supplemental.snowfallAmountIntervals || []),
+  ]) {
+    const startMs = Date.parse(interval.validStartZ);
+    const endMs = Date.parse(interval.validEndZ);
+    if (Number.isFinite(startMs) && startMs >= nowMs && startMs <= maximumEndMs) {
+      timestamps.add(new Date(startMs).toISOString());
+    }
+    if (Number.isFinite(endMs) && endMs >= nowMs && endMs <= maximumEndMs) {
+      timestamps.add(new Date(endMs).toISOString());
+    }
+  }
+  return [...timestamps].sort();
+}
+
+function blankSupplementalForecastBucket(station, validZ, supplemental) {
+  const value = {
+    ...blankForecastState(),
+    station,
+    kind: "FORECAST",
+    observedZ: validZ,
+    validZ,
+    reportType: "NWS GRID",
+    raw: "",
+    source: supplemental.source,
+    tafIssuanceZ: null,
+    tafSourceToken: "",
+    exactBoundary: false,
+    temperatureKind: "",
+    temperatureExtrema: [],
+    conditional: [],
+    becoming: [],
+    precipitation: blankPrecipitationState(),
+    fieldProvenance: { temperature: null, dewPoint: null },
+    supplementalOnly: true,
+  };
+  value.weather = { icon: "·", label: "AVIATION WX UNAVAILABLE" };
+  return value;
+}
+
+function mergeSupplementalForecastBuckets(tafBuckets, supplemental, station, nowDate, supplementalTimestamps) {
+  if (!supplemental) return tafBuckets;
+  const nowMs = nowDate.getTime();
+  const maximumEndMs = nowMs + METEOGRAM_MAX_FORECAST_MS;
+  const byTime = new Map((tafBuckets || []).map((bucket) => [bucket.validZ, bucket]));
+  const times = new Set([...byTime.keys(), ...supplementalTimestamps]);
+  return [...times]
+    .map((validZ) => ({ validZ, timestamp: Date.parse(validZ) }))
+    .filter((entry) => Number.isFinite(entry.timestamp) && entry.timestamp >= nowMs && entry.timestamp <= maximumEndMs)
+    .sort((left, right) => left.timestamp - right.timestamp)
+    .map(({ validZ }) => {
+      const original = byTime.get(validZ);
+      const bucket = original
+        ? {
+          ...original,
+          precipitation: { ...original.precipitation },
+          fieldProvenance: { ...(original.fieldProvenance || {}) },
+        }
+        : blankSupplementalForecastBucket(station, validZ, supplemental);
+      const temperature = intervalContaining(supplemental.temperatureIntervals, validZ);
+      const dewPoint = intervalContaining(supplemental.dewPointIntervals, validZ);
+      bucket.supplementalValues = {
+        temperature: temperature ? { valueC: temperature.valueC, ...supplementalFieldProvenance(temperature) } : null,
+        dewPoint: dewPoint ? { valueC: dewPoint.valueC, ...supplementalFieldProvenance(dewPoint) } : null,
+      };
+      if (bucket.temperatureKind) {
+        bucket.temperatureExtremaProvenance = bucket.fieldProvenance.temperature;
+        // TAF TX/TN remains a separately rendered exact extrema annotation. It
+        // is not an hourly forecast scalar and must not fill a missing NWS value.
+        bucket.temperatureC = null;
+        bucket.fieldProvenance.temperature = null;
+      }
+      if (temperature) {
+        bucket.temperatureC = temperature.valueC;
+        bucket.fieldProvenance.temperature = supplementalFieldProvenance(temperature);
+      }
+      if (bucket.dewPointC === null && dewPoint) {
+        bucket.dewPointC = dewPoint.valueC;
+        bucket.fieldProvenance.dewPoint = supplementalFieldProvenance(dewPoint);
+      }
+      bucket.supplementalBoundary = [
+        ...(supplemental.quantitativePrecipitationIntervals || []),
+        ...(supplemental.snowfallAmountIntervals || []),
+      ].some((interval) => interval.validStartZ === validZ || interval.validEndZ === validZ);
+      return bucket;
+    });
+}
+
+export function buildMeteogramModel(reports, {
+  station: stationValue,
+  tafReports = [],
+  supplementalForecast = null,
+  now = new Date(),
+} = {}) {
   const station = normalizeIcao(stationValue || reports?.[0]?.station);
   if (!isValidIcao(station)) return { station: "", observations: [], timeZone: null };
 
@@ -658,23 +1193,42 @@ export function buildMeteogramModel(reports, { station: stationValue, tafReports
     byTime.set(parsed.observedZ, { ...preferred, revised: true });
   }
 
-  const observations = [...byTime.values()]
+  const observations = withKnownObservedAccumulationIntervals([...byTime.values()]
     .sort((a, b) => Date.parse(a.observedZ) - Date.parse(b.observedZ))
-    .map((observation) => ({ ...observation, kind: "OBSERVED" }));
+    .map((observation) => ({ ...observation, kind: "OBSERVED" })));
+  const nowDate = new Date(now);
+  const supplemental = supplementalForecast?.product === "NWS_GRID"
+    ? supplementalForecast
+    : parseNwsGridForecast(supplementalForecast, { station, now: nowDate });
+  const supplementalTimestamps = Number.isFinite(nowDate.getTime())
+    ? supplementalForecastTimestamps(supplemental, nowDate)
+    : [];
   const tafResult = buildTafForecastBuckets(Array.isArray(tafReports) ? tafReports[0] : null, {
     station,
-    now,
+    now: nowDate,
     latestObservedZ: observations.at(-1)?.observedZ || null,
+    additionalTimestamps: supplementalTimestamps,
   });
-  const forecasts = tafResult.buckets;
+  const forecasts = Number.isFinite(nowDate.getTime())
+    ? mergeSupplementalForecastBuckets(tafResult.buckets, supplemental, station, nowDate, supplementalTimestamps)
+    : tafResult.buckets;
+  const observedPrecipitationIntervals = selectedObservedPrecipitationIntervals(observations);
+  const observedSnowDepthIncreaseIntervals = selectedObservedSnowDepthIncreaseIntervals(observations);
+  const forecastPrecipitationIntervals = supplemental?.quantitativePrecipitationIntervals || [];
+  const forecastSnowfallIntervals = supplemental?.snowfallAmountIntervals || [];
   return {
     station,
     timeZone: resolveStationTimeZone(station),
     observations,
     forecasts,
     timeline: [...observations, ...forecasts],
-    dividerZ: forecasts.length ? new Date(now).toISOString() : null,
+    dividerZ: forecasts.length ? nowDate.toISOString() : null,
     taf: tafResult.taf,
+    supplemental,
+    observedPrecipitationIntervals,
+    observedSnowDepthIncreaseIntervals,
+    forecastPrecipitationIntervals,
+    forecastSnowfallIntervals,
     startZ: observations[0]?.observedZ || null,
     endZ: forecasts.at(-1)?.validZ || observations.at(-1)?.observedZ || null,
     observedSources: [...new Set(observations.map((observation) => observation.source).filter(Boolean))],

@@ -3,7 +3,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { lookupAviationWeather } from "../aviation-weather-lookup-core.js";
-import { meteogramLookupRequest } from "../weather-meteogram-core.js";
+import { buildMeteogramModel, meteogramLookupRequest } from "../weather-meteogram-core.js";
+import {
+  buildMeteogramAccessibleTableMarkup,
+  buildMeteogramSvgMarkup,
+  meteogramCloudBaseY,
+  meteogramDimensions,
+  meteogramForecastSourceState,
+  meteogramSubtitleText,
+  meteogramTemperatureGeometry,
+  meteogramWindArrowRotation,
+} from "../weather-meteogram.js";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const lookupJs = readFileSync(new URL("../aviation-weather-lookup.js", import.meta.url), "utf8");
@@ -264,6 +274,8 @@ async function loadLookupController({ doc, lookupAviationWeather: lookup, render
       product: "METAR",
       range: range === "recent" ? "24" : String(range),
     }),
+    parseNwsGridForecast: () => null,
+    meteogramForecastSourceState,
     renderAviationMeteogram: render,
     document: doc,
     window: doc.defaultView,
@@ -275,12 +287,12 @@ async function loadLookupController({ doc, lookupAviationWeather: lookup, render
       `const { LOOKUP_RANGES, decodeMetarReport, decodeTafReport, formatStationLocalTime, isValidIcao, lookupAviationWeather, normalizeIcao } = globalThis["${dependencyKey}"].core;`,
     )
     .replace(
-      /import \{ meteogramLookupRequest \} from "\.\/weather-meteogram-core\.js";/,
-      `const { meteogramLookupRequest } = globalThis["${dependencyKey}"];`,
+      /import \{ meteogramLookupRequest, parseNwsGridForecast \} from "\.\/weather-meteogram-core\.js";/,
+      `const { meteogramLookupRequest, parseNwsGridForecast } = globalThis["${dependencyKey}"];`,
     )
     .replace(
-      /import \{ renderAviationMeteogram \} from "\.\/weather-meteogram\.js";/,
-      `const { renderAviationMeteogram } = globalThis["${dependencyKey}"];`,
+      /import \{ meteogramForecastSourceState, renderAviationMeteogram \} from "\.\/weather-meteogram\.js";/,
+      `const { meteogramForecastSourceState, renderAviationMeteogram } = globalThis["${dependencyKey}"];`,
     )
     .replace(
       /\nif \(typeof document !== "undefined"\) \{[\s\S]*\}\s*$/,
@@ -317,6 +329,111 @@ function successResponse(product) {
       timestamp: "2026-08-31T18:00:00Z",
       raw: `${product} KMEM TEST`,
     }],
+  };
+}
+
+function meteogramReport({
+  timestamp = "2026-09-01T02:54:00Z",
+  raw = "METAR KMEM 010254Z 24012G19KT 10SM FEW020 SCT045 BKN080 30/12 A3000 RMK AO2",
+  product = "METAR",
+} = {}) {
+  return { station: "KMEM", timestamp, raw, product, source: "Deterministic METAR fixture" };
+}
+
+function nwsGridEnvelope() {
+  return {
+    sourceUrl: "https://api.weather.gov/gridpoints/MEG/45,63",
+    pointUrl: "https://api.weather.gov/points/35.05644,-89.98634",
+    stationUrl: "https://api.weather.gov/stations/KMEM",
+    fetchedZ: "2026-09-01T03:16:00Z",
+    point: { latitude: 35.05644, longitude: -89.98634 },
+    payload: {
+      id: "https://api.weather.gov/gridpoints/MEG/45,63",
+      type: "Feature",
+      properties: {
+        gridId: "MEG",
+        gridX: 45,
+        gridY: 63,
+        updateTime: "2026-09-01T03:05:00Z",
+        validTimes: "2026-09-01T03:00:00Z/P2D",
+        temperature: { uom: "wmoUnit:degC", values: [
+          { validTime: "2026-09-01T03:00:00Z/PT5H", value: 21 },
+          { validTime: "2026-09-01T08:00:00Z/PT13H", value: 24 },
+        ] },
+        dewpoint: { uom: "wmoUnit:degC", values: [
+          { validTime: "2026-09-01T03:00:00Z/PT5H", value: 20 },
+          { validTime: "2026-09-01T08:00:00Z/PT13H", value: 17 },
+        ] },
+        quantitativePrecipitation: { uom: "wmoUnit:mm", values: [
+          { validTime: "2026-09-01T06:00:00Z/PT6H", value: 25.4 },
+          { validTime: "2026-09-01T12:00:00Z/PT6H", value: 0 },
+        ] },
+        snowfallAmount: { uom: "wmoUnit:mm", values: [
+          { validTime: "2026-09-01T06:00:00Z/PT6H", value: 2.54 },
+        ] },
+        probabilityOfPrecipitation: { uom: "wmoUnit:percent", values: [
+          { validTime: "2026-09-01T06:00:00Z/PT6H", value: 90 },
+        ] },
+      },
+    },
+  };
+}
+
+function manualMeteogramPoint(overrides = {}) {
+  return {
+    station: "KMEM",
+    observedZ: "2026-09-01T00:00:00.000Z",
+    validZ: null,
+    kind: "OBSERVED",
+    reportType: "METAR",
+    raw: "METAR KMEM TEST",
+    source: "Manual fixture",
+    temperatureC: 25,
+    dewPointC: 18,
+    windDirectionDeg: 240,
+    windVariable: false,
+    windSpeedKt: 12,
+    windGustKt: null,
+    pressureInHg: 30,
+    visibilitySm: 10,
+    visibilityQualifier: "",
+    visibilityDisplay: "10 SM",
+    clouds: { layers: [], clear: true, cavok: false, ceilingFt: null, display: "CLR" },
+    weatherCodes: [],
+    weather: { icon: "·", label: "NO WX CODE" },
+    precipitation: {
+      rainObserved: false, snowObserved: false, rainForecast: false, snowForecast: false,
+      conditionalRainForecast: false, conditionalSnowForecast: false,
+      liquidEquivalentIn: null, liquidTrace: false, liquidInterval: null,
+      precipitationNotAvailable: false, snowDepthIncreaseIn: null, snowDepthIncreaseInterval: null, snowDepthIn: null,
+    },
+    conditional: [],
+    becoming: [],
+    temperatureExtrema: [],
+    fieldProvenance: { temperature: null, dewPoint: null },
+    ...overrides,
+  };
+}
+
+function manualMeteogramModel(timeline, overrides = {}) {
+  const observations = timeline.filter((entry) => entry.kind !== "FORECAST");
+  const forecasts = timeline.filter((entry) => entry.kind === "FORECAST");
+  return {
+    station: "KMEM",
+    timeZone: "America/Chicago",
+    observations,
+    forecasts,
+    timeline,
+    dividerZ: forecasts[0]?.validZ || null,
+    taf: null,
+    supplemental: null,
+    observedSources: ["Manual fixture"],
+    observedPrecipitationIntervals: [],
+    observedSnowDepthIncreaseIntervals: [],
+    forecastPrecipitationIntervals: [],
+    forecastSnowfallIntervals: [],
+    revisedBuckets: 0,
+    ...overrides,
   };
 }
 
@@ -622,17 +739,21 @@ test("switching away aborts meteogram work and time/unit control clicks do not r
 
 test("meteogram renderer uses one shared timeline and includes every requested observed band", () => {
   assert.match(meteogramJs, /<svg class="aviation-meteogram-svg"/);
-  for (const title of ["WEATHER", "TEMP / DEW", "WIND", "PRESSURE", "CLOUDS / CIG", "VISIBILITY", "RAIN / LWE", "SNOW"]) {
-    assert.match(meteogramJs, new RegExp(`title: "${title.replace("/", "\\/")}"`));
+  for (const title of ["WEATHER", "TEMPERATURE", "DEW POINT", "TEMP LINE", "DEW POINT LINE", "WIND", "PRESSURE", "CLOUDS / CIG", "VISIBILITY", "PRECIP (IN)", "SNOW (IN)"]) {
+    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    assert.match(meteogramJs, new RegExp(`title: "${escapedTitle}"`));
   }
-  assert.match(meteogramJs, /aviation-meteogram-temp-pair/);
+  assert.match(meteogramJs, /aviation-meteogram-temperature-row/);
+  assert.match(meteogramJs, /aviation-meteogram-dew-point-row/);
+  assert.match(meteogramJs, /aviation-meteogram-temp-line-row/);
+  assert.match(meteogramJs, /aviation-meteogram-dew-line-row/);
   assert.match(meteogramJs, /aviation-meteogram-temp-line/);
   assert.match(meteogramJs, /aviation-meteogram-dew-line/);
   assert.match(meteogramJs, /aviation-meteogram-temp-spread/);
   assert.match(meteogramJs, /aviation-meteogram-time-line/);
   assert.match(meteogramJs, /time-proportional timeline/);
   assert.match(meteogramJs, /spanHours \* pixelsPerHour/);
-  assert.doesNotMatch(meteogramJs, /barb/i);
+  assert.doesNotMatch(meteogramJs, /wind[-_ ]barb|aviation-meteogram-wind-barb/i);
   assert.match(meteogramJs, /DOWNWIND ARROW/);
 });
 
@@ -640,15 +761,58 @@ test("current TAF forecast is visibly separated and never presented as observed 
   assert.match(meteogramJs, /NOW \/ FORECAST/);
   assert.match(meteogramJs, /aviation-meteogram-forecast-background/);
   assert.match(meteogramJs, /TEMPO\/PROB REMAIN CONDITIONAL/);
-  assert.match(meteogramJs, /TAF HAS NO DEW POINT OR PRECIP AMOUNTS/);
+  assert.match(meteogramJs, /TEMP\/DP\/QPF\/SNOW = NWS GRID/);
   assert.match(meteogramCore, /block\.type === "BECOMING"[\s\S]*at: end/);
   assert.match(meteogramCore, /\["INITIAL", "FROM", "BECOMING"\]\.includes\(block\.type\)/);
-  assert.match(meteogramCore, /liquidEquivalentIn: null/);
-  assert.match(meteogramCore, /dewPointC: null/);
+  assert.match(meteogramCore, /forecastPrecipitationIntervals/);
+  assert.match(meteogramCore, /fieldProvenance/);
   assert.match(meteogramJs, /conditionalWind/);
-  assert.match(meteogramJs, /conditionalCloud/);
+  assert.match(meteogramJs, /cloudLayersForObservation/);
   assert.match(meteogramJs, /conditionalVisibility/);
-  assert.doesNotMatch(meteogramCore, /dewPointC:\s*state|liquidEquivalentIn:\s*\d/);
+  assert.doesNotMatch(meteogramCore, /probabilityOfPrecipitationIntervals/);
+});
+
+test("NWS-only forecast buckets and TAF-unavailable states never masquerade as current TAF", () => {
+  for (const token of ["CNL", "NIL", "INTER 0103/0106 18008KT P6SM SCT050"]) {
+    const model = buildMeteogramModel([meteogramReport()], {
+      station: "KMEM",
+      tafReports: [{
+        station: "KMEM",
+        timestamp: "2026-09-01T02:00:00Z",
+        product: "TAF",
+        raw: `TAF AMD KMEM 010200Z 0103/0206 ${token}`,
+        source: "Current TAF fixture",
+      }],
+      supplementalForecast: nwsGridEnvelope(),
+      now: new Date("2026-09-01T03:15:00Z"),
+    });
+    assert.deepEqual(meteogramForecastSourceState(model), { hasTaf: false, hasNws: true, label: "NWS GRID" });
+    assert.ok(model.taf?.warning, `${token} should retain the unsafe/unusable TAF warning`);
+    assert.match(meteogramSubtitleText(model), /CURRENT TAF AVIATION FIELDS UNAVAILABLE OR NOT SAFELY PLOTTED/);
+    const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" });
+    const table = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z" });
+    assert.match(svg, /aviation-meteogram-forecast-tag[^>]*>NWS GRID<\/text>/);
+    assert.doesNotMatch(svg, /aviation-meteogram-forecast-tag[^>]*>TAF<\/text>/);
+    assert.match(table, /NWS GRID forecast/);
+    assert.match(table, /No current TAF aviation fields are represented in this bucket/);
+    assert.doesNotMatch(table, /TAF forecast/);
+  }
+
+  const shortTafModel = buildMeteogramModel([meteogramReport()], {
+    station: "KMEM",
+    tafReports: [{
+      station: "KMEM", timestamp: "2026-09-01T02:00:00Z", product: "TAF",
+      raw: "TAF KMEM 010200Z 0103/0106 18008KT P6SM SCT050",
+      source: "Current TAF fixture",
+    }],
+    supplementalForecast: nwsGridEnvelope(),
+    now: new Date("2026-09-01T03:15:00Z"),
+  });
+  assert.deepEqual(meteogramForecastSourceState(shortTafModel), { hasTaf: true, hasNws: true, label: "TAF / NWS" });
+  const nwsTail = shortTafModel.forecasts.find((bucket) => bucket.validZ === "2026-09-01T08:00:00.000Z");
+  assert.equal(nwsTail.supplementalOnly, true);
+  assert.equal(nwsTail.tafIssuanceZ, null);
+  assert.match(buildMeteogramAccessibleTableMarkup(shortTafModel, { timeMode: "Z" }), /NWS GRID forecast/);
 });
 
 test("LOCAL/Z, F/C, and KT/MPH toggles rerender live without another lookup", () => {
@@ -662,17 +826,18 @@ test("LOCAL/Z, F/C, and KT/MPH toggles rerender live without another lookup", ()
   assert.match(meteogramJs, /controls\.addEventListener\("click"[\s\S]*settings\[setting\] = button\.dataset\.meteogramValue;[\s\S]*draw\(\)/);
   assert.doesNotMatch(meteogramJs, /fetch\s*\(/);
   assert.match(meteogramJs, /setAttribute\("aria-pressed", selected \? "true" : "false"\)/);
+  assert.match(meteogramJs, /const defaultSettings = \{\s*timeMode: "Z",\s*temperatureUnit: "C",\s*windUnit: "KT"/);
 });
 
 test("truthful missing, precipitation, source, and gap language is visible", () => {
-  assert.match(meteogramJs, /UNIFIED WEATHER TIMELINE · EXACT METAR \/ SPECI HISTORY \+ CURRENT TAF FORECAST/);
+  assert.match(meteogramJs, /UNIFIED WEATHER TIMELINE · EXACT METAR \/ SPECI HISTORY \+ CURRENT TAF/);
   assert.match(meteogramJs, /CURRENT TAF UNAVAILABLE/);
   assert.match(meteogramJs, /MISSING VALUES SHOWN AS —/);
   assert.match(meteogramJs, /GAPS OVER 2\.5 HR DISCONNECTED/);
-  assert.match(meteogramJs, /OBS LWE\/DEPTH ARE NOT FORECAST AMOUNTS/);
-  assert.match(meteogramJs, /TX\/TN ARE EXACT EXTREMA ONLY/);
-  assert.match(meteogramCore, /const liquidEquivalentIn = hourly \? Number\(hourly\[1\]\) \/ 100 : null/);
-  assert.doesNotMatch(meteogramCore, /interpolat/i);
+  assert.match(meteogramJs, /POP IS NOT AMOUNT/);
+  assert.match(meteogramJs, /TX\/TN ARE SEPARATE TAF EXTREMA/);
+  assert.match(meteogramCore, /liquidTrace/);
+  assert.match(meteogramCore, /intervalContaining/);
 });
 
 test("responsive layout keeps minimum chart width inside its own scroller", () => {
@@ -699,8 +864,9 @@ test("keyboard and screen-reader users have a live unit-aware text data table", 
   assert.match(meteogramJs, /dataSummary\.textContent = "TEXT DATA TABLE"/);
   assert.match(meteogramJs, /buildMeteogramAccessibleTableMarkup\(model, settings\)/);
   assert.match(meteogramJs, /<caption>/);
-  for (const heading of ["Time", "Type", "Temperature", "Dew point", "Wind", "Clouds / ceiling", "Source / forecast semantics"]) {
-    assert.match(meteogramJs, new RegExp(`>${heading.replace("/", "\\/")}`));
+  for (const heading of ["Time", "Type", "Temperature", "Dew point", "Wind", "Clouds / ceiling", "PRECIP (IN)", "SNOW (IN)", "Source / valid-interval semantics"]) {
+    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    assert.match(meteogramJs, new RegExp(`>${escapedHeading}`));
   }
   assert.match(meteogramCss, /\.aviation-meteogram-data-scroll\{[\s\S]*max-width:100%;[\s\S]*overflow:auto/);
   assert.match(meteogramJs, /dataTableScroller\.tabIndex = 0/);
@@ -710,6 +876,210 @@ test("keyboard and screen-reader users have a live unit-aware text data table", 
   assert.match(meteogramJs, /getViewState\(\)[\s\S]*settings: \{ \.\.\.settings \}[\s\S]*scrollLeft: scroller\.scrollLeft[\s\S]*dataTableOpen[\s\S]*dataTableScrollLeft[\s\S]*focusKey/);
   assert.match(meteogramJs, /restoredFocusKey === "timeline"[\s\S]*restoredFocusKey === "table-summary"[\s\S]*restoredFocusKey === "table-scroll"[\s\S]*restoredFocusKey\.startsWith\("toggle:"\)[\s\S]*focusTarget\?\.focus/);
   assert.match(lookupJs, /runLookup\(\{ preserveMeteogramView: true \}\)/);
+});
+
+test("default meteogram presentation is Zulu, Celsius, and knots with four exact temperature/dew rows", () => {
+  const model = manualMeteogramModel([manualMeteogramPoint({ temperatureC: 0, dewPointC: -5 })]);
+  const svg = buildMeteogramSvgMarkup(model);
+  assert.match(svg, />0000Z</);
+  assert.match(svg, /aviation-meteogram-temperature-value[^>]*>0°</);
+  assert.doesNotMatch(svg, /aviation-meteogram-temperature-value[^>]*>32°</);
+  assert.match(svg, /aviation-meteogram-wind-speed[^>]*>12 KT</);
+  const orderedLabels = [">TEMPERATURE<", ">DEW POINT<", ">TEMP LINE<", ">DEW POINT LINE<"];
+  let previous = -1;
+  for (const label of orderedLabels) {
+    const index = svg.indexOf(label);
+    assert.ok(index > previous, `${label} follows the prior exact row label`);
+    previous = index;
+  }
+  assert.match(svg, /class="aviation-meteogram-temperature-row"/);
+  assert.match(svg, /class="aviation-meteogram-dew-point-row"/);
+  assert.match(svg, /class="aviation-meteogram-temp-line-row"/);
+  assert.match(svg, /class="aviation-meteogram-dew-line-row"/);
+  assert.doesNotMatch(svg, /temp-pair|pair-separator/);
+});
+
+test("separate temp and dew trend rows use one affine domain and preserve spread through unit conversion", () => {
+  const timeline = [
+    manualMeteogramPoint({ observedZ: "2026-09-01T00:00:00Z", temperatureC: 30, dewPointC: 12 }),
+    manualMeteogramPoint({ observedZ: "2026-09-01T01:00:00Z", temperatureC: 21, dewPointC: 20 }),
+  ];
+  const model = manualMeteogramModel(timeline);
+  const dimensions = meteogramDimensions(timeline, 1000);
+  const c = meteogramTemperatureGeometry(model, { temperatureUnit: "C" }, dimensions);
+  const f = meteogramTemperatureGeometry(model, { temperatureUnit: "F" }, dimensions);
+  const wide = Math.abs(c.temperaturePoints[0].y - c.dewPointPoints[0].y);
+  const narrow = Math.abs(c.temperaturePoints[1].y - c.dewPointPoints[1].y);
+  assert.ok(wide > narrow * 17.99 && wide < narrow * 18.01, "18°C spread is eighteen times the 1°C spread");
+  for (let index = 0; index < timeline.length; index += 1) {
+    assert.ok(Math.abs(c.temperaturePoints[index].y - f.temperaturePoints[index].y) < 1e-9);
+    assert.ok(Math.abs(c.dewPointPoints[index].y - f.dewPointPoints[index].y) < 1e-9);
+  }
+  const svg = buildMeteogramSvgMarkup(model, { temperatureUnit: "C", timeMode: "Z" });
+  const domains = [...svg.matchAll(/data-domain-min="([^"]+)" data-domain-max="([^"]+)"/g)];
+  assert.equal(domains.length, 2);
+  assert.deepEqual(domains[0].slice(1), domains[1].slice(1), "both semantic line rows publish the identical domain");
+});
+
+test("temperature and dew trends cross NOW only with adjacent valid recent values and never bridge missing data", () => {
+  const observed = manualMeteogramPoint({ observedZ: "2026-09-01T02:54:00Z", temperatureC: 24, dewPointC: 18 });
+  const forecast = manualMeteogramPoint({
+    kind: "FORECAST", reportType: "TAF", observedZ: "2026-09-01T03:15:00Z", validZ: "2026-09-01T03:15:00Z",
+    temperatureC: 25, dewPointC: 19,
+  });
+  const continuous = buildMeteogramSvgMarkup(manualMeteogramModel([observed, forecast]), { timeMode: "Z" });
+  assert.equal((continuous.match(/aviation-meteogram-line-seam/g) || []).length, 2);
+  assert.match(continuous, /aviation-meteogram-temp-line aviation-meteogram-line-forecast/);
+  assert.match(continuous, /aviation-meteogram-dew-line aviation-meteogram-line-forecast/);
+
+  const missingDew = buildMeteogramSvgMarkup(manualMeteogramModel([
+    observed, { ...forecast, dewPointC: null },
+  ]), { timeMode: "Z" });
+  assert.equal((missingDew.match(/aviation-meteogram-line-seam/g) || []).length, 1);
+
+  const stale = buildMeteogramSvgMarkup(manualMeteogramModel([
+    observed, { ...forecast, observedZ: "2026-09-01T06:00:00Z", validZ: "2026-09-01T06:00:00Z" },
+  ]), { timeMode: "Z" });
+  assert.equal((stale.match(/aviation-meteogram-line-seam/g) || []).length, 0);
+});
+
+test("wind arrows use normalized downwind semantics and fixed row containment for directional, calm, and VRB blocks", () => {
+  assert.equal(meteogramWindArrowRotation(0), 180);
+  assert.equal(meteogramWindArrowRotation(90), 270);
+  assert.equal(meteogramWindArrowRotation(180), 0);
+  assert.equal(meteogramWindArrowRotation(240), 60);
+  assert.equal(meteogramWindArrowRotation(359), 179);
+  const timeline = [
+    manualMeteogramPoint({ observedZ: "2026-09-01T00:00:00Z", windDirectionDeg: 0, windSpeedKt: 0 }),
+    manualMeteogramPoint({ observedZ: "2026-09-01T01:00:00Z", windDirectionDeg: null, windVariable: true, windSpeedKt: 4 }),
+    manualMeteogramPoint({ observedZ: "2026-09-01T02:00:00Z", windDirectionDeg: 240, windSpeedKt: 12, windGustKt: 19 }),
+  ];
+  const svg = buildMeteogramSvgMarkup(manualMeteogramModel(timeline), { windUnit: "KT", timeMode: "Z" }, { viewportWidth: 1200 });
+  assert.match(svg, /clipPath id="aviationMeteogramWindClip"/);
+  assert.match(svg, /class="aviation-meteogram-wind-row" clip-path="url\(#aviationMeteogramWindClip\)"/);
+  assert.equal((svg.match(/class="aviation-meteogram-wind-arrow"/g) || []).length, 1);
+  assert.match(svg, /rotate\(60\)/);
+  assert.match(svg, /aviation-meteogram-wind-heading[^>]*>CALM</);
+  assert.doesNotMatch(svg, />CALM 0|>CALM<[^]*?aviation-meteogram-wind-speed[^>]*>0 KT/);
+  assert.match(svg, /aviation-meteogram-wind-heading[^>]*>VRB</);
+  assert.match(svg, /aviation-meteogram-wind-speed[^>]*>4 KT</);
+  assert.match(svg, /aviation-meteogram-wind-heading[^>]*>240°</);
+  assert.match(svg, /aviation-meteogram-wind-speed[^>]*>12 KT</);
+  assert.match(svg, /aviation-meteogram-wind-gust[^>]*>G19</);
+});
+
+test("cloud field positions every reported base, distinguishes coverage and VV, and emphasizes only the true ceiling", () => {
+  assert.ok(meteogramCloudBaseY(500, 10000) > meteogramCloudBaseY(5000, 10000));
+  assert.ok(meteogramCloudBaseY(5000, 10000) > meteogramCloudBaseY(10000, 10000));
+  assert.equal(meteogramCloudBaseY(null, 10000), null);
+  const clouds = {
+    layers: [
+      { cover: "FEW", heightFt: 2000, convective: "", raw: "FEW020" },
+      { cover: "SCT", heightFt: 4500, convective: "", raw: "SCT045" },
+      { cover: "BKN", heightFt: 8000, convective: "", raw: "BKN080" },
+      { cover: "OVC", heightFt: 10000, convective: "", raw: "OVC100" },
+      { cover: "VV", heightFt: null, convective: "", raw: "VV///" },
+    ],
+    clear: false, cavok: false, ceilingFt: 8000,
+    display: "FEW020 · SCT045 · BKN080 · OVC100 · VV///",
+  };
+  const svg = buildMeteogramSvgMarkup(manualMeteogramModel([
+    manualMeteogramPoint({ clouds }),
+  ]), { timeMode: "Z" });
+  for (const token of ["FEW020", "SCT045", "BKN080", "OVC100", "VV///"]) assert.match(svg, new RegExp(token.replace("/", "\\/")));
+  for (const cover of ["FEW", "SCT", "BKN", "OVC"]) assert.match(svg, new RegExp(`cloud-layer-${cover}`));
+  assert.match(svg, /cloud-unknown[^>]*[\s\S]*VV\/\/\/ BASE UNKNOWN/);
+  assert.equal((svg.match(/aviation-meteogram-cloud-layer-ceiling/g) || []).length, 1, "only BKN080 is the known lowest ceiling");
+  assert.match(svg, /data-base-ft="2000"/);
+  assert.match(svg, /data-base-ft="10000"/);
+  assert.match(svg, /10,000 FT/);
+  assert.match(svg, /cloud top not reported/);
+  assert.doesNotMatch(svg, /data-top-ft/);
+});
+
+test("QPF and snowfall render once across exact source intervals in inches and remain unchanged by temperature units", () => {
+  const model = buildMeteogramModel([meteogramReport()], {
+    station: "KMEM",
+    supplementalForecast: nwsGridEnvelope(),
+    now: new Date("2026-09-01T03:15:00Z"),
+  });
+  const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z", temperatureUnit: "C" }, { viewportWidth: 1200 });
+  assert.equal((svg.match(/aviation-meteogram-precip-interval aviation-meteogram-interval-forecast/g) || []).length, 2, "two 6-hour totals are not replicated into hourly buckets");
+  assert.equal((svg.match(/aviation-meteogram-snow-interval aviation-meteogram-interval-forecast/g) || []).length, 1);
+  assert.match(svg, /data-valid-start="2026-09-01T06:00:00\.000Z" data-valid-end="2026-09-01T12:00:00\.000Z" data-amount-in="1"/);
+  assert.match(svg, /data-amount-in="0"/);
+  assert.match(svg, /FORECAST SNOWFALL 0\.10 IN/);
+  assert.match(svg, /aviation-meteogram-interval-zero/);
+  const dimensions = meteogramDimensions(model.timeline, 1200, {
+    extraTimes: [...model.forecastPrecipitationIntervals, ...model.forecastSnowfallIntervals].flatMap((interval) => [interval.validStartZ, interval.validEndZ]),
+  });
+  const qpf = svg.match(/aviation-meteogram-precip-interval aviation-meteogram-interval-forecast[\s\S]*?<rect class="aviation-meteogram-interval-bar" x="([\d.]+)"[^>]*width="([\d.]+)"/);
+  assert.ok(qpf);
+  assert.ok(Math.abs(Number(qpf[2]) - (dimensions.xForTime("2026-09-01T12:00:00Z") - dimensions.xForTime("2026-09-01T06:00:00Z"))) < 0.2);
+  const tableC = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z", temperatureUnit: "C" });
+  const tableF = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z", temperatureUnit: "F" });
+  for (const table of [tableC, tableF]) {
+    assert.match(table, />PRECIP \(IN\)</);
+    assert.match(table, />SNOW \(IN\)</);
+    assert.match(table, /1\.00 IN/);
+    assert.match(table, /0\.10 IN/);
+    assert.match(table, /0600Z–1200Z/);
+    assert.match(table, /TOTAL LIQUID EQUIVALENT; NOT POP/);
+  }
+
+  const tinyAmountModel = manualMeteogramModel([manualMeteogramPoint()], {
+    forecastPrecipitationIntervals: [{
+      validStartZ: "2026-09-01T06:00:00.000Z",
+      validEndZ: "2026-09-01T12:00:00.000Z",
+      amountIn: 0.1 / 25.4,
+      source: "NWS tiny-total fixture",
+    }],
+  });
+  assert.match(buildMeteogramSvgMarkup(tinyAmountModel, { timeMode: "Z" }), /&lt;0\.01 IN/, "a positive sub-hundredth-inch amount never renders as zero");
+});
+
+test("trace and snow depth stay distinct from quantitative bars while weather occurrence alone remains unavailable", () => {
+  const reports = [
+    meteogramReport({ timestamp: "2026-08-31T23:54:00Z", raw: "METAR KMEM 312354Z 00000KT 10SM CLR 20/18 A3000 RMK AO2" }),
+    meteogramReport({ timestamp: "2026-09-01T00:54:00Z", raw: "METAR KMEM 010054Z 00000KT 4SM -RASN BKN020 19/18 A2999 RMK AO2 P0000 4/003" }),
+  ];
+  const model = buildMeteogramModel(reports, { station: "KMEM", now: new Date("2026-09-01T01:00:00Z") });
+  const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" });
+  const traceGroup = svg.match(/<g class="aviation-meteogram-interval aviation-meteogram-precip-interval aviation-meteogram-interval-observed"[\s\S]*?<\/g>/)?.[0] || "";
+  assert.match(traceGroup, />T</);
+  assert.doesNotMatch(traceGroup, /aviation-meteogram-interval-bar/);
+  assert.doesNotMatch(svg, /aviation-meteogram-snow-interval/, "SN and 4\/sss do not fabricate new snowfall");
+  assert.match(svg, /DEPTH 3\.00 IN/);
+  const occurrenceOnly = manualMeteogramPoint({
+    weatherCodes: ["-RA"], weather: { icon: "☂", label: "RAIN" },
+    precipitation: { ...manualMeteogramPoint().precipitation, rainObserved: true },
+  });
+  const occurrenceSvg = buildMeteogramSvgMarkup(manualMeteogramModel([occurrenceOnly]), { timeMode: "Z" });
+  assert.doesNotMatch(occurrenceSvg, /aviation-meteogram-precip-interval/);
+
+  const snowIncreaseModel = buildMeteogramModel([
+    meteogramReport({
+      timestamp: "2026-09-01T01:54:00Z",
+      raw: "METAR KMEM 010154Z 00000KT 2SM SN BKN010 M01/M02 A2995 RMK AO2 SNINCR 2/005",
+    }),
+  ], { station: "KMEM", now: new Date("2026-09-01T02:00:00Z") });
+  const snowIncreaseSvg = buildMeteogramSvgMarkup(snowIncreaseModel, { timeMode: "Z" });
+  const snowIncreaseTable = buildMeteogramAccessibleTableMarkup(snowIncreaseModel, { timeMode: "Z" });
+  assert.match(snowIncreaseSvg, /SNOW DEPTH INCREASE DURING PAST HOUR 2\.00 IN/);
+  assert.match(snowIncreaseTable, /SNOW DEPTH INCREASE DURING PAST HOUR/);
+  assert.doesNotMatch(snowIncreaseSvg, /EXACT NEW-SNOW|NEW SNOW/i);
+});
+
+test("meteogram dimensions remain finite and internally scrollable at every required viewport", () => {
+  const timeline = Array.from({ length: 25 }, (_, index) => manualMeteogramPoint({
+    observedZ: new Date(Date.UTC(2026, 8, 1, index)).toISOString(),
+  }));
+  for (const viewport of [1920, 1366, 1280, 390, 844]) {
+    const dimensions = meteogramDimensions(timeline, viewport);
+    assert.ok(Number.isFinite(dimensions.width) && dimensions.width >= viewport);
+    assert.ok(dimensions.xPositions.every((x) => x >= dimensions.labelWidth && x <= dimensions.width));
+    if (viewport <= 844) assert.ok(dimensions.width > viewport, "dense mobile/tablet timeline scrolls inside its region");
+  }
 });
 
 test("the meteogram remains isolated from BWC and updater ownership logic", () => {

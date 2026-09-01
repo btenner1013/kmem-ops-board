@@ -9,6 +9,7 @@ import {
 import {
   applyLookupDialogState,
   fetchCurrentTafSnapshot,
+  fetchNwsMeteogramSupplement,
   formatReportIdentity,
   formatZulu,
   getAtisGuruReference,
@@ -134,6 +135,178 @@ test("same-origin current TAF snapshot is schema-checked, cache-busted, and stat
     }),
     /schema is invalid/,
   );
+});
+
+test("KMEM meteogram supplement discovers and fetches the exact official NWS grid endpoint", async () => {
+  const calls = [];
+  const controller = new AbortController();
+  const gridPayload = {
+    id: "https://api.weather.gov/gridpoints/MEG/45,62",
+    type: "Feature",
+    properties: {
+      gridId: "MEG",
+      gridX: 45,
+      gridY: 62,
+      updateTime: "2026-08-28T00:00:00Z",
+      validTimes: "2026-08-28T00:00:00Z/P2D",
+      temperature: { uom: "wmoUnit:degC", values: [] },
+      dewpoint: { uom: "wmoUnit:degC", values: [] },
+      quantitativePrecipitation: { uom: "wmoUnit:mm", values: [] },
+      snowfallAmount: { uom: "wmoUnit:mm", values: [] },
+    },
+  };
+  const supplement = await fetchNwsMeteogramSupplement({
+    station: " kmem ",
+    signal: controller.signal,
+    fetchedAt: () => new Date("2026-08-28T01:02:03Z"),
+    fetchImpl: async (url, options) => {
+      calls.push({ url: String(url), options });
+      if (calls.length === 1) {
+        return {
+          ok: true,
+          async json() {
+            return { properties: { forecastGridData: "https://api.weather.gov/gridpoints/MEG/45,62" } };
+          },
+        };
+      }
+      return { ok: true, async json() { return gridPayload; } };
+    },
+  });
+
+  assert.deepEqual(calls.map(({ url }) => url), [
+    "https://api.weather.gov/points/35.0424,-89.9767",
+    "https://api.weather.gov/gridpoints/MEG/45,62",
+  ]);
+  for (const { options } of calls) {
+    assert.equal(options.signal, controller.signal);
+    assert.deepEqual(options.headers, { Accept: "application/geo+json" });
+  }
+  assert.equal(supplement.payload, gridPayload);
+  assert.equal(supplement.sourceUrl, "https://api.weather.gov/gridpoints/MEG/45,62");
+  assert.equal(supplement.pointUrl, "https://api.weather.gov/points/35.0424,-89.9767");
+  assert.equal(supplement.stationUrl, "https://api.weather.gov/stations/KMEM");
+  assert.equal(supplement.fetchedZ, "2026-08-28T01:02:03.000Z");
+  assert.deepEqual(supplement.point, { latitude: 35.0424, longitude: -89.9767 });
+});
+
+test("NWS supplement is KMEM-only and rejects untrusted endpoints and malformed grid payloads", async () => {
+  let fetchCount = 0;
+  assert.equal(await fetchNwsMeteogramSupplement({
+    station: "KATL",
+    fetchImpl: async () => { fetchCount += 1; },
+  }), null);
+  assert.equal(fetchCount, 0);
+
+  await assert.rejects(
+    () => fetchNwsMeteogramSupplement({
+      station: "KMEM",
+      fetchImpl: async () => ({ ok: false, status: 503 }),
+    }),
+    /NWS point HTTP 503/,
+  );
+
+  let httpCall = 0;
+  await assert.rejects(
+    () => fetchNwsMeteogramSupplement({
+      station: "KMEM",
+      fetchImpl: async () => {
+        httpCall += 1;
+        return httpCall === 1
+          ? { ok: true, async json() { return { properties: { forecastGridData: "https://api.weather.gov/gridpoints/MEG/45,62" } }; } }
+          : { ok: false, status: 429 };
+      },
+    }),
+    /NWS grid HTTP 429/,
+  );
+
+  for (const forecastGridData of [
+    "http://api.weather.gov/gridpoints/MEG/45,62",
+    "https://evil.example/gridpoints/MEG/45,62",
+    "https://api.weather.gov/gridpoints/MEG/45,62?redirect=1",
+    "https://api.weather.gov/alerts/active",
+    null,
+  ]) {
+    await assert.rejects(
+      () => fetchNwsMeteogramSupplement({
+        station: "KMEM",
+        fetchImpl: async () => ({
+          ok: true,
+          async json() { return { properties: { forecastGridData } }; },
+        }),
+      }),
+      /invalid forecastGridData URL/,
+    );
+  }
+
+  let call = 0;
+  await assert.rejects(
+    () => fetchNwsMeteogramSupplement({
+      station: "KMEM",
+      fetchImpl: async () => {
+        call += 1;
+        return call === 1
+          ? { ok: true, async json() { return { properties: { forecastGridData: "https://api.weather.gov/gridpoints/MEG/45,62" } }; } }
+          : { ok: true, async json() { return { properties: [] }; } };
+      },
+    }),
+    /response is malformed/,
+  );
+
+  let identityCall = 0;
+  await assert.rejects(
+    () => fetchNwsMeteogramSupplement({
+      station: "KMEM",
+      fetchedAt: () => new Date("2026-08-28T01:02:03Z"),
+      fetchImpl: async () => {
+        identityCall += 1;
+        return identityCall === 1
+          ? { ok: true, async json() { return { properties: { forecastGridData: "https://api.weather.gov/gridpoints/MEG/45,62" } }; } }
+          : {
+            ok: true,
+            async json() {
+              return {
+                id: "https://api.weather.gov/gridpoints/MEG/45,62",
+                type: "Feature",
+                properties: {
+                  gridId: "MEG", gridX: 46, gridY: 62,
+                  updateTime: "2026-08-28T00:00:00Z",
+                  validTimes: "2026-08-28T00:00:00Z/P2D",
+                },
+              };
+            },
+          };
+      },
+    }),
+    /failed identity, validity, or field validation/,
+  );
+});
+
+test("NWS supplement propagates aborts at the fetch boundary for controller-level fail-closed handling", async () => {
+  const controller = new AbortController();
+  const request = fetchNwsMeteogramSupplement({
+    station: "KMEM",
+    signal: controller.signal,
+    fetchImpl: async (_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    }),
+  });
+  controller.abort();
+  await assert.rejects(request, { name: "AbortError" });
+});
+
+test("meteogram controller isolates and replaces the optional NWS supplement without changing other products", () => {
+  assert.match(
+    lookupJs,
+    /const supplementalForecastPromise = product === "METEOGRAM" && station === "KMEM"[\s\S]*fetchNwsMeteogramSupplement\([\s\S]*?\)\.catch\(\(\) => null\)[\s\S]*: Promise\.resolve\(null\)/,
+  );
+  assert.match(lookupJs, /Promise\.all\(\[[\s\S]*responsePromise,[\s\S]*tafResponsePromise,[\s\S]*supplementalForecastPromise/);
+  assert.match(lookupJs, /renderAviationMeteogram\([\s\S]*tafReports:[\s\S]*supplementalForecast,/);
+  assert.match(lookupJs, /NWS supplemental grid forecast available\./);
+  assert.match(lookupJs, /NWS supplemental grid forecast unavailable; unsupported values remain missing\./);
+  assert.match(lookupJs, /normalizedSupplementAvailable = forecastSources\.hasNws/);
+  assert.match(lookupJs, /meteogramForecastSourceState\(activeMeteogram\.model\)/);
+  assert.match(lookupJs, /runLookup\(\{ preserveMeteogramView: true \}\)/);
+  assert.equal((lookupJs.match(/fetchNwsMeteogramSupplement\(/g) || []).length, 2);
 });
 
 test("the panel defaults to KMEM, ATIS, and Most recent", () => {
