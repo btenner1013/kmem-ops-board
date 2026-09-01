@@ -329,12 +329,13 @@ test("dialog visibility helper opens, closes, and restores focus", () => {
 test("lookup styling is fixed, internally scrollable, and responsive", () => {
   assert.match(lookupCss, /\.aviation-lookup-overlay\{[\s\S]*position:fixed/);
   assert.match(lookupCss, /\.aviation-lookup-results\{[\s\S]*overflow:auto/);
-  assert.match(lookupCss, /@media \(max-width:700px\)/);
+  assert.match(lookupCss, /@media \(max-width:768px\)/);
   assert.match(lookupCss, /\.aviation-lookup-external-reference\{[\s\S]*flex-wrap:wrap/);
-  assert.match(lookupCss, /@media \(max-width:700px\)\{[\s\S]*\.aviation-lookup-external-reference\{align-items:flex-start;flex-direction:column/);
-  assert.match(lookupCss, /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
-  assert.match(lookupCss, /@media \(max-width:700px\)\{[\s\S]*?\.aviation-lookup-panel\{\s*width:100%;/);
-  assert.match(lookupCss, /@media \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)\{[\s\S]*?\.aviation-lookup-panel\{width:100%;/);
+  assert.match(lookupCss, /@media \(max-width:768px\)\{[\s\S]*\.aviation-lookup-external-reference\{align-items:flex-start;flex-direction:column/);
+  assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\)\{[\s\S]*\.aviation-lookup-product-long\{display:none\}[\s\S]*\.aviation-lookup-product-short\{display:inline\}/);
+  assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
+  assert.match(lookupCss, /@media \(max-width:768px\)\{[\s\S]*?\.aviation-lookup-panel\{\s*width:100%;/);
+  assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)\{[\s\S]*?\.aviation-lookup-panel\{width:100%;/);
   assert.doesNotMatch(lookupCss, /aviation-lookup-results:empty/);
   assert.match(indexHtml, /<script type="module" src="\.\/aviation-weather-lookup\.js"><\/script>/);
 });

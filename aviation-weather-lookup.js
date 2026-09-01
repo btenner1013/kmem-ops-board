@@ -7,9 +7,12 @@ import {
   lookupAviationWeather,
   normalizeIcao,
 } from "./aviation-weather-lookup-core.js";
+import { meteogramLookupRequest } from "./weather-meteogram-core.js";
+import { renderAviationMeteogram } from "./weather-meteogram.js";
 
-const PRODUCT_NAMES = new Set(["ATIS", "METAR", "TAF"]);
+const PRODUCT_NAMES = new Set(["ATIS", "METAR", "TAF", "METEOGRAM"]);
 const LOOKUP_TIMEOUT_MS = 30000;
+const METEOGRAM_REFRESH_MS = 5 * 60 * 1000;
 const TAF_SNAPSHOT_SCHEMA_VERSION = 1;
 const TAF_SNAPSHOT_SOURCE_POLICY = "NOAA_AWC_COMPLETE_CURRENT_CACHE";
 const ATIS_GURU_REFERENCE_BASE_URL = "https://atis.guru/atis/";
@@ -277,16 +280,42 @@ export function initializeAviationWeatherLookup(doc = document) {
   if (!overlay || !panel || !closeButton || !printButton || !form || !stationInput || !rangeSelect || !submitButton || !status || !results || !printSummary) return null;
 
   let product = "ATIS";
+  const rangeByProduct = new Map([[product, rangeSelect.value]]);
   let returnFocus = null;
   let requestNumber = 0;
   let activeController = null;
+  let activeMeteogram = null;
+  let meteogramRefreshTimer = 0;
   let currentReports = [];
   const view = doc.defaultView || window;
 
+  function disposeMeteogram() {
+    activeMeteogram?.destroy?.();
+    activeMeteogram = null;
+  }
+
+  function stopMeteogramRefresh() {
+    if (!meteogramRefreshTimer) return;
+    view.clearTimeout(meteogramRefreshTimer);
+    meteogramRefreshTimer = 0;
+  }
+
+  function scheduleMeteogramRefresh() {
+    stopMeteogramRefresh();
+    if (overlay.hidden || product !== "METEOGRAM" || !isValidIcao(stationInput.value)) return;
+    meteogramRefreshTimer = view.setTimeout(async () => {
+      meteogramRefreshTimer = 0;
+      if (overlay.hidden || product !== "METEOGRAM") return;
+      await runLookup({ preserveMeteogramView: true });
+    }, METEOGRAM_REFRESH_MS);
+  }
+
   function clearResultState(headline = "READY", detail = "") {
+    stopMeteogramRefresh();
     requestNumber += 1;
     activeController?.abort();
     activeController = null;
+    disposeMeteogram();
     currentReports = [];
     printButton.disabled = true;
     clearChildren(results);
@@ -314,7 +343,16 @@ export function initializeAviationWeatherLookup(doc = document) {
   function setProduct(nextProduct) {
     const normalized = String(nextProduct || "").toUpperCase();
     if (!PRODUCT_NAMES.has(normalized)) return;
-    product = normalized;
+    stopMeteogramRefresh();
+    if (normalized !== product) {
+      const outgoingRange = rangeSelect.value;
+      rangeByProduct.set(product, outgoingRange);
+      product = normalized;
+      rangeSelect.value = rangeByProduct.get(normalized)
+        || (normalized === "METEOGRAM" && outgoingRange === "recent" ? "24" : outgoingRange);
+      rangeByProduct.set(normalized, rangeSelect.value);
+    }
+    panel.classList.toggle("aviation-lookup-panel-meteogram", normalized === "METEOGRAM");
     for (const button of productButtons) {
       const selected = button.dataset.aviationProduct === normalized;
       button.classList.toggle("aviation-lookup-product-active", selected);
@@ -326,15 +364,26 @@ export function initializeAviationWeatherLookup(doc = document) {
     requestNumber += 1;
     activeController?.abort();
     activeController = null;
+    stopMeteogramRefresh();
+    disposeMeteogram();
     applyLookupDialogState(
       { overlay, body: doc.body, focusTarget: stationInput, returnFocus },
       false,
     );
   }
 
-  async function runLookup() {
+  async function runLookup(options = {}) {
+    const preservedMeteogramView = options?.preserveMeteogramView
+      ? activeMeteogram?.getViewState?.() || null
+      : null;
+    stopMeteogramRefresh();
+    if (product === "METEOGRAM" && rangeSelect.value === "recent") rangeSelect.value = "24";
+    rangeByProduct.set(product, rangeSelect.value);
     const station = normalizeIcao(stationInput.value);
     stationInput.value = station;
+    const meteogramRequest = product === "METEOGRAM"
+      ? meteogramLookupRequest({ station, range: rangeSelect.value })
+      : null;
     requestNumber += 1;
     const currentRequest = requestNumber;
     activeController?.abort();
@@ -345,14 +394,16 @@ export function initializeAviationWeatherLookup(doc = document) {
     submitButton.disabled = true;
     printButton.disabled = true;
     currentReports = [];
+    disposeMeteogram();
     setStatus(status, "LOADING...", "", "loading");
     clearChildren(results);
 
-    const response = await lookupAviationWeather({
-      station,
-      product,
-      range: rangeSelect.value,
-      now: new Date(),
+    const lookupNow = new Date();
+    const lookupOptions = {
+      station: meteogramRequest?.station || station,
+      product: meteogramRequest?.product || product,
+      range: meteogramRequest?.range || rangeSelect.value,
+      now: lookupNow,
       fetchImpl: view.fetch.bind(view),
       currentTafProvider: (providerRequest) => fetchCurrentTafSnapshot({
         ...providerRequest,
@@ -361,14 +412,52 @@ export function initializeAviationWeatherLookup(doc = document) {
       }),
       baseUrl: doc.baseURI,
       signal: controller.signal,
-    });
+    };
+    const responsePromise = lookupAviationWeather(lookupOptions);
+    const tafResponsePromise = product === "METEOGRAM"
+      ? lookupAviationWeather({ ...lookupOptions, product: "TAF", range: "recent" })
+      : Promise.resolve(null);
+    const [response, tafResponse] = await Promise.all([responsePromise, tafResponsePromise]);
     clearTimeout(timeout);
     if (currentRequest !== requestNumber) return;
     if (activeController === controller) activeController = null;
     submitButton.disabled = false;
+    scheduleMeteogramRefresh();
 
     if (response.state === "success") {
       const count = response.reports.length;
+      if (product === "METEOGRAM") {
+        const rangeLabel = rangeSelect.options?.[rangeSelect.selectedIndex]?.textContent || `Past ${meteogramRequest.range} hours`;
+        activeMeteogram = renderAviationMeteogram(results, response.reports, {
+          station,
+          rangeLabel,
+          tafReports: tafResponse?.state === "success" ? tafResponse.reports : [],
+          now: lookupNow,
+          doc,
+          view,
+          initialViewState: preservedMeteogramView,
+        });
+        if (!activeMeteogram) {
+          setStatus(status, "INSUFFICIENT HISTORY", "No complete METAR/SPECI observations could be plotted.", "warning");
+          return;
+        }
+        setStatus(
+          status,
+          `${activeMeteogram.model.observations.length} OBS · ${activeMeteogram.model.forecasts.length} TAF FCST`,
+          [
+            response.detail,
+            tafResponse?.detail,
+            activeMeteogram.model.forecasts.length
+              ? "The future side is rebuilt from the current valid TAF; TEMPO/PROB remain conditional and uncoded values stay missing."
+              : activeMeteogram.model.taf?.warning
+                || "Current TAF unavailable; exact METAR/SPECI history remains displayed without a forecast projection.",
+          ].filter(Boolean).join(" "),
+          response.partialFailures || tafResponse?.partialFailures || !activeMeteogram.model.forecasts.length ? "warning" : "success",
+        );
+        currentReports = [...response.reports, ...(tafResponse?.state === "success" ? tafResponse.reports : [])];
+        printButton.disabled = false;
+        return;
+      }
       setStatus(
         status,
         `${count} ${count === 1 ? "REPORT" : "REPORTS"}`,
