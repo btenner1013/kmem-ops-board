@@ -1,17 +1,17 @@
 {
-  "metar": "METAR KMEM 010454Z 17007KT 10SM CLR 29/20 A3004 RMK AO2 SLP167 T02940200 $",
+  "metar": "METAR KMEM 010554Z 14005KT 10SM CLR 29/20 A3005 RMK AO2 SLP169 T02940200 10339 20289 403670233 53003 $",
   "taf": "TAF KMEM 010520Z 0106/0212 18004KT P6SM SKC \n  FM011600 20005KT P6SM FEW040 \n  FM012100 16007KT P6SM SCT060 \n  FM020300 17004KT P6SM SKC",
   "atisText": "MEM ATIS INFO J 0554Z. 14005KT 10SM CLR 29/20 A3005 (THREE ZERO ZERO FIVE) RMK AO2 SLP169 T02940200 10339 20289 403670233 53003. SIMUL VISUAL APCHS IN USE RY 18L, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. FREQ 121.0 OTS. RWY 18R RAILS OTS. RWY 36L PAPI OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO J",
   "atisLetter": "J",
   "atisPhonetic": "JULIETT",
   "atisDisplay": "JULIETT",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-09-01T04:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarObservedZ": "2026-09-01T05:54:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-09-01T05:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "J:0554Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-01T03:05:40Z",
+  "trendReferenceTimestampZ": "2026-09-01T03:15:40Z",
   "trendSampleCount": 20,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -55,7 +55,7 @@
     "visibility": "ATIS",
     "ceiling": "NONE"
   },
-  "metarAltimeterRaw": 30.04,
+  "metarAltimeterRaw": 30.05,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
@@ -127,20 +127,20 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-01 05:54:00.000",
+  "bwcUpdatedZ": "2026-09-01 06:00:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=1&hour=05&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=1&iHour=05",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=1&hour=06&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=1&iHour=06",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-01 05:56:55Z",
+  "milNotamUpdatedZ": "2026-09-01 06:06:58Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0034/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
   "milNotams": [
     {
@@ -322,13 +322,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-09-01 05:55Z",
+  "allFeedsUpdatedZ": "2026-09-01 06:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-01 05:55:40Z"
+    "lastWorkflowTimestampZ": "2026-09-01 06:05:40Z"
   }
 }
