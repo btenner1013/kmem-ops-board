@@ -1,17 +1,17 @@
 {
-  "metar": "METAR KMEM 312254Z 16003KT 10SM FEW065 FEW250 35/18 A3001 RMK AO2 SLP157 T03500183 $",
+  "metar": "METAR KMEM 312354Z 15007KT 10SM FEW065 FEW250 34/19 A3001 RMK AO2 SLP155 T03390194 10367 20333 56010 $",
   "taf": "TAF KMEM 312320Z 0100/0206 22005KT P6SM SCT060 \n  FM010100 17004KT P6SM SKC \n  FM011600 20005KT P6SM FEW040 \n  FM012100 16007KT P6SM SCT060",
   "atisText": "MEM ATIS INFO D 2354Z. 15007KT 10SM FEW065 FEW250 34/19 A3001 (THREE ZERO ZERO ONE). SIMUL VISUAL APCHS IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. FREQ 121.0 OTS. RWY 18R RAILS OTS. RWY 36L PAPI OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO D",
   "atisLetter": "D",
   "atisPhonetic": "DELTA",
   "atisDisplay": "DELTA",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-08-31T22:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarObservedZ": "2026-08-31T23:54:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-08-31T23:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "D:2354Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-08-31T21:05:39Z",
+  "trendReferenceTimestampZ": "2026-08-31T21:15:40Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -127,20 +127,20 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-08-31 23:54:00.000",
+  "bwcUpdatedZ": "2026-09-01 00:00:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
-  "bwcBamRisk": "MODERATE",
+  "bwcBamRisk": "LOW",
   "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
-  "bwcHeight100FtAgl": "6000",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=8&day=31&hour=23&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=8&iDay=31&iHour=23",
+  "bwcHeight100FtAgl": "5778",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=1&hour=00&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=1&iHour=00",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-08-31 23:56:57Z",
+  "milNotamUpdatedZ": "2026-09-01 00:07:04Z",
   "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0034/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF RADIO COMMS INOP UFN  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
   "milNotams": [
     {
@@ -258,18 +258,6 @@
       "rawText": "TWY R EDGE MARKINGS BTN TWY J AND TWY R1 NORTH SIDE REMOVED"
     },
     {
-      "number": "07/343",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "TWY M9 CL MARKINGS BTN APCH END RWY 18R AND TWY M NOT STD",
-      "displayText": "TWY M9 CL MARKINGS BTN APCH END RWY 18R AND TWY M NOT STD",
-      "effectiveStart": "202607201929",
-      "effectiveEnd": "202608312359",
-      "lastUpdated": "2026-07-20T19:29:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY M9 CL MARKINGS BTN APCH END RWY 18R AND TWY M NOT STD"
-    },
-    {
       "number": "06/574",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -282,7 +270,7 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 7,
+  "constructionStatusNotamCount": 6,
   "taxiRestrictionNotams": [
     {
       "number": "08/414",
@@ -334,13 +322,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-08-31 23:55Z",
+  "allFeedsUpdatedZ": "2026-09-01 00:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-08-31 23:55:39Z"
+    "lastWorkflowTimestampZ": "2026-09-01 00:05:40Z"
   }
 }
