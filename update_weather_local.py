@@ -5131,7 +5131,12 @@ def build_weather_json():
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
 
     mil_notam_data = fetch_mil_notams(previous_data)
-    closed_runways = resolve_closed_runways(atis_ops, mil_notam_data, now_z)
+    notam_decision_now_z = datetime.now(timezone.utc)
+    closed_runways = resolve_closed_runways(
+        atis_ops,
+        mil_notam_data,
+        notam_decision_now_z,
+    )
     rcr_data = parse_rcr_rcc_from_ficon_notams(mil_notam_data.get("ficonNotams", []))
     print("RSC/RCR:", rcr_data["rcrText"], "SOURCE:", rcr_data["rcrSource"], "SEVERITY:", rcr_data["rcrSeverity"])
 

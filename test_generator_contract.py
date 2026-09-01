@@ -59,6 +59,24 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             source.index("maintain_bwc_history_safely(ahas_direct_candidate, now_z)"),
         )
 
+    def test_runway_resolution_uses_a_fresh_post_notam_fetch_decision_clock(self):
+        source = inspect.getsource(updater.build_weather_json)
+        fetch = "mil_notam_data = fetch_mil_notams(previous_data)"
+        decision_clock = "notam_decision_now_z = datetime.now(timezone.utc)"
+        resolution = (
+            "closed_runways = resolve_closed_runways(\n"
+            "        atis_ops,\n"
+            "        mil_notam_data,\n"
+            "        notam_decision_now_z,\n"
+            "    )"
+        )
+
+        self.assertIn(fetch, source)
+        self.assertIn(decision_clock, source)
+        self.assertIn(resolution, source)
+        self.assertLess(source.index(fetch), source.index(decision_clock))
+        self.assertLess(source.index(decision_clock), source.index(resolution))
+
     def test_weather_write_failure_is_fatal_and_stops_optional_generation(self):
         with (
             mock.patch.object(

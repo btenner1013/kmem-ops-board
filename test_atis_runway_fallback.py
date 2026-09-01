@@ -14,6 +14,12 @@ CURRENT_ATIS_WITH_CLOSURE = (
     "ADVS YOU HAVE INFO A."
 )
 
+PRODUCTION_STALE_ATIS = (
+    "MEM ATIS INFO U 1354Z. 25003KT 10SM FEW060 FEW110 33/22 A3011. "
+    "SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. "
+    "ADVS YOU HAVE INFO U."
+)
+
 
 def closure(number, runway, start="202608281100", end="202608281300", text=None):
     body = text or f"{number} RWY {runway} CLSD"
@@ -206,6 +212,19 @@ class RunwayClosureFallbackTests(unittest.TestCase):
             "27",
         )
 
+    def test_genuinely_future_notam_feed_fails_closed(self):
+        notams = normalized_notams(
+            [closure("08/401", "18C")],
+            generated_z=(self.now + timedelta(seconds=1)).strftime(
+                "%Y-%m-%d %H:%M:%SZ"
+            ),
+        )
+
+        self.assertEqual(
+            weather.resolve_closed_runways(self.warn_ops, notams, self.now),
+            "UNKNOWN",
+        )
+
     def test_missing_source_timestamp_is_not_replaced_with_current_time(self):
         notams = normalized_notams([], generated_z=None)
         self.assertEqual(notams["milNotamUpdatedZ"], "--")
@@ -240,6 +259,38 @@ class RunwayClosureFallbackTests(unittest.TestCase):
                     weather.resolve_closed_runways(ops, notams, self.now),
                     "18C",
                 )
+
+    def test_production_clock_snapshot_fixture_uses_post_fetch_decision_time(self):
+        run_start = datetime(2026, 9, 1, 14, 55, tzinfo=timezone.utc)
+        decision_time = datetime(2026, 9, 1, 14, 57, 1, tzinfo=timezone.utc)
+        stale_atis_ops = weather.parse_atis_operations(
+            PRODUCTION_STALE_ATIS,
+            "WARN_SOURCE",
+        )
+        notams = normalized_notams(
+            [
+                closure(
+                    "08/410",
+                    "18C/36C",
+                    start="202609011300",
+                    end="202609011930",
+                )
+            ],
+            generated_z="2026-09-01 14:56:58Z",
+        )
+
+        self.assertEqual(
+            weather.classify_notam_feed(notams, run_start)["detail"],
+            "FUTURE TIME",
+        )
+        self.assertEqual(
+            weather.resolve_closed_runways(stale_atis_ops, notams, run_start),
+            "UNKNOWN",
+        )
+        self.assertEqual(
+            weather.resolve_closed_runways(stale_atis_ops, notams, decision_time),
+            "18C / 36C",
+        )
 
     def test_healthy_notam_feed_without_active_closure_returns_none(self):
         ignored = [
