@@ -139,7 +139,8 @@ function parseClouds(rawBody) {
       raw: match[0],
     });
   }
-  const clear = /\b(?:CLR|SKC|NSC|NCD)\b/.test(rawBody);
+  const clearToken = rawBody.match(/\b(?:CLR|SKC|NSC|NCD)\b/)?.[0] || "";
+  const clear = Boolean(clearToken);
   const cavok = /(?:^|\s)CAVOK(?=\s|$)/.test(rawBody);
   const ceilingCandidates = layers
     .filter((layer) => ["BKN", "OVC", "VV"].includes(layer.cover) && layer.heightFt !== null)
@@ -149,7 +150,7 @@ function parseClouds(rawBody) {
     clear,
     cavok,
     ceilingFt: ceilingCandidates.length ? Math.min(...ceilingCandidates) : null,
-    display: layers.length ? layers.map((layer) => layer.raw).join(" · ") : clear ? "CLR" : cavok ? "CAVOK" : "—",
+    display: layers.length ? layers.map((layer) => layer.raw).join(" · ") : clear ? clearToken : cavok ? "CAVOK" : "—",
   };
 }
 
@@ -273,7 +274,17 @@ function parsedDecodedVisibility(values) {
 
 function parsedDecodedClouds(values, cavok = false) {
   const source = Array.isArray(values) ? values : [];
-  const clear = source.some((value) => /^(?:Sky clear|Clear below|No significant cloud|No cloud detected)/i.test(value));
+  const clearEntry = source.find((value) => /^(?:Sky clear|Clear below|No significant cloud|No cloud detected)/i.test(value));
+  const clear = Boolean(clearEntry);
+  const clearDisplay = /^No significant cloud/i.test(clearEntry || "")
+    ? "NSC"
+    : /^No cloud detected/i.test(clearEntry || "")
+      ? "NCD"
+      : /^Sky clear/i.test(clearEntry || "")
+        ? "SKC"
+        : clear
+          ? "CLR"
+          : "";
   const coverMap = {
     Few: "FEW", Scattered: "SCT", Broken: "BKN", Overcast: "OVC", "Vertical visibility": "VV",
   };
@@ -298,7 +309,7 @@ function parsedDecodedClouds(values, cavok = false) {
     clear,
     cavok,
     ceilingFt: ceilingCandidates.length ? Math.min(...ceilingCandidates) : null,
-    display: layers.length ? layers.map((layer) => layer.raw).join(" · ") : clear ? "CLR" : cavok ? "CAVOK" : "—",
+    display: layers.length ? layers.map((layer) => layer.raw).join(" · ") : cavok ? "CAVOK" : clear ? clearDisplay : "—",
   };
 }
 

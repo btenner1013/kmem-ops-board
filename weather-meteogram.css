@@ -133,6 +133,62 @@
   touch-action:pan-x pan-y;
 }
 
+.aviation-meteogram-sticky-time-ruler{
+  position:sticky;
+  top:0;
+  z-index:18;
+  height:0;
+  pointer-events:none;
+}
+.aviation-meteogram-sticky-time-ruler[hidden]{display:none}
+.aviation-meteogram-sticky-time-frame{
+  position:absolute;
+  top:0;
+  left:0;
+  box-sizing:border-box;
+  height:54px;
+  max-width:100%;
+  overflow:hidden;
+  border:1px solid rgba(34,211,238,.46);
+  background:rgba(4,12,13,.98);
+  box-shadow:0 5px 14px rgba(0,0,0,.66);
+}
+.aviation-meteogram-sticky-time-corner{
+  position:absolute;
+  inset:0 auto 0 0;
+  z-index:2;
+  box-sizing:border-box;
+  width:var(--meteogram-ruler-corner-width);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  padding:0 10px;
+  border-right:1px solid rgba(34,211,238,.5);
+  background:#071011;
+  color:#e6f2f0;
+  font:1000 10px Arial,sans-serif;
+  letter-spacing:.055em;
+}
+.aviation-meteogram-sticky-time-corner span{color:#62cbd3;font-size:8px;white-space:nowrap}
+.aviation-meteogram-sticky-time-viewport{
+  position:absolute;
+  inset:0 0 0 var(--meteogram-ruler-corner-width);
+  overflow:hidden;
+}
+.aviation-meteogram-sticky-time-track{position:absolute;top:0;left:0;height:54px;will-change:transform}
+.aviation-meteogram-sticky-time-track svg{display:block;max-width:none;font-family:Arial,sans-serif}
+.aviation-meteogram-sticky-time-background{fill:rgba(5,14,15,.98)}
+.aviation-meteogram-sticky-time-tick line{stroke:rgba(104,150,149,.32);stroke-width:1}
+.aviation-meteogram-sticky-time-tick text{fill:#e6f0ee;stroke:#050909;stroke-width:2px;paint-order:stroke;font-size:9px;font-weight:1000;text-anchor:middle}
+.aviation-meteogram-sticky-time-tick .aviation-meteogram-sticky-time-date{fill:#75bfc2;font-size:7px;letter-spacing:.035em}
+.aviation-meteogram-sticky-time-date-change line{stroke:#69d8df;stroke-width:1.4}
+.aviation-meteogram-sticky-time-now line{stroke:#ffca45;stroke-width:2}
+.aviation-meteogram-sticky-time-now text{fill:#ffca45;stroke:#050909;stroke-width:2px;paint-order:stroke;font-size:7px;font-weight:1000;text-anchor:middle}
+.aviation-meteogram-sticky-time-solar path{fill:none;stroke-width:1.4}
+.aviation-meteogram-sticky-time-solar-sunrise path{stroke:#ffd46c}
+.aviation-meteogram-sticky-time-solar-sunset path{stroke:#7ed0ff}
+
 .aviation-meteogram-stage{
   position:relative;
   min-width:0;
@@ -168,10 +224,13 @@
   position:sticky;
   left:0;
   z-index:6;
-  overflow:visible;
+  overflow:hidden;
   pointer-events:none;
   filter:drop-shadow(5px 0 5px rgba(0,0,0,.5));
 }
+
+.aviation-meteogram-axis-gutter-background{fill:rgba(5,14,15,.96)}
+.aviation-meteogram-description-divider{stroke:rgba(34,211,238,.2);stroke-width:1}
 
 .aviation-meteogram-wind-axis-sticky rect{
   fill:rgba(5,14,15,.92);
@@ -467,6 +526,8 @@
 .aviation-meteogram-cloud-form-BKN .aviation-meteogram-cloud-body{opacity:.78}
 .aviation-meteogram-cloud-form-OVC .aviation-meteogram-cloud-body{opacity:.9}
 .aviation-meteogram-cloud-form-VV .aviation-meteogram-cloud-body{opacity:.74}
+.aviation-meteogram-cloud-form-BKN .aviation-meteogram-cloud-coverage{filter:drop-shadow(0 2px 2px rgba(123,173,182,.16))}
+.aviation-meteogram-cloud-form-OVC .aviation-meteogram-cloud-coverage{filter:drop-shadow(0 3px 2px rgba(123,173,182,.2))}
 .aviation-meteogram-cloud-vv-veil{
   fill:none;
   stroke:#a7c5cb;
@@ -475,6 +536,18 @@
   stroke-dasharray:2.5 2.5;
   opacity:.72;
 }
+.aviation-meteogram-cloud-vv-band{fill:none;stroke:#8eaeb5;stroke-width:3;opacity:.62}
+.aviation-meteogram-cloud-development{pointer-events:none}
+.aviation-meteogram-cloud-tower,
+.aviation-meteogram-cloud-anvil{
+  fill:url("#aviationMeteogramCloudFill");
+  stroke:rgba(215,237,240,.52);
+  stroke-width:.8;
+  stroke-linejoin:round;
+}
+.aviation-meteogram-cloud-development-TCU .aviation-meteogram-cloud-tower{opacity:.8}
+.aviation-meteogram-cloud-development-CB .aviation-meteogram-cloud-tower,
+.aviation-meteogram-cloud-development-CB .aviation-meteogram-cloud-anvil{opacity:.92}
 .aviation-meteogram-cloud-forecast .aviation-meteogram-cloud-form{opacity:.76}
 .aviation-meteogram-cloud-layer-conditional .aviation-meteogram-cloud-body,
 .aviation-meteogram-cloud-layer-conditional .aviation-meteogram-cloud-vv-veil,
@@ -488,6 +561,30 @@
 .aviation-meteogram-ceiling-value{fill:#72e7ef;font-size:10px;paint-order:stroke;stroke:#030707;stroke-width:3px;letter-spacing:.015em}
 .aviation-meteogram-cloud-artwork,
 .aviation-meteogram-cloud-text{pointer-events:none}
+.aviation-meteogram-sky-status{pointer-events:none;text-anchor:middle}
+.aviation-meteogram-sky-status text{fill:#86bdc1;stroke:#050909;stroke-width:2px;paint-order:stroke;font:900 8px Arial,sans-serif;letter-spacing:.05em}
+.aviation-meteogram-open-sky-disc{fill:rgba(118,225,234,.08);stroke:#8adce3;stroke-width:1.3}
+.aviation-meteogram-open-sky-rays,
+.aviation-meteogram-cavok-horizon{fill:none;stroke:#76cbd3;stroke-width:1.2;stroke-linecap:round}
+.aviation-meteogram-cavok-ring{fill:none;stroke:#7ed8d0;stroke-width:1.5;stroke-dasharray:3 2}
+.aviation-meteogram-atmosphere{pointer-events:none}
+.aviation-meteogram-atmosphere-precip line{stroke:#51bdf2;stroke-width:1.3;stroke-linecap:round;opacity:.76}
+.aviation-meteogram-atmosphere-drizzle line{stroke-width:.8;opacity:.68}
+.aviation-meteogram-atmosphere-snow path{fill:none;stroke:#d8efff;stroke-width:.8;stroke-linecap:round;opacity:.82}
+.aviation-meteogram-atmosphere-pellets circle{fill:#c7e9f5;stroke:#5d93a7;stroke-width:.6;opacity:.84}
+.aviation-meteogram-atmosphere-hail circle{fill:#f0f7fb;stroke:#7598a8;stroke-width:.9}
+.aviation-meteogram-atmosphere-small-hail circle{fill:#d7e9f2}
+.aviation-meteogram-atmosphere-obscuration path{fill:none;stroke:#91aeb2;stroke-width:5;stroke-linecap:round;opacity:.34}
+.aviation-meteogram-atmosphere-mist path{stroke-width:3;opacity:.25}
+.aviation-meteogram-atmosphere-haze path{stroke:#9d9b8a;stroke-width:7;opacity:.16}
+.aviation-meteogram-atmosphere-freezing path{fill:#9ee9f3;stroke:#e9fdff;stroke-width:.7;opacity:.82}
+.aviation-meteogram-atmosphere-lightning{fill:#ffd24a;stroke:#fff0a0;stroke-width:.75;filter:drop-shadow(0 0 4px rgba(255,205,57,.55))}
+.aviation-meteogram-atmosphere-vicinity{opacity:.72}
+.aviation-meteogram-atmosphere-conditional{opacity:.68}
+.aviation-meteogram-atmosphere-showers .aviation-meteogram-atmosphere-precip line{stroke-dasharray:5 3}
+.aviation-meteogram-atmosphere-conditional .aviation-meteogram-atmosphere-precip line,
+.aviation-meteogram-atmosphere-conditional .aviation-meteogram-atmosphere-snow path{stroke-dasharray:2 3}
+.aviation-meteogram-atmosphere-conditional .aviation-meteogram-atmosphere-pellets circle{stroke-dasharray:1.5 1.5}
 .aviation-meteogram-visibility-value{fill:#5de3ca;font-size:12px}
 .aviation-meteogram-interval-value{font-size:10px;paint-order:stroke;stroke:#050909;stroke-width:2px}
 .aviation-meteogram-precip-interval .aviation-meteogram-interval-value{fill:#5ec9ff}
@@ -618,6 +715,8 @@
   body.aviation-lookup-printing .aviation-meteogram-wind-tooltip{display:none!important}
   body.aviation-lookup-printing .aviation-meteogram-scroll{overflow:visible!important}
   body.aviation-lookup-printing .aviation-meteogram-sticky-labels{display:none!important}
+  body.aviation-lookup-printing .aviation-meteogram-sticky-time-ruler,
+  body.aviation-meteogram-printing .aviation-meteogram-sticky-time-ruler{display:none!important}
   body.aviation-lookup-printing .aviation-meteogram-stage>.aviation-meteogram-svg{position:static!important}
   body.aviation-lookup-printing .aviation-meteogram-svg{width:100%!important;height:auto!important;filter:grayscale(1)}
 }
@@ -632,6 +731,7 @@
   body.aviation-meteogram-printing .aviation-meteogram-background{fill:#fff!important}
   body.aviation-meteogram-printing .aviation-meteogram-forecast-background{fill:#edf4f4!important}
   body.aviation-meteogram-printing .aviation-meteogram-label-background{fill:#f2f5f5!important}
+  body.aviation-meteogram-printing .aviation-meteogram-axis-gutter-background{fill:#f7f9f9!important}
   body.aviation-meteogram-printing .aviation-meteogram-grid-line{stroke:#718080!important}
   body.aviation-meteogram-printing .aviation-meteogram-time-line{stroke:#b5bebe!important}
   body.aviation-meteogram-printing .aviation-meteogram-label-divider{stroke:#243536!important}
@@ -691,8 +791,23 @@
   body.aviation-meteogram-printing .aviation-meteogram-cloud-axis rect{fill:#fff!important;stroke:#333!important}
   body.aviation-meteogram-printing .aviation-meteogram-cloud-axis line{stroke:#333!important}
   body.aviation-meteogram-printing .aviation-meteogram-cloud-body{fill:#d8e0e1!important;stroke:#566667!important}
+  body.aviation-meteogram-printing .aviation-meteogram-cloud-tower,
+  body.aviation-meteogram-printing .aviation-meteogram-cloud-anvil{fill:#c7d0d1!important;stroke:#263536!important;opacity:1!important}
   body.aviation-meteogram-printing .aviation-meteogram-cloud-base-line,
-  body.aviation-meteogram-printing .aviation-meteogram-cloud-vv-veil{stroke:#4b5e60!important}
+  body.aviation-meteogram-printing .aviation-meteogram-cloud-vv-veil,
+  body.aviation-meteogram-printing .aviation-meteogram-cloud-vv-band{stroke:#4b5e60!important;opacity:1!important}
+  body.aviation-meteogram-printing .aviation-meteogram-open-sky-disc,
+  body.aviation-meteogram-printing .aviation-meteogram-cavok-ring{fill:#fff!important;stroke:#222!important}
+  body.aviation-meteogram-printing .aviation-meteogram-open-sky-rays,
+  body.aviation-meteogram-printing .aviation-meteogram-cavok-horizon{stroke:#222!important}
+  body.aviation-meteogram-printing .aviation-meteogram-sky-status text{fill:#111!important;stroke:#fff!important}
+  body.aviation-meteogram-printing .aviation-meteogram-atmosphere{opacity:1!important}
+  body.aviation-meteogram-printing .aviation-meteogram-atmosphere-precip line,
+  body.aviation-meteogram-printing .aviation-meteogram-atmosphere-snow path{stroke:#111!important;opacity:1!important}
+  body.aviation-meteogram-printing .aviation-meteogram-atmosphere-pellets circle{fill:#fff!important;stroke:#111!important;opacity:1!important}
+  body.aviation-meteogram-printing .aviation-meteogram-atmosphere-obscuration path{fill:none!important;stroke:#555!important;opacity:.8!important}
+  body.aviation-meteogram-printing .aviation-meteogram-atmosphere-freezing path{fill:#fff!important;stroke:#111!important;opacity:1!important}
+  body.aviation-meteogram-printing .aviation-meteogram-atmosphere-lightning{fill:#111!important;stroke:#111!important;filter:none!important}
   body.aviation-meteogram-printing .aviation-meteogram-now-divider{stroke:#111!important}
   body.aviation-meteogram-printing .aviation-meteogram-now-label rect,
   body.aviation-meteogram-printing .aviation-meteogram-solar-label rect{fill:#fff!important;stroke:#111!important}

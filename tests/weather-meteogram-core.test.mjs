@@ -136,8 +136,32 @@ test("international QNH, metric visibility, variable wind, negative temperature,
   assert.equal(parsed.visibilityQualifier, "≥");
   assert.equal(parsed.visibilityDisplay, "≥10 KM");
   assert.equal(parsed.clouds.clear, true);
+  assert.equal(parsed.clouds.display, "SKC", "the exact clear/no-significant-cloud token is retained for visual semantics");
   assert.ok(Math.abs(parsed.pressureHpa - 1018) < 0.001);
   assert.ok(Math.abs(parsed.pressureInHg - 30.061) < 0.01);
+  for (const token of ["CLR", "NSC", "NCD"]) {
+    const clear = parseMeteogramObservation({
+      station: "EGLL", timestamp: "2026-09-01T00:20:00Z", product: "METAR",
+      raw: `METAR EGLL 010020Z 00000KT 9999 ${token} 10/05 Q1018`,
+    });
+    assert.equal(clear.clouds.clear, true);
+    assert.equal(clear.clouds.display, token);
+  }
+});
+
+test("decoded TAF clear, no-significant-cloud, and no-cloud-detected tokens remain exact", () => {
+  for (const token of ["SKC", "CLR", "NSC", "NCD"]) {
+    const result = buildTafForecastBuckets(tafReport({
+      raw: `TAF KMEM 010200Z 0103/0206 18008KT 9999 ${token}`,
+    }), {
+      station: "KMEM",
+      now: new Date("2026-09-01T03:15:00Z"),
+    });
+    assert.ok(result.buckets.length > 0);
+    assert.equal(result.buckets[0].clouds.clear, true);
+    assert.equal(result.buckets[0].clouds.cavok, false);
+    assert.equal(result.buckets[0].clouds.display, token);
+  }
 });
 
 test("observed MPS winds and standalone, vicinity, and freezing weather codes remain exact", () => {
@@ -602,7 +626,7 @@ test("an exact FM boundary wins a close visual-label collision with the latest o
   assert.match(svg, />TSRA</);
   assert.match(svg, /aviation-meteogram-wind-heading[^>]*>250°</);
   assert.match(svg, /aviation-meteogram-wind-speed[^>]*>18 KT</);
-  assert.match(svg, /BKN008CB base 800 FT AGL · CEILING/, "the exact FM ceiling layer retains its base and token");
+  assert.match(svg, /BKN008CB · BROKEN CLOUD BASE 800 FT AGL · CUMULONIMBUS REPORTED · CLOUD TOP NOT REPORTED · CEILING/, "the exact FM ceiling layer retains its base and token");
 });
 
 test("calm and variable winds never imply a directional arrow", () => {

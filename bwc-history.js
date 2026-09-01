@@ -40,6 +40,10 @@ const RANGE_UI_LABELS = Object.freeze({
 const STATE_NAMES = ["LOW", "MODERATE", "SEVERE", "UNKNOWN"];
 const DEFAULT_RANGE = "24h";
 const SPARSE_OBSERVATION_MARKER_LIMIT = 500;
+// Keep full categorical labels inside the root SVG viewport at every width.
+// This semantic gutter also reserves enough room for UNKNOWN if it is added.
+const BWC_CATEGORY_AXIS_GUTTER_WIDTH = 84;
+const BWC_CATEGORY_AXIS_LABEL_X = 74;
 let lastLiveAgeRenderKey = null;
 
 function clearChildren(element) {
@@ -704,7 +708,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   const width = Math.max(320, Math.round(measuredWidth || 820));
   const compact = width < 620;
   const height = compact ? 230 : 286;
-  const padding = { left: compact ? 48 : 58, right: 14, top: 18, bottom: 34 };
+  const padding = { left: BWC_CATEGORY_AXIS_GUTTER_WIDTH, right: 14, top: 18, bottom: 34 };
   const dimensions = { width, height, padding };
   let stepLayout;
   try {
@@ -753,6 +757,11 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   });
   svg.appendChild(background);
 
+  const categoryAxis = createSvgElement(doc, "g", {
+    class: "bwc-history-y-axis",
+    "data-bwc-axis-gutter-width": BWC_CATEGORY_AXIS_GUTTER_WIDTH,
+    "data-bwc-axis-label-x": BWC_CATEGORY_AXIS_LABEL_X,
+  });
   for (const state of ["SEVERE", "MODERATE", "LOW"]) {
     const y = finiteNumber(plot.yByState?.[state], state === "SEVERE" ? plot.top : state === "LOW" ? plot.bottom : plot.top + plot.height / 2);
     svg.appendChild(createSvgElement(doc, "line", {
@@ -763,14 +772,15 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
       class: "bwc-history-grid-line",
     }));
     const label = createSvgElement(doc, "text", {
-      x: plot.left - 7,
+      x: BWC_CATEGORY_AXIS_LABEL_X,
       y: y + 4,
       "text-anchor": "end",
       class: `bwc-history-axis-label bwc-history-axis-${state.toLowerCase()}`,
     });
-    label.textContent = compact && state === "MODERATE" ? "MOD" : state;
-    svg.appendChild(label);
+    label.textContent = state;
+    categoryAxis.appendChild(label);
   }
+  svg.appendChild(categoryAxis);
 
   for (const band of stepLayout?.unknownBands || []) {
     svg.appendChild(createSvgElement(doc, "rect", {

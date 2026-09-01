@@ -21,6 +21,8 @@ import {
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const historyCss = readFileSync(new URL("../bwc-history.css", import.meta.url), "utf8");
 const historyJs = readFileSync(new URL("../bwc-history.js", import.meta.url), "utf8");
+const EXPECTED_BWC_AXIS_GUTTER_WIDTH = 84;
+const EXPECTED_BWC_AXIS_LABEL_X = 74;
 
 function liveStampFormatter() {
   const source = indexHtml.match(/function formatAhasBwcDateTime\(value\)\{[\s\S]*?\n\}/)?.[0];
@@ -920,8 +922,8 @@ test("only exact SVG observation dots own mouse, keyboard, and touch tooltips", 
   const markers = svg.querySelectorAll(".bwc-history-observation-marker");
   assert.equal(markers.length, 4);
   const first = markers[0];
-  const plotLeft = 58;
-  const plotWidth = 820 - 58 - 14;
+  const plotLeft = EXPECTED_BWC_AXIS_GUTTER_WIDTH;
+  const plotWidth = 820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14;
   const expectedX = plotLeft + ((lowTimes[0] - rangeStart) / (rangeEnd - rangeStart)) * plotWidth;
   assert.equal(Number(first.getAttribute("cx")), expectedX);
   assert.equal(Number(first.getAttribute("cy")), 286 - 34, "LOW marker sits exactly on the categorical LOW level");
@@ -1088,8 +1090,8 @@ test("UNKNOWN coverage bands never expose an observation tooltip without a retai
     clientX: Number(marker.getAttribute("cx")), clientY: Number(marker.getAttribute("cy")),
   });
   assert.equal(tooltip.hidden, false);
-  const plotLeft = 58;
-  const plotWidth = 820 - 58 - 14;
+  const plotLeft = EXPECTED_BWC_AXIS_GUTTER_WIDTH;
+  const plotWidth = 820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14;
   const gapMiddle = (gapStart + gapEnd) / 2;
   hitArea.dispatchEvent({
     type: "pointermove", pointerType: "mouse",
@@ -1098,6 +1100,45 @@ test("UNKNOWN coverage bands never expose an observation tooltip without a retai
   });
   assert.equal(tooltip.hidden, true);
   assert.doesNotMatch(tooltip.textContent, /COVERAGE: UNKNOWN|FRESHNESS GAP/);
+});
+
+test("categorical Y-axis keeps a protected invariant gutter and full labels at every chart width", () => {
+  const view = new FakeEventTarget();
+  const doc = new FakeDocument(view);
+  const startMs = Date.parse("2026-08-30T12:00:00Z");
+  const endMs = Date.parse("2026-08-30T14:00:00Z");
+  const timeline = {
+    range: { startMs, endMs, durationMs: endMs - startMs },
+    history: { runs: [] },
+    segments: [{
+      kind: "STATE", state: "LOW", startMs, endMs, source: "USAHAS",
+      basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL",
+    }],
+  };
+
+  function renderAtWidth(width) {
+    const chart = doc.createElement("div");
+    chart.clientWidth = width;
+    return renderBwcHistoryChart(doc, chart, doc.createElement("div"), timeline);
+  }
+
+  for (const svg of [renderAtWidth(820), renderAtWidth(360), renderAtWidth(253)]) {
+    const axis = svg.querySelector(".bwc-history-y-axis");
+    assert.ok(axis, "the categorical labels have an explicit protected axis group");
+    const plot = svg.querySelector(".bwc-history-plot-background");
+    const hitArea = svg.querySelector(".bwc-history-hit-area");
+    const labels = axis.querySelectorAll(".bwc-history-axis-label");
+    const gridLines = svg.querySelectorAll(".bwc-history-grid-line");
+
+    assert.equal(Number(axis.dataset.bwcAxisGutterWidth), EXPECTED_BWC_AXIS_GUTTER_WIDTH);
+    assert.equal(Number(axis.dataset.bwcAxisLabelX), EXPECTED_BWC_AXIS_LABEL_X);
+    assert.equal(Number(plot.getAttribute("x")), EXPECTED_BWC_AXIS_GUTTER_WIDTH);
+    assert.equal(Number(hitArea.getAttribute("x")), EXPECTED_BWC_AXIS_GUTTER_WIDTH);
+    assert.deepEqual(labels.map((label) => label.textContent), ["SEVERE", "MODERATE", "LOW"]);
+    assert.ok(labels.every((label) => Number(label.getAttribute("x")) === EXPECTED_BWC_AXIS_LABEL_X));
+    assert.ok(labels.every((label) => label.getAttribute("text-anchor") === "end"));
+    assert.ok(gridLines.every((line) => Number(line.getAttribute("x1")) === EXPECTED_BWC_AXIS_GUTTER_WIDTH));
+  }
 });
 
 test("marker geometry remains UTC-anchored across viewport ranges and dense compact rendering keeps every point", () => {
@@ -1129,9 +1170,11 @@ test("marker geometry remains UTC-anchored across viewport ranges and dense comp
   const full = renderRange("2026-08-30T12:00:00Z", "2026-08-30T14:00:00Z");
   const zoomed = renderRange("2026-08-30T12:00:00Z", "2026-08-30T13:30:00Z");
   const panned = renderRange("2026-08-30T12:30:00Z", "2026-08-30T14:00:00Z");
-  assert.equal(Number(full.getAttribute("cx")), 58 + 0.5 * (820 - 58 - 14));
-  assert.ok(Math.abs(Number(zoomed.getAttribute("cx")) - (58 + (2 / 3) * (820 - 58 - 14))) < 0.001);
-  assert.ok(Math.abs(Number(panned.getAttribute("cx")) - (58 + (1 / 3) * (820 - 58 - 14))) < 0.001);
+  assert.equal(Number(full.getAttribute("cx")), EXPECTED_BWC_AXIS_GUTTER_WIDTH + 0.5 * (820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14));
+  assert.ok(Math.abs(Number(zoomed.getAttribute("cx"))
+    - (EXPECTED_BWC_AXIS_GUTTER_WIDTH + (2 / 3) * (820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14))) < 0.001);
+  assert.ok(Math.abs(Number(panned.getAttribute("cx"))
+    - (EXPECTED_BWC_AXIS_GUTTER_WIDTH + (1 / 3) * (820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14))) < 0.001);
 
   const denseStart = Date.parse("2025-08-30T00:00:00Z");
   const denseEnd = Date.parse("2026-08-30T00:00:00Z");
@@ -1169,10 +1212,12 @@ test("marker geometry remains UTC-anchored across viewport ranges and dense comp
   const denseXs = [...colorBatch.getAttribute("d").matchAll(/\bM ([\d.]+) [\d.]+ h 0/g)]
     .map((match) => Number(match[1]));
   assert.equal(denseXs.length, denseTimes.length);
-  assert.ok(denseXs.every((x) => x >= 48 && x <= 346),
+  assert.ok(denseXs.every((x) => x >= EXPECTED_BWC_AXIS_GUTTER_WIDTH && x <= 346),
     "batched compact markers remain inside the SVG plot without introducing layout width");
   const denseTargetIndex = Math.floor(denseTimes.length / 2);
-  const denseTargetX = 48 + ((denseTimes[denseTargetIndex] - denseStart) / (denseEnd - denseStart)) * (360 - 48 - 14);
+  const denseTargetX = EXPECTED_BWC_AXIS_GUTTER_WIDTH
+    + ((denseTimes[denseTargetIndex] - denseStart) / (denseEnd - denseStart))
+      * (360 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14);
   const denseTargetY = (18 + (230 - 34)) / 2;
   const denseHitArea = compactSvg.querySelector(".bwc-history-hit-area");
   denseHitArea.dispatchEvent({

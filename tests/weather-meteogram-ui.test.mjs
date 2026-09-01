@@ -8,10 +8,13 @@ import { meteogramSolarEvents, meteogramSolarPhase } from "../weather-meteogram-
 import {
   buildMeteogramAccessibleTableMarkup,
   buildMeteogramStickyLabelsMarkup,
+  buildMeteogramStickyTimeRulerMarkup,
   buildMeteogramSvgMarkup,
   METEOGRAM_CLOUD_AXIS_WIDTH,
+  METEOGRAM_DATA_AXIS_WIDTH,
   meteogramCloudBaseY,
   meteogramCloudColumnLabelMask,
+  meteogramCloudFormDefinition,
   meteogramCloudLabelLayout,
   meteogramCloudScaleDefinition,
   meteogramCloudTickLayout,
@@ -22,6 +25,7 @@ import {
   meteogramSubtitleText,
   meteogramTemperatureGeometry,
   meteogramWeatherVisualCategory,
+  meteogramWeatherSceneDefinition,
   meteogramWindArrowRotation,
   meteogramWindSpeedGeometry,
 } from "../weather-meteogram.js";
@@ -971,7 +975,7 @@ test("meteogram PRINT opens a dedicated range setup and leaves other product pri
   assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-wind-gust-line\{stroke:#111!important;stroke-dasharray:4 4!important\}/);
   assert.doesNotMatch(meteogramPrintJs, /window\.print|document\.|querySelector|cloneNode/, "the print model stays DOM-independent");
 
-  const previewBody = lookupJs.match(/function refreshMeteogramPrintSetup\(\) \{([\s\S]*?)\n  \}\n\n  function closeMeteogramPrintSetup/)?.[1] || "";
+  const previewBody = lookupJs.match(/function refreshMeteogramPrintSetup\(\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  function closeMeteogramPrintSetup/)?.[1] || "";
   assert.match(previewBody, /currentMeteogramPrintRange\(\)/);
   assert.match(previewBody, /paginateMeteogramPrintRange\(range\)/);
   assert.doesNotMatch(previewBody, /buildMeteogramPrintPlan/, "typing in setup does not rebuild every print SVG");
@@ -1140,7 +1144,7 @@ test("print range resolution clips truthfully to loaded coverage and rejects non
   assert.equal(visible.startZ, "2026-09-01T03:17:00.000Z");
   assert.equal(visible.endZ, "2026-09-01T08:43:00.000Z");
   assert.equal(visible.durationHours, 5 + 26 / 60, "visible printing preserves exact time coordinates instead of rounding to columns");
-  const printStateBody = meteogramJs.match(/getPrintState\(\) \{([\s\S]*?)\n    \},\n    destroy\(\)/)?.[1] || "";
+  const printStateBody = meteogramJs.match(/getPrintState\(\) \{([\s\S]*?)\r?\n    \},\r?\n    destroy\(\)/)?.[1] || "";
   assert.match(printStateBody, /pixelsPerHour/);
   assert.match(printStateBody, /inverseTime/);
   assert.doesNotMatch(printStateBody, /columnIndex|Math\.round\(/);
@@ -1219,7 +1223,7 @@ test("dedicated print pages repeat labels and share selected-range scales withou
   assert.equal(plan.scaleOverrides.windMaximumKt, 100, "G80 selects the shared 0–100 KT print domain");
   assert.equal(plan.scaleOverrides.cloudMaximumFt, 25000);
   assert.ok(plan.pages.every((page) => page.svg.includes('data-domain-max-kt="100"')));
-  assert.ok(plan.pages.every((page) => page.svg.includes('data-cloud-axis-width="54"')));
+  assert.ok(plan.pages.every((page) => page.svg.includes(`data-cloud-axis-width="${METEOGRAM_CLOUD_AXIS_WIDTH}"`)));
   assert.equal(new Set(plan.pages.map((page) => page.svg.match(/id="(aviationMeteogramPrintPage\d+)SvgTitle"/)?.[1])).size, 8, "SVG IDs are unique per print page");
 
   const markup = buildMeteogramPrintPagesMarkup(plan);
@@ -1268,6 +1272,23 @@ test("light print theme overrides direct SVG colors that would disappear on whit
   assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-weather-icon\{[\s\S]*fill:#111!important;[\s\S]*filter:none!important;[\s\S]*opacity:1!important/);
   assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-clear-sun-disc\{[\s\S]*fill:#fff!important;[\s\S]*stroke:#111!important/);
   assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-clear-moon-crescent\{fill:#666!important;filter:none!important\}/);
+  for (const selector of [
+    ".aviation-meteogram-axis-gutter-background",
+    ".aviation-meteogram-cloud-tower",
+    ".aviation-meteogram-cloud-anvil",
+    ".aviation-meteogram-cloud-vv-band",
+    ".aviation-meteogram-open-sky-disc",
+    ".aviation-meteogram-cavok-ring",
+    ".aviation-meteogram-atmosphere-precip line",
+    ".aviation-meteogram-atmosphere-snow path",
+    ".aviation-meteogram-atmosphere-pellets circle",
+    ".aviation-meteogram-atmosphere-obscuration path",
+    ".aviation-meteogram-atmosphere-freezing path",
+    ".aviation-meteogram-atmosphere-lightning",
+  ]) {
+    assert.match(meteogramCss, new RegExp(`body\\.aviation-meteogram-printing ${selector.replaceAll(".", "\\.")}`), `${selector} has an explicit light-print treatment`);
+  }
+  assert.match(meteogramCss, /aviation-meteogram-atmosphere-lightning\{fill:#111!important;stroke:#111!important;filter:none!important\}/);
 });
 
 test("row-label content is centralized and follows every live display toggle", () => {
@@ -1313,7 +1334,7 @@ test("row-label width follows measured visible content with bounded wrapping ins
     compact: false,
     measureText: desktopMeasure,
   });
-  assert.equal(knots.width, 183, "the new visible wind-series legend participates in measured width");
+  assert.equal(knots.width, 191, "the new visible wind-series legend and physical-font safety padding participate in measured width");
   assert.equal(knots.minimumWidth, 154);
   assert.equal(knots.maximumWidth, 220);
   assert.ok(mph.width > knots.width, "a wider visible MPH subtitle grows the shared column live");
@@ -1357,6 +1378,8 @@ test("main and sticky SVG layers consume one dynamic width and identical row geo
     measureText,
   });
   const dimensions = meteogramDimensions(model.timeline, 320, { labelWidth: labelLayout.width });
+  assert.equal(dimensions.axisWidth, METEOGRAM_DATA_AXIS_WIDTH);
+  assert.equal(dimensions.plotLeft, labelLayout.width + METEOGRAM_DATA_AXIS_WIDTH);
   const main = buildMeteogramSvgMarkup(model, settings, { viewportWidth: 320, labelLayout });
   const windSpeedGeometry = meteogramWindSpeedGeometry(model, settings, dimensions);
   const cloudScale = meteogramCloudScaleDefinition(model.timeline);
@@ -1371,14 +1394,16 @@ test("main and sticky SVG layers consume one dynamic width and identical row geo
     assert.match(markup, /aria-label="WIND SPEED \/ GUST" data-line-count="[2-9]"/);
     assert.match(markup, /aria-label="SOLID SUSTAINED · DASH GUST · MPH" data-line-count="[2-9]"/);
   }
-  assert.match(main, new RegExp(`id="aviationMeteogramWindClip"><rect x="${labelLayout.width}"`));
-  assert.match(main, new RegExp(`class="aviation-meteogram-label-divider" x1="${labelLayout.width}"`));
-  assert.match(sticky, new RegExp(`viewBox="0 0 ${labelLayout.width} 998"`));
+  assert.match(main, new RegExp(`id="aviationMeteogramWindClip"><rect x="${dimensions.plotLeft}"`));
+  assert.match(main, new RegExp(`class="aviation-meteogram-description-divider" x1="${labelLayout.width}"`));
+  assert.match(main, new RegExp(`class="aviation-meteogram-label-divider" x1="${dimensions.plotLeft}"`));
+  assert.match(sticky, new RegExp(`viewBox="0 0 ${dimensions.plotLeft} 998"`));
   assert.match(sticky, /class="aviation-meteogram-wind-axis-sticky"/);
   assert.match(sticky, />0 MPH<\/text>/);
   assert.match(sticky, new RegExp(`class="aviation-meteogram-cloud-axis aviation-meteogram-cloud-axis-sticky"[\\s\\S]*data-axis-start="${labelLayout.width}"[\\s\\S]*data-axis-end="${labelLayout.width + METEOGRAM_CLOUD_AXIS_WIDTH}"`));
   assert.match(sticky, />10,000 FT<\/text>/);
-  assert.match(sticky, new RegExp(`class="aviation-meteogram-label-divider" x1="${labelLayout.width - 1}"`));
+  assert.match(sticky, new RegExp(`class="aviation-meteogram-description-divider" x1="${labelLayout.width}"`));
+  assert.match(sticky, new RegExp(`class="aviation-meteogram-label-divider" x1="${dimensions.plotLeft - 1}"`));
   const rowGeometry = (markup) => [...markup.matchAll(/data-row-key="([^"]+)" data-row-top="([^"]+)" data-row-bottom="([^"]+)"/g)]
     .map((match) => match.slice(1));
   assert.deepEqual(rowGeometry(main), rowGeometry(sticky), "all duplicated labels keep exact vertical boundaries");
@@ -1398,7 +1423,7 @@ test("dynamic row-label measurement redraws for responsive and font lifecycle wi
   assert.match(measurerRule, /visibility:hidden/);
   assert.match(measurerRule, /overflow:hidden/);
   assert.doesNotMatch(measurerRule, /display:none/);
-  assert.match(meteogramCss, /\.aviation-meteogram-sticky-labels\{[\s\S]*overflow:visible/);
+  assert.match(meteogramCss, /\.aviation-meteogram-sticky-labels\{[\s\S]*overflow:hidden/);
 });
 
 test("keyboard and screen-reader users have a live unit-aware text data table", () => {
@@ -1663,6 +1688,186 @@ test("wind speed/gust tooltip, tap/focus behavior, styles, and accessible table 
   assert.match(meteogramJs, /doc\.activeElement === activeWindTooltipSample[\s\S]*showWindTooltip\(activeWindTooltipSample/);
 });
 
+test("persistent selected-basis time ruler reuses exact timeline geometry and hides from print", () => {
+  const timeline = [
+    manualMeteogramPoint({ observedZ: "2026-09-01T23:00:00Z" }),
+    manualMeteogramPoint({ observedZ: "2026-09-02T00:00:00Z" }),
+    manualMeteogramPoint({ kind: "FORECAST", reportType: "TAF", observedZ: "2026-09-02T01:00:00Z", validZ: "2026-09-02T01:00:00Z", tafIssuanceZ: "2026-09-01T22:00:00Z" }),
+  ];
+  const model = manualMeteogramModel(timeline);
+  const labelLayout = meteogramRowLabelLayout({ timeMode: "Z", temperatureUnit: "C", windUnit: "KT" }, 1000, { hasForecast: true });
+  const dimensions = meteogramDimensions(timeline, 1000, { labelWidth: labelLayout.width });
+  const zulu = buildMeteogramStickyTimeRulerMarkup(model, { timeMode: "Z" }, dimensions);
+  const local = buildMeteogramStickyTimeRulerMarkup(model, { timeMode: "LOCAL" }, dimensions);
+  assert.match(zulu, /data-time-basis="Z"/);
+  assert.match(zulu, />TIME<\/strong><span>UTC \/ Z<\/span>/);
+  assert.match(zulu, />2300Z<|>0000Z</);
+  assert.doesNotMatch(zulu, /data-time-basis="LOCAL"|\d{4}L/);
+  assert.match(local, /data-time-basis="LOCAL"/);
+  assert.match(local, />1800L<|>1900L</);
+  assert.match(local, /CDT/);
+  for (const [index, x] of dimensions.xPositions.entries()) {
+    assert.match(zulu, new RegExp(`data-time-x="${x.toFixed(1)}" data-time-z="${timeline[index].validZ || timeline[index].observedZ}"`));
+  }
+  const main = buildMeteogramSvgMarkup(model, { timeMode: "Z" }, { viewportWidth: 1000, labelLayout });
+  const mainDivider = Number(main.match(/aviation-meteogram-now-divider" x1="([\d.]+)"/)?.[1]);
+  const rulerDivider = Number(zulu.match(/data-now-x="([\d.]+)"/)?.[1]);
+  assert.ok(Math.abs(mainDivider - rulerDivider) <= 0.1);
+  assert.match(meteogramJs, /originalTimeRowBottom <= resultsRect\.top \+ 1/);
+  assert.match(meteogramJs, /translateX\(\$\{\-\(Number\(scroller\.scrollLeft/);
+  assert.match(meteogramCss, /\.aviation-meteogram-sticky-time-ruler\{[\s\S]*position:sticky;[\s\S]*top:0/);
+  assert.match(meteogramCss, /aviation-meteogram-printing \.aviation-meteogram-sticky-time-ruler\{display:none!important\}/);
+});
+
+test("cloud morphology, convective development, and weather overlays remain semantically distinct and truthful", () => {
+  const forms = Object.fromEntries(["FEW", "SCT", "BKN", "OVC", "VV"].map((cover) => [cover, meteogramCloudFormDefinition({ cover })]));
+  assert.equal(forms.FEW.morphology, "sparse-isolated-puffs");
+  assert.equal(forms.SCT.morphology, "scattered-groups-with-openings");
+  assert.equal(forms.BKN.morphology, "mostly-continuous-broken-deck");
+  assert.equal(forms.OVC.morphology, "continuous-unbroken-deck");
+  assert.equal(forms.VV.morphology, "vertical-visibility-obscuration");
+  assert.ok(forms.FEW.coverage < forms.SCT.coverage && forms.SCT.coverage < forms.BKN.coverage && forms.BKN.coverage < forms.OVC.coverage);
+  assert.notDeepEqual(forms.BKN.paths, forms.FEW.paths, "BKN is its own mostly-continuous morphology, not widened FEW art");
+
+  const cloudPoint = (raw, weatherCodes = []) => {
+    const match = raw.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
+    const layer = { cover: match[1], heightFt: Number(match[2]) * 100, convective: match[3] || "", raw };
+    return manualMeteogramPoint({
+      clouds: { layers: [layer], clear: false, cavok: false, ceilingFt: ["BKN", "OVC", "VV"].includes(layer.cover) ? layer.heightFt : null, display: raw },
+      weatherCodes,
+    });
+  };
+  const comparison = ["FEW050", "SCT050", "BKN050", "OVC050", "VV005"].map(cloudPoint);
+  const comparisonSvg = buildMeteogramSvgMarkup(manualMeteogramModel(comparison), { timeMode: "Z" });
+  for (const definition of Object.values(forms)) assert.match(comparisonSvg, new RegExp(`data-cloud-morphology="${definition.morphology}"`));
+  assert.match(comparisonSvg, /aviation-meteogram-cloud-vv-wisps/);
+  assert.doesNotMatch(comparisonSvg, /data-top-ft/);
+
+  const convective = [cloudPoint("SCT025TCU"), cloudPoint("BKN030CB"), cloudPoint("BKN030CB", ["TSRA"])];
+  const convectiveSvg = buildMeteogramSvgMarkup(manualMeteogramModel(convective), { timeMode: "Z" });
+  assert.match(convectiveSvg, /aviation-meteogram-cloud-development-TCU/);
+  assert.match(convectiveSvg, /aviation-meteogram-cloud-development-CB/);
+  assert.match(convectiveSvg, /aviation-meteogram-cloud-anvil/);
+  assert.equal((convectiveSvg.match(/data-weather-lightning="reported-thunder"/g) || []).length, 1, "CB alone never fabricates lightning; TSRA adds it once");
+  assert.match(convectiveSvg, /CUMULONIMBUS REPORTED[\s\S]*CLOUD TOP NOT REPORTED/);
+
+  for (const [code, density] of [["-RA", 1], ["RA", 2], ["+RA", 3]]) {
+    const scene = meteogramWeatherSceneDefinition(cloudPoint("BKN030", [code]));
+    assert.equal(scene.density, density);
+    assert.equal(scene.rain, true);
+  }
+  const scenes = [
+    ["SHRA", /aviation-meteogram-atmosphere-showers/],
+    ["VCSH", /aviation-meteogram-atmosphere-vicinity/],
+    ["FZRA", /aviation-meteogram-atmosphere-freezing/],
+    ["+SN", /data-weather-snow-density="3"/],
+    ["PL", /aviation-meteogram-atmosphere-ice-pellets/],
+    ["GR", /aviation-meteogram-atmosphere-hail/],
+    ["GS", /aviation-meteogram-atmosphere-small-hail/],
+    ["FG", /aviation-meteogram-atmosphere-fog/],
+    ["BR", /aviation-meteogram-atmosphere-mist/],
+    ["HZ", /aviation-meteogram-atmosphere-haze/],
+  ];
+  for (const [code, expected] of scenes) {
+    const svg = buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint(code === "FG" ? "VV002" : "BKN030", [code])]), { timeMode: "Z" });
+    assert.match(svg, expected, `${code} gets its truthful qualitative overlay`);
+    assert.match(svg, /no precipitation amount or producing cloud layer is inferred/i);
+  }
+  const accessible = buildMeteogramAccessibleTableMarkup(manualMeteogramModel([cloudPoint("BKN030CB", ["TSRA"])]), { timeMode: "Z" });
+  assert.match(accessible, /BROKEN CLOUD BASE 3,000 FT AGL · CUMULONIMBUS REPORTED · CLOUD TOP NOT REPORTED/);
+});
+
+test("mixed, vicinity, and conditional weather retain independent intensity and provenance", () => {
+  const weatherPoint = ({ weatherCodes, conditional = [], raw = "BKN030", kind = "OBSERVED" }) => {
+    const match = raw.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
+    const layer = { cover: match[1], heightFt: Number(match[2]) * 100, convective: match[3] || "", raw };
+    return manualMeteogramPoint({
+      kind,
+      reportType: kind === "FORECAST" ? "TAF" : "METAR",
+      observedZ: kind === "FORECAST" ? null : "2026-09-01T00:00:00.000Z",
+      validZ: kind === "FORECAST" ? "2026-09-01T01:00:00.000Z" : null,
+      tafIssuanceZ: kind === "FORECAST" ? "2026-08-31T22:00:00.000Z" : null,
+      clouds: { layers: [layer], clear: false, cavok: false, ceilingFt: ["BKN", "OVC", "VV"].includes(layer.cover) ? layer.heightFt : null, display: raw },
+      weatherCodes,
+      conditional,
+    });
+  };
+  const phenomenonTag = (svg, code) => {
+    const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return svg.match(new RegExp(`<g class="([^"]*aviation-meteogram-atmosphere-phenomenon[^"]*)" data-weather-code="${escaped}"[^>]*>`));
+  };
+
+  const mixedPoint = weatherPoint({ weatherCodes: ["-RA", "BR"] });
+  const mixedScene = meteogramWeatherSceneDefinition(mixedPoint);
+  assert.equal(mixedScene.phenomena.find(({ code }) => code === "-RA").density, 1, "mist cannot promote light rain to moderate density");
+  assert.equal(mixedScene.phenomena.find(({ code }) => code === "BR").density, 2);
+  const mixedSvg = buildMeteogramSvgMarkup(manualMeteogramModel([mixedPoint]), { timeMode: "Z" });
+  assert.match(mixedSvg, /data-weather-code="-RA" data-weather-density="1" data-weather-provenance="PREVAILING"/);
+  assert.match(mixedSvg, /data-weather-rain-density="1"/);
+
+  const vicinityPoint = weatherPoint({ weatherCodes: ["RA", "VCTS"] });
+  const vicinitySvg = buildMeteogramSvgMarkup(manualMeteogramModel([vicinityPoint]), { timeMode: "Z" });
+  const rainTag = phenomenonTag(vicinitySvg, "RA");
+  const thunderTag = phenomenonTag(vicinitySvg, "VCTS");
+  assert.ok(rainTag && !rainTag[1].includes("aviation-meteogram-atmosphere-vicinity"), "station rain remains centered");
+  assert.ok(thunderTag && thunderTag[1].includes("aviation-meteogram-atmosphere-vicinity"), "only vicinity thunder is displaced");
+
+  const conditionalPoint = weatherPoint({
+    kind: "FORECAST",
+    weatherCodes: ["-RA"],
+    conditional: [{ type: "TEMPORARY", conditions: { weatherCodes: ["+SN"] } }],
+  });
+  const conditionalScene = meteogramWeatherSceneDefinition(conditionalPoint);
+  const prevailingRain = conditionalScene.phenomena.find(({ code, conditional }) => code === "-RA" && !conditional);
+  const tempoSnow = conditionalScene.phenomena.find(({ code, conditional }) => code === "+SN" && conditional);
+  assert.deepEqual({ density: prevailingRain.density, provenance: prevailingRain.provenance }, { density: 1, provenance: "PREVAILING" });
+  assert.deepEqual({ density: tempoSnow.density, provenance: tempoSnow.provenance }, { density: 3, provenance: "TEMPO" });
+  const conditionalSvg = buildMeteogramSvgMarkup(manualMeteogramModel([conditionalPoint]), { timeMode: "Z" });
+  assert.match(conditionalSvg, /data-weather-code="-RA" data-weather-density="1" data-weather-provenance="PREVAILING"/);
+  assert.match(conditionalSvg, /aviation-meteogram-atmosphere-conditional" data-weather-code="\+SN" data-weather-density="3" data-weather-provenance="TEMPO"/);
+  assert.match(conditionalSvg, /PREVAILING: LIGHT RAIN; TEMPO: HEAVY SNOW/);
+
+  for (const [code, classes] of [
+    ["FZDZ", ["aviation-meteogram-atmosphere-drizzle", "aviation-meteogram-atmosphere-freezing"]],
+    ["SHSN", ["aviation-meteogram-atmosphere-showers", "aviation-meteogram-atmosphere-snow"]],
+    ["VCTS", ["aviation-meteogram-atmosphere-vicinity", "data-weather-lightning=\"reported-thunder\""]],
+    ["+TSRA", ["data-weather-rain-density=\"3\"", "data-weather-lightning=\"reported-thunder\""]],
+    ["-RADZ", ["aviation-meteogram-atmosphere-rain", "aviation-meteogram-atmosphere-drizzle", "data-weather-rain-density=\"1\"", "data-weather-drizzle-density=\"1\""]],
+    ["PLGS", ["aviation-meteogram-atmosphere-ice-pellets", "aviation-meteogram-atmosphere-small-hail"]],
+  ]) {
+    const svg = buildMeteogramSvgMarkup(manualMeteogramModel([weatherPoint({ weatherCodes: [code], raw: code.includes("TS") ? "BKN030CB" : "OVC008" })]), { timeMode: "Z" });
+    for (const expected of classes) assert.ok(svg.includes(expected), `${code} includes ${expected}`);
+  }
+  const blowingSnowSvg = buildMeteogramSvgMarkup(manualMeteogramModel([weatherPoint({ weatherCodes: ["BLSN"], raw: "OVC008" })]), { timeMode: "Z" });
+  assert.doesNotMatch(blowingSnowSvg, /aviation-meteogram-atmosphere-snow/, "blowing snow is not fabricated as ordinary falling flakes");
+  assert.match(blowingSnowSvg, /BLOWING SNOW/);
+});
+
+test("precipitation and obscuration occupy a protected lower-atmosphere zone beneath low decks", () => {
+  const point = (raw, weatherCode) => {
+    const match = raw.match(/^(OVC|VV)(\d{3})$/);
+    const layer = { cover: match[1], heightFt: Number(match[2]) * 100, convective: "", raw };
+    return manualMeteogramPoint({
+      clouds: { layers: [layer], clear: false, cavok: false, ceilingFt: layer.heightFt, display: raw },
+      weatherCodes: [weatherCode],
+    });
+  };
+  for (const [raw, code] of [["OVC008", "+SN"], ["OVC005", "FZRA"], ["VV002", "FG"]]) {
+    const svg = buildMeteogramSvgMarkup(manualMeteogramModel([point(raw, code)]), { timeMode: "Z" });
+    const top = Number(svg.match(/data-weather-zone-top="([\d.]+)"/)?.[1]);
+    const bottom = Number(svg.match(/data-weather-zone-bottom="([\d.]+)"/)?.[1]);
+    const base = meteogramCloudBaseY(Number(raw.slice(3)) * 100, 10000);
+    assert.ok(Number.isFinite(top) && Number.isFinite(bottom));
+    assert.ok(top > base, `${raw} ${code} decorative weather begins below the low reported base`);
+    assert.ok(bottom > top, "the lower-atmosphere zone has positive height");
+    assert.match(svg, /no precipitation amount or producing cloud layer is inferred/i);
+  }
+  for (const [code, density] of [["-SN", 1], ["SN", 2], ["+SN", 3]]) {
+    const svg = buildMeteogramSvgMarkup(manualMeteogramModel([point("OVC008", code)]), { timeMode: "Z" });
+    assert.match(svg, new RegExp(`data-weather-snow-density="${density}"`));
+  }
+});
+
 test("cloud field positions every reported base, distinguishes coverage and VV, and emphasizes only the true ceiling", () => {
   assert.ok(meteogramCloudBaseY(500, 10000) > meteogramCloudBaseY(5000, 10000));
   assert.ok(meteogramCloudBaseY(5000, 10000) > meteogramCloudBaseY(10000, 10000));
@@ -1702,7 +1907,7 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
   assert.match(meteogramJs, /const artX = x;/, "cloud art stays anchored to the exact time coordinate while the protected clip trims any gutter intrusion");
   assert.match(meteogramJs, /const availableWidth = Math\.max\(16, Math\.min\(nominalWidth, \(width - x\) \* 2\)\)/, "edge artwork shrinks before it can leave the available data region");
   assert.ok(Number.isFinite(firstCloudTimeX), "the exact observation time anchor remains explicit and unchanged");
-  assert.match(svg, /cloud top not reported/);
+  assert.match(svg, /cloud top not reported/i);
   assert.doesNotMatch(svg, /data-top-ft/);
   assert.doesNotMatch(svg, /<pattern\b|id="aviationMeteogramCloud(?:Few|Scattered|Broken|Vertical)"/, "legacy patterned cloud blocks are gone");
 

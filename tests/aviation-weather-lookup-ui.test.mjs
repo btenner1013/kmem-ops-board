@@ -447,6 +447,41 @@ test("METEOGRAM keeps its full intrinsic-width label without shortening or ellip
   assert.doesNotMatch(lookupCss, /text-overflow:ellipsis/);
 });
 
+test("lookup controls wrap from actual panel width and reserve the complete LOOK UP action", () => {
+  const submitRule = [...lookupCss.matchAll(/\.aviation-lookup-submit\{[\s\S]*?\}/g)]
+    .map((match) => match[0])
+    .find((rule) => rule.includes("min-width:max-content")) || "";
+  assert.match(
+    lookupCss,
+    /\.aviation-lookup-panel\{[\s\S]*?box-sizing:border-box;[\s\S]*?min-width:0;[\s\S]*?container-name:aviation-lookup-panel;[\s\S]*?container-type:inline-size;/,
+  );
+  assert.match(
+    lookupCss,
+    /\.aviation-lookup-form\{[\s\S]*?box-sizing:border-box;[\s\S]*?width:100%;[\s\S]*?max-width:100%;[\s\S]*?min-width:0;/,
+  );
+  assert.match(
+    lookupCss,
+    /\.aviation-lookup-input,\s*\.aviation-lookup-select,\s*\.aviation-lookup-submit,\s*\.aviation-lookup-product\{\s*box-sizing:border-box;/,
+  );
+  assert.match(
+    lookupCss,
+    /\.aviation-lookup-products\{[\s\S]*?width:100%;[\s\S]*?max-width:100%;[\s\S]*?min-width:0;/,
+  );
+  assert.match(
+    submitRule,
+    /max-width:100%;[\s\S]*?min-width:max-content;[\s\S]*?justify-self:end;[\s\S]*?white-space:nowrap;/,
+  );
+  assert.match(
+    lookupCss,
+    /@container aviation-lookup-panel \(min-width:769px\) and \(max-width:959px\)\{[\s\S]*?grid-template-areas:\s*"station products"\s*"range submit";[\s\S]*?grid-template-columns:minmax\(120px,\.32fr\) minmax\(0,1fr\);/,
+  );
+  assert.match(
+    lookupCss,
+    /@container aviation-lookup-panel \(min-width:960px\)\{[\s\S]*?grid-template-areas:"station products range submit";[\s\S]*?grid-template-columns:minmax\(110px,135px\) minmax\(0,1fr\) minmax\(145px,180px\) max-content;/,
+  );
+  assert.doesNotMatch(submitRule, /overflow:hidden|text-overflow:ellipsis/);
+});
+
 test("result-card identities distinguish routine METARs, SPECIs, and TAF variants", () => {
   assert.equal(formatReportIdentity({ product: "METAR", station: "KMEM" }), "METAR KMEM");
   assert.equal(formatReportIdentity({ product: "SPECI", station: "KMEM" }), "SPECI KMEM");

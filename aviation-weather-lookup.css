@@ -22,12 +22,16 @@ body.aviation-lookup-open{overflow:hidden!important}
 }
 
 .aviation-lookup-panel{
+  box-sizing:border-box;
   width:min(820px,calc(100vw - 32px));
   max-height:calc(100dvh - 32px);
+  min-width:0;
   min-height:0;
   display:flex;
   flex-direction:column;
   overflow:hidden;
+  container-name:aviation-lookup-panel;
+  container-type:inline-size;
   border:2px solid var(--border,#00ff88);
   border-radius:8px;
   background:#0b0e0d;
@@ -97,6 +101,10 @@ body.aviation-lookup-open{overflow:hidden!important}
 .aviation-lookup-print:disabled{opacity:.42;cursor:not-allowed}
 
 .aviation-lookup-form{
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  min-width:0;
   display:grid;
   grid-template-areas:"station products range submit";
   grid-template-columns:minmax(110px,135px) minmax(max-content,1fr) minmax(145px,180px) max-content;
@@ -182,6 +190,7 @@ body.aviation-lookup-open{overflow:hidden!important}
 .aviation-lookup-select,
 .aviation-lookup-submit,
 .aviation-lookup-product{
+  box-sizing:border-box;
   min-height:36px;
   border:1px solid rgba(0,255,136,.62);
   border-radius:5px;
@@ -194,6 +203,8 @@ body.aviation-lookup-open{overflow:hidden!important}
 .aviation-lookup-input,
 .aviation-lookup-select{
   width:100%;
+  max-width:100%;
+  min-width:0;
   padding:7px 9px;
 }
 
@@ -204,6 +215,10 @@ body.aviation-lookup-open{overflow:hidden!important}
 }
 
 .aviation-lookup-products{
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  min-width:0;
   display:grid;
   grid-template-columns:repeat(4,minmax(max-content,1fr));
   gap:5px;
@@ -235,6 +250,10 @@ body.aviation-lookup-open{overflow:hidden!important}
 }
 
 .aviation-lookup-submit{
+  max-width:100%;
+  min-width:max-content;
+  justify-self:end;
+  white-space:nowrap;
   background:var(--ops-green,#00ff88);
   color:#00170c;
   border-color:var(--ops-green,#00ff88);
@@ -517,6 +536,28 @@ body.aviation-lookup-open{overflow:hidden!important}
   .aviation-lookup-results{min-height:90px;padding:6px 9px}
   .aviation-lookup-raw{font-size:.72rem;padding:6px 8px}
   .aviation-lookup-panel-meteogram{height:calc(100dvh - 10px);max-height:calc(100dvh - 10px)}
+}
+
+/*
+  The standard dialog is intentionally compact even on a wide display, while
+  the meteogram dialog expands. Choose the control-row shape from the panel's
+  real inline size so browser zoom, DPI scaling, and scrollbar geometry wrap
+  before the intrinsic-width product and submit labels can reach an edge.
+*/
+@container aviation-lookup-panel (min-width:769px) and (max-width:959px){
+  .aviation-lookup-form{
+    grid-template-areas:
+      "station products"
+      "range submit";
+    grid-template-columns:minmax(120px,.32fr) minmax(0,1fr);
+  }
+}
+
+@container aviation-lookup-panel (min-width:960px){
+  .aviation-lookup-form{
+    grid-template-areas:"station products range submit";
+    grid-template-columns:minmax(110px,135px) minmax(0,1fr) minmax(145px,180px) max-content;
+  }
 }
 
 @media print{
