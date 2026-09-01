@@ -1335,10 +1335,10 @@ test("row-label width follows measured visible content with bounded wrapping ins
     compact: false,
     measureText: desktopMeasure,
   });
-  assert.equal(knots.width, 191, "the new visible wind-series legend and physical-font safety padding participate in measured width");
+  assert.equal(knots.width, 195, "the longest legitimate unit variant and physical-font safety padding participate in measured width");
   assert.equal(knots.minimumWidth, 154);
-  assert.equal(knots.maximumWidth, 220);
-  assert.ok(mph.width > knots.width, "a wider visible MPH subtitle grows the shared column live");
+  assert.equal(knots.maximumWidth, 280);
+  assert.equal(mph.width, knots.width, "the shared column reserves the widest live toggle variant so unit changes cannot move the timeline");
   assert.ok(knots.rows.every((row) => row.titleLines.length === 1 && row.unitLines.length === 1));
 
   const narrowMeasure = (text) => String(text).length * 7.5;
@@ -1363,7 +1363,48 @@ test("row-label width follows measured visible content with bounded wrapping ins
       assert.ok(narrowMeasure(line) <= narrow.maximumTextWidth, `${row.key} line remains inside the shared label viewport`);
       assert.doesNotMatch(line, /…|\.\.\./, "labels are never ellipsized");
     }
+    if (row.titleLines.length > 1 || row.unitLines.length > 1) {
+      const requiredHeight = row.titleLines.length * 12 + 8 + row.unitLines.length * 10;
+      assert.ok(requiredHeight <= row.bottom - row.top, `${row.key} wrapped text remains vertically contained by its matching data row`);
+    }
   }
+});
+
+test("display toggles keep one shared header width and leave time, solar, NOW, and cloud geometry unchanged", () => {
+  const timeline = [
+    manualMeteogramPoint({
+      observedZ: "2026-09-01T12:00:00Z",
+      clouds: { layers: [{ cover: "BKN", heightFt: 7000, raw: "BKN070" }], clear: false, cavok: false, ceilingFt: 7000, display: "BKN070" },
+    }),
+    manualMeteogramPoint({
+      kind: "FORECAST",
+      reportType: "TAF",
+      observedZ: "2026-09-01T18:00:00Z",
+      validZ: "2026-09-01T18:00:00Z",
+      tafIssuanceZ: "2026-09-01T11:00:00Z",
+      clouds: { layers: [{ cover: "SCT", heightFt: 11000, raw: "SCT110" }], clear: false, cavok: false, ceilingFt: null, display: "SCT110" },
+    }),
+  ];
+  const model = manualMeteogramModel(timeline);
+  const variants = [
+    { timeMode: "Z", temperatureUnit: "C", windUnit: "KT" },
+    { timeMode: "LOCAL", temperatureUnit: "F", windUnit: "MPH" },
+  ];
+  const renderings = variants.map((settings) => {
+    const labelLayout = meteogramRowLabelLayout(settings, 1280, { hasForecast: true });
+    const dimensions = meteogramDimensions(timeline, 1280, { labelWidth: labelLayout.width });
+    const svg = buildMeteogramSvgMarkup(model, settings, { viewportWidth: 1280, labelLayout });
+    return {
+      labelWidth: labelLayout.width,
+      pixelsPerHour: dimensions.pixelsPerHour,
+      relativeX: dimensions.xPositions.map((x) => Number((x - dimensions.plotLeft).toFixed(4))),
+      nowX: Number(svg.match(/aviation-meteogram-now-divider" x1="([\d.]+)"/)?.[1]) - dimensions.plotLeft,
+      solar: renderedSolarGeometry(svg).map(({ x, ...event }) => ({ ...event, x: Number((x - dimensions.plotLeft).toFixed(4)) })),
+      cloudX: [...svg.matchAll(/data-cloud-time-x="([\d.]+)"/g)].map((match) => Number((Number(match[1]) - dimensions.plotLeft).toFixed(4))),
+      cloudBaseY: [...svg.matchAll(/data-base-y="([\d.]+)"/g)].map((match) => Number(match[1])),
+    };
+  });
+  assert.deepEqual(renderings[1], renderings[0], "format-only toggles cannot resize or remap the shared proportional timeline");
 });
 
 test("main and sticky SVG layers consume one dynamic width and identical row geometry", () => {
@@ -1413,10 +1454,16 @@ test("main and sticky SVG layers consume one dynamic width and identical row geo
 test("dynamic row-label measurement redraws for responsive and font lifecycle without affecting page geometry", () => {
   assert.match(meteogramJs, /createMeteogramRowLabelMeasurer\(doc\)/);
   assert.match(meteogramJs, /getComputedTextLength/);
+  assert.match(meteogramJs, /getBBox\?\.\(\)\.width/);
+  assert.match(meteogramJs, /Math\.max\(\.\.\.widths\)/);
   assert.match(meteogramJs, /meteogramRowLabelLayout\(displaySettings, availableWidth,[\s\S]*measureText: labelMeasurer\.measureText/);
   assert.match(meteogramJs, /buildMeteogramSvgMarkup\(model, settings, \{ viewportWidth, labelLayout \}\)/);
   assert.match(meteogramJs, /buildMeteogramStickyLabelsMarkup\(displaySettings, dimensions, model\.forecasts\.length > 0, labelLayout, windSpeedGeometry, cloudScale\)/);
   assert.match(meteogramJs, /new ResizeObserverCtor\(scheduleDraw\)/);
+  assert.match(meteogramJs, /addEventListener\?\.\("orientationchange", scheduleDraw\)/);
+  assert.match(meteogramJs, /addEventListener\?\.\("fullscreenchange", scheduleDraw\)/);
+  assert.match(meteogramJs, /removeEventListener\?\.\("orientationchange", scheduleDraw\)/);
+  assert.match(meteogramJs, /removeEventListener\?\.\("fullscreenchange", scheduleDraw\)/);
   assert.match(meteogramJs, /doc\.fonts\?\.ready[\s\S]*scheduleDraw/);
   const measurerRule = meteogramCss.match(/\.aviation-meteogram-label-measurer\{[\s\S]*?\}/)?.[0] || "";
   assert.match(measurerRule, /position:fixed/);
@@ -1425,6 +1472,7 @@ test("dynamic row-label measurement redraws for responsive and font lifecycle wi
   assert.match(measurerRule, /overflow:hidden/);
   assert.doesNotMatch(measurerRule, /display:none/);
   assert.match(meteogramCss, /\.aviation-meteogram-sticky-labels\{[\s\S]*overflow:hidden/);
+  assert.doesNotMatch(meteogramCss, /\.aviation-meteogram-row-(?:title|unit)[^{]*\{[^}]*text-overflow\s*:\s*ellipsis/i);
 });
 
 test("keyboard and screen-reader users have a live unit-aware text data table", () => {
@@ -2409,7 +2457,7 @@ test("meteogram dimensions remain finite and internally scrollable at every requ
   const timeline = Array.from({ length: 25 }, (_, index) => manualMeteogramPoint({
     observedZ: new Date(Date.UTC(2026, 8, 1, index)).toISOString(),
   }));
-  for (const viewport of [1920, 1366, 1280, 844, 390, 320]) {
+  for (const viewport of [1920, 1366, 1280, 1024, 844, 768, 414, 390, 375, 320]) {
     const labelLayout = meteogramRowLabelLayout(
       { timeMode: "LOCAL", temperatureUnit: "F", windUnit: "MPH" },
       viewport,
@@ -2420,7 +2468,7 @@ test("meteogram dimensions remain finite and internally scrollable at every requ
     assert.equal(dimensions.height, 998);
     assert.equal(dimensions.labelWidth, labelLayout.width);
     assert.ok(labelLayout.width >= labelLayout.minimumWidth && labelLayout.width <= labelLayout.maximumWidth);
-    assert.ok(labelLayout.width <= 220, "dynamic labels never consume beyond the fixed upper bound");
+    assert.ok(labelLayout.width <= 280, "dynamic labels never consume beyond the bounded upper limit");
     assert.ok(dimensions.xPositions.every((x) => x >= dimensions.labelWidth && x <= dimensions.width));
     if (viewport <= 844) assert.ok(dimensions.width > viewport, "dense mobile/tablet timeline scrolls inside its region");
   }

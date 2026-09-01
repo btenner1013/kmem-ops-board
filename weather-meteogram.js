@@ -38,7 +38,7 @@ export const METEOGRAM_DATA_AXIS_WIDTH = 58;
 export const METEOGRAM_CLOUD_AXIS_WIDTH = METEOGRAM_DATA_AXIS_WIDTH;
 const ROW_LABEL_TEXT_X = 45;
 const ROW_LABEL_RIGHT_PADDING = 18;
-const ROW_LABEL_MAX_WIDTH = 220;
+const ROW_LABEL_MAX_WIDTH = 280;
 const ROW_LABEL_MAX_VIEWPORT_RATIO = 0.52;
 
 function escapeMarkup(value) {
@@ -323,10 +323,20 @@ export function meteogramRowLabelLayout(settings = {}, availableWidth = 1100, {
       : fallbackRowLabelTextWidth(text, kind, compact);
   };
   const descriptors = meteogramRowLabelDescriptors(settings, hasForecast);
-  const longestTextWidth = descriptors.reduce((maximum, descriptor) => Math.max(
+  const sizingTextCandidates = new Map();
+  for (const timeMode of ["Z", "LOCAL"]) {
+    for (const temperatureUnit of ["C", "F"]) {
+      for (const windUnit of ["KT", "MPH"]) {
+        for (const descriptor of meteogramRowLabelDescriptors({ timeMode, temperatureUnit, windUnit }, hasForecast)) {
+          sizingTextCandidates.set(`title:${descriptor.title}`, { text: descriptor.title, kind: "title" });
+          sizingTextCandidates.set(`unit:${descriptor.unit}`, { text: descriptor.unit, kind: "unit" });
+        }
+      }
+    }
+  }
+  const longestTextWidth = [...sizingTextCandidates.values()].reduce((maximum, candidate) => Math.max(
     maximum,
-    measure(descriptor.title, "title"),
-    measure(descriptor.unit, "unit"),
+    measure(candidate.text, candidate.kind),
   ), 0);
   const preferredWidth = Math.ceil(ROW_LABEL_TEXT_X + longestTextWidth + ROW_LABEL_RIGHT_PADDING);
   const width = clamp(preferredWidth, minimumWidth, maximumWidth);
@@ -365,8 +375,15 @@ function createMeteogramRowLabelMeasurer(doc) {
   const measureText = (value, kind) => {
     const node = nodes[kind === "title" ? "title" : "unit"];
     node.textContent = String(value || "");
-    const width = Number(node.getComputedTextLength?.());
-    return Number.isFinite(width) && width > 0 ? width : NaN;
+    const advanceWidth = Number(node.getComputedTextLength?.());
+    let inkWidth = NaN;
+    try {
+      inkWidth = Number(node.getBBox?.().width);
+    } catch {
+      // Detached/initializing SVG implementations may not expose an ink box yet.
+    }
+    const widths = [advanceWidth, inkWidth].filter((width) => Number.isFinite(width) && width > 0);
+    return widths.length ? Math.max(...widths) : NaN;
   };
   return { element, measureText };
 }
@@ -2527,6 +2544,8 @@ export function renderAviationMeteogram(container, reports, {
   const resizeObserver = ResizeObserverCtor ? new ResizeObserverCtor(scheduleDraw) : null;
   resizeObserver?.observe(scroller);
   if (!resizeObserver) view.addEventListener?.("resize", scheduleDraw);
+  view.addEventListener?.("orientationchange", scheduleDraw);
+  doc.addEventListener?.("fullscreenchange", scheduleDraw);
   Promise.resolve(doc.fonts?.ready).then(() => {
     if (doc.fonts?.ready) scheduleDraw();
   });
@@ -2585,6 +2604,8 @@ export function renderAviationMeteogram(container, reports, {
       destroyed = true;
       resizeObserver?.disconnect();
       if (!resizeObserver) view.removeEventListener?.("resize", scheduleDraw);
+      view.removeEventListener?.("orientationchange", scheduleDraw);
+      doc.removeEventListener?.("fullscreenchange", scheduleDraw);
       if (frame) view.cancelAnimationFrame?.(frame);
       if (windTooltipScrollFrame) view.cancelAnimationFrame?.(windTooltipScrollFrame);
       container.removeEventListener?.("scroll", updateStickyTimeRuler);
