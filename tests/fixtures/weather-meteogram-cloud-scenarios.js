@@ -21,6 +21,17 @@ function cloudState(tokens) {
   };
 }
 
+function clearState(token) {
+  const normalized = String(token || "CLR").toUpperCase();
+  return {
+    layers: [],
+    clear: normalized !== "CAVOK",
+    cavok: normalized === "CAVOK",
+    ceilingFt: null,
+    display: normalized,
+  };
+}
+
 function point(index, { clouds = cloudState(["FEW050"]), weatherCodes = [] } = {}) {
   const observedZ = new Date(Date.parse("2026-09-01T12:00:00Z") + index * 3 * 60 * 60 * 1000).toISOString();
   return {
@@ -52,10 +63,41 @@ const scenarios = [
     points: ["FEW050", "SCT050", "BKN050", "OVC050", "VV005"].map((token, index) => point(index, { clouds: cloudState([token]) })),
   },
   {
-    id: "multilayer",
+    id: "sct055-bkn070",
+    title: "SCT055 + BKN070",
+    note: "Exact 5,500 FT scattered base and exact 7,000 FT broken ceiling; each token is attached to its base marker and CIG is 7,000 FT.",
+    points: [point(0, { clouds: cloudState(["SCT055", "BKN070"]) })],
+  },
+  {
+    id: "few065-bkn085",
     title: "FEW065 + BKN085",
-    note: "Two independently anchored layers; CIG remains the exact BKN 8,500 FT base.",
+    note: "Sparse FEW at exactly 6,500 FT and a broad broken deck at exactly 8,500 FT; CIG remains 8,500 FT.",
     points: [point(0, { clouds: cloudState(["FEW065", "BKN085"]) })],
+  },
+  {
+    id: "three-layers",
+    title: "FEW060 + BKN080 + BKN100",
+    note: "Three distinct exact bases at 6,000, 8,000, and 10,000 FT; the first broken layer establishes CIG 8,000 FT.",
+    points: [point(0, { clouds: cloudState(["FEW060", "BKN080", "BKN100"]) })],
+  },
+  {
+    id: "high-clouds",
+    title: "FEW250 · SCT250 · SCT110",
+    note: "High cloud markers and tokens remain attached to exact 25,000 FT and 11,000 FT bases without decorative-top drift.",
+    points: [
+      point(0, { clouds: cloudState(["FEW250"]) }),
+      point(1, { clouds: cloudState(["SCT250"]) }),
+      point(2, { clouds: cloudState(["SCT110"]) }),
+    ],
+  },
+  {
+    id: "clear-sky",
+    title: "CLR · SKC",
+    note: "The altitude plot is intentionally empty for clear sky. Existing sun/moon symbolism remains in the separate WEATHER row only.",
+    points: [
+      point(0, { clouds: clearState("CLR") }),
+      point(1, { clouds: clearState("SKC") }),
+    ],
   },
   {
     id: "convective",
@@ -65,21 +107,6 @@ const scenarios = [
       point(0, { clouds: cloudState(["SCT025TCU"]) }),
       point(1, { clouds: cloudState(["BKN030CB"]) }),
       point(2, { clouds: cloudState(["BKN030CB"]), weatherCodes: ["TSRA"] }),
-    ],
-  },
-  {
-    id: "rain-intensity",
-    title: "BKN030 -RA · BKN030 RA · BKN030 +RA",
-    note: "Qualitative light/moderate/heavy density only; no rate or producing layer is inferred.",
-    points: ["-RA", "RA", "+RA"].map((code, index) => point(index, { clouds: cloudState(["BKN030"]), weatherCodes: [code] })),
-  },
-  {
-    id: "snow-freezing",
-    title: "OVC008 +SN · OVC005 FZRA",
-    note: "Heavy snow density and freezing-rain glaze accents remain qualitative; no amount is implied.",
-    points: [
-      point(0, { clouds: cloudState(["OVC008"]), weatherCodes: ["+SN"] }),
-      point(1, { clouds: cloudState(["OVC005"]), weatherCodes: ["FZRA"] }),
     ],
   },
   {

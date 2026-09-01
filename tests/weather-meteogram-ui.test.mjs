@@ -1276,9 +1276,10 @@ test("light print theme overrides direct SVG colors that would disappear on whit
     ".aviation-meteogram-axis-gutter-background",
     ".aviation-meteogram-cloud-tower",
     ".aviation-meteogram-cloud-anvil",
+    ".aviation-meteogram-cloud-vv-veil-fill",
     ".aviation-meteogram-cloud-vv-band",
-    ".aviation-meteogram-open-sky-disc",
-    ".aviation-meteogram-cavok-ring",
+    ".aviation-meteogram-cloud-layer-label-tag",
+    ".aviation-meteogram-cloud-label-leader",
     ".aviation-meteogram-atmosphere-precip line",
     ".aviation-meteogram-atmosphere-snow path",
     ".aviation-meteogram-atmosphere-pellets circle",
@@ -1726,8 +1727,20 @@ test("cloud morphology, convective development, and weather overlays remain sema
   assert.equal(forms.BKN.morphology, "mostly-continuous-broken-deck");
   assert.equal(forms.OVC.morphology, "continuous-unbroken-deck");
   assert.equal(forms.VV.morphology, "vertical-visibility-obscuration");
-  assert.ok(forms.FEW.coverage < forms.SCT.coverage && forms.SCT.coverage < forms.BKN.coverage && forms.BKN.coverage < forms.OVC.coverage);
+  assert.deepEqual(
+    [forms.FEW.silhouette, forms.SCT.silhouette, forms.BKN.silhouette, forms.OVC.silhouette, forms.VV.silhouette],
+    ["isolated-clusters", "separated-cloud-groups", "broad-broken-deck", "continuous-overcast-deck", "obscuration-veil"],
+  );
+  assert.ok(forms.FEW.occupiedRatio < forms.SCT.occupiedRatio && forms.SCT.occupiedRatio < forms.BKN.occupiedRatio && forms.BKN.occupiedRatio < forms.OVC.occupiedRatio);
+  assert.deepEqual([forms.FEW.gapCount, forms.SCT.gapCount, forms.BKN.gapCount, forms.OVC.gapCount], [1, 2, 1, 0]);
+  assert.equal(forms.BKN.continuousBase, false, "BKN has one deliberate opening");
+  assert.equal(forms.OVC.continuousBase, true, "OVC is an uninterrupted deck");
+  assert.equal(forms.VV.paths.length, 0, "VV uses an obscuration veil, never an ordinary puffy cloud body");
+  assert.equal(forms.BKN.paths.length, 2, "BKN is two broad masses around one narrow opening, not detached puff icons");
+  assert.ok(forms.SCT.coverage < forms.BKN.coverage && forms.BKN.coverage <= forms.OVC.coverage, "coverage grows from scattered to broken to overcast");
+  assert.ok(forms.BKN.coverage <= 1 && forms.OVC.coverage <= 1 && forms.VV.coverage <= 1, "broad scenes stay inside their discrete timestamp cell");
   assert.notDeepEqual(forms.BKN.paths, forms.FEW.paths, "BKN is its own mostly-continuous morphology, not widened FEW art");
+  assert.notDeepEqual(forms.BKN.paths, forms.SCT.paths, "BKN does not reuse scattered-cloud art");
 
   const cloudPoint = (raw, weatherCodes = []) => {
     const match = raw.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
@@ -1740,6 +1753,9 @@ test("cloud morphology, convective development, and weather overlays remain sema
   const comparison = ["FEW050", "SCT050", "BKN050", "OVC050", "VV005"].map(cloudPoint);
   const comparisonSvg = buildMeteogramSvgMarkup(manualMeteogramModel(comparison), { timeMode: "Z" });
   for (const definition of Object.values(forms)) assert.match(comparisonSvg, new RegExp(`data-cloud-morphology="${definition.morphology}"`));
+  assert.match(comparisonSvg, /data-cloud-silhouette="broad-broken-deck" data-cloud-occupied-ratio="0.91" data-cloud-gap-count="1"/);
+  assert.match(comparisonSvg, /data-cloud-silhouette="continuous-overcast-deck" data-cloud-occupied-ratio="1" data-cloud-gap-count="0" data-cloud-continuous-base="true"/);
+  assert.match(comparisonSvg, /data-cloud-silhouette="obscuration-veil"[\s\S]*data-cloud-body-count="0"/);
   assert.match(comparisonSvg, /aviation-meteogram-cloud-vv-wisps/);
   assert.doesNotMatch(comparisonSvg, /data-top-ft/);
 
@@ -1897,6 +1913,14 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
   assert.match(svg, /data-base-ft="10000"/);
   assert.match(svg, /data-cloud-label="BKN080"/);
   assert.match(svg, />CIG 8,000 FT</);
+  for (const layer of clouds.layers.filter(({ heightFt }) => Number.isFinite(heightFt))) {
+    const expectedY = meteogramCloudBaseY(layer.heightFt, 10000).toFixed(1);
+    const token = layer.raw;
+    assert.match(svg, new RegExp(`data-cloud-token="${token}" data-base-ft="${layer.heightFt}" data-base-y="${expectedY}"`), `${token} group carries its exact base geometry`);
+    assert.match(svg, new RegExp(`data-cloud-art-base-y="${expectedY}"`), `${token} artwork origin is a reported-base origin`);
+    assert.match(svg, new RegExp(`data-cloud-base-marker="${token}" data-marker-y="${expectedY}"[^>]*y1="${expectedY}"[^>]*y2="${expectedY}"`), `${token} marker lies exactly on baseY`);
+    assert.match(svg, new RegExp(`data-cloud-label="${token}" data-label-anchor-y="${expectedY}"`), `${token} label anchor lies exactly on baseY`);
+  }
   const labelWidth = Number(svg.match(/data-label-width="([\d.]+)"/)?.[1]);
   const axisBoundary = labelWidth + METEOGRAM_CLOUD_AXIS_WIDTH;
   assert.match(svg, new RegExp(`id="aviationMeteogramCloudArtworkClip"><rect x="${axisBoundary}"`));
@@ -1904,9 +1928,17 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
   assert.match(svg, new RegExp(`class="aviation-meteogram-cloud-axis"[\\s\\S]*data-axis-start="${labelWidth}"[\\s\\S]*data-axis-end="${axisBoundary}"`));
   assert.ok(svg.indexOf("aviation-meteogram-cloud-artwork-row") < svg.lastIndexOf("class=\"aviation-meteogram-cloud-axis\""), "the protected altitude axis paints above decorative cloud artwork");
   const firstCloudTimeX = Number(svg.match(/data-cloud-time-x="([\d.]+)"/)?.[1]);
-  assert.match(meteogramJs, /const artX = x;/, "cloud art stays anchored to the exact time coordinate while the protected clip trims any gutter intrusion");
-  assert.match(meteogramJs, /const availableWidth = Math\.max\(16, Math\.min\(nominalWidth, \(width - x\) \* 2\)\)/, "edge artwork shrinks before it can leave the available data region");
+  const firstCloudGeometry = svg.match(/data-cloud-time-x="([\d.]+)" data-cloud-art-x="([\d.]+)" data-cloud-art-offset-x="([\d.-]+)"/);
+  const firstCloudArtX = Number(firstCloudGeometry?.[2]);
+  const firstCloudArtOffsetX = Number(firstCloudGeometry?.[3]);
+  assert.match(meteogramJs, /const leftArtworkRoom = Math\.max\(0, \(x - cloudAxisBoundary\) \* 2\)/, "edge artwork measures available room against the protected altitude gutter");
+  assert.match(meteogramJs, /const rightArtworkRoom = Math\.max\(0, \(width - x\) \* 2\)/, "edge artwork also measures the right data boundary");
+  assert.match(meteogramJs, /const availableWidth = Math\.max\(8, Math\.min\(nominalWidth, leftArtworkRoom, rightArtworkRoom\)\)/, "edge artwork shrinks locally instead of moving its time coordinate");
+  assert.match(meteogramJs, /const artX = x;/, "decorative cloud art remains centered on the exact proportional time coordinate");
+  assert.match(meteogramJs, /const markerHalfWidth = Math\.max\(8, Math\.min\(16, availableWidth \* 0\.18\)\)/, "the exact-base marker remains a short operational reference instead of becoming a false deck");
   assert.ok(Number.isFinite(firstCloudTimeX), "the exact observation time anchor remains explicit and unchanged");
+  assert.equal(firstCloudArtX, firstCloudTimeX, "the first decorative cloud remains on its exact data time");
+  assert.equal(firstCloudArtOffsetX, 0, "edge handling never introduces a visible time offset");
   assert.match(svg, /cloud top not reported/i);
   assert.doesNotMatch(svg, /data-top-ft/);
   assert.doesNotMatch(svg, /<pattern\b|id="aviationMeteogramCloud(?:Few|Scattered|Broken|Vertical)"/, "legacy patterned cloud blocks are gone");
@@ -1927,7 +1959,8 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
   const ceilingRules = [...meteogramCss.matchAll(/\.aviation-meteogram-cloud-layer-ceiling[^{}]*\{[^}]*\}/g)].map((match) => match[0]).join("\n");
   assert.doesNotMatch(ceilingRules, /#ffbf32|#ffd36b|yellow|amber/i, "BKN/OVC/VV ceiling artwork has no warning-color override");
   assert.match(meteogramCss, /\.aviation-meteogram-cloud-body\{[\s\S]*stroke:rgba\(215,237,240,\.42\)/);
-  assert.match(meteogramCss, /\.aviation-meteogram-cloud-base-line\{stroke:#92e6ed/);
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-base-line,[\s\S]*\.aviation-meteogram-cloud-label-leader\{stroke:#92e6ed/);
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-layer-label-tag\{[\s\S]*fill:rgba\(3,9,10,\.94\)/);
   assert.match(meteogramCss, /\.aviation-meteogram-cloud-layer-label-ceiling\{fill:#9ce9ee/);
   assert.match(meteogramCss, /\.aviation-meteogram-ceiling-value\{fill:#72e7ef/);
   for (const [cover, heightFt] of [["BKN", 7000], ["OVC", 8500], ["VV", 1200]]) {
@@ -1956,37 +1989,98 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
   assert.match(highCloudSvg, />30,000 FT<\/text>/, "the protected axis remains explicit at a 30,000 FT domain");
   assert.match(highCloudSvg, />CIG 30,000 FT<\/text>/);
 
-  const clear = buildMeteogramSvgMarkup(manualMeteogramModel([
-    manualMeteogramPoint(),
-  ]), { timeMode: "Z" });
-  assert.doesNotMatch(clear, /data-cloud-form=/, "CLR/SKC produces no fabricated cloud layer");
+  for (const token of ["CLR", "SKC", "NSC", "NCD", "CAVOK"]) {
+    const cloudState = {
+      layers: [],
+      clear: token !== "CAVOK",
+      cavok: token === "CAVOK",
+      ceilingFt: null,
+      display: token,
+    };
+    const clearSvg = buildMeteogramSvgMarkup(manualMeteogramModel([
+      manualMeteogramPoint({ clouds: cloudState }),
+    ]), { timeMode: "Z" });
+    assert.doesNotMatch(clearSvg, /data-cloud-form=|aviation-meteogram-open-sky-disc|aviation-meteogram-open-sky-rays|aviation-meteogram-cavok-ring|aviation-meteogram-cavok-horizon/, `${token} creates no altitude-positioned cloud artwork`);
+    assert.match(clearSvg, new RegExp(`data-sky-status="${token}"`), `${token} remains exact in accessible cloud metadata`);
+    if (token === "NSC") assert.match(clearSvg, />NSC · NO SIG CLOUD</);
+    else if (token === "NCD") assert.match(clearSvg, />NCD · NO CLOUD DETECTED</);
+    else if (token === "CAVOK") assert.match(clearSvg, />CAVOK · NO CIG &lt;5K</);
+    else assert.match(clearSvg, />NO CIG</);
+  }
   const table = buildMeteogramAccessibleTableMarkup(manualMeteogramModel([
     manualMeteogramPoint({ clouds }),
   ]), { timeMode: "Z" });
   for (const token of ["FEW020", "SCT045", "BKN080", "OVC100", "VV///"]) assert.match(table, new RegExp(token.replace("/", "\\/")));
 });
 
-test("cloud label collision priority keeps the ceiling and hides labels only, never underlying layers", () => {
+test("close cloud layers use exact-base horizontal callouts without drifting or hiding layer tokens", () => {
   const layers = [
     { cover: "FEW", heightFt: 2200, raw: "FEW022", ceilingFt: 2500 },
     { cover: "SCT", heightFt: 2400, raw: "SCT024", ceilingFt: 2500 },
     { cover: "BKN", heightFt: 2500, raw: "BKN025", ceilingFt: 2500 },
     { cover: "OVC", heightFt: 8000, raw: "OVC080", ceilingFt: 2500 },
   ];
-  const layout = meteogramCloudLabelLayout(layers, 10000, { minimumGapPx: 18 });
+  const layout = meteogramCloudLabelLayout(layers, 10000, {
+    minimumGapPx: 18,
+    columnX: 300,
+    plotLeft: 100,
+    plotRight: 800,
+  });
   assert.equal(layout[2].visible, true, "the actual ceiling label wins a tight collision");
   assert.equal(layout[2].isCeiling, true);
-  assert.equal(layout[0].visible, false);
-  assert.equal(layout[1].visible, false);
-  assert.equal(layout[3].visible, true, "a separated higher layer remains labeled");
-  assert.ok(layout.filter((entry) => entry.visible).every((entry) => entry.y > 616 && entry.y < 836));
+  assert.ok(layout.every((entry) => entry.visible), "every exact layer keeps an operational token");
+  for (const [index, layer] of layers.entries()) {
+    const exactBaseY = meteogramCloudBaseY(layer.heightFt, 10000);
+    assert.equal(layout[index].baseY, exactBaseY);
+    assert.equal(layout[index].y, exactBaseY);
+    assert.equal(layout[index].labelY, exactBaseY);
+    assert.equal(layout[index].leaderTargetY, exactBaseY);
+  }
+  assert.equal(new Set(layout.slice(0, 3).map(({ labelX }) => labelX)).size, 3, "close bases use separate horizontal lanes");
+  assert.equal(new Set(layout.slice(0, 3).map(({ lane }) => lane)).size, 3, "each close layer has a distinct callout lane");
+
+  for (const plotRight of [320, 390]) {
+    const narrowPlotLeft = plotRight === 320 ? 226 : 260;
+    const narrowLayout = meteogramCloudLabelLayout(layers.slice(0, 3), 10000, {
+      minimumGapPx: 18,
+      columnX: (narrowPlotLeft + plotRight) / 2,
+      plotLeft: narrowPlotLeft,
+      plotRight,
+    });
+    const safeLeft = narrowPlotLeft + 4;
+    const safeRight = plotRight - 4;
+    assert.ok(narrowLayout.every((entry) => entry.visible && entry.stacked), `${plotRight}px uses visible stacked callouts`);
+    for (const entry of narrowLayout) {
+      assert.ok(entry.labelX - entry.tagWidth / 2 >= safeLeft - 0.01, `${plotRight}px tag stays right of the protected axis`);
+      assert.ok(entry.labelX + entry.tagWidth / 2 <= safeRight + 0.01, `${plotRight}px tag stays inside the SVG`);
+      assert.equal(entry.leaderTargetY, entry.baseY, `${plotRight}px displaced label leader terminates at exact baseY`);
+    }
+  }
 
   const clouds = { layers: layers.map(({ ceilingFt: _ceilingFt, ...layer }) => layer), clear: false, cavok: false, ceilingFt: 2500, display: "FEW022 · SCT024 · BKN025 · OVC080" };
   const model = manualMeteogramModel([manualMeteogramPoint({ clouds })]);
   const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" });
-  assert.equal((svg.match(/data-cloud-form=/g) || []).length, 4, "every exact layer remains rendered despite label suppression");
-  assert.match(svg, /data-cloud-label="BKN025"/);
+  assert.equal((svg.match(/data-cloud-form=/g) || []).length, 4, "every exact layer remains rendered");
+  for (const layer of layers) {
+    const expectedY = meteogramCloudBaseY(layer.heightFt, 10000).toFixed(1);
+    assert.match(svg, new RegExp(`data-cloud-base-marker="${layer.raw}" data-marker-y="${expectedY}"`));
+    assert.match(svg, new RegExp(`data-cloud-label="${layer.raw}" data-label-anchor-y="${expectedY}"`));
+  }
   assert.match(svg, />CIG 2,500 FT</);
+  const narrowSvg = buildMeteogramSvgMarkup(model, { timeMode: "Z" }, { viewportWidth: 320 });
+  assert.ok((narrowSvg.match(/aviation-meteogram-cloud-label-leader/g) || []).length >= 2, "narrow stacked tokens visibly connect displaced tags to their bases");
+  for (const layer of layers) {
+    const exactBaseY = meteogramCloudBaseY(layer.heightFt, 10000).toFixed(1);
+    const anchorMarkup = narrowSvg.match(new RegExp(`(<g class="[^"]*aviation-meteogram-cloud-anchor" data-cloud-token="${layer.raw}"[\\s\\S]*?</g>)`))?.[1] || "";
+    assert.ok(anchorMarkup, `${layer.raw} narrow anchor exists`);
+    const labelAnchorY = Number(anchorMarkup.match(/data-label-anchor-y="([\d.]+)"/)?.[1]);
+    if (Math.abs(labelAnchorY - Number(exactBaseY)) > 1) {
+      assert.match(anchorMarkup, new RegExp(`data-leader-target-y="${exactBaseY}"[^>]*y1="${exactBaseY}"`), `${layer.raw} displaced callout leader begins at exact baseY`);
+    } else {
+      assert.ok(Math.abs(labelAnchorY - Number(exactBaseY)) <= 1, `${layer.raw} undisplaced tag remains within one pixel of exact baseY`);
+    }
+  }
+  assert.match(meteogramJs, /Math\.abs\(labelX - artX\) > 2 \|\| Math\.abs\(labelY - baseY\) > 1/, "a vertically displaced callout cannot lose its leader");
   const table = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z" });
   for (const token of ["FEW022", "SCT024", "BKN025", "OVC080"]) assert.match(table, new RegExp(token));
 
@@ -1994,9 +2088,44 @@ test("cloud label collision priority keeps the ceiling and hides labels only, ne
     manualMeteogramPoint({ clouds: { layers: [{ cover: "SCT", heightFt: 2500, raw: "SCT025" }], clear: false, cavok: false, ceilingFt: null, display: "SCT025" } }),
     manualMeteogramPoint({ clouds: { layers: [{ cover: "BKN", heightFt: 2500, raw: "BKN025" }], clear: false, cavok: false, ceilingFt: 2500, display: "BKN025" } }),
   ];
-  assert.deepEqual(meteogramCloudColumnLabelMask(adjacentColumns, [200, 270]), [false, true], "the actual ceiling wins a cross-column collision");
+  assert.deepEqual(meteogramCloudColumnLabelMask(adjacentColumns, [200, 270]), [false, true], "the actual ceiling wins the non-base summary mask");
   const subHourlyColumns = [adjacentColumns[0], adjacentColumns[1], adjacentColumns[0]];
-  assert.deepEqual(meteogramCloudColumnLabelMask(subHourlyColumns, [200, 240, 280]), [false, true, false], "sub-hourly cloud labels remain collision-free");
+  assert.deepEqual(meteogramCloudColumnLabelMask(subHourlyColumns, [200, 240, 280]), [false, true, false], "sub-hourly CIG and unknown-base summaries remain collision-free");
+  const adjacentSvg = buildMeteogramSvgMarkup(manualMeteogramModel(adjacentColumns), { timeMode: "Z" });
+  for (const token of ["SCT025", "BKN025"]) {
+    assert.match(adjacentSvg, new RegExp(`data-cloud-label="${token}"`), `${token} remains visible even when adjacent summaries are masked`);
+    assert.match(adjacentSvg, new RegExp(`data-cloud-token="${token}"[^>]*data-cloud-label-visible="true"`), `${token} is never hidden by cross-column density`);
+  }
+  const repeatedConditional = Array.from({ length: 3 }, (_, index) => manualMeteogramPoint({
+    observedZ: null,
+    validZ: new Date(Date.parse("2026-09-01T00:00:00Z") + index * 60 * 60 * 1000).toISOString(),
+    kind: "FORECAST",
+    reportType: "TAF",
+    source: "TAF",
+    clouds: { layers: [], clear: false, cavok: false, ceilingFt: null, display: "—" },
+    conditional: [{
+      type: "TEMPORARY",
+      conditions: {
+        clouds: {
+          layers: [{ cover: "BKN", heightFt: 2500, raw: "BKN025" }],
+          clear: false,
+          cavok: false,
+          ceilingFt: 2500,
+          display: "BKN025",
+        },
+      },
+    }],
+  }));
+  const repeatedSvg = buildMeteogramSvgMarkup(manualMeteogramModel(repeatedConditional), { timeMode: "Z" }, { viewportWidth: 320 });
+  const repeatedTags = [...repeatedSvg.matchAll(/<rect class="aviation-meteogram-cloud-layer-label-tag[^"]*" x="([\d.]+)"[^>]*width="([\d.]+)"/g)]
+    .map((match) => ({ left: Number(match[1]), right: Number(match[1]) + Number(match[2]) }))
+    .sort((left, right) => left.left - right.left);
+  assert.equal(repeatedTags.length, 3, "every repeated conditional layer keeps its visible tag");
+  assert.equal((repeatedSvg.match(/>TMP BKN025<\/text>/g) || []).length, 3, "the replay exercises real TAF conditional-layer labels");
+  for (let index = 1; index < repeatedTags.length; index += 1) {
+    assert.ok(repeatedTags[index - 1].right <= repeatedTags[index].left, "per-cell containment prevents adjacent conditional tags from overlapping");
+  }
+  assert.match(meteogramJs, /plotLeft: labelCellLeft,[\s\S]*plotRight: labelCellRight/, "known-layer callouts are solved inside their proportional timestamp cells");
   const multipleUnknownBases = manualMeteogramPoint({
     clouds: {
       layers: [
@@ -2013,6 +2142,44 @@ test("cloud label collision priority keeps the ceiling and hides labels only, ne
   assert.ok(visibleTicks.length < tickLayout.length, "the expanded altitude scale suppresses colliding text labels");
   for (let index = 1; index < visibleTicks.length; index += 1) {
     assert.ok(Math.abs(visibleTicks[index].y - visibleTicks[index - 1].y) >= 13);
+  }
+});
+
+test("required multilayer and high-cloud replays keep tokens, markers, artwork, and CIG on exact bases", () => {
+  const cloudsFor = (tokens) => {
+    const layers = tokens.map((raw) => {
+      const match = raw.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
+      return { cover: match[1], heightFt: Number(match[2]) * 100, convective: match[3] || "", raw };
+    });
+    const ceilingLayers = layers.filter(({ cover }) => ["BKN", "OVC", "VV"].includes(cover));
+    return {
+      layers,
+      clear: false,
+      cavok: false,
+      ceilingFt: ceilingLayers.length ? Math.min(...ceilingLayers.map(({ heightFt }) => heightFt)) : null,
+      display: tokens.join(" · "),
+    };
+  };
+  const scenarios = [
+    { tokens: ["SCT055", "BKN070"], ceilingFt: 7000 },
+    { tokens: ["FEW065", "BKN085"], ceilingFt: 8500 },
+    { tokens: ["FEW060", "BKN080", "BKN100"], ceilingFt: 8000 },
+    { tokens: ["FEW250", "SCT250", "SCT110"], ceilingFt: null },
+  ];
+  for (const scenario of scenarios) {
+    const clouds = cloudsFor(scenario.tokens);
+    const model = manualMeteogramModel([manualMeteogramPoint({ clouds })]);
+    const scale = meteogramCloudScaleDefinition(model.timeline);
+    const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" });
+    for (const layer of clouds.layers) {
+      const expectedY = meteogramCloudBaseY(layer.heightFt, scale.maximumFt).toFixed(1);
+      assert.match(svg, new RegExp(`data-cloud-token="${layer.raw}" data-base-ft="${layer.heightFt}" data-base-y="${expectedY}"`));
+      assert.match(svg, new RegExp(`data-cloud-base-marker="${layer.raw}" data-marker-y="${expectedY}"[^>]*y1="${expectedY}"[^>]*y2="${expectedY}"`));
+      assert.match(svg, new RegExp(`data-cloud-label="${layer.raw}" data-label-anchor-y="${expectedY}"`));
+      assert.match(svg, new RegExp(`data-cloud-art-base-y="${expectedY}"`));
+    }
+    if (scenario.ceilingFt === null) assert.match(svg, />NO CIG</);
+    else assert.match(svg, new RegExp(`>CIG ${scenario.ceilingFt.toLocaleString("en-US")} FT<`));
   }
 });
 
