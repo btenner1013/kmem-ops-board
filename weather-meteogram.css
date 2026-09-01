@@ -166,6 +166,31 @@
 .aviation-meteogram-grid-line{stroke:rgba(125,157,156,.3);stroke-width:1}
 .aviation-meteogram-time-line{stroke:rgba(102,138,137,.22);stroke-width:1}
 .aviation-meteogram-label-divider{stroke:rgba(34,211,238,.48);stroke-width:1.4}
+.aviation-meteogram-solar-event,
+.aviation-meteogram-solar-label{
+  pointer-events:none;
+}
+.aviation-meteogram-solar-line{
+  fill:none;
+  stroke-width:1.15;
+  stroke-dasharray:2 4;
+  vector-effect:non-scaling-stroke;
+}
+.aviation-meteogram-solar-event-sunrise .aviation-meteogram-solar-line{stroke:rgba(255,205,87,.46)}
+.aviation-meteogram-solar-event-sunset .aviation-meteogram-solar-line{stroke:rgba(126,203,255,.42)}
+.aviation-meteogram-solar-label rect{
+  stroke-width:1;
+}
+.aviation-meteogram-solar-label text{
+  font-size:7px;
+  font-weight:1000;
+  letter-spacing:.045em;
+  text-anchor:middle;
+}
+.aviation-meteogram-solar-label-sunrise rect{fill:#201c0b;stroke:#e9b93e}
+.aviation-meteogram-solar-label-sunrise text{fill:#ffdc72}
+.aviation-meteogram-solar-label-sunset rect{fill:#0a1720;stroke:#67bde8}
+.aviation-meteogram-solar-label-sunset text{fill:#91d8ff}
 .aviation-meteogram-now-divider{stroke:#7be6ef;stroke-width:2.4;stroke-dasharray:6 4}
 .aviation-meteogram-now-label rect{fill:#082327;stroke:#7be6ef;stroke-width:1}
 .aviation-meteogram-now-label text{
@@ -212,6 +237,19 @@
   font-size:27px;
   text-anchor:middle;
 }
+
+.aviation-meteogram-clear-icon{
+  transform-box:fill-box;
+  transform-origin:center;
+}
+.aviation-meteogram-clear-sun-disc{fill:#ffd457;filter:drop-shadow(0 0 3px rgba(255,196,52,.62))}
+.aviation-meteogram-clear-sun-rays{
+  fill:none;
+  stroke:#ffd457;
+  stroke-width:2;
+  stroke-linecap:round;
+}
+.aviation-meteogram-clear-moon-crescent{fill:#a6e8ff;filter:drop-shadow(0 0 3px rgba(95,204,255,.5))}
 
 .aviation-meteogram-weather-clear{fill:#ffd457}
 .aviation-meteogram-weather-cloud{fill:#d4e3e6}

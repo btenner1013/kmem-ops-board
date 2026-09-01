@@ -6,6 +6,7 @@ import {
   formatTemperature,
   formatWind,
 } from "./weather-meteogram-core.js";
+import { meteogramSolarEvents, meteogramSolarPhase } from "./weather-meteogram-solar.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const METEOGRAM_ROWS = Object.freeze({
@@ -399,6 +400,36 @@ function weatherColumnIcon(observation) {
   if (/RA|DZ/.test(joined)) return "☂";
   if (/FG|BR/.test(joined)) return "≋";
   return observation.weather.icon;
+}
+
+function clearWeatherIconMarkup(observation, weatherCategory, station) {
+  if (weatherCategory !== "clear" || !observation?.clouds?.clear) return "";
+  const phase = meteogramSolarPhase(timelineTime(observation), { station });
+  if (!phase) return "";
+  const symbol = phase === "day" ? "sun" : "moon";
+  const label = phase === "day"
+    ? "Clear sky during KMEM daylight"
+    : "Clear sky during KMEM nighttime";
+  const vector = phase === "day"
+    ? `<circle class="aviation-meteogram-clear-sun-disc" cx="0" cy="0" r="6.5" aria-hidden="true"/>
+       <path class="aviation-meteogram-clear-sun-rays" d="M0 -13V-10 M0 10V13 M-13 0H-10 M10 0H13 M-9.2 -9.2L-7.1 -7.1 M7.1 7.1L9.2 9.2 M9.2 -9.2L7.1 -7.1 M-7.1 7.1L-9.2 9.2" aria-hidden="true"/>`
+    : `<path class="aviation-meteogram-clear-moon-crescent" d="M0 -11a11 11 0 1 0 11 11A8 8 0 0 1 0 -11Z" aria-hidden="true"/>`;
+  return `<g class="aviation-meteogram-weather-icon aviation-meteogram-weather-clear aviation-meteogram-clear-icon aviation-meteogram-clear-icon-${phase}" data-weather-category="clear" data-weather-symbol="${symbol}" data-solar-phase="${phase}" transform="translate(0 83)" role="img" aria-label="${label}">
+    <title>${label}</title>
+    ${vector}
+  </g>`;
+}
+
+function weatherIconMarkup(observation, weatherCategory, station) {
+  const clearIcon = clearWeatherIconMarkup(observation, weatherCategory, station);
+  if (clearIcon) return clearIcon;
+  return `<text class="aviation-meteogram-weather-icon aviation-meteogram-weather-${weatherCategory}" data-weather-category="${weatherCategory}" x="0" y="88">${escapeMarkup(weatherColumnIcon(observation))}</text>`;
+}
+
+function solarEventAccessibleLabel(event, station) {
+  const local = formatMeteogramTime(event.timestamp, { mode: "LOCAL", station });
+  const zulu = formatMeteogramTime(event.timestamp, { mode: "Z", station });
+  return `${event.type.toUpperCase()} · ${local.date} ${local.time} ${local.zone} · ${zulu.date} ${compactTimeText(zulu, "Z")}`;
 }
 
 export function meteogramWeatherVisualCategory(observation = {}) {
@@ -984,6 +1015,10 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
   const normalizedSettings = normalizedMeteogramSettings(settings, model);
   const dimensions = meteogramDimensions(timeline, viewportWidth, { extraTimes: intervalExtraTimes(model) });
   const { labelWidth, columnWidth, width, height, xPositions, cellBounds } = dimensions;
+  const hasValidTimelineTime = timeline.some((observation) => Number.isFinite(Date.parse(timelineTime(observation))));
+  const solarEvents = hasValidTimelineTime
+    ? meteogramSolarEvents(new Date(dimensions.firstTime), new Date(dimensions.lastTime), { station: model.station })
+    : [];
   const rows = METEOGRAM_ROWS;
   const xAt = (index) => xPositions[index];
   const cellWidthAt = (index) => Math.max(0, cellBounds[index].right - cellBounds[index].left);
@@ -1017,6 +1052,21 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
     const x = xAt(index);
     return `<line class="aviation-meteogram-time-line" x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="${height}"/>`;
   }).join("") + `<line class="aviation-meteogram-time-line" x1="${width.toFixed(1)}" y1="0" x2="${width.toFixed(1)}" y2="${height}"/>`;
+  const solarLineMarkup = solarEvents.map((event) => {
+    const x = dimensions.xForTime(event.timestamp);
+    const title = solarEventAccessibleLabel(event, model.station);
+    return `<g class="aviation-meteogram-solar-event aviation-meteogram-solar-event-${event.type}" data-solar-event="${event.type}" data-event-z="${event.timestamp}" data-event-local-date="${event.localDate}" data-event-x="${x.toFixed(1)}">
+      <title>${escapeMarkup(title)}</title>
+      <line class="aviation-meteogram-solar-line" x1="${x.toFixed(1)}" y1="18" x2="${x.toFixed(1)}" y2="${height}"/>
+    </g>`;
+  }).join("");
+  const solarLabelMarkup = solarEvents.map((event) => {
+    const x = dimensions.xForTime(event.timestamp);
+    return `<g class="aviation-meteogram-solar-label aviation-meteogram-solar-label-${event.type}" data-solar-label="${event.type}" transform="translate(${x.toFixed(1)} 0)" aria-hidden="true">
+      <rect x="-30" y="2" width="60" height="14" rx="3"/>
+      <text x="0" y="12">${event.type.toUpperCase()}</text>
+    </g>`;
+  }).join("");
 
   let previousVisibleTime = null;
   const timeMarkup = timeline.map((observation, index) => {
@@ -1038,7 +1088,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
     <title>${escapeMarkup(columnTitle(observation, normalizedSettings))}</title>
     <rect class="aviation-meteogram-column-hover" x="${(bounds.left - xAt(index)).toFixed(1)}" y="0" width="${cellWidthAt(index).toFixed(1)}" height="${height}"/>
     ${visualLabelMask[index] ? `${isForecast(observation) ? `<text class="aviation-meteogram-forecast-tag" x="0" y="65">${observation.becoming?.length ? "BECMG" : escapeMarkup(forecastBucketSourceLabel(observation))}</text>` : ""}
-    <text class="aviation-meteogram-weather-icon aviation-meteogram-weather-${weatherCategory}" data-weather-category="${weatherCategory}" x="0" y="88">${escapeMarkup(weatherColumnIcon(observation))}</text>
+    ${weatherIconMarkup(observation, weatherCategory, model.station)}
     <text class="aviation-meteogram-weather-code" x="0" y="109">${escapeMarkup(weatherColumnLabel(observation))}</text>` : ""}
   </g>`;
   }).join("");
@@ -1213,15 +1263,18 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
       <stop offset="1" stop-color="#9a84c8" stop-opacity=".7"/>
     </linearGradient>
   </defs>`;
+  const solarDescription = String(model.station || "").toUpperCase() === "KMEM"
+    ? ` For KMEM, explicit clear-sky columns use calculated daylight or nighttime sun/moon symbols. Subtle SUNRISE and SUNSET lines use KMEM coordinates and the standard apparent-horizon solar definition.${solarEvents.length ? ` Solar events in this displayed domain: ${solarEvents.map((event) => solarEventAccessibleLabel(event, model.station)).join("; ")}.` : " No sunrise or sunset falls inside this displayed domain."}`
+    : "";
 
   return `<svg class="aviation-meteogram-svg" xmlns="${SVG_NS}" width="${width.toFixed(1)}" height="${height}" viewBox="0 0 ${width.toFixed(1)} ${height}" role="img" aria-labelledby="aviationMeteogramSvgTitle aviationMeteogramSvgDescription">
     <title id="aviationMeteogramSvgTitle">${escapeMarkup(model.station)} aviation weather meteogram</title>
-    <desc id="aviationMeteogramSvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase. Missing values are not inferred.</desc>
+    <desc id="aviationMeteogramSvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase. Missing values are not inferred.${escapeMarkup(solarDescription)}</desc>
     ${definitions}
     <rect class="aviation-meteogram-background" width="${width.toFixed(1)}" height="${height}"/>
     ${forecastBackground}
     <rect class="aviation-meteogram-label-background" width="${labelWidth}" height="${height}"/>
-    ${horizontalLines}${verticalLines}
+    ${horizontalLines}${verticalLines}${solarLineMarkup}
     <line class="aviation-meteogram-label-divider" x1="${labelWidth}" y1="0" x2="${labelWidth}" y2="${height}"/>
     ${weatherMarkup}${timeMarkup}
     ${spreadMarkup(tempPoints, dewPoints, timeline)}
@@ -1237,7 +1290,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
     ${pathMarkup(observedPoints(visibilityPoints), "aviation-meteogram-visibility-line", timeline)}
     ${pathMarkup(forecastPoints(visibilityPoints), "aviation-meteogram-visibility-line aviation-meteogram-line-forecast", timeline)}
     ${visibilityValuesMarkup}<g class="aviation-meteogram-precip-row" clip-path="url(#aviationMeteogramPrecipClip)">${precipitationMarkup}</g><g class="aviation-meteogram-snow-row" clip-path="url(#aviationMeteogramSnowClip)">${snowfallMarkup}${snowDepthMarkup}</g>
-    ${nowDividerMarkup}${labelMarkup}
+    ${solarLabelMarkup}${nowDividerMarkup}${labelMarkup}
   </svg>`;
 }
 

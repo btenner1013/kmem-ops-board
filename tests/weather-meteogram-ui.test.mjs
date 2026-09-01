@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 import { lookupAviationWeather } from "../aviation-weather-lookup-core.js";
 import { buildMeteogramModel, meteogramLookupRequest } from "../weather-meteogram-core.js";
+import { meteogramSolarEvents, meteogramSolarPhase } from "../weather-meteogram-solar.js";
 import {
   buildMeteogramAccessibleTableMarkup,
   buildMeteogramSvgMarkup,
@@ -25,6 +26,7 @@ const lookupCss = readFileSync(new URL("../aviation-weather-lookup.css", import.
 const meteogramJs = readFileSync(new URL("../weather-meteogram.js", import.meta.url), "utf8");
 const meteogramCore = readFileSync(new URL("../weather-meteogram-core.js", import.meta.url), "utf8");
 const meteogramCss = readFileSync(new URL("../weather-meteogram.css", import.meta.url), "utf8");
+const meteogramSolarJs = readFileSync(new URL("../weather-meteogram-solar.js", import.meta.url), "utf8");
 
 function deferred() {
   let resolve;
@@ -439,6 +441,11 @@ function manualMeteogramModel(timeline, overrides = {}) {
     revisedBuckets: 0,
     ...overrides,
   };
+}
+
+function renderedSolarGeometry(svg) {
+  return [...svg.matchAll(/data-solar-event="(sunrise|sunset)" data-event-z="([^"]+)" data-event-local-date="([^"]+)" data-event-x="([^"]+)"/g)]
+    .map((match) => ({ type: match[1], timestamp: match[2], localDate: match[3], x: Number(match[4]) }));
 }
 
 test("meteogram is a fourth product inside the existing Aviation Weather Lookup modal", () => {
@@ -1078,6 +1085,101 @@ test("cloud label collision priority keeps the ceiling and hides labels only, ne
   }
 });
 
+test("KMEM solar calculations are deterministic, DST-aware, and fail closed for other stations", () => {
+  assert.equal(meteogramSolarPhase("2026-09-01T18:00:00Z"), "day");
+  assert.equal(meteogramSolarPhase("2026-09-01T06:00:00Z"), "night");
+  assert.equal(meteogramSolarPhase("not-a-time"), null);
+  assert.equal(meteogramSolarPhase("2026-09-01T18:00:00Z", { station: "KATL" }), null);
+
+  const september = meteogramSolarEvents("2026-08-31T23:54:00Z", "2026-09-02T06:00:00Z");
+  assert.deepEqual(september.map(({ type, timestamp, localDate }) => ({ type, timestamp, localDate })), [
+    { type: "sunset", timestamp: "2026-09-01T00:27:49.000Z", localDate: "2026-08-31" },
+    { type: "sunrise", timestamp: "2026-09-01T11:32:40.000Z", localDate: "2026-09-01" },
+    { type: "sunset", timestamp: "2026-09-02T00:26:27.000Z", localDate: "2026-09-01" },
+  ]);
+  assert.equal(meteogramSolarPhase(september[0].timestamp), "night", "sunset is the first nighttime instant");
+  assert.equal(meteogramSolarPhase(september[1].timestamp), "day", "sunrise is the first daylight instant");
+
+  const dstStart = meteogramSolarEvents("2026-03-08T05:00:00Z", "2026-03-09T05:00:00Z");
+  assert.deepEqual(dstStart.map((event) => event.timestamp), ["2026-03-08T12:19:58.000Z", "2026-03-09T00:01:45.000Z"]);
+  const dstEnd = meteogramSolarEvents("2026-11-01T05:00:00Z", "2026-11-02T06:00:00Z");
+  assert.deepEqual(dstEnd.map((event) => event.timestamp), ["2026-11-01T12:21:03.000Z", "2026-11-01T23:05:23.000Z"]);
+  assert.deepEqual(meteogramSolarEvents("2026-09-01T00:00:00Z", "2026-09-02T00:00:00Z", { station: "EGLL" }), []);
+  assert.doesNotMatch(meteogramSolarJs, /fetch\s*\(/, "solar calculations stay browser-local with no request");
+});
+
+test("explicit clear observed and forecast buckets use vector sun/moon symbols independent of label mode", () => {
+  const timeline = [
+    manualMeteogramPoint({ observedZ: "2026-09-01T06:00:00Z" }),
+    manualMeteogramPoint({ observedZ: "2026-09-01T18:00:00Z" }),
+    manualMeteogramPoint({ kind: "FORECAST", reportType: "TAF", observedZ: "2026-09-02T06:00:00Z", validZ: "2026-09-02T06:00:00Z" }),
+    manualMeteogramPoint({ kind: "FORECAST", reportType: "TAF", observedZ: "2026-09-02T18:00:00Z", validZ: "2026-09-02T18:00:00Z" }),
+  ];
+  const model = manualMeteogramModel(timeline);
+  const zulu = buildMeteogramSvgMarkup(model, { timeMode: "Z" }, { viewportWidth: 1200 });
+  const local = buildMeteogramSvgMarkup(model, { timeMode: "LOCAL" }, { viewportWidth: 1200 });
+
+  assert.equal((zulu.match(/data-weather-symbol="sun"/g) || []).length, 2);
+  assert.equal((zulu.match(/data-weather-symbol="moon"/g) || []).length, 2);
+  assert.equal((zulu.match(/data-solar-phase="day"/g) || []).length, 2);
+  assert.equal((zulu.match(/data-solar-phase="night"/g) || []).length, 2);
+  assert.match(zulu, /aviation-meteogram-forecast-column[\s\S]*?data-weather-symbol="moon"/);
+  assert.match(zulu, /aviation-meteogram-forecast-column[\s\S]*?data-weather-symbol="sun"/);
+  assert.doesNotMatch(zulu, />☀</, "explicit clear sky no longer depends on a platform emoji glyph");
+  assert.deepEqual(
+    [...zulu.matchAll(/data-solar-phase="(day|night)"/g)].map((match) => match[1]),
+    [...local.matchAll(/data-solar-phase="(day|night)"/g)].map((match) => match[1]),
+    "LOCAL/Z affects labels only, never daylight classification",
+  );
+  assert.deepEqual(renderedSolarGeometry(zulu), renderedSolarGeometry(local), "LOCAL/Z leaves solar event instants and x geometry unchanged");
+});
+
+test("sunrise and sunset markers use exact shared timeline geometry across multiple days", () => {
+  const timeline = [
+    manualMeteogramPoint({ observedZ: "2026-09-01T06:00:00Z" }),
+    manualMeteogramPoint({ observedZ: "2026-09-01T18:00:00Z" }),
+    manualMeteogramPoint({ kind: "FORECAST", validZ: "2026-09-02T06:00:00Z", observedZ: "2026-09-02T06:00:00Z" }),
+    manualMeteogramPoint({ kind: "FORECAST", validZ: "2026-09-02T18:00:00Z", observedZ: "2026-09-02T18:00:00Z" }),
+    manualMeteogramPoint({ kind: "FORECAST", validZ: "2026-09-03T06:00:00Z", observedZ: "2026-09-03T06:00:00Z" }),
+  ];
+  const model = manualMeteogramModel(timeline);
+  const dimensions = meteogramDimensions(timeline, 1200);
+  const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" }, { viewportWidth: 1200 });
+  const geometry = renderedSolarGeometry(svg);
+  assert.equal(geometry.length, 4, "two sunrise and two sunset events fall in this 48-hour domain");
+  assert.deepEqual(geometry.map((event) => event.type), ["sunrise", "sunset", "sunrise", "sunset"]);
+  for (const event of geometry) {
+    assert.ok(Math.abs(event.x - dimensions.xForTime(event.timestamp)) <= 0.1, `${event.type} aligns to xForTime`);
+  }
+  assert.equal((svg.match(/data-solar-label=/g) || []).length, 4);
+  assert.ok(svg.indexOf("data-solar-event=") < svg.indexOf("aviation-meteogram-observation"), "solar reference lines render behind weather and meteorological data");
+  assert.ok(svg.indexOf("data-solar-label=") < svg.indexOf("aviation-meteogram-now-divider"), "NOW remains visually above solar labels");
+  assert.match(svg, /SUNRISE/);
+  assert.match(svg, /SUNSET/);
+});
+
+test("CAVOK and non-clear weather retain their existing symbols while unsupported stations omit KMEM solar truth", () => {
+  const cavok = manualMeteogramPoint({
+    clouds: { layers: [], clear: false, cavok: true, ceilingFt: null, display: "CAVOK" },
+    weather: { icon: "◒", label: "CAVOK" },
+  });
+  const rain = manualMeteogramPoint({
+    observedZ: "2026-09-01T01:00:00Z",
+    clouds: { layers: [], clear: false, cavok: false, ceilingFt: null, display: "—" },
+    weatherCodes: ["-RA"],
+    weather: { icon: "☂", label: "RAIN" },
+  });
+  const svg = buildMeteogramSvgMarkup(manualMeteogramModel([cavok, rain]), { timeMode: "Z" });
+  assert.match(svg, />◒<\/text>/);
+  assert.match(svg, />☂<\/text>/);
+  assert.doesNotMatch(svg, /data-weather-symbol=/);
+
+  const unsupportedModel = manualMeteogramModel([manualMeteogramPoint()], { station: "KATL", timeZone: "America/New_York" });
+  const unsupported = buildMeteogramSvgMarkup(unsupportedModel, { timeMode: "Z" });
+  assert.doesNotMatch(unsupported, /data-solar-event=|data-weather-symbol=/);
+  assert.match(unsupported, />·<\/text>/, "unsupported stations retain their existing explicit-clear glyph path");
+});
+
 test("observed and forecast weather symbols receive restrained semantic colors without changing weather codes", () => {
   const fixtures = [
     ["clear", manualMeteogramPoint()],
@@ -1215,7 +1317,7 @@ test("meteogram dimensions remain finite and internally scrollable at every requ
 });
 
 test("the meteogram remains isolated from BWC and updater ownership logic", () => {
-  const combined = [meteogramCore, meteogramJs, meteogramCss].join("\n");
+  const combined = [meteogramCore, meteogramJs, meteogramSolarJs, meteogramCss].join("\n");
   assert.doesNotMatch(combined, /bwc|PRIMARY|BACKUP|lease|failover|heartbeat/i);
   assert.doesNotMatch(lookupJs, /weather[_-]history\.json/i);
   assert.match(indexHtml, /<link rel="stylesheet" href="\.\/weather-meteogram\.css">/);
