@@ -8,10 +8,14 @@ import {
   buildMeteogramAccessibleTableMarkup,
   buildMeteogramSvgMarkup,
   meteogramCloudBaseY,
+  meteogramCloudColumnLabelMask,
+  meteogramCloudLabelLayout,
+  meteogramCloudTickLayout,
   meteogramDimensions,
   meteogramForecastSourceState,
   meteogramSubtitleText,
   meteogramTemperatureGeometry,
+  meteogramWeatherVisualCategory,
   meteogramWindArrowRotation,
 } from "../weather-meteogram.js";
 
@@ -987,14 +991,125 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
     manualMeteogramPoint({ clouds }),
   ]), { timeMode: "Z" });
   for (const token of ["FEW020", "SCT045", "BKN080", "OVC100", "VV///"]) assert.match(svg, new RegExp(token.replace("/", "\\/")));
-  for (const cover of ["FEW", "SCT", "BKN", "OVC"]) assert.match(svg, new RegExp(`cloud-layer-${cover}`));
+  for (const cover of ["FEW", "SCT", "BKN", "OVC"]) {
+    assert.match(svg, new RegExp(`cloud-layer-${cover}`));
+    assert.match(svg, new RegExp(`data-cloud-form="${cover}"`));
+  }
   assert.match(svg, /cloud-unknown[^>]*[\s\S]*VV\/\/\/ BASE UNKNOWN/);
   assert.equal((svg.match(/aviation-meteogram-cloud-layer-ceiling/g) || []).length, 1, "only BKN080 is the known lowest ceiling");
   assert.match(svg, /data-base-ft="2000"/);
   assert.match(svg, /data-base-ft="10000"/);
-  assert.match(svg, /10,000 FT/);
+  assert.match(svg, /data-cloud-label="BKN080"/);
+  assert.match(svg, />CIG 8,000 FT</);
   assert.match(svg, /cloud top not reported/);
   assert.doesNotMatch(svg, /data-top-ft/);
+  assert.doesNotMatch(svg, /<pattern\b|id="aviationMeteogramCloud(?:Few|Scattered|Broken|Vertical)"/, "legacy patterned cloud blocks are gone");
+
+  const verticalVisibility = buildMeteogramSvgMarkup(manualMeteogramModel([
+    manualMeteogramPoint({
+      clouds: {
+        layers: [{ cover: "VV", heightFt: 500, convective: "", raw: "VV005" }],
+        clear: false, cavok: false, ceilingFt: 500, display: "VV005",
+      },
+    }),
+  ]), { timeMode: "Z" });
+  assert.match(verticalVisibility, /data-cloud-form="VV"/);
+  assert.match(verticalVisibility, /aviation-meteogram-cloud-vv-veil/);
+  assert.match(verticalVisibility, /data-cloud-label="VV005"/);
+  assert.match(verticalVisibility, />CIG 500 FT</);
+
+  const clear = buildMeteogramSvgMarkup(manualMeteogramModel([
+    manualMeteogramPoint(),
+  ]), { timeMode: "Z" });
+  assert.doesNotMatch(clear, /data-cloud-form=/, "CLR/SKC produces no fabricated cloud layer");
+  const table = buildMeteogramAccessibleTableMarkup(manualMeteogramModel([
+    manualMeteogramPoint({ clouds }),
+  ]), { timeMode: "Z" });
+  for (const token of ["FEW020", "SCT045", "BKN080", "OVC100", "VV///"]) assert.match(table, new RegExp(token.replace("/", "\\/")));
+});
+
+test("cloud label collision priority keeps the ceiling and hides labels only, never underlying layers", () => {
+  const layers = [
+    { cover: "FEW", heightFt: 2200, raw: "FEW022", ceilingFt: 2500 },
+    { cover: "SCT", heightFt: 2400, raw: "SCT024", ceilingFt: 2500 },
+    { cover: "BKN", heightFt: 2500, raw: "BKN025", ceilingFt: 2500 },
+    { cover: "OVC", heightFt: 8000, raw: "OVC080", ceilingFt: 2500 },
+  ];
+  const layout = meteogramCloudLabelLayout(layers, 10000, { minimumGapPx: 18 });
+  assert.equal(layout[2].visible, true, "the actual ceiling label wins a tight collision");
+  assert.equal(layout[2].isCeiling, true);
+  assert.equal(layout[0].visible, false);
+  assert.equal(layout[1].visible, false);
+  assert.equal(layout[3].visible, true, "a separated higher layer remains labeled");
+  assert.ok(layout.filter((entry) => entry.visible).every((entry) => entry.y > 542 && entry.y < 762));
+
+  const clouds = { layers: layers.map(({ ceilingFt: _ceilingFt, ...layer }) => layer), clear: false, cavok: false, ceilingFt: 2500, display: "FEW022 · SCT024 · BKN025 · OVC080" };
+  const model = manualMeteogramModel([manualMeteogramPoint({ clouds })]);
+  const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" });
+  assert.equal((svg.match(/data-cloud-form=/g) || []).length, 4, "every exact layer remains rendered despite label suppression");
+  assert.match(svg, /data-cloud-label="BKN025"/);
+  assert.match(svg, />CIG 2,500 FT</);
+  const table = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z" });
+  for (const token of ["FEW022", "SCT024", "BKN025", "OVC080"]) assert.match(table, new RegExp(token));
+
+  const adjacentColumns = [
+    manualMeteogramPoint({ clouds: { layers: [{ cover: "SCT", heightFt: 2500, raw: "SCT025" }], clear: false, cavok: false, ceilingFt: null, display: "SCT025" } }),
+    manualMeteogramPoint({ clouds: { layers: [{ cover: "BKN", heightFt: 2500, raw: "BKN025" }], clear: false, cavok: false, ceilingFt: 2500, display: "BKN025" } }),
+  ];
+  assert.deepEqual(meteogramCloudColumnLabelMask(adjacentColumns, [200, 270]), [false, true], "the actual ceiling wins a cross-column collision");
+  const subHourlyColumns = [adjacentColumns[0], adjacentColumns[1], adjacentColumns[0]];
+  assert.deepEqual(meteogramCloudColumnLabelMask(subHourlyColumns, [200, 240, 280]), [false, true, false], "sub-hourly cloud labels remain collision-free");
+  const multipleUnknownBases = manualMeteogramPoint({
+    clouds: {
+      layers: [
+        { cover: "VV", heightFt: null, raw: "VV///" },
+        { cover: "BKN", heightFt: null, raw: "BKN///", conditional: true, conditionalLabel: "TMP" },
+      ],
+      clear: false, cavok: false, ceilingFt: null, display: "VV/// · BKN///",
+    },
+  });
+  assert.deepEqual(meteogramCloudColumnLabelMask([multipleUnknownBases, adjacentColumns[0]], [200, 300]), [true, false], "joined unknown-base text participates in cross-column collision sizing");
+
+  const tickLayout = meteogramCloudTickLayout([500, 1000, 2000, 3000, 5000, 10000, 15000, 20000, 25000], 25000);
+  const visibleTicks = tickLayout.filter((entry) => entry.visible);
+  assert.ok(visibleTicks.length < tickLayout.length, "the expanded altitude scale suppresses colliding text labels");
+  for (let index = 1; index < visibleTicks.length; index += 1) {
+    assert.ok(Math.abs(visibleTicks[index].y - visibleTicks[index - 1].y) >= 13);
+  }
+});
+
+test("observed and forecast weather symbols receive restrained semantic colors without changing weather codes", () => {
+  const fixtures = [
+    ["clear", manualMeteogramPoint()],
+    ["cloud", manualMeteogramPoint({ clouds: { layers: [{ cover: "SCT", heightFt: 3000, raw: "SCT030" }], clear: false, cavok: false, ceilingFt: null, display: "SCT030" } })],
+    ["rain", manualMeteogramPoint({ weatherCodes: ["-RA"] })],
+    ["showers", manualMeteogramPoint({ weatherCodes: ["VCSH"] })],
+    ["snow", manualMeteogramPoint({ weatherCodes: ["SN"] })],
+    ["thunder", manualMeteogramPoint({ weatherCodes: ["TSRA"] })],
+    ["significant", manualMeteogramPoint({ weatherCodes: ["SQ"] })],
+    ["ice", manualMeteogramPoint({ weatherCodes: ["FZRA"] })],
+    ["fog", manualMeteogramPoint({ weatherCodes: ["BR"] })],
+    ["obscuration", manualMeteogramPoint({ weatherCodes: ["HZ"] })],
+  ];
+  for (const [category, point] of fixtures) {
+    assert.equal(meteogramWeatherVisualCategory(point), category);
+    assert.equal(meteogramWeatherVisualCategory({ ...point, kind: "FORECAST" }), category, `${category} uses the same forecast color category`);
+    assert.match(meteogramCss, new RegExp(`\\.aviation-meteogram-weather-${category}\\{fill:`));
+  }
+
+  const observed = manualMeteogramPoint({
+    observedZ: "2026-09-01T00:00:00Z", weatherCodes: ["TSRA"], weather: { icon: "⚡", label: "THUNDERSTORM RAIN" },
+  });
+  const forecast = manualMeteogramPoint({
+    kind: "FORECAST", reportType: "TAF", observedZ: "2026-09-01T03:00:00Z", validZ: "2026-09-01T03:00:00Z",
+    weatherCodes: ["SN"], weather: { icon: "❄", label: "SNOW" },
+  });
+  const svg = buildMeteogramSvgMarkup(manualMeteogramModel([observed, forecast]), { timeMode: "Z" }, { viewportWidth: 1200 });
+  assert.match(svg, /aviation-meteogram-weather-thunder" data-weather-category="thunder"/);
+  assert.match(svg, /aviation-meteogram-forecast-column[\s\S]*aviation-meteogram-weather-snow" data-weather-category="snow"/);
+  assert.match(svg, />TSRA</);
+  assert.match(svg, />SN</);
+  assert.match(meteogramCss, /\.aviation-meteogram-forecast-column \.aviation-meteogram-weather-icon\{opacity:\.78\}/);
 });
 
 test("QPF and snowfall render once across exact source intervals in inches and remain unchanged by temperature units", () => {
@@ -1004,6 +1119,10 @@ test("QPF and snowfall render once across exact source intervals in inches and r
     now: new Date("2026-09-01T03:15:00Z"),
   });
   const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z", temperatureUnit: "C" }, { viewportWidth: 1200 });
+  assert.match(svg, /height="924" viewBox="0 0 [\d.]+ 924"/);
+  assert.match(svg, /id="aviationMeteogramCloudClip"><rect[^>]*y="542"[^>]*height="220"/);
+  assert.match(svg, /id="aviationMeteogramPrecipClip"><rect[^>]*y="836"[^>]*height="44"/);
+  assert.match(svg, /id="aviationMeteogramSnowClip"><rect[^>]*y="880"[^>]*height="44"/);
   assert.equal((svg.match(/aviation-meteogram-precip-interval aviation-meteogram-interval-forecast/g) || []).length, 2, "two 6-hour totals are not replicated into hourly buckets");
   assert.equal((svg.match(/aviation-meteogram-snow-interval aviation-meteogram-interval-forecast/g) || []).length, 1);
   assert.match(svg, /data-valid-start="2026-09-01T06:00:00\.000Z" data-valid-end="2026-09-01T12:00:00\.000Z" data-amount-in="1"/);
@@ -1016,6 +1135,18 @@ test("QPF and snowfall render once across exact source intervals in inches and r
   const qpf = svg.match(/aviation-meteogram-precip-interval aviation-meteogram-interval-forecast[\s\S]*?<rect class="aviation-meteogram-interval-bar" x="([\d.]+)"[^>]*width="([\d.]+)"/);
   assert.ok(qpf);
   assert.ok(Math.abs(Number(qpf[2]) - (dimensions.xForTime("2026-09-01T12:00:00Z") - dimensions.xForTime("2026-09-01T06:00:00Z"))) < 0.2);
+  let compactBarCount = 0;
+  for (const [type, top, bottom] of [["precip", 836, 880], ["snow", 880, 924]]) {
+    const pattern = new RegExp(`<g class="aviation-meteogram-interval aviation-meteogram-${type}-interval(?:(?!<\\/g>)[\\s\\S])*?<rect class="aviation-meteogram-interval-bar" x="[\\d.]+" y="([\\d.]+)" width="[\\d.]+" height="([\\d.]+)"`, "g");
+    for (const [, yText, heightText] of svg.matchAll(pattern)) {
+      compactBarCount += 1;
+      const y = Number(yText);
+      const barHeight = Number(heightText);
+      assert.ok(y >= top && y + barHeight <= bottom, `${type} bar stays inside its compact row`);
+      assert.ok(barHeight <= 14, `${type} bar uses the compact 14px maximum`);
+    }
+  }
+  assert.ok(compactBarCount >= 2);
   const tableC = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z", temperatureUnit: "C" });
   const tableF = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z", temperatureUnit: "F" });
   for (const table of [tableC, tableF]) {
@@ -1074,9 +1205,10 @@ test("meteogram dimensions remain finite and internally scrollable at every requ
   const timeline = Array.from({ length: 25 }, (_, index) => manualMeteogramPoint({
     observedZ: new Date(Date.UTC(2026, 8, 1, index)).toISOString(),
   }));
-  for (const viewport of [1920, 1366, 1280, 390, 844]) {
+  for (const viewport of [1920, 1366, 1280, 844, 390, 320]) {
     const dimensions = meteogramDimensions(timeline, viewport);
     assert.ok(Number.isFinite(dimensions.width) && dimensions.width >= viewport);
+    assert.equal(dimensions.height, 924);
     assert.ok(dimensions.xPositions.every((x) => x >= dimensions.labelWidth && x <= dimensions.width));
     if (viewport <= 844) assert.ok(dimensions.width > viewport, "dense mobile/tablet timeline scrolls inside its region");
   }
