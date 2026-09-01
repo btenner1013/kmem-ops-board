@@ -146,6 +146,18 @@
   text-rendering:geometricPrecision;
 }
 
+.aviation-meteogram-label-measurer{
+  position:fixed;
+  top:0;
+  left:0;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  visibility:hidden;
+  pointer-events:none;
+  contain:strict;
+}
+
 .aviation-meteogram-stage>.aviation-meteogram-svg{
   position:absolute;
   inset:0 auto auto 0;

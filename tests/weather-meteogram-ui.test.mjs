@@ -7,6 +7,7 @@ import { buildMeteogramModel, meteogramLookupRequest } from "../weather-meteogra
 import { meteogramSolarEvents, meteogramSolarPhase } from "../weather-meteogram-solar.js";
 import {
   buildMeteogramAccessibleTableMarkup,
+  buildMeteogramStickyLabelsMarkup,
   buildMeteogramSvgMarkup,
   meteogramCloudBaseY,
   meteogramCloudColumnLabelMask,
@@ -14,6 +15,8 @@ import {
   meteogramCloudTickLayout,
   meteogramDimensions,
   meteogramForecastSourceState,
+  meteogramRowLabelDescriptors,
+  meteogramRowLabelLayout,
   meteogramSubtitleText,
   meteogramTemperatureGeometry,
   meteogramWeatherVisualCategory,
@@ -870,6 +873,120 @@ test("responsive layout keeps minimum chart width inside its own scroller", () =
   assert.doesNotMatch(meteogramCss, /width:\s*100vw/);
 });
 
+test("row-label content is centralized and follows every live display toggle", () => {
+  const zulu = meteogramRowLabelDescriptors({ timeMode: "Z", temperatureUnit: "C", windUnit: "KT" }, true);
+  assert.deepEqual(zulu.map(({ key, title, unit }) => [key, title, unit]), [
+    ["time", "TIME", "UTC / Z"],
+    ["weather", "WEATHER", "OBS + FORECAST"],
+    ["temperature", "TEMPERATURE", "°C"],
+    ["dewPoint", "DEW POINT", "°C"],
+    ["tempLine", "TEMP LINE", "SHARED °C SCALE"],
+    ["dewLine", "DEW POINT LINE", "SHARED °C SCALE"],
+    ["wind", "WIND", "DOWNWIND ARROW · KT"],
+    ["pressure", "PRESSURE", "IN HG"],
+    ["clouds", "CLOUDS / CIG", "FT AGL"],
+    ["visibility", "VISIBILITY", "SM / REPORTED"],
+    ["precip", "PRECIP (IN)", "INTERVAL TOTAL"],
+    ["snow", "SNOW (IN)", "FCST / OBS DEPTH Δ"],
+  ]);
+  const local = meteogramRowLabelDescriptors({ timeMode: "LOCAL", temperatureUnit: "F", windUnit: "MPH" }, false);
+  assert.equal(local.find(({ key }) => key === "time").unit, "STATION LOCAL");
+  assert.equal(local.find(({ key }) => key === "weather").unit, "OBSERVED CODE");
+  assert.equal(local.find(({ key }) => key === "tempLine").unit, "SHARED °F SCALE");
+  assert.equal(local.find(({ key }) => key === "wind").unit, "DOWNWIND ARROW · MPH");
+});
+
+test("row-label width follows measured visible content with bounded wrapping instead of clipping", () => {
+  assert.equal(meteogramDimensions(1, 320).labelWidth, 132, "omitting a measured width preserves the compact helper default");
+  assert.equal(meteogramDimensions(1, 1200).labelWidth, 154, "omitting a measured width preserves the desktop helper default");
+  const measuredWidths = new Map([
+    ["DOWNWIND ARROW · KT", 122.056],
+    ["DOWNWIND ARROW · MPH", 130.4],
+  ]);
+  const desktopMeasure = (text, kind) => measuredWidths.get(text) ?? String(text).length * (kind === "title" ? 7 : 4);
+  const knots = meteogramRowLabelLayout({ timeMode: "Z", temperatureUnit: "C", windUnit: "KT" }, 1280, {
+    hasForecast: true,
+    compact: false,
+    measureText: desktopMeasure,
+  });
+  const mph = meteogramRowLabelLayout({ timeMode: "Z", temperatureUnit: "C", windUnit: "MPH" }, 1280, {
+    hasForecast: true,
+    compact: false,
+    measureText: desktopMeasure,
+  });
+  assert.equal(knots.width, 178, "45px text origin + measured content + 10px safety rounds up");
+  assert.equal(knots.minimumWidth, 154);
+  assert.equal(knots.maximumWidth, 220);
+  assert.ok(mph.width > knots.width, "a wider visible MPH subtitle grows the shared column live");
+  assert.ok(knots.rows.every((row) => row.titleLines.length === 1 && row.unitLines.length === 1));
+
+  const narrowMeasure = (text) => String(text).length * 7.5;
+  const narrow = meteogramRowLabelLayout({ timeMode: "LOCAL", temperatureUnit: "F", windUnit: "MPH" }, 320, {
+    hasForecast: true,
+    compact: true,
+    measureText: narrowMeasure,
+  });
+  assert.equal(narrow.minimumWidth, 140);
+  assert.equal(narrow.maximumWidth, 168);
+  assert.equal(narrow.width, 168, "the clamp leaves a usable portion of the timeline visible");
+  const wind = narrow.rows.find(({ key }) => key === "wind");
+  assert.ok(wind.unitLines.length > 1, "the overlong wind subtitle wraps at the viewport clamp");
+  assert.equal(wind.unitLines.join(" "), "DOWNWIND ARROW · MPH");
+  for (const row of narrow.rows) {
+    for (const line of [...row.titleLines, ...row.unitLines]) {
+      assert.ok(narrowMeasure(line) <= narrow.maximumTextWidth, `${row.key} line remains inside the shared label viewport`);
+      assert.doesNotMatch(line, /…|\.\.\./, "labels are never ellipsized");
+    }
+  }
+});
+
+test("main and sticky SVG layers consume one dynamic width and identical row geometry", () => {
+  const model = manualMeteogramModel([
+    manualMeteogramPoint({ observedZ: "2026-09-01T00:00:00Z" }),
+    manualMeteogramPoint({ kind: "FORECAST", observedZ: "2026-09-01T03:00:00Z", validZ: "2026-09-01T03:00:00Z" }),
+  ]);
+  const measureText = (text) => String(text).length * 7.5;
+  const settings = { timeMode: "LOCAL", temperatureUnit: "F", windUnit: "MPH" };
+  const labelLayout = meteogramRowLabelLayout(settings, 320, {
+    hasForecast: true,
+    compact: true,
+    measureText,
+  });
+  const dimensions = meteogramDimensions(model.timeline, 320, { labelWidth: labelLayout.width });
+  const main = buildMeteogramSvgMarkup(model, settings, { viewportWidth: 320, labelLayout });
+  const sticky = buildMeteogramStickyLabelsMarkup(settings, dimensions, true, labelLayout);
+  for (const markup of [main, sticky]) {
+    assert.match(markup, new RegExp(`data-label-width="${labelLayout.width}"`));
+    assert.match(markup, new RegExp(`<rect class="aviation-meteogram-label-background" width="${labelLayout.width}"`));
+    assert.match(markup, /data-row-key="wind"[^>]*data-row-top="366"[^>]*data-row-bottom="464"[^>]*data-row-wrapped="true"/);
+    assert.match(markup, /aria-label="DOWNWIND ARROW · MPH" data-line-count="[2-9]"/);
+    assert.doesNotMatch(markup, /DOWNWIND ARROW · MPH<\/text>/, "wrapped text is emitted as complete tspans");
+  }
+  assert.match(main, new RegExp(`id="aviationMeteogramWindClip"><rect x="${labelLayout.width}"`));
+  assert.match(main, new RegExp(`class="aviation-meteogram-label-divider" x1="${labelLayout.width}"`));
+  assert.match(sticky, new RegExp(`viewBox="0 0 ${labelLayout.width} 924"`));
+  assert.match(sticky, new RegExp(`class="aviation-meteogram-label-divider" x1="${labelLayout.width - 1}"`));
+  const rowGeometry = (markup) => [...markup.matchAll(/data-row-key="([^"]+)" data-row-top="([^"]+)" data-row-bottom="([^"]+)"/g)]
+    .map((match) => match.slice(1));
+  assert.deepEqual(rowGeometry(main), rowGeometry(sticky), "all duplicated labels keep exact vertical boundaries");
+});
+
+test("dynamic row-label measurement redraws for responsive and font lifecycle without affecting page geometry", () => {
+  assert.match(meteogramJs, /createMeteogramRowLabelMeasurer\(doc\)/);
+  assert.match(meteogramJs, /getComputedTextLength/);
+  assert.match(meteogramJs, /meteogramRowLabelLayout\(displaySettings, availableWidth,[\s\S]*measureText: labelMeasurer\.measureText/);
+  assert.match(meteogramJs, /buildMeteogramSvgMarkup\(model, settings, \{ viewportWidth, labelLayout \}\)/);
+  assert.match(meteogramJs, /buildMeteogramStickyLabelsMarkup\(displaySettings, dimensions, model\.forecasts\.length > 0, labelLayout\)/);
+  assert.match(meteogramJs, /new ResizeObserverCtor\(scheduleDraw\)/);
+  assert.match(meteogramJs, /doc\.fonts\?\.ready[\s\S]*scheduleDraw/);
+  const measurerRule = meteogramCss.match(/\.aviation-meteogram-label-measurer\{[\s\S]*?\}/)?.[0] || "";
+  assert.match(measurerRule, /position:fixed/);
+  assert.match(measurerRule, /width:1px/);
+  assert.match(measurerRule, /visibility:hidden/);
+  assert.match(measurerRule, /overflow:hidden/);
+  assert.doesNotMatch(measurerRule, /display:none/);
+});
+
 test("keyboard and screen-reader users have a live unit-aware text data table", () => {
   assert.match(meteogramJs, /doc\.createElement\("details"\)/);
   assert.match(meteogramJs, /dataSummary\.textContent = "TEXT DATA TABLE"/);
@@ -1143,7 +1260,8 @@ test("sunrise and sunset markers use exact shared timeline geometry across multi
     manualMeteogramPoint({ kind: "FORECAST", validZ: "2026-09-03T06:00:00Z", observedZ: "2026-09-03T06:00:00Z" }),
   ];
   const model = manualMeteogramModel(timeline);
-  const dimensions = meteogramDimensions(timeline, 1200);
+  const labelLayout = meteogramRowLabelLayout({ timeMode: "Z" }, 1200, { hasForecast: true });
+  const dimensions = meteogramDimensions(timeline, 1200, { labelWidth: labelLayout.width });
   const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" }, { viewportWidth: 1200 });
   const geometry = renderedSolarGeometry(svg);
   assert.equal(geometry.length, 4, "two sunrise and two sunset events fall in this 48-hour domain");
@@ -1308,9 +1426,17 @@ test("meteogram dimensions remain finite and internally scrollable at every requ
     observedZ: new Date(Date.UTC(2026, 8, 1, index)).toISOString(),
   }));
   for (const viewport of [1920, 1366, 1280, 844, 390, 320]) {
-    const dimensions = meteogramDimensions(timeline, viewport);
+    const labelLayout = meteogramRowLabelLayout(
+      { timeMode: "LOCAL", temperatureUnit: "F", windUnit: "MPH" },
+      viewport,
+      { hasForecast: true, compact: viewport <= 768 },
+    );
+    const dimensions = meteogramDimensions(timeline, viewport, { labelWidth: labelLayout.width });
     assert.ok(Number.isFinite(dimensions.width) && dimensions.width >= viewport);
     assert.equal(dimensions.height, 924);
+    assert.equal(dimensions.labelWidth, labelLayout.width);
+    assert.ok(labelLayout.width >= labelLayout.minimumWidth && labelLayout.width <= labelLayout.maximumWidth);
+    assert.ok(labelLayout.width <= 220, "dynamic labels never consume beyond the fixed upper bound");
     assert.ok(dimensions.xPositions.every((x) => x >= dimensions.labelWidth && x <= dimensions.width));
     if (viewport <= 844) assert.ok(dimensions.width > viewport, "dense mobile/tablet timeline scrolls inside its region");
   }
