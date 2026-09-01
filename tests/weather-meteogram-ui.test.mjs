@@ -21,6 +21,7 @@ import {
   meteogramTemperatureGeometry,
   meteogramWeatherVisualCategory,
   meteogramWindArrowRotation,
+  meteogramWindSpeedGeometry,
 } from "../weather-meteogram.js";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
@@ -753,7 +754,7 @@ test("switching away aborts meteogram work and time/unit control clicks do not r
 
 test("meteogram renderer uses one shared timeline and includes every requested observed band", () => {
   assert.match(meteogramJs, /<svg class="aviation-meteogram-svg"/);
-  for (const title of ["WEATHER", "TEMPERATURE", "DEW POINT", "TEMP LINE", "DEW POINT LINE", "WIND", "PRESSURE", "CLOUDS / CIG", "VISIBILITY", "PRECIP (IN)", "SNOW (IN)"]) {
+  for (const title of ["WEATHER", "TEMPERATURE", "DEW POINT", "TEMP LINE", "DEW POINT LINE", "WIND", "WIND SPEED / GUST", "PRESSURE", "CLOUDS / CIG", "VISIBILITY", "PRECIP (IN)", "SNOW (IN)"]) {
     const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(meteogramJs, new RegExp(`title: "${escapedTitle}"`));
   }
@@ -883,6 +884,7 @@ test("row-label content is centralized and follows every live display toggle", (
     ["tempLine", "TEMP LINE", "SHARED °C SCALE"],
     ["dewLine", "DEW POINT LINE", "SHARED °C SCALE"],
     ["wind", "WIND", "DOWNWIND ARROW · KT"],
+    ["windSpeed", "WIND SPEED / GUST", "SOLID SUSTAINED · DASH GUST · KT"],
     ["pressure", "PRESSURE", "IN HG"],
     ["clouds", "CLOUDS / CIG", "FT AGL"],
     ["visibility", "VISIBILITY", "SM / REPORTED"],
@@ -894,6 +896,7 @@ test("row-label content is centralized and follows every live display toggle", (
   assert.equal(local.find(({ key }) => key === "weather").unit, "OBSERVED CODE");
   assert.equal(local.find(({ key }) => key === "tempLine").unit, "SHARED °F SCALE");
   assert.equal(local.find(({ key }) => key === "wind").unit, "DOWNWIND ARROW · MPH");
+  assert.equal(local.find(({ key }) => key === "windSpeed").unit, "SOLID SUSTAINED · DASH GUST · MPH");
 });
 
 test("row-label width follows measured visible content with bounded wrapping instead of clipping", () => {
@@ -914,7 +917,7 @@ test("row-label width follows measured visible content with bounded wrapping ins
     compact: false,
     measureText: desktopMeasure,
   });
-  assert.equal(knots.width, 178, "45px text origin + measured content + 10px safety rounds up");
+  assert.equal(knots.width, 183, "the new visible wind-series legend participates in measured width");
   assert.equal(knots.minimumWidth, 154);
   assert.equal(knots.maximumWidth, 220);
   assert.ok(mph.width > knots.width, "a wider visible MPH subtitle grows the shared column live");
@@ -932,6 +935,11 @@ test("row-label width follows measured visible content with bounded wrapping ins
   const wind = narrow.rows.find(({ key }) => key === "wind");
   assert.ok(wind.unitLines.length > 1, "the overlong wind subtitle wraps at the viewport clamp");
   assert.equal(wind.unitLines.join(" "), "DOWNWIND ARROW · MPH");
+  const windSpeed = narrow.rows.find(({ key }) => key === "windSpeed");
+  assert.ok(windSpeed.titleLines.length > 1, "the new row title wraps instead of clipping");
+  assert.ok(windSpeed.unitLines.length > 1, "the sustained/gust text legend wraps instead of clipping");
+  assert.equal(windSpeed.titleLines.join(" "), "WIND SPEED / GUST");
+  assert.equal(windSpeed.unitLines.join(" "), "SOLID SUSTAINED · DASH GUST · MPH");
   for (const row of narrow.rows) {
     for (const line of [...row.titleLines, ...row.unitLines]) {
       assert.ok(narrowMeasure(line) <= narrow.maximumTextWidth, `${row.key} line remains inside the shared label viewport`);
@@ -954,17 +962,23 @@ test("main and sticky SVG layers consume one dynamic width and identical row geo
   });
   const dimensions = meteogramDimensions(model.timeline, 320, { labelWidth: labelLayout.width });
   const main = buildMeteogramSvgMarkup(model, settings, { viewportWidth: 320, labelLayout });
-  const sticky = buildMeteogramStickyLabelsMarkup(settings, dimensions, true, labelLayout);
+  const windSpeedGeometry = meteogramWindSpeedGeometry(model, settings, dimensions);
+  const sticky = buildMeteogramStickyLabelsMarkup(settings, dimensions, true, labelLayout, windSpeedGeometry);
   for (const markup of [main, sticky]) {
     assert.match(markup, new RegExp(`data-label-width="${labelLayout.width}"`));
     assert.match(markup, new RegExp(`<rect class="aviation-meteogram-label-background" width="${labelLayout.width}"`));
     assert.match(markup, /data-row-key="wind"[^>]*data-row-top="366"[^>]*data-row-bottom="464"[^>]*data-row-wrapped="true"/);
     assert.match(markup, /aria-label="DOWNWIND ARROW · MPH" data-line-count="[2-9]"/);
     assert.doesNotMatch(markup, /DOWNWIND ARROW · MPH<\/text>/, "wrapped text is emitted as complete tspans");
+    assert.match(markup, /data-row-key="windSpeed"[^>]*data-row-top="464"[^>]*data-row-bottom="538"[^>]*data-row-wrapped="true"/);
+    assert.match(markup, /aria-label="WIND SPEED \/ GUST" data-line-count="[2-9]"/);
+    assert.match(markup, /aria-label="SOLID SUSTAINED · DASH GUST · MPH" data-line-count="[2-9]"/);
   }
   assert.match(main, new RegExp(`id="aviationMeteogramWindClip"><rect x="${labelLayout.width}"`));
   assert.match(main, new RegExp(`class="aviation-meteogram-label-divider" x1="${labelLayout.width}"`));
-  assert.match(sticky, new RegExp(`viewBox="0 0 ${labelLayout.width} 924"`));
+  assert.match(sticky, new RegExp(`viewBox="0 0 ${labelLayout.width} 998"`));
+  assert.match(sticky, /class="aviation-meteogram-wind-axis-sticky"/);
+  assert.match(sticky, />0 MPH<\/text>/);
   assert.match(sticky, new RegExp(`class="aviation-meteogram-label-divider" x1="${labelLayout.width - 1}"`));
   const rowGeometry = (markup) => [...markup.matchAll(/data-row-key="([^"]+)" data-row-top="([^"]+)" data-row-bottom="([^"]+)"/g)]
     .map((match) => match.slice(1));
@@ -976,7 +990,7 @@ test("dynamic row-label measurement redraws for responsive and font lifecycle wi
   assert.match(meteogramJs, /getComputedTextLength/);
   assert.match(meteogramJs, /meteogramRowLabelLayout\(displaySettings, availableWidth,[\s\S]*measureText: labelMeasurer\.measureText/);
   assert.match(meteogramJs, /buildMeteogramSvgMarkup\(model, settings, \{ viewportWidth, labelLayout \}\)/);
-  assert.match(meteogramJs, /buildMeteogramStickyLabelsMarkup\(displaySettings, dimensions, model\.forecasts\.length > 0, labelLayout\)/);
+  assert.match(meteogramJs, /buildMeteogramStickyLabelsMarkup\(displaySettings, dimensions, model\.forecasts\.length > 0, labelLayout, windSpeedGeometry\)/);
   assert.match(meteogramJs, /new ResizeObserverCtor\(scheduleDraw\)/);
   assert.match(meteogramJs, /doc\.fonts\?\.ready[\s\S]*scheduleDraw/);
   const measurerRule = meteogramCss.match(/\.aviation-meteogram-label-measurer\{[\s\S]*?\}/)?.[0] || "";
@@ -985,6 +999,7 @@ test("dynamic row-label measurement redraws for responsive and font lifecycle wi
   assert.match(measurerRule, /visibility:hidden/);
   assert.match(measurerRule, /overflow:hidden/);
   assert.doesNotMatch(measurerRule, /display:none/);
+  assert.match(meteogramCss, /\.aviation-meteogram-sticky-labels\{[\s\S]*overflow:visible/);
 });
 
 test("keyboard and screen-reader users have a live unit-aware text data table", () => {
@@ -1096,6 +1111,124 @@ test("wind arrows use normalized downwind semantics and fixed row containment fo
   assert.match(svg, /aviation-meteogram-wind-gust[^>]*>G19</);
 });
 
+test("wind speed and gust share one truthful zero-based scale across observed and current-TAF buckets", () => {
+  const timeline = [
+    manualMeteogramPoint({
+      observedZ: "2026-09-01T00:00:00Z", windDirectionDeg: 240, windSpeedKt: 12, windGustKt: 20,
+    }),
+    manualMeteogramPoint({
+      observedZ: "2026-09-01T01:00:00Z", windDirectionDeg: 0, windSpeedKt: 0, windGustKt: null,
+    }),
+    manualMeteogramPoint({
+      observedZ: "2026-09-01T02:00:00Z", windDirectionDeg: null, windVariable: true, windSpeedKt: 18, windGustKt: 19,
+    }),
+    manualMeteogramPoint({
+      observedZ: "2026-09-01T05:00:00Z", windDirectionDeg: null, windSpeedKt: null, windGustKt: null,
+    }),
+    manualMeteogramPoint({
+      kind: "FORECAST", reportType: "TAF", observedZ: "2026-09-01T06:00:00Z", validZ: "2026-09-01T06:00:00Z",
+      tafIssuanceZ: "2026-09-01T03:00:00Z", windDirectionDeg: 170, windSpeedKt: 14, windGustKt: 24,
+    }),
+    manualMeteogramPoint({
+      kind: "FORECAST", reportType: "TAF", observedZ: "2026-09-01T07:00:00Z", validZ: "2026-09-01T07:00:00Z",
+      tafIssuanceZ: "2026-09-01T03:00:00Z", windDirectionDeg: 180, windSpeedKt: 16, windGustKt: null,
+    }),
+    manualMeteogramPoint({
+      kind: "FORECAST", reportType: "FORECAST", observedZ: "2026-09-01T08:00:00Z", validZ: "2026-09-01T08:00:00Z",
+      tafIssuanceZ: null, supplementalOnly: true, windDirectionDeg: 190, windSpeedKt: 99, windGustKt: 100,
+    }),
+  ];
+  const model = manualMeteogramModel(timeline);
+  const labelLayout = meteogramRowLabelLayout({ windUnit: "KT" }, 1200, { hasForecast: true });
+  const dimensions = meteogramDimensions(timeline, 1200, { labelWidth: labelLayout.width });
+  const knots = meteogramWindSpeedGeometry(model, { windUnit: "KT" }, dimensions);
+  const mph = meteogramWindSpeedGeometry(model, { windUnit: "MPH" }, dimensions);
+
+  assert.equal(knots.range.minimum, 0);
+  assert.ok(knots.range.maximum > 24, "the shared scale leaves headroom above the real maximum gust");
+  assert.ok(knots.range.maximum >= 10, "light winds never receive an exaggerated narrow domain");
+  assert.equal(knots.sustainedPoints[1].valueKt, 0, "CALM remains a real zero-speed point");
+  assert.equal(knots.sustainedPoints[1].y, knots.bottom);
+  assert.equal(knots.sustainedPoints[2].valueKt, 18, "VRB retains its reported speed");
+  assert.equal(knots.sustainedPoints[3], null, "missing sustained wind remains a path gap");
+  assert.equal(knots.gustPoints[1], null, "missing gust is never copied from sustained wind");
+  assert.equal(knots.gustPoints[5], null, "a forecast bucket without a gust stays missing");
+  assert.equal(knots.sustainedPoints[6], null, "NWS-only wind cannot masquerade as current TAF wind");
+  assert.equal(knots.gustPoints[6], null);
+  assert.ok(knots.gustPoints[0].y < knots.sustainedPoints[0].y, "G20 sits above 12 KT sustained");
+  const wideSpread = Math.abs(knots.gustPoints[0].y - knots.sustainedPoints[0].y);
+  const narrowSpread = Math.abs(knots.gustPoints[2].y - knots.sustainedPoints[2].y);
+  assert.ok(wideSpread > narrowSpread * 7.99 && wideSpread < narrowSpread * 8.01, "actual gust spread controls physical separation");
+
+  for (let index = 0; index < timeline.length; index += 1) {
+    for (const field of ["sustainedPoints", "gustPoints"]) {
+      if (!knots[field][index]) continue;
+      assert.equal(knots[field][index].x, dimensions.xPositions[index], "wind series reuses the shared exact x coordinate");
+      assert.equal(mph[field][index].x, knots[field][index].x);
+      assert.ok(Math.abs(mph[field][index].y - knots[field][index].y) < 1e-9, "KT/MPH changes labels and values, not geometry");
+      assert.ok(Math.abs(mph[field][index].value - knots[field][index].valueKt * 1.150779448) < 1e-6);
+    }
+  }
+  assert.equal(mph.range.maximum, knots.range.maximum, "both units retain one canonical knot domain");
+  assert.ok(knots.ticks.every((tick) => tick.label.endsWith(" KT")));
+  assert.ok(mph.ticks.every((tick) => tick.label.endsWith(" MPH")));
+  assert.equal(knots.ticks[0].value, 0);
+  assert.equal(mph.ticks[0].value, 0);
+
+  const svg = buildMeteogramSvgMarkup(model, { windUnit: "KT", timeMode: "Z" }, { viewportWidth: 1200, labelLayout });
+  assert.ok(svg.indexOf("aviation-meteogram-wind-row") < svg.indexOf("aviation-meteogram-wind-speed-row"));
+  assert.ok(svg.indexOf("aviation-meteogram-wind-speed-row") < svg.indexOf("aviation-meteogram-pressure-line"));
+  assert.match(svg, /id="aviationMeteogramWindSpeedClip"[^>]*[\s\S]*?y="464"[^>]*height="74"/);
+  assert.match(svg, /aviation-meteogram-wind-sustained-line/);
+  assert.match(svg, /aviation-meteogram-wind-gust-line/);
+  assert.match(svg, /aviation-meteogram-wind-sustained-line aviation-meteogram-line-forecast/);
+  assert.match(svg, /aviation-meteogram-wind-gust-line aviation-meteogram-line-forecast/);
+  assert.equal((svg.match(/aviation-meteogram-wind-gust-marker/g) || []).length, 3, "only three actual gust values create markers");
+  assert.doesNotMatch(svg, /data-gust-kt="(?:0|12|14|16|18|99|100)"/, "no missing or non-TAF gust is fabricated");
+  const gustPaths = [...svg.matchAll(/<path class="aviation-meteogram-wind-gust-line(?: aviation-meteogram-line-forecast)?" d="([^"]+)"/g)];
+  assert.equal(gustPaths.length, 3, "missing observed and forecast gusts split the three real gust reports into truthful segments");
+  assert.ok(gustPaths.every((match) => !match[1].includes(" L")), "no gust line bridges a missing bucket");
+  const dividerX = Number(svg.match(/aviation-meteogram-now-divider" x1="([\d.]+)"/)?.[1]);
+  assert.ok(Math.abs(dividerX - dimensions.xForTime("2026-09-01T06:00:00Z")) <= 0.1, "NOW uses the same x mapping as the new row");
+});
+
+test("wind speed/gust tooltip, tap/focus behavior, styles, and accessible table expose exact source data", () => {
+  const observed = manualMeteogramPoint({
+    observedZ: "2026-09-01T14:54:00Z", reportType: "SPECI", windDirectionDeg: 360, windSpeedKt: 3, windGustKt: null,
+  });
+  const forecast = manualMeteogramPoint({
+    kind: "FORECAST", reportType: "TAF", observedZ: "2026-09-02T03:00:00Z", validZ: "2026-09-02T03:00:00Z",
+    tafIssuanceZ: "2026-09-01T14:00:00Z", windDirectionDeg: 170, windSpeedKt: 4, windGustKt: 12,
+  });
+  const model = manualMeteogramModel([observed, forecast]);
+  const knots = buildMeteogramSvgMarkup(model, { windUnit: "KT", timeMode: "Z" });
+  const mph = buildMeteogramSvgMarkup(model, { windUnit: "MPH", timeMode: "Z" });
+  const local = buildMeteogramSvgMarkup(model, { windUnit: "KT", timeMode: "LOCAL" });
+  const tableKnots = buildMeteogramAccessibleTableMarkup(model, { windUnit: "KT", timeMode: "Z" });
+  const tableMph = buildMeteogramAccessibleTableMarkup(model, { windUnit: "MPH", timeMode: "Z" });
+
+  assert.match(knots, /data-wind-tooltip="01 SEP 2026 · 1454Z&#10;WIND: 360° 3 KT&#10;GUST: —&#10;SOURCE: SPECI"/);
+  assert.match(knots, /data-wind-tooltip="02 SEP 2026 · 0300Z&#10;WIND: 170° 4 KT&#10;GUST: 12 KT&#10;SOURCE: TAF"/);
+  assert.match(mph, /WIND: 360° 3 MPH&#10;GUST: —/);
+  assert.match(mph, /WIND: 170° 5 MPH&#10;GUST: 14 MPH/);
+  assert.match(local, /data-wind-tooltip="01 SEP 2026 · 09:54 CDT&#10;WIND: 360° 3 KT&#10;GUST: —&#10;SOURCE: SPECI"/);
+  assert.match(knots, /data-wind-speed-sample="0"[^>]*tabindex="0" role="img"[^>]*aria-describedby="aviationMeteogramWindTooltip"/);
+  assert.match(meteogramJs, /scroller\.addEventListener\("pointerover"[\s\S]*showWindTooltip/);
+  assert.match(meteogramJs, /scroller\.addEventListener\("focusin"[\s\S]*showWindTooltip/);
+  assert.match(meteogramJs, /scroller\.addEventListener\("click"[\s\S]*showWindTooltip\(sample, \{ pin: true \}\)/);
+  assert.match(meteogramJs, /event\.key === "Escape"/);
+  assert.match(meteogramCss, /\.aviation-meteogram-wind-sustained-line\{[\s\S]*stroke:#32d8eb;[\s\S]*stroke-width:2\.5/);
+  assert.match(meteogramCss, /\.aviation-meteogram-wind-gust-line\{[\s\S]*stroke:#ffbf32;[\s\S]*stroke-dasharray:3 4/);
+  assert.match(meteogramCss, /\.aviation-meteogram-wind-sustained-line\.aviation-meteogram-line-forecast\{[\s\S]*stroke-dasharray:none;[\s\S]*opacity:\.6/);
+  assert.match(meteogramCss, /\.aviation-meteogram-wind-gust-line\.aviation-meteogram-line-forecast\{[\s\S]*stroke-dasharray:7 4 2 4/);
+  assert.match(meteogramCss, /\.aviation-meteogram-wind-tooltip\{[\s\S]*position:absolute[\s\S]*overflow-wrap:anywhere/);
+  assert.match(tableKnots, /Direction 360° · Sustained 3 KT · Gust —/);
+  assert.match(tableKnots, /Direction 170° · Sustained 4 KT · Gust 12 KT/);
+  assert.match(tableMph, /Direction 360° · Sustained 3 MPH · Gust —/);
+  assert.match(tableMph, /Direction 170° · Sustained 5 MPH · Gust 14 MPH/);
+  assert.match(meteogramJs, /doc\.activeElement === activeWindTooltipSample[\s\S]*showWindTooltip\(activeWindTooltipSample/);
+});
+
 test("cloud field positions every reported base, distinguishes coverage and VV, and emphasizes only the true ceiling", () => {
   assert.ok(meteogramCloudBaseY(500, 10000) > meteogramCloudBaseY(5000, 10000));
   assert.ok(meteogramCloudBaseY(5000, 10000) > meteogramCloudBaseY(10000, 10000));
@@ -1165,7 +1298,7 @@ test("cloud label collision priority keeps the ceiling and hides labels only, ne
   assert.equal(layout[0].visible, false);
   assert.equal(layout[1].visible, false);
   assert.equal(layout[3].visible, true, "a separated higher layer remains labeled");
-  assert.ok(layout.filter((entry) => entry.visible).every((entry) => entry.y > 542 && entry.y < 762));
+  assert.ok(layout.filter((entry) => entry.visible).every((entry) => entry.y > 616 && entry.y < 836));
 
   const clouds = { layers: layers.map(({ ceilingFt: _ceilingFt, ...layer }) => layer), clear: false, cavok: false, ceilingFt: 2500, display: "FEW022 · SCT024 · BKN025 · OVC080" };
   const model = manualMeteogramModel([manualMeteogramPoint({ clouds })]);
@@ -1339,10 +1472,10 @@ test("QPF and snowfall render once across exact source intervals in inches and r
     now: new Date("2026-09-01T03:15:00Z"),
   });
   const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z", temperatureUnit: "C" }, { viewportWidth: 1200 });
-  assert.match(svg, /height="924" viewBox="0 0 [\d.]+ 924"/);
-  assert.match(svg, /id="aviationMeteogramCloudClip"><rect[^>]*y="542"[^>]*height="220"/);
-  assert.match(svg, /id="aviationMeteogramPrecipClip"><rect[^>]*y="836"[^>]*height="44"/);
-  assert.match(svg, /id="aviationMeteogramSnowClip"><rect[^>]*y="880"[^>]*height="44"/);
+  assert.match(svg, /height="998" viewBox="0 0 [\d.]+ 998"/);
+  assert.match(svg, /id="aviationMeteogramCloudClip"><rect[^>]*y="616"[^>]*height="220"/);
+  assert.match(svg, /id="aviationMeteogramPrecipClip"><rect[^>]*y="910"[^>]*height="44"/);
+  assert.match(svg, /id="aviationMeteogramSnowClip"><rect[^>]*y="954"[^>]*height="44"/);
   assert.equal((svg.match(/aviation-meteogram-precip-interval aviation-meteogram-interval-forecast/g) || []).length, 2, "two 6-hour totals are not replicated into hourly buckets");
   assert.equal((svg.match(/aviation-meteogram-snow-interval aviation-meteogram-interval-forecast/g) || []).length, 1);
   assert.match(svg, /data-valid-start="2026-09-01T06:00:00\.000Z" data-valid-end="2026-09-01T12:00:00\.000Z" data-amount-in="1"/);
@@ -1356,7 +1489,7 @@ test("QPF and snowfall render once across exact source intervals in inches and r
   assert.ok(qpf);
   assert.ok(Math.abs(Number(qpf[2]) - (dimensions.xForTime("2026-09-01T12:00:00Z") - dimensions.xForTime("2026-09-01T06:00:00Z"))) < 0.2);
   let compactBarCount = 0;
-  for (const [type, top, bottom] of [["precip", 836, 880], ["snow", 880, 924]]) {
+  for (const [type, top, bottom] of [["precip", 910, 954], ["snow", 954, 998]]) {
     const pattern = new RegExp(`<g class="aviation-meteogram-interval aviation-meteogram-${type}-interval(?:(?!<\\/g>)[\\s\\S])*?<rect class="aviation-meteogram-interval-bar" x="[\\d.]+" y="([\\d.]+)" width="[\\d.]+" height="([\\d.]+)"`, "g");
     for (const [, yText, heightText] of svg.matchAll(pattern)) {
       compactBarCount += 1;
@@ -1433,7 +1566,7 @@ test("meteogram dimensions remain finite and internally scrollable at every requ
     );
     const dimensions = meteogramDimensions(timeline, viewport, { labelWidth: labelLayout.width });
     assert.ok(Number.isFinite(dimensions.width) && dimensions.width >= viewport);
-    assert.equal(dimensions.height, 924);
+    assert.equal(dimensions.height, 998);
     assert.equal(dimensions.labelWidth, labelLayout.width);
     assert.ok(labelLayout.width >= labelLayout.minimumWidth && labelLayout.width <= labelLayout.maximumWidth);
     assert.ok(labelLayout.width <= 220, "dynamic labels never consume beyond the fixed upper bound");

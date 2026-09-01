@@ -168,8 +168,22 @@
   position:sticky;
   left:0;
   z-index:6;
+  overflow:visible;
   pointer-events:none;
   filter:drop-shadow(5px 0 5px rgba(0,0,0,.5));
+}
+
+.aviation-meteogram-wind-axis-sticky rect{
+  fill:rgba(5,14,15,.92);
+  stroke:rgba(34,211,238,.2);
+  stroke-width:.8;
+}
+.aviation-meteogram-wind-axis-sticky text{
+  fill:#86aaa8;
+  stroke:#050909;
+  stroke-width:2.5px;
+  paint-order:stroke;
+  font:800 7.5px Arial,sans-serif;
 }
 
 .aviation-meteogram-background{fill:#050909}
@@ -306,6 +320,8 @@
 .aviation-meteogram-temp-spread{fill:rgba(165,204,79,.1);stroke:none}
 .aviation-meteogram-temp-line,
 .aviation-meteogram-dew-line,
+.aviation-meteogram-wind-sustained-line,
+.aviation-meteogram-wind-gust-line,
 .aviation-meteogram-pressure-line,
 .aviation-meteogram-visibility-line{
   fill:none;
@@ -321,6 +337,79 @@
 .aviation-meteogram-line-seam{stroke-dasharray:4 4;opacity:.68}
 .aviation-meteogram-temp-forecast-marker{fill:#ffc22b;stroke:#071011;stroke-width:1.5}
 .aviation-meteogram-value-forecast{opacity:.72}
+
+.aviation-meteogram-wind-speed-tick{pointer-events:none}
+.aviation-meteogram-wind-speed-tick line{
+  stroke:rgba(116,166,164,.18);
+  stroke-width:.8;
+  stroke-dasharray:2 4;
+}
+.aviation-meteogram-wind-speed-tick text{
+  fill:#6e9695;
+  stroke:#050909;
+  stroke-width:2.5px;
+  paint-order:stroke;
+  font:800 7.5px Arial,sans-serif;
+}
+.aviation-meteogram-wind-sustained-line{
+  stroke:#32d8eb;
+  stroke-width:2.5;
+  pointer-events:none;
+}
+.aviation-meteogram-wind-gust-line{
+  stroke:#ffbf32;
+  stroke-width:2.1;
+  stroke-dasharray:3 4;
+  pointer-events:none;
+}
+.aviation-meteogram-wind-sustained-line.aviation-meteogram-line-forecast{
+  stroke:#76dce5;
+  stroke-dasharray:none;
+  opacity:.6;
+}
+.aviation-meteogram-wind-gust-line.aviation-meteogram-line-forecast{
+  stroke:#ffd36b;
+  stroke-dasharray:7 4 2 4;
+  opacity:.56;
+}
+.aviation-meteogram-wind-sustained-marker,
+.aviation-meteogram-wind-gust-marker{
+  pointer-events:none;
+  stroke:#050909;
+  stroke-width:1.2;
+}
+.aviation-meteogram-wind-sustained-marker{fill:#32d8eb}
+.aviation-meteogram-wind-gust-marker{fill:#ffbf32}
+.aviation-meteogram-wind-speed-sample-forecast .aviation-meteogram-wind-sustained-marker,
+.aviation-meteogram-wind-speed-sample-forecast .aviation-meteogram-wind-gust-marker{opacity:.62}
+.aviation-meteogram-wind-speed-hit{
+  fill:transparent;
+  pointer-events:all;
+  cursor:help;
+}
+.aviation-meteogram-wind-speed-sample:focus{outline:none}
+.aviation-meteogram-wind-speed-sample:focus-visible .aviation-meteogram-wind-speed-hit{
+  fill:rgba(34,211,238,.08);
+  stroke:#fff;
+  stroke-width:1.5;
+}
+
+.aviation-meteogram-wind-tooltip{
+  position:absolute;
+  z-index:8;
+  box-sizing:border-box;
+  padding:6px 8px;
+  border:1px solid #35dfe9;
+  border-radius:5px;
+  background:rgba(3,12,13,.96);
+  box-shadow:0 4px 16px rgba(0,0,0,.72);
+  color:#eafffc;
+  white-space:pre-line;
+  overflow-wrap:anywhere;
+  pointer-events:none;
+  font:800 10px/1.35 Consolas,"Courier New",monospace;
+}
+.aviation-meteogram-wind-tooltip[hidden]{display:none}
 
 .aviation-meteogram-wind-arrow{
   fill:none;
@@ -508,6 +597,7 @@
     border-color:#000!important;
   }
   body.aviation-lookup-printing .aviation-meteogram-controls{display:none!important}
+  body.aviation-lookup-printing .aviation-meteogram-wind-tooltip{display:none!important}
   body.aviation-lookup-printing .aviation-meteogram-scroll{overflow:visible!important}
   body.aviation-lookup-printing .aviation-meteogram-sticky-labels{display:none!important}
   body.aviation-lookup-printing .aviation-meteogram-stage>.aviation-meteogram-svg{position:static!important}
