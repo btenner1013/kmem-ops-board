@@ -28,6 +28,7 @@ const METEOGRAM_ROWS = Object.freeze({
 const MAX_CONNECTOR_GAP_MS = 2.5 * 60 * 60 * 1000;
 const CLOUD_LABEL_MIN_GAP_PX = 15;
 const CLOUD_VISUAL_HEIGHT_PX = Object.freeze({ FEW: 18, SCT: 22, BKN: 28, OVC: 31, VV: 36 });
+export const METEOGRAM_CLOUD_AXIS_WIDTH = 54;
 const ROW_LABEL_TEXT_X = 45;
 const ROW_LABEL_RIGHT_PADDING = 10;
 const ROW_LABEL_MAX_WIDTH = 220;
@@ -369,7 +370,11 @@ function rowLabel({ key, top, bottom, icon, title, unit, titleLines = [title], u
   </g>`;
 }
 
-export function meteogramDimensions(timelineOrCount, viewportWidth, { extraTimes = [], labelWidth: requestedLabelWidth = null } = {}) {
+export function meteogramDimensions(timelineOrCount, viewportWidth, {
+  extraTimes = [],
+  labelWidth: requestedLabelWidth = null,
+  pixelsPerHour: requestedPixelsPerHour = null,
+} = {}) {
   const safeViewportWidth = Math.max(320, Number(viewportWidth) || 1100);
   const defaultLabelWidth = safeViewportWidth < 600 ? 132 : 154;
   const hasRequestedLabelWidth = requestedLabelWidth !== null
@@ -398,7 +403,13 @@ export function meteogramDimensions(timelineOrCount, viewportWidth, { extraTimes
   const fillPixelsPerHour = spanHours > 0
     ? (safeViewportWidth - labelWidth - minimumPixelsPerHour) / spanHours
     : minimumPixelsPerHour;
-  const pixelsPerHour = clamp(Math.max(fillPixelsPerHour, densityPixelsPerHour), minimumPixelsPerHour, 200);
+  const hasRequestedPixelsPerHour = requestedPixelsPerHour !== null
+    && requestedPixelsPerHour !== undefined
+    && requestedPixelsPerHour !== ""
+    && Number.isFinite(Number(requestedPixelsPerHour));
+  const pixelsPerHour = hasRequestedPixelsPerHour
+    ? clamp(Number(requestedPixelsPerHour), 40, 200)
+    : clamp(Math.max(fillPixelsPerHour, densityPixelsPerHour), minimumPixelsPerHour, 200);
   const columnWidth = clamp(pixelsPerHour, minimumPixelsPerHour, 118);
   const timeScale = pixelsPerHour / (60 * 60 * 1000);
   const timelineWidth = spanHours * pixelsPerHour;
@@ -441,7 +452,27 @@ function rowLabelsMarkup(settings, hasForecast = false, labelLayout = null) {
   return layout.rows.map(rowLabel).join("");
 }
 
-export function buildMeteogramStickyLabelsMarkup(settings, dimensions, hasForecast = false, labelLayout = null, windSpeedGeometry = null) {
+function cloudAltitudeAxisMarkup(cloudScale, labelWidth, { sticky = false } = {}) {
+  if (!cloudScale?.ticks?.length) return "";
+  const boundary = labelWidth + METEOGRAM_CLOUD_AXIS_WIDTH;
+  const ticks = meteogramCloudTickLayout(cloudScale.ticks, cloudScale.maximumFt);
+  return `<g class="aviation-meteogram-cloud-axis${sticky ? " aviation-meteogram-cloud-axis-sticky" : ""}" data-axis-start="${labelWidth}" data-axis-end="${boundary}" data-axis-maximum-ft="${cloudScale.maximumFt}">
+    <rect x="${labelWidth}" y="${METEOGRAM_ROWS.clouds.top}" width="${METEOGRAM_CLOUD_AXIS_WIDTH}" height="${METEOGRAM_ROWS.clouds.bottom - METEOGRAM_ROWS.clouds.top}"/>
+    ${ticks.map(({ value, y, visible }) => visible ? `<g data-cloud-axis-ft="${value}" data-cloud-axis-y="${y.toFixed(1)}">
+      <line x1="${boundary - 6}" y1="${y.toFixed(1)}" x2="${boundary}" y2="${y.toFixed(1)}"/>
+      <text x="${labelWidth + 4}" y="${(y - 2).toFixed(1)}">${escapeMarkup(value.toLocaleString("en-US"))} FT</text>
+    </g>` : "").join("")}
+  </g>`;
+}
+
+export function buildMeteogramStickyLabelsMarkup(
+  settings,
+  dimensions,
+  hasForecast = false,
+  labelLayout = null,
+  windSpeedGeometry = null,
+  cloudScale = null,
+) {
   const horizontalLines = Object.values(METEOGRAM_ROWS).map((row) => `<line class="aviation-meteogram-grid-line" x1="0" y1="${row.bottom}" x2="${dimensions.labelWidth}" y2="${row.bottom}"/>`).join("");
   const windAxisMarkup = windSpeedGeometry?.ticks?.length
     ? `<g class="aviation-meteogram-wind-axis-sticky">
@@ -455,6 +486,7 @@ export function buildMeteogramStickyLabelsMarkup(settings, dimensions, hasForeca
     <line class="aviation-meteogram-label-divider" x1="${dimensions.labelWidth - 1}" y1="0" x2="${dimensions.labelWidth - 1}" y2="${dimensions.height}"/>
     ${rowLabelsMarkup(settings, hasForecast, labelLayout)}
     ${windAxisMarkup}
+    ${cloudAltitudeAxisMarkup(cloudScale, dimensions.labelWidth, { sticky: true })}
   </svg>`;
 }
 
@@ -751,7 +783,10 @@ function intervalExtraTimes(model) {
   return [
     ...quantitativeIntervals(model, "PRECIP"),
     ...quantitativeIntervals(model, "SNOW"),
-  ].flatMap((interval) => [interval.validStartZ, interval.validEndZ]).filter(Boolean);
+  ].flatMap((interval) => [
+    interval.printRenderStartZ || interval.validStartZ,
+    interval.printRenderEndZ || interval.validEndZ,
+  ]).filter(Boolean);
 }
 
 function intervalAccessibleValue(interval, station) {
@@ -929,7 +964,7 @@ export function buildMeteogramAccessibleTableMarkup(model, settings = {}) {
   </table>`;
 }
 
-export function meteogramTemperatureGeometry(model, settings = {}, dimensions = null) {
+export function meteogramTemperatureGeometry(model, settings = {}, dimensions = null, { range: requestedRange = null } = {}) {
   const timeline = Array.isArray(model?.timeline) && model.timeline.length
     ? model.timeline
     : Array.isArray(model?.observations) ? model.observations : [];
@@ -944,10 +979,16 @@ export function meteogramTemperatureGeometry(model, settings = {}, dimensions = 
       convertTemperature(extreme.valueC, normalizedSettings.temperatureUnit)
     )),
   ]).filter(Number.isFinite);
-  const range = usableRange(values, {
+  const calculatedRange = usableRange(values, {
     minimumSpan: normalizedSettings.temperatureUnit === "F" ? 8 : 5,
     padding: 0.12,
   });
+  const range = requestedRange
+    && Number.isFinite(Number(requestedRange.minimum))
+    && Number.isFinite(Number(requestedRange.maximum))
+    && Number(requestedRange.maximum) > Number(requestedRange.minimum)
+    ? { minimum: Number(requestedRange.minimum), maximum: Number(requestedRange.maximum) }
+    : calculatedRange;
   const top = METEOGRAM_ROWS.tempLine.top + 11;
   const bottom = METEOGRAM_ROWS.dewLine.bottom - 11;
   const pointsFor = (field) => timeline.map((observation, index) => {
@@ -983,7 +1024,7 @@ function windSpeedBucketIsPlottable(observation) {
   return !isForecast(observation) || forecastBucketHasTaf(observation);
 }
 
-export function meteogramWindSpeedGeometry(model, settings = {}, dimensions = null) {
+export function meteogramWindSpeedGeometry(model, settings = {}, dimensions = null, { maximumKt: requestedMaximumKt = null } = {}) {
   const timeline = Array.isArray(model?.timeline) && model.timeline.length
     ? model.timeline
     : Array.isArray(model?.observations) ? model.observations : [];
@@ -999,7 +1040,10 @@ export function meteogramWindSpeedGeometry(model, settings = {}, dimensions = nu
   const maximumValueKt = rawValuesKt.length ? Math.max(...rawValuesKt) : 0;
   const requiredUpperKt = Math.max(10, maximumValueKt * 1.12);
   const stepKt = niceWindStep(requiredUpperKt / 3);
-  const maximumKt = Math.max(10, Math.ceil(requiredUpperKt / stepKt) * stepKt);
+  const calculatedMaximumKt = Math.max(10, Math.ceil(requiredUpperKt / stepKt) * stepKt);
+  const maximumKt = Number.isFinite(Number(requestedMaximumKt)) && Number(requestedMaximumKt) >= calculatedMaximumKt
+    ? Number(requestedMaximumKt)
+    : calculatedMaximumKt;
   const range = { minimum: 0, maximum: maximumKt };
   const top = METEOGRAM_ROWS.windSpeed.top + 9;
   const bottom = METEOGRAM_ROWS.windSpeed.bottom - 8;
@@ -1059,16 +1103,57 @@ function cloudLayersForObservation(observation) {
   return [...prevailing, ...conditional];
 }
 
-function cloudScaleDefinition(timeline) {
+export function meteogramCloudScaleDefinition(timeline, { maximumFt: requestedMaximumFt = null } = {}) {
   const reportedHeights = timeline.flatMap(cloudLayersForObservation)
     .filter((layer) => layer.heightFt !== null && layer.heightFt !== undefined && layer.heightFt !== "")
     .map((layer) => Number(layer.heightFt))
     .filter((height) => Number.isFinite(height) && height >= 0);
   const highest = Math.max(10000, ...reportedHeights);
-  const maximumFt = Math.max(10000, Math.ceil(highest / 5000) * 5000);
+  const calculatedMaximumFt = Math.max(10000, Math.ceil(highest / 5000) * 5000);
+  const maximumFt = Number.isFinite(Number(requestedMaximumFt)) && Number(requestedMaximumFt) >= calculatedMaximumFt
+    ? Number(requestedMaximumFt)
+    : calculatedMaximumFt;
   const ticks = [500, 1000, 2000, 3000, 5000, 10000];
   for (let value = 15000; value <= maximumFt; value += 5000) ticks.push(value);
   return { maximumFt, ticks: ticks.filter((value) => value <= maximumFt) };
+}
+
+function validScaleRange(value) {
+  return value
+    && Number.isFinite(Number(value.minimum))
+    && Number.isFinite(Number(value.maximum))
+    && Number(value.maximum) > Number(value.minimum)
+    ? { minimum: Number(value.minimum), maximum: Number(value.maximum) }
+    : null;
+}
+
+export function meteogramSelectedRangeScales(model = {}, settings = {}) {
+  const timeline = Array.isArray(model?.timeline) && model.timeline.length
+    ? model.timeline
+    : Array.isArray(model?.observations) ? model.observations : [];
+  const normalizedSettings = normalizedMeteogramSettings(settings, model);
+  const pressureRange = usableRange(timeline.map((observation) => observation.pressureInHg), {
+    minimumSpan: 0.08,
+    padding: 0.18,
+  });
+  const visibilityRange = usableRange(timeline.map((observation) => observation.visibilitySm), {
+    minimumSpan: 3,
+    padding: 0.05,
+  });
+  visibilityRange.minimum = Math.min(0, visibilityRange.minimum);
+  const intervalMaximum = (type) => Math.max(
+    0.01,
+    ...quantitativeIntervals(model, type).map((interval) => finiteAmount(interval.amountIn) || 0),
+  );
+  return {
+    temperatureRange: meteogramTemperatureGeometry(model, normalizedSettings).range,
+    windMaximumKt: meteogramWindSpeedGeometry(model, normalizedSettings).range.maximum,
+    cloudMaximumFt: meteogramCloudScaleDefinition(timeline).maximumFt,
+    pressureRange,
+    visibilityRange,
+    precipMaximumIn: intervalMaximum("PRECIP"),
+    snowMaximumIn: intervalMaximum("SNOW"),
+  };
 }
 
 export function meteogramCloudBaseY(heightFt, maximumFt = 10000) {
@@ -1148,7 +1233,7 @@ export function meteogramCloudLabelLayout(layers, maximumFt = 10000, {
   return layout;
 }
 
-function cloudShapeMarkup(layer, width, baseY) {
+function cloudShapeMarkup(layer, width, baseY, idPrefix = "aviationMeteogram") {
   const cover = String(layer?.cover || "SCT").toUpperCase();
   const height = cloudVisualHeight(cover);
   const scaleX = Math.max(18, Number(width) || 18) / 104;
@@ -1178,8 +1263,9 @@ function cloudShapeMarkup(layer, width, baseY) {
   const veil = cover === "VV"
     ? `<path class="aviation-meteogram-cloud-vv-veil" vector-effect="non-scaling-stroke" d="M-32-20C-36-14-27-9-32-2M-10-24C-15-18-5-12-10-4M12-22C7-16 17-10 12-2M34-18C29-13 39-8 34-1"/>`
     : "";
+  const fillId = cover === "VV" ? `${idPrefix}CloudVerticalFill` : `${idPrefix}CloudFill`;
   return `<g class="aviation-meteogram-cloud-form aviation-meteogram-cloud-form-${cover}" data-cloud-form="${cover}" aria-hidden="true" transform="translate(0 ${baseY.toFixed(1)}) scale(${scaleX.toFixed(4)} ${scaleY.toFixed(4)})">
-    ${paths.map((path) => `<path class="aviation-meteogram-cloud-body" vector-effect="non-scaling-stroke" d="${path}"/>`).join("")}${veil}
+    ${paths.map((path) => `<path class="aviation-meteogram-cloud-body" vector-effect="non-scaling-stroke" style="fill:url(#${fillId})" d="${path}"/>`).join("")}${veil}
   </g>`;
 }
 
@@ -1244,24 +1330,38 @@ export function meteogramCloudColumnLabelMask(timeline, xPositions, minimumWidth
   return visible;
 }
 
-export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 1100, labelLayout: requestedLabelLayout = null } = {}) {
+export function buildMeteogramSvgMarkup(model, settings = {}, {
+  viewportWidth = 1100,
+  labelLayout: requestedLabelLayout = null,
+  timeBounds = null,
+  scaleOverrides = null,
+  idPrefix: requestedIdPrefix = "aviationMeteogram",
+  pixelsPerHour = null,
+  printMode = false,
+} = {}) {
   const timeline = Array.isArray(model?.timeline) && model.timeline.length
     ? model.timeline
     : Array.isArray(model?.observations) ? model.observations : [];
-  if (!timeline.length) return "";
+  const boundedTimes = [timeBounds?.startZ, timeBounds?.endZ].filter(Boolean);
+  const intervalTimes = intervalExtraTimes(model);
+  if (!timeline.length && !intervalTimes.length) return "";
   const normalizedSettings = normalizedMeteogramSettings(settings, model);
   const observedCount = timeline.findIndex(isForecast) < 0 ? timeline.length : timeline.findIndex(isForecast);
-  const hasForecast = observedCount < timeline.length;
+  const hasForecastIntervals = [model?.forecastPrecipitationIntervals, model?.forecastSnowfallIntervals]
+    .some((values) => Array.isArray(values) && values.length > 0);
+  const hasForecast = observedCount < timeline.length || hasForecastIntervals;
   const labelLayout = requestedLabelLayout || meteogramRowLabelLayout(normalizedSettings, viewportWidth, {
     hasForecast,
     compact: Number(viewportWidth) <= 768,
   });
   const dimensions = meteogramDimensions(timeline, viewportWidth, {
-    extraTimes: intervalExtraTimes(model),
+    extraTimes: [...intervalTimes, ...boundedTimes],
     labelWidth: labelLayout.width,
+    pixelsPerHour,
   });
   const { labelWidth, columnWidth, width, height, xPositions, cellBounds } = dimensions;
-  const hasValidTimelineTime = timeline.some((observation) => Number.isFinite(Date.parse(timelineTime(observation))));
+  const hasValidTimelineTime = timeline.some((observation) => Number.isFinite(Date.parse(timelineTime(observation))))
+    || boundedTimes.some((value) => Number.isFinite(Date.parse(value)));
   const solarEvents = hasValidTimelineTime
     ? meteogramSolarEvents(new Date(dimensions.firstTime), new Date(dimensions.lastTime), { station: model.station })
     : [];
@@ -1270,33 +1370,51 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
   const cellWidthAt = (index) => Math.max(0, cellBounds[index].right - cellBounds[index].left);
   const visualLabelMask = meteogramVisualLabelMask(timeline, xPositions);
   const forecastSources = meteogramForecastSourceState(model);
+  const dividerTime = model.dividerZ || timeline[observedCount]?.validZ;
+  const dividerTimestamp = Date.parse(dividerTime);
   const dividerX = hasForecast
-    ? dimensions.xForTime(model.dividerZ || timeline[observedCount]?.validZ)
+    ? dimensions.xForTime(dividerTime)
     : width;
+  const showNowDivider = hasForecast && (
+    !timeBounds
+    || !Number.isFinite(dividerTimestamp)
+    || (dividerTimestamp >= Date.parse(timeBounds.startZ) && dividerTimestamp < Date.parse(timeBounds.endZ))
+  );
+  const idPrefix = String(requestedIdPrefix || "aviationMeteogram").replace(/[^A-Za-z0-9_-]/g, "") || "aviationMeteogram";
 
-  const temperatureGeometry = meteogramTemperatureGeometry(model, normalizedSettings, dimensions);
+  const temperatureGeometry = meteogramTemperatureGeometry(model, normalizedSettings, dimensions, {
+    range: scaleOverrides?.temperatureRange,
+  });
   const tempPoints = temperatureGeometry.temperaturePoints;
   const dewPoints = temperatureGeometry.dewPointPoints;
-  const windSpeedGeometry = meteogramWindSpeedGeometry(model, normalizedSettings, dimensions);
+  const windSpeedGeometry = meteogramWindSpeedGeometry(model, normalizedSettings, dimensions, {
+    maximumKt: scaleOverrides?.windMaximumKt,
+  });
 
-  const pressureRange = usableRange(timeline.map((observation) => observation.pressureInHg), { minimumSpan: 0.08, padding: 0.18 });
+  const pressureRange = validScaleRange(scaleOverrides?.pressureRange)
+    || usableRange(timeline.map((observation) => observation.pressureInHg), { minimumSpan: 0.08, padding: 0.18 });
   const pressurePoints = timeline.map((observation, index) => {
     const y = scaledY(observation.pressureInHg, pressureRange, rows.pressure.top + 34, rows.pressure.bottom - 12);
     return y === null ? null : { x: xAt(index), y };
   });
 
-  const visibilityRange = usableRange(timeline.map((observation) => observation.visibilitySm), { minimumSpan: 3, padding: 0.05 });
-  visibilityRange.minimum = Math.min(0, visibilityRange.minimum);
+  const visibilityRange = validScaleRange(scaleOverrides?.visibilityRange)
+    || usableRange(timeline.map((observation) => observation.visibilitySm), { minimumSpan: 3, padding: 0.05 });
+  if (!validScaleRange(scaleOverrides?.visibilityRange)) visibilityRange.minimum = Math.min(0, visibilityRange.minimum);
   const visibilityPoints = timeline.map((observation, index) => {
     const y = scaledY(observation.visibilitySm, visibilityRange, rows.visibility.top + 35, rows.visibility.bottom - 11);
     return y === null ? null : { x: xAt(index), y };
   });
 
   const horizontalLines = Object.values(rows).map((row) => `<line class="aviation-meteogram-grid-line" x1="0" y1="${row.bottom}" x2="${width}" y2="${row.bottom}"/>`).join("");
+  const boundaryXs = !timeline.length && boundedTimes.length
+    ? boundedTimes.map((value) => dimensions.xForTime(value))
+    : [];
   const verticalLines = timeline.map((_, index) => {
     const x = xAt(index);
     return `<line class="aviation-meteogram-time-line" x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="${height}"/>`;
-  }).join("") + `<line class="aviation-meteogram-time-line" x1="${width.toFixed(1)}" y1="0" x2="${width.toFixed(1)}" y2="${height}"/>`;
+  }).join("") + boundaryXs.map((x) => `<line class="aviation-meteogram-time-line aviation-meteogram-time-boundary" x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="${height}"/>`).join("")
+    + `<line class="aviation-meteogram-time-line" x1="${width.toFixed(1)}" y1="0" x2="${width.toFixed(1)}" y2="${height}"/>`;
   const solarLineMarkup = solarEvents.map((event) => {
     const x = dimensions.xForTime(event.timestamp);
     const title = solarEventAccessibleLabel(event, model.station);
@@ -1325,6 +1443,16 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
       <text class="aviation-meteogram-time-zone" x="0" y="${atDivider ? 49 : 39}">${escapeMarkup(showDate ? `${time.date}${normalizedSettings.timeMode === "Z" ? " UTC" : ` ${time.zone}`}` : normalizedSettings.timeMode === "Z" ? "UTC" : time.zone)}</text>` : ""}
     </g>`;
   }).join("");
+  const boundaryTimeMarkup = !timeline.length
+    ? boundedTimes.map((value, index) => {
+      const time = formatMeteogramTime(value, { mode: normalizedSettings.timeMode, station: model.station });
+      const x = dimensions.xForTime(value);
+      return `<g class="aviation-meteogram-time aviation-meteogram-time-boundary-label" transform="translate(${x.toFixed(1)} 0)">
+        <text x="0" y="22">${escapeMarkup(compactTimeText(time, normalizedSettings.timeMode))}</text>
+        <text class="aviation-meteogram-time-zone" x="0" y="39">${escapeMarkup(`${time.date}${normalizedSettings.timeMode === "Z" ? " UTC" : ` ${time.zone}`}${index ? " END" : " START"}`)}</text>
+      </g>`;
+    }).join("")
+    : "";
 
   const weatherMarkup = timeline.map((observation, index) => {
     const bounds = cellBounds[index];
@@ -1387,7 +1515,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
     const bounds = cellBounds[index];
     const tooltip = windSpeedTooltipText(observation, normalizedSettings);
     const forecastClass = isForecast(observation) ? " aviation-meteogram-wind-speed-sample-forecast" : " aviation-meteogram-wind-speed-sample-observed";
-    return `<g class="aviation-meteogram-wind-speed-sample${forecastClass}" data-wind-speed-sample="${index}" data-tooltip-x="${xAt(index).toFixed(1)}" data-wind-tooltip="${multilineAttribute(tooltip)}" tabindex="0" role="img" aria-label="${escapeMarkup(tooltip.replace(/\n/g, " · "))}" aria-describedby="aviationMeteogramWindTooltip" transform="translate(${xAt(index).toFixed(1)} 0)">
+    return `<g class="aviation-meteogram-wind-speed-sample${forecastClass}" data-wind-speed-sample="${index}" data-tooltip-x="${xAt(index).toFixed(1)}" data-wind-tooltip="${multilineAttribute(tooltip)}"${printMode ? "" : ` tabindex="0" role="img" aria-label="${escapeMarkup(tooltip.replace(/\n/g, " · "))}" aria-describedby="${idPrefix}WindTooltip"`} transform="translate(${xAt(index).toFixed(1)} 0)">
       <title>${escapeMarkup(tooltip)}</title>
       <rect class="aviation-meteogram-wind-speed-hit" x="${(bounds.left - xAt(index)).toFixed(1)}" y="${rows.windSpeed.top}" width="${cellWidthAt(index).toFixed(1)}" height="${rows.windSpeed.bottom - rows.windSpeed.top}"/>
       ${sustained ? `<circle class="aviation-meteogram-wind-sustained-marker" data-speed-kt="${sustained.valueKt}" cx="0" cy="${sustained.y.toFixed(1)}" r="${isForecast(observation) ? "2.1" : "2.7"}"/>` : ""}
@@ -1403,23 +1531,39 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
 
   const pressureValuesMarkup = timeline.map((observation, index) => visualLabelMask[index] ? `<text class="aviation-meteogram-pressure-value${isForecast(observation) ? " aviation-meteogram-value-forecast" : ""}" x="${xAt(index).toFixed(1)}" y="${rows.pressure.top + 23}">${escapeMarkup(observation.pressureInHg === null ? "—" : fixed(observation.pressureInHg, 2))}</text>` : "").join("");
 
-  const cloudScale = cloudScaleDefinition(timeline);
-  const cloudColumnLabelMask = meteogramCloudColumnLabelMask(timeline, xPositions);
-  const cloudTickMarkup = meteogramCloudTickLayout(cloudScale.ticks, cloudScale.maximumFt).map(({ value: tick, y, visible }) => {
-    return `<g class="aviation-meteogram-cloud-altitude-tick">
-      <line x1="${labelWidth}" y1="${y.toFixed(1)}" x2="${width}" y2="${y.toFixed(1)}"/>
-      ${visible ? `<text x="${labelWidth + 4}" y="${(y - 2).toFixed(1)}">${escapeMarkup(tick.toLocaleString("en-US"))} FT</text>` : ""}
-    </g>`;
-  }).join("");
-  const cloudMarkup = timeline.map((observation, index) => {
+  const cloudScale = meteogramCloudScaleDefinition(timeline, {
+    maximumFt: scaleOverrides?.cloudMaximumFt,
+  });
+  const cloudAxisBoundary = labelWidth + METEOGRAM_CLOUD_AXIS_WIDTH;
+  const cloudTickLayout = meteogramCloudTickLayout(cloudScale.ticks, cloudScale.maximumFt);
+  const cloudTickGridMarkup = cloudTickLayout.map(({ value: tick, y }) => `<g class="aviation-meteogram-cloud-altitude-tick" data-cloud-grid-ft="${tick}">
+    <line x1="${cloudAxisBoundary}" y1="${y.toFixed(1)}" x2="${width}" y2="${y.toFixed(1)}"/>
+  </g>`).join("");
+  const cloudTextPositions = timeline.map((observation, index) => {
+    const labelHalfWidth = cloudColumnLabelWidth(observation, 56) / 2;
+    return clamp(
+      Math.max(xAt(index), cloudAxisBoundary + labelHalfWidth + 4),
+      cloudAxisBoundary + labelHalfWidth + 4,
+      Math.max(cloudAxisBoundary + labelHalfWidth + 4, width - labelHalfWidth - 4),
+    );
+  });
+  const cloudColumnLabelMask = meteogramCloudColumnLabelMask(timeline, cloudTextPositions);
+  const cloudArtworkMarkup = [];
+  const cloudTextMarkup = [];
+  timeline.forEach((observation, index) => {
     const x = xAt(index);
+    const textX = cloudTextPositions[index];
     const ceilingText = visualCeilingLabel(observation.clouds);
     const layers = cloudLayersForObservation(observation);
     const knownLayers = layers.filter((layer) => layer.heightFt !== null && layer.heightFt !== undefined && layer.heightFt !== "" && Number.isFinite(Number(layer.heightFt)));
     const unknownLayers = layers.filter((layer) => layer.heightFt === null || layer.heightFt === undefined || layer.heightFt === "" || !Number.isFinite(Number(layer.heightFt)));
     const labelLayout = meteogramCloudLabelLayout(knownLayers, cloudScale.maximumFt);
-    const availableWidth = Math.min(columnWidth, cellWidthAt(index)) * 0.88;
-    const layersMarkup = knownLayers.map((layer, layerIndex) => {
+    const nominalWidth = Math.min(columnWidth, cellWidthAt(index)) * 0.88;
+    const artX = x;
+    const availableWidth = Math.max(16, Math.min(nominalWidth, (width - x) * 2));
+    const artLayers = [];
+    const textLayers = [];
+    knownLayers.forEach((layer, layerIndex) => {
       const baseY = meteogramCloudBaseY(layer.heightFt, cloudScale.maximumFt);
       const raw = layer.raw || `${layer.cover}${String(Math.round(layer.heightFt / 100)).padStart(3, "0")}${layer.convective || ""}`;
       const isCeiling = cloudLayerIsCeiling(layer);
@@ -1427,21 +1571,25 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
       const coverageWidth = { FEW: 0.62, SCT: 0.78, BKN: 0.94, OVC: 1, VV: 0.9 }[String(layer.cover || "").toUpperCase()] || 0.72;
       const width = availableWidth * coverageWidth * (layer.conditional ? 0.9 : 1);
       const label = labelLayout[layerIndex];
-      return `<g class="${className}" data-base-ft="${Number(layer.heightFt)}">
+      artLayers.push(`<g class="${className}" data-base-ft="${Number(layer.heightFt)}">
         <title>${escapeMarkup(`${layer.conditionalLabel ? `${layer.conditionalLabel} ` : ""}${raw} base ${Number(layer.heightFt).toLocaleString("en-US")} FT AGL${isCeiling ? " · CEILING" : ""} · cloud top not reported`)}</title>
-        ${cloudShapeMarkup(layer, width, baseY)}
+        ${cloudShapeMarkup(layer, width, baseY, idPrefix)}
         <line class="aviation-meteogram-cloud-base-line" x1="${(-width / 2).toFixed(1)}" y1="${baseY.toFixed(1)}" x2="${(width / 2).toFixed(1)}" y2="${baseY.toFixed(1)}"/>
-        ${cloudColumnLabelMask[index] && label?.visible ? `<text class="aviation-meteogram-cloud-layer-label${isCeiling ? " aviation-meteogram-cloud-layer-label-ceiling" : ""}" data-cloud-label="${escapeMarkup(raw)}" x="0" y="${label.y.toFixed(1)}">${escapeMarkup(`${layer.conditionalLabel ? `${layer.conditionalLabel} ` : ""}${raw}`)}</text>` : ""}
-      </g>`;
-    }).join("");
+      </g>`);
+      if (cloudColumnLabelMask[index] && label?.visible) {
+        textLayers.push(`<g class="${className}" data-base-ft="${Number(layer.heightFt)}"><text class="aviation-meteogram-cloud-layer-label${isCeiling ? " aviation-meteogram-cloud-layer-label-ceiling" : ""}" data-cloud-label="${escapeMarkup(raw)}" x="0" y="${label.y.toFixed(1)}">${escapeMarkup(`${layer.conditionalLabel ? `${layer.conditionalLabel} ` : ""}${raw}`)}</text></g>`);
+      }
+    });
     const unknownMarkup = cloudColumnLabelMask[index] && unknownLayers.length
       ? `<text class="aviation-meteogram-cloud-unknown" x="0" y="${rows.clouds.top + 16}">${escapeMarkup(unknownLayers.map((layer) => `${layer.conditionalLabel ? `${layer.conditionalLabel} ` : ""}${layer.raw || `${layer.cover}///`}`).join(" · "))} BASE UNKNOWN</text>`
       : "";
-    return `<g class="aviation-meteogram-cloud${isForecast(observation) ? " aviation-meteogram-cloud-forecast" : ""}" transform="translate(${x.toFixed(1)} 0)">
-      ${layersMarkup}${unknownMarkup}
+    const forecastClass = isForecast(observation) ? " aviation-meteogram-cloud-forecast" : "";
+    cloudArtworkMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" transform="translate(${artX.toFixed(1)} 0)">${artLayers.join("")}</g>`);
+    cloudTextMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-text-x="${textX.toFixed(1)}" transform="translate(${textX.toFixed(1)} 0)">
+      ${textLayers.join("")}${unknownMarkup}
       ${cloudColumnLabelMask[index] ? `<text class="aviation-meteogram-ceiling-value" x="0" y="${rows.clouds.bottom - 9}">${escapeMarkup(ceilingText)}</text>` : ""}
-    </g>`;
-  }).join("");
+    </g>`);
+  });
 
   const visibilityValuesMarkup = timeline.map((observation, index) => {
     const conditionalVisibility = forecastOverlays(observation).flatMap((entry) => {
@@ -1460,27 +1608,38 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
   const precipitationIntervals = quantitativeIntervals(model, "PRECIP");
   const snowfallIntervals = quantitativeIntervals(model, "SNOW");
   const intervalBarsMarkup = (intervals, row, type) => {
-    const maximum = Math.max(0.01, ...intervals.map((interval) => interval.amountIn || 0));
+    const requestedMaximum = type === "PRECIP"
+      ? Number(scaleOverrides?.precipMaximumIn)
+      : Number(scaleOverrides?.snowMaximumIn);
+    const calculatedMaximum = Math.max(0.01, ...intervals.map((interval) => interval.amountIn || 0));
+    const maximum = Number.isFinite(requestedMaximum) && requestedMaximum >= calculatedMaximum
+      ? requestedMaximum
+      : calculatedMaximum;
     const maximumBarHeight = Math.max(4, row.bottom - row.top - 30);
     return intervals.map((interval) => {
-      const endX = interval.validEndZ ? dimensions.xForTime(interval.validEndZ) : null;
-      const startX = interval.validStartZ ? dimensions.xForTime(interval.validStartZ) : null;
+      const renderStartZ = interval.printRenderStartZ || interval.validStartZ;
+      const renderEndZ = interval.printRenderEndZ || interval.validEndZ;
+      const endX = renderEndZ ? dimensions.xForTime(renderEndZ) : null;
+      const startX = renderStartZ ? dimensions.xForTime(renderStartZ) : null;
       if (!Number.isFinite(endX)) return "";
       const amount = finiteAmount(interval.amountIn);
       const centerX = Number.isFinite(startX) ? (startX + endX) / 2 : endX;
       const width = Number.isFinite(startX) ? Math.max(1, endX - startX) : 0;
       const barBottom = row.bottom - 5;
       const barHeight = amount === null || amount === 0 ? 0 : clamp((amount / maximum) * maximumBarHeight, 1.5, maximumBarHeight);
-      const classes = `aviation-meteogram-interval aviation-meteogram-${type.toLowerCase()}-interval${interval.kind === "FORECAST" ? " aviation-meteogram-interval-forecast" : " aviation-meteogram-interval-observed"}`;
-      const value = interval.trace ? "T" : amountDisplay(amount, { compact: true });
+      const classes = `aviation-meteogram-interval aviation-meteogram-${type.toLowerCase()}-interval${interval.kind === "FORECAST" ? " aviation-meteogram-interval-forecast" : " aviation-meteogram-interval-observed"}${interval.printClipped ? " aviation-meteogram-interval-print-clipped" : ""}`;
+      const value = interval.trace ? `T${interval.printClipped ? "†" : ""}` : `${amountDisplay(amount, { compact: true })}${interval.printClipped ? "†" : ""}`;
       const typeMeaning = type === "SNOW"
         ? interval.kind === "FORECAST" ? "FORECAST SNOWFALL" : "SNOW DEPTH INCREASE DURING PAST HOUR"
         : "PRECIP";
       const validity = interval.validStartZ && interval.validEndZ
         ? compactIntervalLabel(interval.validStartZ, interval.validEndZ, model.station)
         : "START UNAVAILABLE";
-      return `<g class="${classes}" data-valid-start="${escapeMarkup(interval.validStartZ || "")}" data-valid-end="${escapeMarkup(interval.validEndZ || "")}" data-amount-in="${amount === null ? "" : amount}">
-        <title>${escapeMarkup(`${typeMeaning} ${interval.trace ? "TRACE" : `${amountDisplay(amount)} IN`} · ${validity} · ${interval.source || interval.sourceToken || "reported source"}`)}</title>
+      const visibleSegment = interval.printClipped
+        ? ` · VISIBLE PRINT SEGMENT ${compactIntervalLabel(renderStartZ, renderEndZ, model.station)}; AMOUNT REMAINS THE FULL UNSPLIT SOURCE INTERVAL TOTAL`
+        : "";
+      return `<g class="${classes}" data-valid-start="${escapeMarkup(interval.validStartZ || "")}" data-valid-end="${escapeMarkup(interval.validEndZ || "")}" data-render-start="${escapeMarkup(renderStartZ || "")}" data-render-end="${escapeMarkup(renderEndZ || "")}" data-amount-in="${amount === null ? "" : amount}">
+        <title>${escapeMarkup(`${typeMeaning} ${interval.trace ? "TRACE" : `${amountDisplay(amount)} IN`} · SOURCE INTERVAL ${validity}${visibleSegment} · ${interval.source || interval.sourceToken || "reported source"}`)}</title>
         ${barHeight && width ? `<rect class="aviation-meteogram-interval-bar" x="${startX.toFixed(1)}" y="${(barBottom - barHeight).toFixed(1)}" width="${width.toFixed(1)}" height="${barHeight.toFixed(1)}"/>` : amount === 0 && width ? `<line class="aviation-meteogram-interval-zero" x1="${startX.toFixed(1)}" y1="${barBottom}" x2="${endX.toFixed(1)}" y2="${barBottom}"/>` : ""}
         <text class="aviation-meteogram-interval-value" x="${centerX.toFixed(1)}" y="${row.top + 14}">${escapeMarkup(value)}</text>
       </g>`;
@@ -1510,7 +1669,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
   const forecastBackground = hasForecast
     ? `<rect class="aviation-meteogram-forecast-background" x="${dividerX.toFixed(1)}" y="0" width="${Math.max(0, width - dividerX).toFixed(1)}" height="${height}"/>`
     : "";
-  const nowDividerMarkup = hasForecast
+  const nowDividerMarkup = showNowDivider
     ? `<line class="aviation-meteogram-now-divider" x1="${dividerX.toFixed(1)}" y1="0" x2="${dividerX.toFixed(1)}" y2="${height}"/>
       <g class="aviation-meteogram-now-label" transform="translate(${dividerX.toFixed(1)} 0)">
         <rect x="-54" y="2" width="108" height="16" rx="3"/>
@@ -1519,49 +1678,53 @@ export function buildMeteogramSvgMarkup(model, settings = {}, { viewportWidth = 
     : "";
 
   const definitions = `<defs>
-    <clipPath id="aviationMeteogramWindClip"><rect x="${labelWidth}" y="${rows.wind.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.wind.bottom - rows.wind.top}"/></clipPath>
-    <clipPath id="aviationMeteogramWindSpeedClip"><rect x="${labelWidth}" y="${rows.windSpeed.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.windSpeed.bottom - rows.windSpeed.top}"/></clipPath>
-    <clipPath id="aviationMeteogramCloudClip"><rect x="${labelWidth}" y="${rows.clouds.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.clouds.bottom - rows.clouds.top}"/></clipPath>
-    <clipPath id="aviationMeteogramPrecipClip"><rect x="${labelWidth}" y="${rows.precip.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.precip.bottom - rows.precip.top}"/></clipPath>
-    <clipPath id="aviationMeteogramSnowClip"><rect x="${labelWidth}" y="${rows.snow.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.snow.bottom - rows.snow.top}"/></clipPath>
-    <linearGradient id="aviationMeteogramCloudFill" x1="0" y1="0" x2="0" y2="1">
+    <clipPath id="${idPrefix}WindClip"><rect x="${labelWidth}" y="${rows.wind.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.wind.bottom - rows.wind.top}"/></clipPath>
+    <clipPath id="${idPrefix}WindSpeedClip"><rect x="${labelWidth}" y="${rows.windSpeed.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.windSpeed.bottom - rows.windSpeed.top}"/></clipPath>
+    <clipPath id="${idPrefix}CloudArtworkClip"><rect x="${cloudAxisBoundary}" y="${rows.clouds.top}" width="${Math.max(0, width - cloudAxisBoundary)}" height="${rows.clouds.bottom - rows.clouds.top}"/></clipPath>
+    <clipPath id="${idPrefix}CloudTextClip"><rect x="${cloudAxisBoundary}" y="${rows.clouds.top}" width="${Math.max(0, width - cloudAxisBoundary)}" height="${rows.clouds.bottom - rows.clouds.top}"/></clipPath>
+    <clipPath id="${idPrefix}PrecipClip"><rect x="${labelWidth}" y="${rows.precip.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.precip.bottom - rows.precip.top}"/></clipPath>
+    <clipPath id="${idPrefix}SnowClip"><rect x="${labelWidth}" y="${rows.snow.top}" width="${Math.max(0, width - labelWidth)}" height="${rows.snow.bottom - rows.snow.top}"/></clipPath>
+    <linearGradient id="${idPrefix}CloudFill" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#e8f1f2" stop-opacity=".16"/>
       <stop offset=".55" stop-color="#c4d6da" stop-opacity=".52"/>
       <stop offset="1" stop-color="#8eb7c1" stop-opacity=".82"/>
     </linearGradient>
-    <linearGradient id="aviationMeteogramCloudVerticalFill" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#c7b6e8" stop-opacity=".12"/>
-      <stop offset="1" stop-color="#9a84c8" stop-opacity=".7"/>
+    <linearGradient id="${idPrefix}CloudVerticalFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d8e7ea" stop-opacity=".14"/>
+      <stop offset="1" stop-color="#86aeb8" stop-opacity=".72"/>
     </linearGradient>
   </defs>`;
   const solarDescription = String(model.station || "").toUpperCase() === "KMEM"
     ? ` For KMEM, explicit clear-sky columns use calculated daylight or nighttime sun/moon symbols. Subtle SUNRISE and SUNSET lines use KMEM coordinates and the standard apparent-horizon solar definition.${solarEvents.length ? ` Solar events in this displayed domain: ${solarEvents.map((event) => solarEventAccessibleLabel(event, model.station)).join("; ")}.` : " No sunrise or sunset falls inside this displayed domain."}`
     : "";
 
-  return `<svg class="aviation-meteogram-svg" xmlns="${SVG_NS}" width="${width.toFixed(1)}" height="${height}" viewBox="0 0 ${width.toFixed(1)} ${height}" data-label-width="${labelWidth}" role="img" aria-labelledby="aviationMeteogramSvgTitle aviationMeteogramSvgDescription">
-    <title id="aviationMeteogramSvgTitle">${escapeMarkup(model.station)} aviation weather meteogram</title>
-    <desc id="aviationMeteogramSvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Sustained wind and reported gusts use one shared zero-based speed scale; missing gusts are not inferred. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase. Missing values are not inferred.${escapeMarkup(solarDescription)}</desc>
+  return `<svg class="aviation-meteogram-svg${printMode ? " aviation-meteogram-svg-print" : ""}" xmlns="${SVG_NS}" width="${width.toFixed(1)}" height="${height}" viewBox="0 0 ${width.toFixed(1)} ${height}" data-label-width="${labelWidth}" data-cloud-axis-width="${METEOGRAM_CLOUD_AXIS_WIDTH}" role="img" aria-labelledby="${idPrefix}SvgTitle ${idPrefix}SvgDescription">
+    <title id="${idPrefix}SvgTitle">${escapeMarkup(model.station)} aviation weather meteogram</title>
+    <desc id="${idPrefix}SvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Sustained wind and reported gusts use one shared zero-based speed scale; missing gusts are not inferred. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase. Missing values are not inferred.${escapeMarkup(solarDescription)}</desc>
     ${definitions}
     <rect class="aviation-meteogram-background" width="${width.toFixed(1)}" height="${height}"/>
     ${forecastBackground}
     <rect class="aviation-meteogram-label-background" width="${labelWidth}" height="${height}"/>
     ${horizontalLines}${verticalLines}${solarLineMarkup}
     <line class="aviation-meteogram-label-divider" x1="${labelWidth}" y1="0" x2="${labelWidth}" y2="${height}"/>
-    ${weatherMarkup}${timeMarkup}
+    ${weatherMarkup}${timeMarkup}${boundaryTimeMarkup}
     ${spreadMarkup(tempPoints, dewPoints, timeline)}
     <g class="aviation-meteogram-temp-line-row" data-domain-min="${temperatureGeometry.range.minimum}" data-domain-max="${temperatureGeometry.range.maximum}" aria-label="Temperature trend line using shared temperature and dew-point scale">${trendSeriesMarkup(tempPoints, timeline, "aviation-meteogram-temp-line")}</g>
     <g class="aviation-meteogram-dew-line-row" data-domain-min="${temperatureGeometry.range.minimum}" data-domain-max="${temperatureGeometry.range.maximum}" aria-label="Dew-point trend line using shared temperature and dew-point scale">${trendSeriesMarkup(dewPoints, timeline, "aviation-meteogram-dew-line")}</g>
     <g class="aviation-meteogram-temperature-row">${temperatureValuesMarkup}</g>
     <g class="aviation-meteogram-dew-point-row">${dewPointValuesMarkup}</g>
     ${forecastTemperatureMarkers}
-    <g class="aviation-meteogram-wind-row" clip-path="url(#aviationMeteogramWindClip)">${windMarkup}</g>
-    <g class="aviation-meteogram-wind-speed-row" clip-path="url(#aviationMeteogramWindSpeedClip)">${windSpeedSeriesMarkup}</g>
+    <g class="aviation-meteogram-wind-row" clip-path="url(#${idPrefix}WindClip)">${windMarkup}</g>
+    <g class="aviation-meteogram-wind-speed-row" clip-path="url(#${idPrefix}WindSpeedClip)">${windSpeedSeriesMarkup}</g>
     ${pathMarkup(observedPoints(pressurePoints), "aviation-meteogram-pressure-line", timeline)}
     ${pathMarkup(forecastPoints(pressurePoints), "aviation-meteogram-pressure-line aviation-meteogram-line-forecast", timeline)}
-    ${pressureValuesMarkup}${cloudTickMarkup}<g class="aviation-meteogram-cloud-row" clip-path="url(#aviationMeteogramCloudClip)">${cloudMarkup}</g>
+    ${pressureValuesMarkup}${cloudTickGridMarkup}
+    <g class="aviation-meteogram-cloud-row aviation-meteogram-cloud-artwork-row" clip-path="url(#${idPrefix}CloudArtworkClip)">${cloudArtworkMarkup.join("")}</g>
+    <g class="aviation-meteogram-cloud-row aviation-meteogram-cloud-text-row" clip-path="url(#${idPrefix}CloudTextClip)">${cloudTextMarkup.join("")}</g>
+    ${cloudAltitudeAxisMarkup(cloudScale, labelWidth)}
     ${pathMarkup(observedPoints(visibilityPoints), "aviation-meteogram-visibility-line", timeline)}
     ${pathMarkup(forecastPoints(visibilityPoints), "aviation-meteogram-visibility-line aviation-meteogram-line-forecast", timeline)}
-    ${visibilityValuesMarkup}<g class="aviation-meteogram-precip-row" clip-path="url(#aviationMeteogramPrecipClip)">${precipitationMarkup}</g><g class="aviation-meteogram-snow-row" clip-path="url(#aviationMeteogramSnowClip)">${snowfallMarkup}${snowDepthMarkup}</g>
+    ${visibilityValuesMarkup}<g class="aviation-meteogram-precip-row" clip-path="url(#${idPrefix}PrecipClip)">${precipitationMarkup}</g><g class="aviation-meteogram-snow-row" clip-path="url(#${idPrefix}SnowClip)">${snowfallMarkup}${snowDepthMarkup}</g>
     ${solarLabelMarkup}${nowDividerMarkup}${labelMarkup}
   </svg>`;
 }
@@ -1721,6 +1884,7 @@ export function renderAviationMeteogram(container, reports, {
   let activeWindTooltipSample = null;
   let windTooltipPinned = false;
   let windTooltipScrollFrame = 0;
+  let latestDimensions = null;
   function updateToggleState() {
     for (const button of controls.querySelectorAll("[data-meteogram-setting]")) {
       const selected = settings[button.dataset.meteogramSetting] === button.dataset.meteogramValue;
@@ -1744,11 +1908,13 @@ export function renderAviationMeteogram(container, reports, {
       extraTimes: intervalExtraTimes(model),
       labelWidth: labelLayout.width,
     });
+    latestDimensions = dimensions;
     const windSpeedGeometry = meteogramWindSpeedGeometry(model, displaySettings, dimensions);
+    const cloudScale = meteogramCloudScaleDefinition(model.timeline);
     const svg = buildMeteogramSvgMarkup(model, settings, { viewportWidth, labelLayout });
     activeWindTooltipSample = null;
     windTooltipPinned = false;
-    scroller.innerHTML = `<div class="aviation-meteogram-stage" style="width:${dimensions.width}px;height:${dimensions.height}px">${svg}${buildMeteogramStickyLabelsMarkup(displaySettings, dimensions, model.forecasts.length > 0, labelLayout, windSpeedGeometry)}<div id="aviationMeteogramWindTooltip" class="aviation-meteogram-wind-tooltip" role="tooltip" hidden></div></div>`;
+    scroller.innerHTML = `<div class="aviation-meteogram-stage" style="width:${dimensions.width}px;height:${dimensions.height}px">${svg}${buildMeteogramStickyLabelsMarkup(displaySettings, dimensions, model.forecasts.length > 0, labelLayout, windSpeedGeometry, cloudScale)}<div id="aviationMeteogramWindTooltip" class="aviation-meteogram-wind-tooltip" role="tooltip" hidden></div></div>`;
     dataTableScroller.innerHTML = buildMeteogramAccessibleTableMarkup(model, settings);
     updateToggleState();
     if (firstDraw) {
@@ -1904,6 +2070,32 @@ export function renderAviationMeteogram(container, reports, {
         dataTableOpen: Boolean(dataDetails.open),
         dataTableScrollLeft: dataTableScroller.scrollLeft,
         focusKey,
+      };
+    },
+    getPrintState() {
+      const dimensions = latestDimensions;
+      const timelineStart = Number(dimensions?.firstTime);
+      const timelineScale = Number(dimensions?.pixelsPerHour) / (60 * 60 * 1000);
+      const labelWidth = Number(dimensions?.labelWidth || 0);
+      const firstPointX = labelWidth + Number(dimensions?.columnWidth || 0) / 2;
+      const visibleStageLeft = Number(scroller.scrollLeft || 0) + labelWidth;
+      const visibleStageRight = Number(scroller.scrollLeft || 0) + Number(scroller.clientWidth || 0);
+      const inverseTime = (stageX) => timelineStart + (stageX - firstPointX) / timelineScale;
+      const visibleStartTime = Number.isFinite(timelineStart) && Number.isFinite(timelineScale) && timelineScale > 0
+        ? Math.max(timelineStart, inverseTime(visibleStageLeft))
+        : NaN;
+      const visibleEndTime = Number.isFinite(visibleStartTime)
+        ? Math.min(Number(dimensions?.lastTime), inverseTime(visibleStageRight))
+        : NaN;
+      const visibleStart = Number.isFinite(visibleStartTime) ? new Date(visibleStartTime).toISOString() : null;
+      const visibleEnd = Number.isFinite(visibleEndTime) ? new Date(visibleEndTime).toISOString() : null;
+      return {
+        model,
+        settings: { ...settings },
+        rangeLabel,
+        visibleRange: visibleStart && visibleEnd && Date.parse(visibleEnd) > Date.parse(visibleStart)
+          ? { startZ: visibleStart, endZ: visibleEnd }
+          : null,
       };
     },
     destroy() {

@@ -9,9 +9,11 @@ import {
   buildMeteogramAccessibleTableMarkup,
   buildMeteogramStickyLabelsMarkup,
   buildMeteogramSvgMarkup,
+  METEOGRAM_CLOUD_AXIS_WIDTH,
   meteogramCloudBaseY,
   meteogramCloudColumnLabelMask,
   meteogramCloudLabelLayout,
+  meteogramCloudScaleDefinition,
   meteogramCloudTickLayout,
   meteogramDimensions,
   meteogramForecastSourceState,
@@ -23,6 +25,16 @@ import {
   meteogramWindArrowRotation,
   meteogramWindSpeedGeometry,
 } from "../weather-meteogram.js";
+import {
+  buildMeteogramPrintPagesMarkup,
+  buildMeteogramPrintPlan,
+  meteogramCalendarDayRange,
+  meteogramCustomRange,
+  meteogramPrintCoverage,
+  paginateMeteogramPrintRange,
+  resolveMeteogramPrintRange,
+  sliceMeteogramModelForPrint,
+} from "../weather-meteogram-print.js";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const lookupJs = readFileSync(new URL("../aviation-weather-lookup.js", import.meta.url), "utf8");
@@ -31,6 +43,7 @@ const meteogramJs = readFileSync(new URL("../weather-meteogram.js", import.meta.
 const meteogramCore = readFileSync(new URL("../weather-meteogram-core.js", import.meta.url), "utf8");
 const meteogramCss = readFileSync(new URL("../weather-meteogram.css", import.meta.url), "utf8");
 const meteogramSolarJs = readFileSync(new URL("../weather-meteogram-solar.js", import.meta.url), "utf8");
+const meteogramPrintJs = readFileSync(new URL("../weather-meteogram-print.js", import.meta.url), "utf8");
 
 function deferred() {
   let resolve;
@@ -287,6 +300,17 @@ async function loadLookupController({ doc, lookupAviationWeather: lookup, render
     parseNwsGridForecast: () => null,
     meteogramForecastSourceState,
     renderAviationMeteogram: render,
+    buildMeteogramPrintPagesMarkup,
+    buildMeteogramPrintPlan,
+    paginateMeteogramPrintRange,
+    meteogramPrintDefaultValues: () => ({
+      calendarDate: "2026-09-01",
+      startDate: "2026-09-01",
+      startTime: "00:00",
+      endDate: "2026-09-02",
+      endTime: "00:00",
+    }),
+    resolveMeteogramPrintRange: () => ({ ok: false, error: "Print fixture unavailable." }),
     document: doc,
     window: doc.defaultView,
   };
@@ -303,6 +327,10 @@ async function loadLookupController({ doc, lookupAviationWeather: lookup, render
     .replace(
       /import \{ meteogramForecastSourceState, renderAviationMeteogram \} from "\.\/weather-meteogram\.js";/,
       `const { meteogramForecastSourceState, renderAviationMeteogram } = globalThis["${dependencyKey}"];`,
+    )
+    .replace(
+      /import \{[\s\S]*?\} from "\.\/weather-meteogram-print\.js";/,
+      `const { buildMeteogramPrintPagesMarkup, buildMeteogramPrintPlan, meteogramPrintDefaultValues, paginateMeteogramPrintRange, resolveMeteogramPrintRange } = globalThis["${dependencyKey}"];`,
     )
     .replace(
       /\nif \(typeof document !== "undefined"\) \{[\s\S]*\}\s*$/,
@@ -447,6 +475,38 @@ function manualMeteogramModel(timeline, overrides = {}) {
   };
 }
 
+function printMeteogramModel({
+  startZ = "2026-09-01T00:00:00Z",
+  hours = 96,
+  stepHours = 3,
+} = {}) {
+  const start = Date.parse(startZ);
+  const timeline = [];
+  for (let hour = 0; hour <= hours; hour += stepHours) {
+    const timestamp = new Date(start + hour * 60 * 60 * 1000).toISOString();
+    const forecast = hour > 12;
+    timeline.push(manualMeteogramPoint({
+      observedZ: timestamp,
+      validZ: forecast ? timestamp : null,
+      kind: forecast ? "FORECAST" : "OBSERVED",
+      reportType: forecast ? "TAF" : "METAR",
+      tafIssuanceZ: forecast ? new Date(start + 12 * 60 * 60 * 1000).toISOString() : null,
+      source: forecast ? "Current TAF fixture" : "Retained METAR fixture",
+      temperatureC: 20 + Math.sin(hour / 6) * 4,
+      dewPointC: 14 + Math.sin(hour / 7) * 2,
+      windSpeedKt: hour === 60 ? 45 : 18,
+      windGustKt: hour === 18 ? 50 : hour === 60 ? 80 : null,
+      clouds: hour === 30
+        ? { layers: [{ cover: "BKN", heightFt: 25000, raw: "BKN250" }], clear: false, cavok: false, ceilingFt: 25000, display: "BKN250" }
+        : manualMeteogramPoint().clouds,
+    }));
+  }
+  return manualMeteogramModel(timeline, {
+    startZ: timeline[0].observedZ,
+    endZ: timeline.at(-1).validZ || timeline.at(-1).observedZ,
+  });
+}
+
 function renderedSolarGeometry(svg) {
   return [...svg.matchAll(/data-solar-event="(sunrise|sunset)" data-event-z="([^"]+)" data-event-local-date="([^"]+)" data-event-x="([^"]+)"/g)]
     .map((match) => ({ type: match[1], timestamp: match[2], localDate: match[3], x: Number(match[4]) }));
@@ -455,7 +515,8 @@ function renderedSolarGeometry(svg) {
 test("meteogram is a fourth product inside the existing Aviation Weather Lookup modal", () => {
   assert.match(indexHtml, /id="aviationWeatherLookupPanel"[\s\S]*data-aviation-product="ATIS"[\s\S]*data-aviation-product="METAR"[\s\S]*data-aviation-product="TAF"[\s\S]*data-aviation-product="METEOGRAM"/);
   assert.match(indexHtml, /data-aviation-product="METEOGRAM"[^>]*aria-label="Aviation meteogram weather history"/);
-  assert.match(indexHtml, /aviation-lookup-product-long">METEOGRAM<[\s\S]*aviation-lookup-product-short"[^>]*>METEO</);
+  assert.match(indexHtml, /data-aviation-product="METEOGRAM"[^>]*>METEOGRAM<\/button>/);
+  assert.doesNotMatch(indexHtml, /aviation-lookup-product-(?:long|short)|>METEO</);
   assert.doesNotMatch(indexHtml, /id="(?:weather|aviation)MeteogramOverlay"/i);
   assert.doesNotMatch(indexHtml, /id="(?:weather|aviation)MeteogramButton"/i);
   assert.equal((indexHtml.match(/aviationWeather\.id="aviationWeatherLookupButton"/g) || []).length, 1);
@@ -753,7 +814,7 @@ test("switching away aborts meteogram work and time/unit control clicks do not r
 });
 
 test("meteogram renderer uses one shared timeline and includes every requested observed band", () => {
-  assert.match(meteogramJs, /<svg class="aviation-meteogram-svg"/);
+  assert.match(meteogramJs, /<svg class="aviation-meteogram-svg\$\{printMode/);
   for (const title of ["WEATHER", "TEMPERATURE", "DEW POINT", "TEMP LINE", "DEW POINT LINE", "WIND", "WIND SPEED / GUST", "PRESSURE", "CLOUDS / CIG", "VISIBILITY", "PRECIP (IN)", "SNOW (IN)"]) {
     const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(meteogramJs, new RegExp(`title: "${escapedTitle}"`));
@@ -859,8 +920,11 @@ test("responsive layout keeps minimum chart width inside its own scroller", () =
   assert.match(meteogramCss, /\.aviation-meteogram\{[\s\S]*min-width:0;[\s\S]*overflow:hidden/);
   assert.match(meteogramCss, /\.aviation-meteogram-scroll\{[\s\S]*max-width:100%;[\s\S]*min-width:0;[\s\S]*overflow-x:auto/);
   assert.match(lookupCss, /\.aviation-lookup-panel-meteogram \.aviation-lookup-results\{[\s\S]*min-width:0/);
-  assert.match(lookupCss, /@media \(max-width:768px\)\{[\s\S]*\.aviation-lookup-products\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\)\{[\s\S]*\.aviation-lookup-product-short\{display:inline\}/);
+  assert.match(lookupCss, /\.aviation-lookup-form\{[\s\S]*grid-template-columns:minmax\(110px,135px\) minmax\(max-content,1fr\) minmax\(145px,180px\) max-content/);
+  assert.match(lookupCss, /\.aviation-lookup-products\{[\s\S]*grid-template-columns:repeat\(4,minmax\(max-content,1fr\)\)/);
+  assert.match(lookupCss, /\.aviation-lookup-product\{[\s\S]*min-width:max-content;[\s\S]*white-space:nowrap/);
+  assert.match(lookupCss, /@media \(max-width:768px\)\{[\s\S]*\.aviation-lookup-products\{grid-template-columns:repeat\(2,minmax\(max-content,1fr\)\)/);
+  assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:1050px\)\{[\s\S]*grid-template-areas:[\s\S]*"station products"[\s\S]*"range submit"/);
   assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
   assert.match(meteogramCss, /@media \(max-width:768px\)\{[\s\S]*\.aviation-meteogram-toggle\{min-height:40px/);
   assert.match(meteogramCss, /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
@@ -872,6 +936,338 @@ test("responsive layout keeps minimum chart width inside its own scroller", () =
   assert.doesNotMatch(meteogramCss, /touch-action:pan-x;/);
   assert.doesNotMatch(meteogramCss, /overflow-x:hidden/);
   assert.doesNotMatch(meteogramCss, /width:\s*100vw/);
+});
+
+test("meteogram PRINT opens a dedicated range setup and leaves other product printing intact", () => {
+  assert.match(indexHtml, /id="aviationMeteogramPrintSetup"[\s\S]*>PRINT METEOGRAM</);
+  for (const [choice, label] of [
+    ["current", "CURRENT METEOGRAM RANGE"],
+    ["calendar", "CALENDAR DAY"],
+    ["custom", "CUSTOM RANGE"],
+    ["visible", "CURRENT VISIBLE WINDOW"],
+  ]) {
+    assert.match(indexHtml, new RegExp(`name="meteogramPrintRange" value="${choice}"[^>]*> ${label}`));
+  }
+  for (const id of [
+    "aviationMeteogramPrintCalendarDate",
+    "aviationMeteogramPrintStartDate",
+    "aviationMeteogramPrintStartTime",
+    "aviationMeteogramPrintEndDate",
+    "aviationMeteogramPrintEndTime",
+    "aviationMeteogramPrintPages",
+  ]) assert.match(indexHtml, new RegExp(`id="${id}"`));
+  assert.match(lookupJs, /product === "METEOGRAM" && openMeteogramPrintSetup\(\)/);
+  assert.match(lookupJs, /meteogramPrintPages\.innerHTML = buildMeteogramPrintPagesMarkup\(plan\)/);
+  assert.match(lookupJs, /doc\.body\.classList\.add\("aviation-meteogram-printing"\)/);
+  assert.match(lookupJs, /doc\.body\.classList\.add\("aviation-lookup-printing"\)/, "ATIS/METAR/TAF keep their established print path");
+  assert.match(lookupCss, /@page meteogram\{size:letter landscape;margin:\.28in\}/);
+  assert.match(lookupCss, /\.aviation-meteogram-print-page\{[\s\S]*page:meteogram;[\s\S]*break-after:page/);
+  assert.match(lookupCss, /body\.aviation-meteogram-printing\{overflow:visible!important\}/);
+  assert.match(lookupCss, /\.aviation-meteogram-print-setup\{[\s\S]*z-index:20;/, "the setup stays above sticky chart labels and tooltips");
+  assert.match(lookupCss, /\.aviation-meteogram-print-fields\[hidden\]\{display:none!important\}/, "only fields for the selected print range remain visible");
+  assert.match(lookupCss, /\.aviation-meteogram-print-page\{[\s\S]*break-inside:avoid-page;[\s\S]*page-break-inside:avoid/);
+  assert.match(lookupCss, /\.aviation-meteogram-print-chart svg\{[\s\S]*max-height:6\.75in!important/);
+  assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-background\{fill:#fff!important\}/);
+  assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-wind-gust-line\{stroke:#111!important;stroke-dasharray:4 4!important\}/);
+  assert.doesNotMatch(meteogramPrintJs, /window\.print|document\.|querySelector|cloneNode/, "the print model stays DOM-independent");
+
+  const previewBody = lookupJs.match(/function refreshMeteogramPrintSetup\(\) \{([\s\S]*?)\n  \}\n\n  function closeMeteogramPrintSetup/)?.[1] || "";
+  assert.match(previewBody, /currentMeteogramPrintRange\(\)/);
+  assert.match(previewBody, /paginateMeteogramPrintRange\(range\)/);
+  assert.doesNotMatch(previewBody, /buildMeteogramPrintPlan/, "typing in setup does not rebuild every print SVG");
+  assert.match(lookupJs, /panel\.inert = true;[\s\S]*panel\.setAttribute\("aria-hidden", "true"\);[\s\S]*meteogramPrintSetup\.hidden = false/);
+  assert.match(lookupJs, /view\.addEventListener\("afterprint",[\s\S]*focusTarget\?\.focus\?\.\(\)/);
+});
+
+test("calendar-day print boundaries are exact in Z and DST-aware in America/Chicago", () => {
+  const zulu = meteogramCalendarDayRange({ date: "2026-09-01", timeMode: "Z" });
+  assert.deepEqual(zulu, {
+    ok: true,
+    startZ: "2026-09-01T00:00:00.000Z",
+    endZ: "2026-09-02T00:00:00.000Z",
+    durationHours: 24,
+    warnings: [],
+  });
+
+  const spring = meteogramCalendarDayRange({ date: "2026-03-08", timeMode: "LOCAL", timeZone: "America/Chicago" });
+  assert.equal(spring.ok, true);
+  assert.equal(spring.startZ, "2026-03-08T06:00:00.000Z");
+  assert.equal(spring.endZ, "2026-03-09T05:00:00.000Z");
+  assert.equal(spring.durationHours, 23);
+
+  const fall = meteogramCalendarDayRange({ date: "2026-11-01", timeMode: "LOCAL", timeZone: "America/Chicago" });
+  assert.equal(fall.ok, true);
+  assert.equal(fall.startZ, "2026-11-01T05:00:00.000Z");
+  assert.equal(fall.endZ, "2026-11-02T06:00:00.000Z");
+  assert.equal(fall.durationHours, 25);
+});
+
+test("custom print ranges validate chronology and real local clock transitions", () => {
+  const sixHours = meteogramCustomRange({
+    startDate: "2026-09-01", startTime: "12:00",
+    endDate: "2026-09-01", endTime: "18:00",
+    timeMode: "Z",
+  });
+  assert.equal(sixHours.ok, true);
+  assert.equal(sixHours.durationHours, 6);
+  assert.equal(sixHours.startZ, "2026-09-01T12:00:00.000Z");
+  assert.equal(sixHours.endZ, "2026-09-01T18:00:00.000Z");
+
+  assert.match(meteogramCustomRange({
+    startDate: "2026-09-02", startTime: "00:00",
+    endDate: "2026-09-01", endTime: "23:59",
+    timeMode: "Z",
+  }).error, /End must be later/);
+
+  assert.match(meteogramCustomRange({
+    startDate: "2026-03-08", startTime: "02:30",
+    endDate: "2026-03-08", endTime: "04:00",
+    timeMode: "LOCAL", timeZone: "America/Chicago",
+  }).error, /does not exist.*clock change/);
+
+  const repeatedHour = meteogramCustomRange({
+    startDate: "2026-11-01", startTime: "01:30",
+    endDate: "2026-11-01", endTime: "01:45",
+    timeMode: "LOCAL", timeZone: "America/Chicago",
+  });
+  assert.equal(repeatedHour.ok, true);
+  assert.equal(repeatedHour.durationHours, 1.25);
+  assert.equal(repeatedHour.warnings.length, 2, "ambiguous start/end policy is disclosed");
+});
+
+test("print pagination uses readable twelve-hour slices for 6, 12, 24, 36, and 96 hours", () => {
+  const start = Date.parse("2026-09-01T00:00:00Z");
+  const pagesFor = (hours) => paginateMeteogramPrintRange({
+    startZ: new Date(start).toISOString(),
+    endZ: new Date(start + hours * 60 * 60 * 1000).toISOString(),
+  });
+  for (const [hours, expectedPages] of [[6, 1], [12, 1], [24, 2], [36, 3], [96, 8]]) {
+    const pages = pagesFor(hours);
+    assert.equal(pages.length, expectedPages, `${hours} hours uses ${expectedPages} readable page(s)`);
+    assert.ok(pages.every((page) => page.durationHours > 0 && page.durationHours <= 12));
+    assert.ok(pages.every((page) => page.includeEnd === false), "half-open ranges never duplicate a boundary report");
+  }
+  const inclusivePages = paginateMeteogramPrintRange({
+    startZ: new Date(start).toISOString(),
+    endZ: new Date(start + 24 * 60 * 60 * 1000).toISOString(),
+    includeEnd: true,
+  });
+  assert.equal(inclusivePages.at(-1).includeEnd, true, "an explicitly inclusive source range retains its final loaded sample");
+  assert.ok(inclusivePages.slice(0, -1).every((page) => page.includeEnd === false), "interior page seams remain half-open");
+});
+
+test("calendar-day printing excludes the following midnight while retaining the last in-day report", () => {
+  const dayStart = Date.parse("2026-09-01T00:00:00Z");
+  const pointAt = (offsetMs) => {
+    const timestamp = new Date(dayStart + offsetMs).toISOString();
+    return manualMeteogramPoint({ observedZ: timestamp });
+  };
+  const model = manualMeteogramModel([
+    pointAt(0),
+    pointAt(23 * 60 * 60 * 1000 + 59 * 60 * 1000),
+    pointAt(24 * 60 * 60 * 1000),
+  ]);
+  const range = resolveMeteogramPrintRange({
+    choice: "calendar",
+    model,
+    settings: { timeMode: "Z" },
+    values: { calendarDate: "2026-09-01" },
+  });
+  assert.equal(range.ok, true);
+  assert.equal(range.endZ, "2026-09-02T00:00:00.000Z");
+  assert.equal(range.includeEnd, false, "a calendar day is [0000, next 0000)");
+  const plan = buildMeteogramPrintPlan({ model, settings: { timeMode: "Z" }, range });
+  const printedTimes = plan.pages.flatMap((page) => page.model.timeline.map((item) => item.observedZ));
+  assert.ok(printedTimes.includes("2026-09-01T23:59:00.000Z"));
+  assert.ok(!printedTimes.includes("2026-09-02T00:00:00.000Z"), "next day's midnight is not printed on the selected calendar day");
+
+  const nextMidnightOnly = manualMeteogramModel([pointAt(24 * 60 * 60 * 1000)]);
+  const nextMidnightRange = resolveMeteogramPrintRange({
+    choice: "calendar",
+    model: nextMidnightOnly,
+    settings: { timeMode: "Z" },
+    values: { calendarDate: "2026-09-01" },
+  });
+  assert.equal(nextMidnightRange.ok, false, "a lone next-midnight observation cannot become prior-day coverage");
+  assert.match(nextMidnightRange.error, /does not overlap/);
+});
+
+test("print range resolution clips truthfully to loaded coverage and rejects non-overlap", () => {
+  const model = printMeteogramModel({ hours: 24 });
+  assert.deepEqual(meteogramPrintCoverage(model), {
+    available: true,
+    startZ: "2026-09-01T00:00:00.000Z",
+    endZ: "2026-09-02T00:00:00.000Z",
+  });
+  const clipped = resolveMeteogramPrintRange({
+    choice: "custom",
+    model,
+    settings: { timeMode: "Z" },
+    values: {
+      startDate: "2026-08-31", startTime: "18:00",
+      endDate: "2026-09-02", endTime: "06:00",
+    },
+  });
+  assert.equal(clipped.ok, true);
+  assert.equal(clipped.clipped, true);
+  assert.equal(clipped.startZ, "2026-09-01T00:00:00.000Z");
+  assert.equal(clipped.endZ, "2026-09-02T00:00:00.000Z");
+  assert.match(clipped.warnings.join(" "), /clipped.*unavailable time was not fabricated/i);
+
+  const noOverlap = resolveMeteogramPrintRange({
+    choice: "calendar",
+    model,
+    settings: { timeMode: "Z" },
+    values: { calendarDate: "2026-09-03" },
+  });
+  assert.equal(noOverlap.ok, false);
+  assert.match(noOverlap.error, /does not overlap/);
+
+  const pages = paginateMeteogramPrintRange(clipped);
+  const first = sliceMeteogramModelForPrint(model, pages[0]);
+  const second = sliceMeteogramModelForPrint(model, pages[1]);
+  const seam = "2026-09-01T12:00:00.000Z";
+  assert.equal(first.timeline.filter((item) => (item.validZ || item.observedZ) === seam).length, 0);
+  assert.equal(second.timeline.filter((item) => (item.validZ || item.observedZ) === seam).length, 1, "a page seam never duplicates an exact report");
+
+  const visible = resolveMeteogramPrintRange({
+    choice: "visible",
+    model,
+    settings: { timeMode: "Z" },
+    visibleRange: { startZ: "2026-09-01T03:17:00Z", endZ: "2026-09-01T08:43:00Z" },
+  });
+  assert.equal(visible.ok, true);
+  assert.equal(visible.startZ, "2026-09-01T03:17:00.000Z");
+  assert.equal(visible.endZ, "2026-09-01T08:43:00.000Z");
+  assert.equal(visible.durationHours, 5 + 26 / 60, "visible printing preserves exact time coordinates instead of rounding to columns");
+  const printStateBody = meteogramJs.match(/getPrintState\(\) \{([\s\S]*?)\n    \},\n    destroy\(\)/)?.[1] || "";
+  assert.match(printStateBody, /pixelsPerHour/);
+  assert.match(printStateBody, /inverseTime/);
+  assert.doesNotMatch(printStateBody, /columnIndex|Math\.round\(/);
+});
+
+test("a lone exact observation prints in a disclosed limited window without implying surrounding data", () => {
+  const model = manualMeteogramModel([manualMeteogramPoint()]);
+  const range = resolveMeteogramPrintRange({ choice: "current", model, settings: { timeMode: "Z" } });
+  assert.equal(range.ok, true);
+  assert.equal(range.durationHours, 1);
+  assert.equal(range.singleObservation, true);
+  assert.match(range.warnings.join(" "), /one exact observation.*no surrounding data is implied/i);
+  const plan = buildMeteogramPrintPlan({ model, settings: { timeMode: "Z" }, range });
+  assert.equal(plan.ok, true);
+  assert.equal(plan.pages.length, 1);
+  assert.match(plan.pages[0].svg, /aviation-meteogram-observation/);
+  assert.match(plan.coverageText, /ONE EXACT OBSERVATION AVAILABLE.*NO IMPLIED DATA/);
+});
+
+test("print page seams preserve unsplit precip truth and expose separate clipped render bounds", () => {
+  const model = printMeteogramModel({ hours: 24 });
+  model.forecastPrecipitationIntervals = [{
+    validStartZ: "2026-09-01T06:00:00.000Z",
+    validEndZ: "2026-09-01T18:00:00.000Z",
+    amountIn: 1.2,
+    kind: "FORECAST",
+    source: "NWS exact interval fixture",
+  }];
+  const range = resolveMeteogramPrintRange({ choice: "current", model, settings: { timeMode: "Z" } });
+  const plan = buildMeteogramPrintPlan({ model, settings: { timeMode: "Z" }, range });
+  assert.equal(plan.pages.length, 2);
+  const [first, second] = plan.pages;
+  for (const page of [first, second]) {
+    assert.match(page.svg, /data-valid-start="2026-09-01T06:00:00\.000Z" data-valid-end="2026-09-01T18:00:00\.000Z"/);
+    assert.match(page.svg, /data-amount-in="1\.2"/);
+    assert.match(page.svg, /aviation-meteogram-interval-print-clipped/);
+    assert.match(page.svg, />1\.20†<\/text>/);
+    assert.match(page.svg, /AMOUNT REMAINS THE FULL UNSPLIT SOURCE INTERVAL TOTAL/);
+  }
+  assert.match(first.svg, /data-render-start="2026-09-01T06:00:00\.000Z" data-render-end="2026-09-01T12:00:00\.000Z"/);
+  assert.match(second.svg, /data-render-start="2026-09-01T12:00:00\.000Z" data-render-end="2026-09-01T18:00:00\.000Z"/);
+  const markup = buildMeteogramPrintPagesMarkup(plan);
+  assert.equal((markup.match(/FULL UNSPLIT SOURCE-INTERVAL TOTAL/g) || []).length, 2, "each standalone page repeats the interval-total disclosure");
+});
+
+test("an interval-only print page renders truthful amount geometry instead of NO DATA", () => {
+  const model = manualMeteogramModel([], {
+    forecastPrecipitationIntervals: [{
+      validStartZ: "2026-09-01T06:00:00.000Z",
+      validEndZ: "2026-09-01T12:00:00.000Z",
+      amountIn: 0.25,
+      kind: "FORECAST",
+      source: "NWS interval-only fixture",
+    }],
+  });
+  const range = resolveMeteogramPrintRange({ choice: "current", model, settings: { timeMode: "Z" } });
+  const plan = buildMeteogramPrintPlan({ model, settings: { timeMode: "Z" }, range });
+  assert.equal(plan.ok, true);
+  assert.equal(plan.pages.length, 1);
+  assert.match(plan.pages[0].svg, /aviation-meteogram-precip-interval/);
+  assert.match(plan.pages[0].svg, /data-amount-in="0\.25"/);
+  assert.doesNotMatch(buildMeteogramPrintPagesMarkup(plan), /NO DATA IN THIS INTERVAL/);
+});
+
+test("dedicated print pages repeat labels and share selected-range scales without fit-to-page compression", () => {
+  const model = printMeteogramModel({ hours: 96 });
+  const range = resolveMeteogramPrintRange({ choice: "current", model, settings: { timeMode: "Z" } });
+  const plan = buildMeteogramPrintPlan({
+    model,
+    settings: { timeMode: "Z", temperatureUnit: "C", windUnit: "KT" },
+    range,
+    rangeLabel: "Past 96 hours",
+  });
+  assert.equal(plan.ok, true);
+  assert.equal(plan.pages.length, 8);
+  assert.equal(plan.scaleOverrides.windMaximumKt, 100, "G80 selects the shared 0–100 KT print domain");
+  assert.equal(plan.scaleOverrides.cloudMaximumFt, 25000);
+  assert.ok(plan.pages.every((page) => page.svg.includes('data-domain-max-kt="100"')));
+  assert.ok(plan.pages.every((page) => page.svg.includes('data-cloud-axis-width="54"')));
+  assert.equal(new Set(plan.pages.map((page) => page.svg.match(/id="(aviationMeteogramPrintPage\d+)SvgTitle"/)?.[1])).size, 8, "SVG IDs are unique per print page");
+
+  const markup = buildMeteogramPrintPagesMarkup(plan);
+  assert.equal((markup.match(/class="aviation-meteogram-print-page"/g) || []).length, 8);
+  assert.equal((markup.match(/AVIATION METEOGRAM<\/h1>/g) || []).length, 8);
+  assert.equal((markup.match(/FOR REFERENCE ONLY/g) || []).length, 8);
+  assert.equal((markup.match(/>WIND SPEED \/ GUST</g) || []).length, 8, "row labels repeat on every page");
+  assert.equal((markup.match(/data-wind-maximum-kt="100"/g) || []).length, 8);
+  assert.equal((markup.match(/data-cloud-maximum-ft="25000"/g) || []).length, 8);
+  for (const [attribute, value] of [
+    ["data-pressure-min", plan.scaleOverrides.pressureRange.minimum],
+    ["data-pressure-max", plan.scaleOverrides.pressureRange.maximum],
+    ["data-visibility-min", plan.scaleOverrides.visibilityRange.minimum],
+    ["data-visibility-max", plan.scaleOverrides.visibilityRange.maximum],
+    ["data-precip-maximum-in", plan.scaleOverrides.precipMaximumIn],
+    ["data-snow-maximum-in", plan.scaleOverrides.snowMaximumIn],
+  ]) {
+    assert.equal((markup.match(new RegExp(`${attribute}="${String(value).replace(".", "\\.")}"`, "g")) || []).length, 8, `${attribute} repeats the selected-range scale on every page`);
+  }
+  assert.match(markup, /PAGE 1 OF 8/);
+  assert.match(markup, /PAGE 8 OF 8/);
+  assert.doesNotMatch(markup, /aviation-meteogram-scroll|aviation-meteogram-toggle|tabindex="0"|aria-describedby=/, "print pages contain no live scrollbars or interactive chart controls");
+
+  for (const [hours, expectedPages] of [[6, 1], [24, 2], [36, 3]]) {
+    const endZ = new Date(Date.parse(model.startZ) + hours * 60 * 60 * 1000).toISOString();
+    const customRange = {
+      ...range,
+      startZ: model.startZ,
+      endZ,
+      durationHours: hours,
+    };
+    assert.equal(buildMeteogramPrintPlan({ model, settings: { timeMode: "Z" }, range: customRange }).pages.length, expectedPages);
+  }
+});
+
+test("light print theme overrides direct SVG colors that would disappear on white paper", () => {
+  for (const selector of [
+    ".aviation-meteogram-time text",
+    ".aviation-meteogram-time .aviation-meteogram-time-zone",
+    ".aviation-meteogram-forecast-tag",
+    ".aviation-meteogram-wind-gust",
+    ".aviation-meteogram-conditional-value",
+  ]) {
+    assert.match(meteogramCss, new RegExp(`body\\.aviation-meteogram-printing ${selector.replaceAll(".", "\\.")}`));
+  }
+  assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-weather-icon\{[\s\S]*fill:#111!important;[\s\S]*filter:none!important;[\s\S]*opacity:1!important/);
+  assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-clear-sun-disc\{[\s\S]*fill:#fff!important;[\s\S]*stroke:#111!important/);
+  assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-clear-moon-crescent\{fill:#666!important;filter:none!important\}/);
 });
 
 test("row-label content is centralized and follows every live display toggle", () => {
@@ -963,7 +1359,8 @@ test("main and sticky SVG layers consume one dynamic width and identical row geo
   const dimensions = meteogramDimensions(model.timeline, 320, { labelWidth: labelLayout.width });
   const main = buildMeteogramSvgMarkup(model, settings, { viewportWidth: 320, labelLayout });
   const windSpeedGeometry = meteogramWindSpeedGeometry(model, settings, dimensions);
-  const sticky = buildMeteogramStickyLabelsMarkup(settings, dimensions, true, labelLayout, windSpeedGeometry);
+  const cloudScale = meteogramCloudScaleDefinition(model.timeline);
+  const sticky = buildMeteogramStickyLabelsMarkup(settings, dimensions, true, labelLayout, windSpeedGeometry, cloudScale);
   for (const markup of [main, sticky]) {
     assert.match(markup, new RegExp(`data-label-width="${labelLayout.width}"`));
     assert.match(markup, new RegExp(`<rect class="aviation-meteogram-label-background" width="${labelLayout.width}"`));
@@ -979,6 +1376,8 @@ test("main and sticky SVG layers consume one dynamic width and identical row geo
   assert.match(sticky, new RegExp(`viewBox="0 0 ${labelLayout.width} 998"`));
   assert.match(sticky, /class="aviation-meteogram-wind-axis-sticky"/);
   assert.match(sticky, />0 MPH<\/text>/);
+  assert.match(sticky, new RegExp(`class="aviation-meteogram-cloud-axis aviation-meteogram-cloud-axis-sticky"[\\s\\S]*data-axis-start="${labelLayout.width}"[\\s\\S]*data-axis-end="${labelLayout.width + METEOGRAM_CLOUD_AXIS_WIDTH}"`));
+  assert.match(sticky, />10,000 FT<\/text>/);
   assert.match(sticky, new RegExp(`class="aviation-meteogram-label-divider" x1="${labelLayout.width - 1}"`));
   const rowGeometry = (markup) => [...markup.matchAll(/data-row-key="([^"]+)" data-row-top="([^"]+)" data-row-bottom="([^"]+)"/g)]
     .map((match) => match.slice(1));
@@ -990,7 +1389,7 @@ test("dynamic row-label measurement redraws for responsive and font lifecycle wi
   assert.match(meteogramJs, /getComputedTextLength/);
   assert.match(meteogramJs, /meteogramRowLabelLayout\(displaySettings, availableWidth,[\s\S]*measureText: labelMeasurer\.measureText/);
   assert.match(meteogramJs, /buildMeteogramSvgMarkup\(model, settings, \{ viewportWidth, labelLayout \}\)/);
-  assert.match(meteogramJs, /buildMeteogramStickyLabelsMarkup\(displaySettings, dimensions, model\.forecasts\.length > 0, labelLayout, windSpeedGeometry\)/);
+  assert.match(meteogramJs, /buildMeteogramStickyLabelsMarkup\(displaySettings, dimensions, model\.forecasts\.length > 0, labelLayout, windSpeedGeometry, cloudScale\)/);
   assert.match(meteogramJs, /new ResizeObserverCtor\(scheduleDraw\)/);
   assert.match(meteogramJs, /doc\.fonts\?\.ready[\s\S]*scheduleDraw/);
   const measurerRule = meteogramCss.match(/\.aviation-meteogram-label-measurer\{[\s\S]*?\}/)?.[0] || "";
@@ -1098,14 +1497,14 @@ test("wind arrows use normalized downwind semantics and fixed row containment fo
     manualMeteogramPoint({ observedZ: "2026-09-01T02:00:00Z", windDirectionDeg: 240, windSpeedKt: 12, windGustKt: 19 }),
   ];
   const svg = buildMeteogramSvgMarkup(manualMeteogramModel(timeline), { windUnit: "KT", timeMode: "Z" }, { viewportWidth: 1200 });
+  const table = buildMeteogramAccessibleTableMarkup(manualMeteogramModel(timeline), { windUnit: "KT", timeMode: "Z" });
   assert.match(svg, /clipPath id="aviationMeteogramWindClip"/);
   assert.match(svg, /class="aviation-meteogram-wind-row" clip-path="url\(#aviationMeteogramWindClip\)"/);
   assert.equal((svg.match(/class="aviation-meteogram-wind-arrow"/g) || []).length, 1);
   assert.match(svg, /rotate\(60\)/);
   assert.match(svg, /aviation-meteogram-wind-heading[^>]*>CALM</);
   assert.doesNotMatch(svg, />CALM 0|>CALM<[^]*?aviation-meteogram-wind-speed[^>]*>0 KT/);
-  assert.match(svg, /aviation-meteogram-wind-heading[^>]*>VRB</);
-  assert.match(svg, /aviation-meteogram-wind-speed[^>]*>4 KT</);
+  assert.match(table, /Direction VRB · Sustained 4 KT · Gust —/, "collision suppression may hide decorative dense labels but preserves exact VRB data");
   assert.match(svg, /aviation-meteogram-wind-heading[^>]*>240°</);
   assert.match(svg, /aviation-meteogram-wind-speed[^>]*>12 KT</);
   assert.match(svg, /aviation-meteogram-wind-gust[^>]*>G19</);
@@ -1192,6 +1591,41 @@ test("wind speed and gust share one truthful zero-based scale across observed an
   assert.ok(Math.abs(dividerX - dimensions.xForTime("2026-09-01T06:00:00Z")) <= 0.1, "NOW uses the same x mapping as the new row");
 });
 
+test("wind auto-scale expands safely for G25, G50, and G80 and remains exact in KT/MPH", () => {
+  for (const [gustKt, expectedMaximumKt] of [[25, 30], [50, 60], [80, 100]]) {
+    const point = manualMeteogramPoint({ windDirectionDeg: 240, windSpeedKt: 18, windGustKt: gustKt });
+    const model = manualMeteogramModel([point]);
+    const dimensions = meteogramDimensions(model.timeline, 1000);
+    const knots = meteogramWindSpeedGeometry(model, { windUnit: "KT" }, dimensions);
+    const mph = meteogramWindSpeedGeometry(model, { windUnit: "MPH" }, dimensions);
+    assert.equal(knots.range.minimum, 0);
+    assert.equal(knots.range.maximum, expectedMaximumKt, `G${gustKt} uses a rounded domain with headroom`);
+    assert.ok(knots.range.maximum > gustKt);
+    assert.ok(knots.gustPoints[0].y > knots.top, `G${gustKt} is not clipped at the top edge`);
+    assert.ok(knots.gustPoints[0].y < knots.bottom);
+    assert.equal(mph.range.maximum, knots.range.maximum, "MPH retains the canonical knot domain");
+    assert.ok(Math.abs(mph.gustPoints[0].y - knots.gustPoints[0].y) < 1e-9, "unit conversion preserves graph geometry");
+    assert.ok(Math.abs(mph.gustPoints[0].value - gustKt * 1.150779448) < 1e-6);
+    assert.ok(knots.ticks.every((tick) => tick.y >= knots.top && tick.y <= knots.bottom));
+    assert.ok(mph.ticks.every((tick) => tick.y >= mph.top && tick.y <= mph.bottom));
+
+    const svgKt = buildMeteogramSvgMarkup(model, { windUnit: "KT", timeMode: "Z" });
+    const svgMph = buildMeteogramSvgMarkup(model, { windUnit: "MPH", timeMode: "Z" });
+    const tableKt = buildMeteogramAccessibleTableMarkup(model, { windUnit: "KT", timeMode: "Z" });
+    const tableMph = buildMeteogramAccessibleTableMarkup(model, { windUnit: "MPH", timeMode: "Z" });
+    assert.match(svgKt, new RegExp(`data-domain-max-kt="${expectedMaximumKt}"`));
+    assert.match(svgKt, new RegExp(`GUST: ${gustKt} KT`));
+    assert.match(svgMph, new RegExp(`GUST: ${Math.round(gustKt * 1.150779448)} MPH`));
+    assert.match(tableKt, new RegExp(`Gust ${gustKt} KT`));
+    assert.match(tableMph, new RegExp(`Gust ${Math.round(gustKt * 1.150779448)} MPH`));
+  }
+
+  const strongSustained = manualMeteogramModel([
+    manualMeteogramPoint({ windSpeedKt: 45, windGustKt: 70 }),
+  ]);
+  assert.equal(meteogramWindSpeedGeometry(strongSustained, { windUnit: "KT" }).range.maximum, 80);
+});
+
 test("wind speed/gust tooltip, tap/focus behavior, styles, and accessible table expose exact source data", () => {
   const observed = manualMeteogramPoint({
     observedZ: "2026-09-01T14:54:00Z", reportType: "SPECI", windDirectionDeg: 360, windSpeedKt: 3, windGustKt: null,
@@ -1253,11 +1687,21 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
     assert.match(svg, new RegExp(`data-cloud-form="${cover}"`));
   }
   assert.match(svg, /cloud-unknown[^>]*[\s\S]*VV\/\/\/ BASE UNKNOWN/);
-  assert.equal((svg.match(/aviation-meteogram-cloud-layer-ceiling/g) || []).length, 1, "only BKN080 is the known lowest ceiling");
+  assert.equal((svg.match(/aviation-meteogram-cloud-layer-ceiling/g) || []).length, 2, "only BKN080 is the known lowest ceiling, represented once in art and once in operational text");
   assert.match(svg, /data-base-ft="2000"/);
   assert.match(svg, /data-base-ft="10000"/);
   assert.match(svg, /data-cloud-label="BKN080"/);
   assert.match(svg, />CIG 8,000 FT</);
+  const labelWidth = Number(svg.match(/data-label-width="([\d.]+)"/)?.[1]);
+  const axisBoundary = labelWidth + METEOGRAM_CLOUD_AXIS_WIDTH;
+  assert.match(svg, new RegExp(`id="aviationMeteogramCloudArtworkClip"><rect x="${axisBoundary}"`));
+  assert.match(svg, new RegExp(`id="aviationMeteogramCloudTextClip"><rect x="${axisBoundary}"`));
+  assert.match(svg, new RegExp(`class="aviation-meteogram-cloud-axis"[\\s\\S]*data-axis-start="${labelWidth}"[\\s\\S]*data-axis-end="${axisBoundary}"`));
+  assert.ok(svg.indexOf("aviation-meteogram-cloud-artwork-row") < svg.lastIndexOf("class=\"aviation-meteogram-cloud-axis\""), "the protected altitude axis paints above decorative cloud artwork");
+  const firstCloudTimeX = Number(svg.match(/data-cloud-time-x="([\d.]+)"/)?.[1]);
+  assert.match(meteogramJs, /const artX = x;/, "cloud art stays anchored to the exact time coordinate while the protected clip trims any gutter intrusion");
+  assert.match(meteogramJs, /const availableWidth = Math\.max\(16, Math\.min\(nominalWidth, \(width - x\) \* 2\)\)/, "edge artwork shrinks before it can leave the available data region");
+  assert.ok(Number.isFinite(firstCloudTimeX), "the exact observation time anchor remains explicit and unchanged");
   assert.match(svg, /cloud top not reported/);
   assert.doesNotMatch(svg, /data-top-ft/);
   assert.doesNotMatch(svg, /<pattern\b|id="aviationMeteogramCloud(?:Few|Scattered|Broken|Vertical)"/, "legacy patterned cloud blocks are gone");
@@ -1274,6 +1718,38 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
   assert.match(verticalVisibility, /aviation-meteogram-cloud-vv-veil/);
   assert.match(verticalVisibility, /data-cloud-label="VV005"/);
   assert.match(verticalVisibility, />CIG 500 FT</);
+
+  const ceilingRules = [...meteogramCss.matchAll(/\.aviation-meteogram-cloud-layer-ceiling[^{}]*\{[^}]*\}/g)].map((match) => match[0]).join("\n");
+  assert.doesNotMatch(ceilingRules, /#ffbf32|#ffd36b|yellow|amber/i, "BKN/OVC/VV ceiling artwork has no warning-color override");
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-body\{[\s\S]*stroke:rgba\(215,237,240,\.42\)/);
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-base-line\{stroke:#92e6ed/);
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-layer-label-ceiling\{fill:#9ce9ee/);
+  assert.match(meteogramCss, /\.aviation-meteogram-ceiling-value\{fill:#72e7ef/);
+  for (const [cover, heightFt] of [["BKN", 7000], ["OVC", 8500], ["VV", 1200]]) {
+    const raw = `${cover}${String(heightFt / 100).padStart(3, "0")}`;
+    const ceilingSvg = buildMeteogramSvgMarkup(manualMeteogramModel([manualMeteogramPoint({
+      clouds: {
+        layers: [{ cover, heightFt, convective: "", raw }],
+        clear: false, cavok: false, ceilingFt: heightFt, display: raw,
+      },
+    })]), { timeMode: "Z" });
+    assert.match(ceilingSvg, new RegExp(`cloud-layer-${cover} aviation-meteogram-cloud-layer-ceiling`));
+    assert.match(ceilingSvg, new RegExp(`>CIG ${heightFt.toLocaleString("en-US")} FT<`));
+    assert.doesNotMatch(ceilingSvg, /#ffbf32|#ffd36b|yellow|amber/i, `${cover} ceiling artwork carries no warning color`);
+  }
+
+  const highCloudModel = manualMeteogramModel([manualMeteogramPoint({
+    clouds: {
+      layers: [{ cover: "BKN", heightFt: 30000, convective: "", raw: "BKN300" }],
+      clear: false, cavok: false, ceilingFt: 30000, display: "BKN300",
+    },
+  })]);
+  const highCloudScale = meteogramCloudScaleDefinition(highCloudModel.timeline);
+  assert.equal(highCloudScale.maximumFt, 30000);
+  assert.ok(highCloudScale.ticks.includes(30000));
+  const highCloudSvg = buildMeteogramSvgMarkup(highCloudModel, { timeMode: "Z" });
+  assert.match(highCloudSvg, />30,000 FT<\/text>/, "the protected axis remains explicit at a 30,000 FT domain");
+  assert.match(highCloudSvg, />CIG 30,000 FT<\/text>/);
 
   const clear = buildMeteogramSvgMarkup(manualMeteogramModel([
     manualMeteogramPoint(),
@@ -1473,12 +1949,15 @@ test("QPF and snowfall render once across exact source intervals in inches and r
   });
   const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z", temperatureUnit: "C" }, { viewportWidth: 1200 });
   assert.match(svg, /height="998" viewBox="0 0 [\d.]+ 998"/);
-  assert.match(svg, /id="aviationMeteogramCloudClip"><rect[^>]*y="616"[^>]*height="220"/);
+  assert.match(svg, /id="aviationMeteogramCloudArtworkClip"><rect[^>]*y="616"[^>]*height="220"/);
+  assert.match(svg, /id="aviationMeteogramCloudTextClip"><rect[^>]*y="616"[^>]*height="220"/);
   assert.match(svg, /id="aviationMeteogramPrecipClip"><rect[^>]*y="910"[^>]*height="44"/);
   assert.match(svg, /id="aviationMeteogramSnowClip"><rect[^>]*y="954"[^>]*height="44"/);
   assert.equal((svg.match(/aviation-meteogram-precip-interval aviation-meteogram-interval-forecast/g) || []).length, 2, "two 6-hour totals are not replicated into hourly buckets");
   assert.equal((svg.match(/aviation-meteogram-snow-interval aviation-meteogram-interval-forecast/g) || []).length, 1);
-  assert.match(svg, /data-valid-start="2026-09-01T06:00:00\.000Z" data-valid-end="2026-09-01T12:00:00\.000Z" data-amount-in="1"/);
+  assert.match(svg, /data-valid-start="2026-09-01T06:00:00\.000Z" data-valid-end="2026-09-01T12:00:00\.000Z"/);
+  assert.match(svg, /data-render-start="2026-09-01T06:00:00\.000Z" data-render-end="2026-09-01T12:00:00\.000Z"/);
+  assert.match(svg, /data-amount-in="1"/);
   assert.match(svg, /data-amount-in="0"/);
   assert.match(svg, /FORECAST SNOWFALL 0\.10 IN/);
   assert.match(svg, /aviation-meteogram-interval-zero/);

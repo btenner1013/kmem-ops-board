@@ -1060,7 +1060,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
     </header>
 
     <form id="aviationWeatherLookupForm" class="aviation-lookup-form" novalidate>
-      <label class="aviation-lookup-field">
+      <label class="aviation-lookup-field aviation-lookup-station-field">
         <span class="aviation-lookup-label">AIRPORT ICAO</span>
         <input id="aviationWeatherLookupStation" class="aviation-lookup-input" name="station" value="KMEM" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Airport ICAO">
       </label>
@@ -1071,11 +1071,11 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
           <button class="aviation-lookup-product aviation-lookup-product-active" type="button" data-aviation-product="ATIS" aria-pressed="true">ATIS</button>
           <button class="aviation-lookup-product" type="button" data-aviation-product="METAR" aria-pressed="false">METAR</button>
           <button class="aviation-lookup-product" type="button" data-aviation-product="TAF" aria-pressed="false">TAF</button>
-          <button class="aviation-lookup-product" type="button" data-aviation-product="METEOGRAM" aria-pressed="false" aria-label="Aviation meteogram weather history" title="Aviation meteogram weather history"><span class="aviation-lookup-product-long">METEOGRAM</span><span class="aviation-lookup-product-short" aria-hidden="true">METEO</span></button>
+          <button class="aviation-lookup-product" type="button" data-aviation-product="METEOGRAM" aria-pressed="false" aria-label="Aviation meteogram weather history" title="Aviation meteogram weather history">METEOGRAM</button>
         </div>
       </div>
 
-      <label class="aviation-lookup-field">
+      <label class="aviation-lookup-field aviation-lookup-range-field">
         <span class="aviation-lookup-label">TIME RANGE</span>
         <select id="aviationWeatherLookupRange" class="aviation-lookup-select" name="range" aria-label="Time range">
           <option value="recent" selected>Most recent</option>
@@ -1100,6 +1100,43 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
     </div>
     <div id="aviationWeatherLookupResults" class="aviation-lookup-results" aria-live="polite"></div>
   </section>
+
+  <div id="aviationMeteogramPrintSetup" class="aviation-meteogram-print-setup" hidden aria-hidden="true">
+    <section id="aviationMeteogramPrintPanel" class="aviation-meteogram-print-panel" role="dialog" aria-modal="true" aria-labelledby="aviationMeteogramPrintTitle">
+      <header>
+        <div>
+          <h2 id="aviationMeteogramPrintTitle">PRINT METEOGRAM</h2>
+          <p id="aviationMeteogramPrintBasis">TIME BASIS: Z</p>
+        </div>
+        <button id="aviationMeteogramPrintClose" class="aviation-meteogram-print-close" type="button" aria-label="Close Print Meteogram setup">×</button>
+      </header>
+      <form id="aviationMeteogramPrintForm" novalidate>
+        <fieldset class="aviation-meteogram-print-options">
+          <legend>PRINT RANGE</legend>
+          <label><input type="radio" name="meteogramPrintRange" value="current" checked> CURRENT METEOGRAM RANGE</label>
+          <label><input type="radio" name="meteogramPrintRange" value="calendar"> CALENDAR DAY</label>
+          <label><input type="radio" name="meteogramPrintRange" value="custom"> CUSTOM RANGE</label>
+          <label><input type="radio" name="meteogramPrintRange" value="visible"> CURRENT VISIBLE WINDOW</label>
+        </fieldset>
+        <div class="aviation-meteogram-print-fields" data-print-fields="calendar" hidden>
+          <label>CALENDAR DATE<input id="aviationMeteogramPrintCalendarDate" type="date"></label>
+        </div>
+        <div class="aviation-meteogram-print-fields aviation-meteogram-print-custom-fields" data-print-fields="custom" hidden>
+          <label>START DATE<input id="aviationMeteogramPrintStartDate" type="date"></label>
+          <label>START TIME<input id="aviationMeteogramPrintStartTime" type="time" step="60"></label>
+          <label>END DATE<input id="aviationMeteogramPrintEndDate" type="date"></label>
+          <label>END TIME<input id="aviationMeteogramPrintEndTime" type="time" step="60"></label>
+        </div>
+        <div id="aviationMeteogramPrintStatus" class="aviation-meteogram-print-status" role="status" aria-live="polite"></div>
+        <footer>
+          <button id="aviationMeteogramPrintCancel" type="button">CANCEL</button>
+          <button id="aviationMeteogramPrintSubmit" type="submit">CONTINUE TO PRINT</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <section id="aviationMeteogramPrintPages" class="aviation-meteogram-print-pages" hidden aria-label="Prepared meteogram print pages"></section>
 </div>
 
 <div class="board">

@@ -412,7 +412,7 @@ test("external reference renders a user-clicked safe link with its warning immed
 });
 
 test("the product and range selectors contain every requested choice", () => {
-  for (const product of ["ATIS", "METAR", "TAF"]) {
+  for (const product of ["ATIS", "METAR", "TAF", "METEOGRAM"]) {
     assert.match(indexHtml, new RegExp(`data-aviation-product="${product}"`));
   }
   for (const [value, label] of [
@@ -428,6 +428,23 @@ test("the product and range selectors contain every requested choice", () => {
   ]) {
     assert.match(indexHtml, new RegExp(`<option value="${value}"(?: selected)?>${label}</option>`));
   }
+});
+
+test("METEOGRAM keeps its full intrinsic-width label without shortening or ellipsis", () => {
+  assert.match(
+    indexHtml,
+    /<button[^>]*data-aviation-product="METEOGRAM"[^>]*>METEOGRAM<\/button>/,
+  );
+  assert.doesNotMatch(indexHtml, /aviation-lookup-product-(?:long|short)/);
+  assert.match(
+    lookupCss,
+    /\.aviation-lookup-products\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(max-content,1fr\)\)/,
+  );
+  assert.match(
+    lookupCss,
+    /\.aviation-lookup-product\{[\s\S]*?min-width:max-content;[\s\S]*?overflow:visible;[\s\S]*?white-space:nowrap;[\s\S]*?text-overflow:clip;/,
+  );
+  assert.doesNotMatch(lookupCss, /text-overflow:ellipsis/);
 });
 
 test("result-card identities distinguish routine METARs, SPECIs, and TAF variants", () => {
@@ -505,10 +522,18 @@ test("lookup styling is fixed, internally scrollable, and responsive", () => {
   assert.match(lookupCss, /@media \(max-width:768px\)/);
   assert.match(lookupCss, /\.aviation-lookup-external-reference\{[\s\S]*flex-wrap:wrap/);
   assert.match(lookupCss, /@media \(max-width:768px\)\{[\s\S]*\.aviation-lookup-external-reference\{align-items:flex-start;flex-direction:column/);
-  assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\)\{[\s\S]*\.aviation-lookup-product-long\{display:none\}[\s\S]*\.aviation-lookup-product-short\{display:inline\}/);
+  assert.match(
+    lookupCss,
+    /@media \(min-width:769px\) and \(max-width:1050px\)\{[\s\S]*?grid-template-areas:\s*"station products"\s*"range submit";[\s\S]*?grid-template-columns:minmax\(120px,\.32fr\) minmax\(390px,1fr\)/,
+  );
+  assert.match(
+    lookupCss,
+    /@media \(max-width:768px\)\{[\s\S]*?grid-template-areas:\s*"products products"\s*"station range"\s*"submit submit";[\s\S]*?grid-template-columns:1fr 1fr;[\s\S]*?\.aviation-lookup-products\{grid-template-columns:repeat\(2,minmax\(max-content,1fr\)\)\}/,
+  );
   assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
   assert.match(lookupCss, /@media \(max-width:768px\)\{[\s\S]*?\.aviation-lookup-panel\{\s*width:100%;/);
   assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)\{[\s\S]*?\.aviation-lookup-panel\{width:100%;/);
+  assert.doesNotMatch(lookupCss, /overflow-x:\s*hidden/);
   assert.doesNotMatch(lookupCss, /aviation-lookup-results:empty/);
   assert.match(indexHtml, /<script type="module" src="\.\/aviation-weather-lookup\.js"><\/script>/);
 });
@@ -537,6 +562,56 @@ test("print layout is black-and-white lookup-only output", () => {
   assert.match(lookupCss, /break-inside:avoid-page/);
   assert.match(lookupCss, /aviation-lookup-result-controls\{display:none!important\}/);
   assert.doesNotMatch(lookupCss, /@media print[\s\S]*#radarImg/);
+});
+
+test("meteogram printing opens a dedicated accessible range setup with every supported choice", () => {
+  assert.match(
+    indexHtml,
+    /id="aviationMeteogramPrintSetup"[^>]*hidden[^>]*aria-hidden="true"/,
+  );
+  assert.match(
+    indexHtml,
+    /id="aviationMeteogramPrintPanel"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="aviationMeteogramPrintTitle"/,
+  );
+  assert.match(indexHtml, /id="aviationMeteogramPrintTitle">PRINT METEOGRAM</);
+  for (const [value, label] of [
+    ["current", "CURRENT METEOGRAM RANGE"],
+    ["calendar", "CALENDAR DAY"],
+    ["custom", "CUSTOM RANGE"],
+    ["visible", "CURRENT VISIBLE WINDOW"],
+  ]) {
+    assert.match(
+      indexHtml,
+      new RegExp(`name="meteogramPrintRange" value="${value}"[^>]*> ${label}`),
+    );
+  }
+  assert.match(indexHtml, /id="aviationMeteogramPrintCalendarDate" type="date"/);
+  assert.match(indexHtml, /id="aviationMeteogramPrintStartDate" type="date"/);
+  assert.match(indexHtml, /id="aviationMeteogramPrintStartTime" type="time"/);
+  assert.match(indexHtml, /id="aviationMeteogramPrintEndDate" type="date"/);
+  assert.match(indexHtml, /id="aviationMeteogramPrintEndTime" type="time"/);
+  assert.match(indexHtml, /id="aviationMeteogramPrintSubmit"[^>]*type="submit">CONTINUE TO PRINT<\/button>/);
+  assert.match(indexHtml, /id="aviationMeteogramPrintPages"[^>]*hidden/);
+});
+
+test("meteogram print preparation is isolated while ATIS, METAR, and TAF retain direct printing", () => {
+  assert.match(
+    lookupJs,
+    /printButton\.addEventListener\("click", \(\) => \{[\s\S]*?if \(product === "METEOGRAM" && openMeteogramPrintSetup\(\)\) return;[\s\S]*?updatePrintSummary\(\);[\s\S]*?classList\.add\("aviation-lookup-printing"\);[\s\S]*?view\.print\(\);/,
+  );
+  assert.match(
+    lookupJs,
+    /meteogramPrintForm\.addEventListener\("submit",[\s\S]*?buildMeteogramPrintPagesMarkup\(plan\)[\s\S]*?classList\.add\("aviation-meteogram-printing"\)[\s\S]*?view\.print\(\)/,
+  );
+  assert.match(lookupCss, /@page meteogram\{size:letter landscape/);
+  assert.match(
+    lookupCss,
+    /body\.aviation-meteogram-printing \.aviation-lookup-panel,[\s\S]*?\.aviation-meteogram-print-setup\{display:none!important\}/,
+  );
+  assert.match(
+    lookupCss,
+    /body\.aviation-meteogram-printing \.aviation-meteogram-print-pages\{[\s\S]*?display:block!important/,
+  );
 });
 
 test("changing ICAO clears stale result state while Enter still runs lookup", () => {

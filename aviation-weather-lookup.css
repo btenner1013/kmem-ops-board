@@ -98,12 +98,71 @@ body.aviation-lookup-open{overflow:hidden!important}
 
 .aviation-lookup-form{
   display:grid;
-  grid-template-columns:minmax(110px,135px) minmax(300px,1fr) minmax(145px,180px) auto;
+  grid-template-areas:"station products range submit";
+  grid-template-columns:minmax(110px,135px) minmax(max-content,1fr) minmax(145px,180px) max-content;
   align-items:end;
   gap:10px;
   padding:12px;
   border-bottom:1px solid rgba(255,255,255,.16);
 }
+
+@media print{
+  @page meteogram{size:letter landscape;margin:.28in}
+
+  body.aviation-meteogram-printing{overflow:visible!important}
+  body.aviation-meteogram-printing> :not(#aviationWeatherLookupOverlay){display:none!important}
+  body.aviation-meteogram-printing #aviationWeatherLookupOverlay{
+    position:static!important;
+    inset:auto!important;
+    display:block!important;
+    padding:0!important;
+    background:#fff!important;
+    color:#111!important;
+  }
+  body.aviation-meteogram-printing .aviation-lookup-panel,
+  body.aviation-meteogram-printing .aviation-meteogram-print-setup{display:none!important}
+  body.aviation-meteogram-printing .aviation-meteogram-print-pages{
+    display:block!important;
+    background:#fff!important;
+    color:#111!important;
+  }
+  .aviation-meteogram-print-page{
+    page:meteogram;
+    box-sizing:border-box;
+    width:100%;
+    margin:0;
+    break-after:page;
+    page-break-after:always;
+    background:#fff;
+    color:#111;
+    font-family:Arial,sans-serif;
+    break-inside:avoid-page;
+    page-break-inside:avoid;
+  }
+  .aviation-meteogram-print-page:last-child{break-after:auto;page-break-after:auto}
+  .aviation-meteogram-print-page-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    padding:0 0 5px;
+    border-bottom:1.5px solid #172324;
+  }
+  .aviation-meteogram-print-page-header h1{margin:0;color:#071314;font-size:14pt;letter-spacing:.055em}
+  .aviation-meteogram-print-page-header p{margin:3px 0 0;color:#263536;font-size:8pt;font-weight:800}
+  .aviation-meteogram-print-page-meta{display:grid;gap:2px;text-align:right;font-size:7.5pt;letter-spacing:.035em}
+  .aviation-meteogram-print-page-context{display:flex;justify-content:space-between;gap:12px;padding:4px 0 2px;color:#1f3031;font-size:6.7pt;font-weight:800}
+  .aviation-meteogram-print-coverage{margin:0 0 3px;color:#344849;font-size:6.5pt;font-weight:800}
+  .aviation-meteogram-print-interval-note{margin:0 0 3px;color:#344849;font-size:6.2pt;font-weight:800}
+  .aviation-meteogram-print-chart{width:100%;overflow:hidden;border:1px solid #566566;background:#fff}
+  .aviation-meteogram-print-chart svg{display:block;width:100%!important;height:auto!important;max-width:100%!important;max-height:6.75in!important;object-fit:contain}
+  .aviation-meteogram-print-no-data{display:grid;min-height:5.5in;place-items:center;color:#555;font:900 18pt Arial,sans-serif}
+}
+
+.aviation-lookup-station-field{grid-area:station}
+.aviation-lookup-products-field{grid-area:products}
+.aviation-lookup-range-field{grid-area:range}
+.aviation-lookup-submit{grid-area:submit}
 
 .aviation-lookup-field{
   min-width:0;
@@ -146,11 +205,9 @@ body.aviation-lookup-open{overflow:hidden!important}
 
 .aviation-lookup-products{
   display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-columns:repeat(4,minmax(max-content,1fr));
   gap:5px;
 }
-
-.aviation-lookup-product-short{display:none}
 
 .aviation-lookup-product,
 .aviation-lookup-submit{
@@ -160,7 +217,15 @@ body.aviation-lookup-open{overflow:hidden!important}
   letter-spacing:.04em;
 }
 
-.aviation-lookup-product{padding-inline:5px;font-size:.78rem;letter-spacing:.025em}
+.aviation-lookup-product{
+  min-width:max-content;
+  padding-inline:8px;
+  overflow:visible;
+  white-space:nowrap;
+  text-overflow:clip;
+  font-size:.78rem;
+  letter-spacing:.025em;
+}
 
 .aviation-lookup-product-active{
   border-color:var(--ops-green,#00ff88);
@@ -203,6 +268,58 @@ body.aviation-lookup-open{overflow:hidden!important}
 }
 
 .aviation-lookup-print-summary{display:none}
+
+.aviation-meteogram-print-setup[hidden],
+.aviation-meteogram-print-pages[hidden]{display:none!important}
+
+.aviation-meteogram-print-setup{
+  position:fixed;
+  inset:0;
+  z-index:20;
+  display:grid;
+  place-items:center;
+  padding:14px;
+  background:rgba(0,0,0,.78);
+}
+
+.aviation-meteogram-print-panel{
+  width:min(680px,100%);
+  max-height:calc(100dvh - 28px);
+  overflow:auto;
+  border:2px solid #22d3ee;
+  border-radius:8px;
+  background:#0a1111;
+  box-shadow:0 0 26px rgba(34,211,238,.28);
+}
+
+.aviation-meteogram-print-panel>header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border-bottom:1px solid rgba(34,211,238,.35);
+}
+
+.aviation-meteogram-print-panel h2{margin:0;color:#51e8ef;font-size:1rem;letter-spacing:.07em}
+.aviation-meteogram-print-panel header p{margin:4px 0 0;color:#a9bcba;font-size:.72rem;font-weight:900}
+.aviation-meteogram-print-close{width:34px;height:34px;border:1px solid #79908d;border-radius:5px;background:#121918;color:#fff;font-size:1.2rem;cursor:pointer}
+.aviation-meteogram-print-panel form{display:grid;gap:12px;padding:14px}
+.aviation-meteogram-print-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin:0;padding:10px;border:1px solid rgba(255,255,255,.18)}
+.aviation-meteogram-print-options legend{padding:0 5px;color:#8fdfe3;font-size:.7rem;font-weight:1000;letter-spacing:.07em}
+.aviation-meteogram-print-options label{display:flex;align-items:center;gap:7px;min-width:0;color:#e9f3f1;font-size:.78rem;font-weight:900}
+.aviation-meteogram-print-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;padding:10px;border:1px solid rgba(255,255,255,.14)}
+.aviation-meteogram-print-fields[hidden]{display:none!important}
+.aviation-meteogram-print-custom-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.aviation-meteogram-print-fields label{display:grid;gap:5px;color:#9fb2b0;font-size:.68rem;font-weight:1000;letter-spacing:.06em}
+.aviation-meteogram-print-fields input{box-sizing:border-box;width:100%;min-height:36px;padding:6px 8px;border:1px solid rgba(34,211,238,.55);border-radius:4px;background:#101716;color:#fff;color-scheme:dark;font:800 .82rem Arial,sans-serif}
+.aviation-meteogram-print-status{min-height:2.8em;padding:8px 10px;border-left:3px solid #22d3ee;background:rgba(34,211,238,.07);color:#bfd0ce;font-size:.76rem;line-height:1.4}
+.aviation-meteogram-print-status[data-tone="error"]{border-color:#ff7a66;color:#ffb5aa}
+.aviation-meteogram-print-status[data-tone="warning"]{border-color:#ffd36b;color:#ffe1a0}
+.aviation-meteogram-print-panel footer{display:flex;justify-content:flex-end;gap:9px}
+.aviation-meteogram-print-panel footer button{min-height:36px;padding:7px 12px;border:1px solid #44dfe8;border-radius:5px;background:#111918;color:#dffbfa;cursor:pointer;font-size:.74rem;font-weight:1000;letter-spacing:.045em}
+.aviation-meteogram-print-panel footer button[type="submit"]{background:#22d3ee;color:#031010}
+.aviation-meteogram-print-pages{display:none}
 
 .aviation-lookup-status strong{
   flex:0 0 auto;
@@ -354,30 +471,47 @@ body.aviation-lookup-open{overflow:hidden!important}
   }
   .aviation-lookup-header{padding:8px 10px}
   .aviation-lookup-form{
+    grid-template-areas:
+      "products products"
+      "station range"
+      "submit submit";
     grid-template-columns:1fr 1fr;
     gap:8px;
     padding:9px 10px;
   }
-  .aviation-lookup-products-field{grid-column:1/-1;grid-row:1}
-  .aviation-lookup-products{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .aviation-lookup-submit{grid-column:1/-1}
+  .aviation-lookup-products{grid-template-columns:repeat(2,minmax(max-content,1fr))}
   .aviation-lookup-status{align-items:flex-start;flex-direction:column;gap:3px;padding:8px 10px}
   .aviation-lookup-results{padding:8px 10px 12px}
   .aviation-lookup-external-reference{align-items:flex-start;flex-direction:column;gap:3px}
   .aviation-lookup-result-meta{align-items:flex-start;flex-direction:column;gap:3px}
   .aviation-lookup-result-times{align-items:flex-start;text-align:left}
+  .aviation-meteogram-print-setup{padding:0}
+  .aviation-meteogram-print-panel{width:100%;max-height:100dvh;border-width:0;border-radius:0}
+  .aviation-meteogram-print-options,
+  .aviation-meteogram-print-custom-fields{grid-template-columns:1fr}
 }
 
-@media (min-width:769px) and (max-width:950px){
-  .aviation-lookup-product-long{display:none}
-  .aviation-lookup-product-short{display:inline}
+@media (min-width:769px) and (max-width:1050px){
+  .aviation-lookup-form{
+    grid-template-areas:
+      "station products"
+      "range submit";
+    grid-template-columns:minmax(120px,.32fr) minmax(390px,1fr);
+  }
 }
 
 @media (min-width:769px) and (max-width:950px) and (max-height:520px) and (orientation:landscape){
   .aviation-lookup-overlay{padding:5px}
   .aviation-lookup-panel{width:100%;max-height:calc(100dvh - 10px)}
   .aviation-lookup-header{padding:5px 9px}
-  .aviation-lookup-form{grid-template-columns:110px minmax(210px,1fr) 150px auto;padding:6px 9px;gap:7px}
+  .aviation-lookup-form{
+    grid-template-areas:
+      "station products"
+      "range submit";
+    grid-template-columns:110px minmax(390px,1fr);
+    padding:6px 9px;
+    gap:7px;
+  }
   .aviation-lookup-input,.aviation-lookup-select,.aviation-lookup-submit,.aviation-lookup-product{min-height:30px;padding:4px 7px}
   .aviation-lookup-status{min-height:30px;padding:5px 9px}
   .aviation-lookup-results{min-height:90px;padding:6px 9px}

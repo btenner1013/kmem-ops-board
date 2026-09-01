@@ -9,6 +9,13 @@ import {
 } from "./aviation-weather-lookup-core.js";
 import { meteogramLookupRequest, parseNwsGridForecast } from "./weather-meteogram-core.js";
 import { meteogramForecastSourceState, renderAviationMeteogram } from "./weather-meteogram.js";
+import {
+  buildMeteogramPrintPagesMarkup,
+  buildMeteogramPrintPlan,
+  meteogramPrintDefaultValues,
+  paginateMeteogramPrintRange,
+  resolveMeteogramPrintRange,
+} from "./weather-meteogram-print.js";
 
 const PRODUCT_NAMES = new Set(["ATIS", "METAR", "TAF", "METEOGRAM"]);
 const LOOKUP_TIMEOUT_MS = 30000;
@@ -351,6 +358,19 @@ export function initializeAviationWeatherLookup(doc = document) {
   const status = doc.getElementById("aviationWeatherLookupStatus");
   const results = doc.getElementById("aviationWeatherLookupResults");
   const printSummary = doc.getElementById("aviationWeatherLookupPrintSummary");
+  const meteogramPrintSetup = doc.getElementById("aviationMeteogramPrintSetup");
+  const meteogramPrintPanel = doc.getElementById("aviationMeteogramPrintPanel");
+  const meteogramPrintForm = doc.getElementById("aviationMeteogramPrintForm");
+  const meteogramPrintBasis = doc.getElementById("aviationMeteogramPrintBasis");
+  const meteogramPrintStatus = doc.getElementById("aviationMeteogramPrintStatus");
+  const meteogramPrintPages = doc.getElementById("aviationMeteogramPrintPages");
+  const meteogramPrintClose = doc.getElementById("aviationMeteogramPrintClose");
+  const meteogramPrintCancel = doc.getElementById("aviationMeteogramPrintCancel");
+  const meteogramPrintCalendarDate = doc.getElementById("aviationMeteogramPrintCalendarDate");
+  const meteogramPrintStartDate = doc.getElementById("aviationMeteogramPrintStartDate");
+  const meteogramPrintStartTime = doc.getElementById("aviationMeteogramPrintStartTime");
+  const meteogramPrintEndDate = doc.getElementById("aviationMeteogramPrintEndDate");
+  const meteogramPrintEndTime = doc.getElementById("aviationMeteogramPrintEndTime");
   const productButtons = [...doc.querySelectorAll("[data-aviation-product]")];
   if (!overlay || !panel || !closeButton || !printButton || !form || !stationInput || !rangeSelect || !submitButton || !status || !results || !printSummary) return null;
 
@@ -362,6 +382,8 @@ export function initializeAviationWeatherLookup(doc = document) {
   let activeMeteogram = null;
   let meteogramRefreshTimer = 0;
   let currentReports = [];
+  let meteogramPrintSnapshot = null;
+  let meteogramPrintReturnFocus = null;
   const view = doc.defaultView || window;
 
   function disposeMeteogram() {
@@ -415,6 +437,135 @@ export function initializeAviationWeatherLookup(doc = document) {
     }
   }
 
+  function meteogramPrintElementsAvailable() {
+    return Boolean(
+      meteogramPrintSetup
+      && meteogramPrintPanel
+      && meteogramPrintForm
+      && meteogramPrintBasis
+      && meteogramPrintStatus
+      && meteogramPrintPages
+      && meteogramPrintClose
+      && meteogramPrintCancel
+      && meteogramPrintCalendarDate
+      && meteogramPrintStartDate
+      && meteogramPrintStartTime
+      && meteogramPrintEndDate
+      && meteogramPrintEndTime,
+    );
+  }
+
+  function selectedMeteogramPrintChoice() {
+    return meteogramPrintForm?.querySelector?.('input[name="meteogramPrintRange"]:checked')?.value || "current";
+  }
+
+  function meteogramPrintValues() {
+    return {
+      calendarDate: meteogramPrintCalendarDate?.value || "",
+      startDate: meteogramPrintStartDate?.value || "",
+      startTime: meteogramPrintStartTime?.value || "",
+      endDate: meteogramPrintEndDate?.value || "",
+      endTime: meteogramPrintEndTime?.value || "",
+    };
+  }
+
+  function setMeteogramPrintStatus(message, tone = "") {
+    if (!meteogramPrintStatus) return;
+    meteogramPrintStatus.textContent = message;
+    if (tone) meteogramPrintStatus.dataset.tone = tone;
+    else delete meteogramPrintStatus.dataset.tone;
+  }
+
+  function currentMeteogramPrintRange() {
+    if (!meteogramPrintSnapshot) return { ok: false, error: "The meteogram is not ready to print." };
+    return resolveMeteogramPrintRange({
+      choice: selectedMeteogramPrintChoice(),
+      model: meteogramPrintSnapshot.model,
+      settings: meteogramPrintSnapshot.settings,
+      values: meteogramPrintValues(),
+      visibleRange: meteogramPrintSnapshot.visibleRange,
+    });
+  }
+
+  function currentMeteogramPrintPlan() {
+    const range = currentMeteogramPrintRange();
+    return range.ok
+      ? buildMeteogramPrintPlan({
+        model: meteogramPrintSnapshot.model,
+        settings: meteogramPrintSnapshot.settings,
+        range,
+        rangeLabel: selectedMeteogramPrintChoice() === "current"
+          ? meteogramPrintSnapshot.rangeLabel
+          : selectedMeteogramPrintChoice() === "calendar"
+            ? "Calendar day"
+            : selectedMeteogramPrintChoice() === "visible"
+              ? "Current visible window"
+              : "Custom range",
+      })
+      : range;
+  }
+
+  function refreshMeteogramPrintSetup() {
+    if (!meteogramPrintElementsAvailable()) return;
+    const choice = selectedMeteogramPrintChoice();
+    for (const fields of meteogramPrintForm.querySelectorAll?.("[data-print-fields]") || []) {
+      fields.hidden = fields.dataset.printFields !== choice;
+    }
+    const range = currentMeteogramPrintRange();
+    if (!range.ok) {
+      setMeteogramPrintStatus(range.error || "Choose a valid print range.", "error");
+      return;
+    }
+    const hours = range.durationHours;
+    const pageCount = paginateMeteogramPrintRange(range).length;
+    const warning = range.warnings?.join(" ") || "";
+    setMeteogramPrintStatus(
+      `${hours.toFixed(hours % 1 ? 1 : 0)} HR · ${pageCount} LANDSCAPE ${pageCount === 1 ? "PAGE" : "PAGES"} · approximately 12 hours per page.${warning ? ` ${warning}` : ""}`,
+      warning ? "warning" : "",
+    );
+  }
+
+  function closeMeteogramPrintSetup({ restoreFocus = true, preserveReturnFocus = false } = {}) {
+    if (!meteogramPrintSetup) return;
+    meteogramPrintSetup.hidden = true;
+    meteogramPrintSetup.setAttribute("aria-hidden", "true");
+    panel.inert = false;
+    panel.setAttribute("aria-hidden", "false");
+    const focusTarget = meteogramPrintReturnFocus;
+    meteogramPrintSnapshot = null;
+    if (restoreFocus) {
+      meteogramPrintReturnFocus = null;
+      focusTarget?.focus?.();
+    } else if (!preserveReturnFocus) {
+      meteogramPrintReturnFocus = null;
+    }
+  }
+
+  function openMeteogramPrintSetup() {
+    if (!meteogramPrintElementsAvailable() || !activeMeteogram?.getPrintState) return false;
+    meteogramPrintSnapshot = activeMeteogram.getPrintState();
+    meteogramPrintReturnFocus = doc.activeElement || printButton;
+    const defaults = meteogramPrintDefaultValues(meteogramPrintSnapshot);
+    meteogramPrintCalendarDate.value = defaults.calendarDate;
+    meteogramPrintStartDate.value = defaults.startDate;
+    meteogramPrintStartTime.value = defaults.startTime;
+    meteogramPrintEndDate.value = defaults.endDate;
+    meteogramPrintEndTime.value = defaults.endTime;
+    const currentRadio = meteogramPrintForm.querySelector?.('input[name="meteogramPrintRange"][value="current"]');
+    if (currentRadio) currentRadio.checked = true;
+    const visibleRadio = meteogramPrintForm.querySelector?.('input[name="meteogramPrintRange"][value="visible"]');
+    if (visibleRadio) visibleRadio.disabled = !meteogramPrintSnapshot.visibleRange;
+    const settings = meteogramPrintSnapshot.settings;
+    meteogramPrintBasis.textContent = `TIME BASIS: ${settings.timeMode}${settings.timeMode === "LOCAL" ? ` · ${meteogramPrintSnapshot.model.timeZone}` : " · UTC/Z"} · °${settings.temperatureUnit} · ${settings.windUnit}`;
+    panel.inert = true;
+    panel.setAttribute("aria-hidden", "true");
+    meteogramPrintSetup.hidden = false;
+    meteogramPrintSetup.setAttribute("aria-hidden", "false");
+    refreshMeteogramPrintSetup();
+    currentRadio?.focus?.();
+    return true;
+  }
+
   function setProduct(nextProduct) {
     const normalized = String(nextProduct || "").toUpperCase();
     if (!PRODUCT_NAMES.has(normalized)) return;
@@ -441,6 +592,12 @@ export function initializeAviationWeatherLookup(doc = document) {
     activeController = null;
     stopMeteogramRefresh();
     disposeMeteogram();
+    closeMeteogramPrintSetup({ restoreFocus: false });
+    doc.body.classList.remove("aviation-meteogram-printing");
+    if (meteogramPrintPages) {
+      meteogramPrintPages.hidden = true;
+      meteogramPrintPages.textContent = "";
+    }
     applyLookupDialogState(
       { overlay, body: doc.body, focusTarget: stationInput, returnFocus },
       false,
@@ -610,13 +767,43 @@ export function initializeAviationWeatherLookup(doc = document) {
   closeButton.addEventListener("click", close);
   printButton.addEventListener("click", () => {
     if (!currentReports.length) return;
+    if (product === "METEOGRAM" && openMeteogramPrintSetup()) return;
     updatePrintSummary();
     doc.body.classList.add("aviation-lookup-printing");
     view.print();
   });
   view.addEventListener("afterprint", () => {
     doc.body.classList.remove("aviation-lookup-printing");
+    doc.body.classList.remove("aviation-meteogram-printing");
+    if (meteogramPrintPages) {
+      meteogramPrintPages.hidden = true;
+      meteogramPrintPages.textContent = "";
+    }
+    const focusTarget = meteogramPrintReturnFocus;
+    meteogramPrintReturnFocus = null;
+    focusTarget?.focus?.();
   });
+  if (meteogramPrintElementsAvailable()) {
+    meteogramPrintClose.addEventListener("click", () => closeMeteogramPrintSetup());
+    meteogramPrintCancel.addEventListener("click", () => closeMeteogramPrintSetup());
+    meteogramPrintForm.addEventListener("change", refreshMeteogramPrintSetup);
+    meteogramPrintForm.addEventListener("input", refreshMeteogramPrintSetup);
+    meteogramPrintForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const plan = currentMeteogramPrintPlan();
+      if (!plan.ok) {
+        setMeteogramPrintStatus(plan.error || "Choose a valid print range.", "error");
+        return;
+      }
+      meteogramPrintPages.innerHTML = buildMeteogramPrintPagesMarkup(plan);
+      meteogramPrintPages.hidden = false;
+      closeMeteogramPrintSetup({ restoreFocus: false, preserveReturnFocus: true });
+      doc.body.classList.add("aviation-meteogram-printing");
+      const invokePrint = () => view.print();
+      if (view.requestAnimationFrame) view.requestAnimationFrame(invokePrint);
+      else invokePrint();
+    });
+  }
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     runLookup();
@@ -639,13 +826,15 @@ export function initializeAviationWeatherLookup(doc = document) {
   }
 
   overlay.addEventListener("keydown", (event) => {
+    const printSetupOpen = Boolean(meteogramPrintSetup && !meteogramPrintSetup.hidden);
     if (event.key === "Escape") {
       event.preventDefault();
-      close();
+      if (printSetupOpen) closeMeteogramPrintSetup();
+      else close();
       return;
     }
     if (event.key !== "Tab") return;
-    const focusable = focusableElements(panel);
+    const focusable = focusableElements(printSetupOpen ? meteogramPrintPanel : panel);
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
