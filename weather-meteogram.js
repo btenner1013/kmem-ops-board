@@ -1613,7 +1613,36 @@ export function meteogramWeatherSceneDefinition(observation = {}) {
   };
 }
 
-function atmosphericPhenomenonMarkup(phenomenon, width) {
+export function meteogramLightningGeometry(observation = {}, maximumFt = 10000) {
+  const pathHeight = 40;
+  const genericStartY = METEOGRAM_ROWS.clouds.top + 72;
+  const reportedCbLayers = cloudLayersForObservation(observation)
+    .filter((layer) => String(layer?.convective || "").toUpperCase() === "CB")
+    .map((layer) => Number(layer.heightFt))
+    .filter((heightFt) => Number.isFinite(heightFt) && heightFt >= 0);
+  if (!reportedCbLayers.length) {
+    return {
+      anchor: "generic-atmosphere",
+      baseFt: null,
+      baseY: null,
+      startY: genericStartY,
+      tipY: genericStartY + pathHeight,
+    };
+  }
+  const baseFt = Math.min(...reportedCbLayers);
+  const baseY = meteogramCloudBaseY(baseFt, maximumFt);
+  const latestStartY = METEOGRAM_ROWS.clouds.bottom - 18 - pathHeight;
+  const startY = Math.min(baseY - 12, latestStartY);
+  return {
+    anchor: "reported-cb-base",
+    baseFt,
+    baseY,
+    startY,
+    tipY: startY + pathHeight,
+  };
+}
+
+function atmosphericPhenomenonMarkup(phenomenon, width, { lightningGeometry = null } = {}) {
   const safeWidth = Math.max(20, Number(width) || 20);
   const localized = phenomenon.showers || phenomenon.vicinity;
   const span = safeWidth * (localized ? 0.44 : 0.76);
@@ -1662,20 +1691,27 @@ function atmosphericPhenomenonMarkup(phenomenon, width) {
   const ice = phenomenon.freezing
     ? `<g class="aviation-meteogram-atmosphere-freezing" aria-hidden="true"><path d="M${(shift - 16).toFixed(1)} ${WEATHER_OVERLAY_ZONE_BOTTOM - 3}l4-4 4 4-4 4Z M${(shift + 9).toFixed(1)} ${WEATHER_OVERLAY_ZONE_TOP + 3}l4-4 4 4-4 4Z"/></g>`
     : "";
+  const lightning = lightningGeometry || meteogramLightningGeometry();
+  const lightningBaseAttributes = Number.isFinite(lightning.baseY)
+    ? ` data-lightning-base-ft="${lightning.baseFt}" data-lightning-base-y="${lightning.baseY.toFixed(1)}"`
+    : "";
   const thunder = phenomenon.thunder
-    ? `<path class="aviation-meteogram-atmosphere-lightning" data-weather-lightning="reported-thunder" aria-hidden="true" d="M${(shift + 4).toFixed(1)} ${METEOGRAM_ROWS.clouds.top + 72}l-10 21h8l-5 19 18-26h-9l8-12Z"/>`
+    ? `<path class="aviation-meteogram-atmosphere-lightning" data-weather-lightning="reported-thunder" data-lightning-anchor="${lightning.anchor}" data-lightning-start-y="${lightning.startY.toFixed(1)}" data-lightning-tip-y="${lightning.tipY.toFixed(1)}"${lightningBaseAttributes} aria-hidden="true" d="M${(shift + 4).toFixed(1)} ${lightning.startY.toFixed(1)}l-10 21h8l-5 19 18-26h-9l8-12Z"/>`
     : "";
   return `<g class="aviation-meteogram-atmosphere-phenomenon${phenomenon.vicinity ? " aviation-meteogram-atmosphere-vicinity" : ""}${phenomenon.showers ? " aviation-meteogram-atmosphere-showers" : ""}${phenomenon.conditional ? " aviation-meteogram-atmosphere-conditional" : ""}" data-weather-code="${escapeMarkup(phenomenon.code)}" data-weather-density="${phenomenon.density}" data-weather-provenance="${escapeMarkup(phenomenon.provenance)}" data-weather-zone-top="${WEATHER_OVERLAY_ZONE_TOP}" data-weather-zone-bottom="${WEATHER_OVERLAY_ZONE_BOTTOM}" aria-hidden="true">
     ${obscuration}${rain}${drizzle}${snow}${pellets}${ice}${thunder}
   </g>`;
 }
 
-function atmosphericWeatherMarkup(observation, width) {
+function atmosphericWeatherMarkup(observation, width, cloudMaximumFt = 10000) {
   const scene = meteogramWeatherSceneDefinition(observation);
   if (!scene.codes.length) return "";
+  const lightningGeometry = scene.thunder
+    ? meteogramLightningGeometry(observation, cloudMaximumFt)
+    : null;
   const accessible = `${scene.groups.map((group) => `${group.provenance}: ${group.phenomena.map((phenomenon) => phenomenon.meaning).join(", ")}`).join("; ")} · qualitative weather illustration; no precipitation amount or producing cloud layer is inferred`;
   return `<g class="aviation-meteogram-atmosphere" data-weather-codes="${escapeMarkup(scene.codes.join(" "))}" data-weather-density="${scene.density}" role="img" aria-label="${escapeMarkup(accessible)}">
-    <title>${escapeMarkup(accessible)}</title>${scene.phenomena.map((phenomenon) => atmosphericPhenomenonMarkup(phenomenon, width)).join("")}
+    <title>${escapeMarkup(accessible)}</title>${scene.phenomena.map((phenomenon) => atmosphericPhenomenonMarkup(phenomenon, width, { lightningGeometry })).join("")}
   </g>`;
 }
 
@@ -2053,7 +2089,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
       ? `<text class="aviation-meteogram-cloud-unknown" x="${textX.toFixed(1)}" y="${rows.clouds.top + 16}">${escapeMarkup(unknownLayers.map((layer) => `${layer.conditionalLabel ? `${layer.conditionalLabel} ` : ""}${layer.raw || `${layer.cover}///`}`).join(" · "))} BASE UNKNOWN</text>`
       : "";
     const forecastClass = isForecast(observation) ? " aviation-meteogram-cloud-forecast" : "";
-    cloudArtworkMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-art-x="${artX.toFixed(1)}" data-cloud-art-offset-x="${(artX - x).toFixed(1)}" transform="translate(${artX.toFixed(1)} 0)">${skyStatusMarkup(observation, availableWidth)}${artLayers.join("")}${atmosphericWeatherMarkup(observation, availableWidth)}</g>`);
+    cloudArtworkMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-art-x="${artX.toFixed(1)}" data-cloud-art-offset-x="${(artX - x).toFixed(1)}" transform="translate(${artX.toFixed(1)} 0)">${skyStatusMarkup(observation, availableWidth)}${artLayers.join("")}${atmosphericWeatherMarkup(observation, availableWidth, cloudScale.maximumFt)}</g>`);
     cloudTextMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-text-x="${textX.toFixed(1)}">
       ${textLayers.join("")}${unknownMarkup}
       ${cloudColumnLabelMask[index] ? `<text class="aviation-meteogram-ceiling-value" x="${textX.toFixed(1)}" y="${rows.clouds.bottom - 9}">${escapeMarkup(ceilingText)}</text>` : ""}

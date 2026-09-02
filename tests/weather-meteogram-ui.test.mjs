@@ -20,6 +20,7 @@ import {
   meteogramCloudTickLayout,
   meteogramDimensions,
   meteogramForecastSourceState,
+  meteogramLightningGeometry,
   meteogramRowLabelDescriptors,
   meteogramRowLabelLayout,
   meteogramSubtitleText,
@@ -1813,6 +1814,28 @@ test("cloud morphology, convective development, and weather overlays remain sema
   assert.match(convectiveSvg, /aviation-meteogram-cloud-development-CB/);
   assert.match(convectiveSvg, /aviation-meteogram-cloud-anvil/);
   assert.equal((convectiveSvg.match(/data-weather-lightning="reported-thunder"/g) || []).length, 1, "CB alone never fabricates lightning; TSRA adds it once");
+  const convectiveScale = meteogramCloudScaleDefinition(convective).maximumFt;
+  const expectedCbBaseY = meteogramCloudBaseY(3000, convectiveScale);
+  const lightning = meteogramLightningGeometry(convective[2], convectiveScale);
+  assert.equal(lightning.anchor, "reported-cb-base");
+  assert.equal(lightning.baseFt, 3000);
+  assert.equal(lightning.baseY, expectedCbBaseY, "lightning uses the exact reported CB base geometry");
+  assert.ok(lightning.startY < lightning.baseY, "lightning begins inside the lower cloud body");
+  assert.ok(lightning.tipY > lightning.baseY, "lightning emerges below the cloud base");
+  assert.ok(lightning.tipY <= 818, "lightning remains above the protected CIG summary area");
+  assert.match(convectiveSvg, new RegExp(`data-lightning-anchor="reported-cb-base" data-lightning-start-y="${lightning.startY.toFixed(1).replace(".", "\\.")}" data-lightning-tip-y="${lightning.tipY.toFixed(1).replace(".", "\\.")}" data-lightning-base-ft="3000" data-lightning-base-y="${expectedCbBaseY.toFixed(1).replace(".", "\\.")}"`));
+  assert.match(convectiveSvg, new RegExp(`d="M[^ ]+ ${lightning.startY.toFixed(1).replace(".", "\\.")}l-10 21h8l-5 19 18-26h-9l8-12Z"`), "rendered bolt path uses the tested start geometry");
+  assert.doesNotMatch(buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("SCT025TCU")]), { timeMode: "Z" }), /data-weather-lightning=/, "TCU alone never fabricates lightning");
+  assert.doesNotMatch(buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("BKN030CB")]), { timeMode: "Z" }), /data-weather-lightning=/, "CB alone never fabricates lightning");
+  const genericThunderSvg = buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("BKN030", ["TSRA"])]), { timeMode: "Z" });
+  assert.match(genericThunderSvg, /data-lightning-anchor="generic-atmosphere"/);
+  assert.doesNotMatch(genericThunderSvg, /data-lightning-base-(?:ft|y)=/, "thunder without explicit CB does not fabricate a cloud-base association");
+  const lightningIndex = convectiveSvg.indexOf("data-weather-lightning=\"reported-thunder\"");
+  const cbMarkerIndex = convectiveSvg.indexOf("data-cloud-base-marker=\"BKN030CB\"");
+  const cbLabelIndex = convectiveSvg.indexOf("data-cloud-label=\"BKN030CB\"");
+  const cloudAxisIndex = convectiveSvg.indexOf("aviation-meteogram-cloud-axis");
+  assert.ok(lightningIndex >= 0 && lightningIndex < cbMarkerIndex && cbMarkerIndex < cloudAxisIndex, "base marker and protected axis paint above lightning");
+  assert.ok(lightningIndex < cbLabelIndex && cbLabelIndex < cloudAxisIndex, "cloud token paints above lightning");
   assert.match(convectiveSvg, /CUMULONIMBUS REPORTED[\s\S]*CLOUD TOP NOT REPORTED/);
 
   for (const [code, density] of [["-RA", 1], ["RA", 2], ["+RA", 3]]) {
