@@ -197,9 +197,9 @@ function pathSegments(points, observations, maximumGapMs = MAX_CONNECTOR_GAP_MS)
   return segments;
 }
 
-function pathMarkup(points, className, observations) {
+function pathMarkup(points, className, observations, minimumPoints = 1) {
   return pathSegments(points, observations)
-    .filter((segment) => segment.length)
+    .filter((segment) => segment.length >= minimumPoints)
     .map((segment) => {
       const d = segment.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
       return `<path class="${className}" d="${d}"/>`;
@@ -219,13 +219,13 @@ function forecastSeamMarkup(points, observations, className) {
   return `<path class="${className} aviation-meteogram-line-forecast aviation-meteogram-line-seam" d="M${observedPoint.x.toFixed(1)} ${observedPoint.y.toFixed(1)} L${forecastPoint.x.toFixed(1)} ${forecastPoint.y.toFixed(1)}"/>`;
 }
 
-function trendSeriesMarkup(points, observations, className) {
+function trendSeriesMarkup(points, observations, className, { minimumPoints = 1 } = {}) {
   const observed = points.map((point, index) => isForecast(observations[index]) ? null : point);
   const forecast = points.map((point, index) => isForecast(observations[index]) ? point : null);
   return [
-    pathMarkup(observed, className, observations),
+    pathMarkup(observed, className, observations, minimumPoints),
     forecastSeamMarkup(points, observations, className),
-    pathMarkup(forecast, `${className} aviation-meteogram-line-forecast`, observations),
+    pathMarkup(forecast, `${className} aviation-meteogram-line-forecast`, observations, minimumPoints),
   ].join("");
 }
 
@@ -293,7 +293,7 @@ export function meteogramRowLabelDescriptors(settings = {}, hasForecast = false)
     { key: "tempLine", ...rows.tempLine, icon: "↗", title: "TEMP LINE", unit: `SHARED °${temperatureUnit} SCALE` },
     { key: "dewLine", ...rows.dewLine, icon: "↗", title: "DEW POINT LINE", unit: `SHARED °${temperatureUnit} SCALE` },
     { key: "wind", ...rows.wind, icon: "↗", title: "WIND", unit: `DOWNWIND ARROW · ${windUnit}` },
-    { key: "windSpeed", ...rows.windSpeed, icon: "≈", title: "WIND SPEED / GUST", unit: `SOLID SUSTAINED · DASH GUST · ${windUnit}` },
+    { key: "windSpeed", ...rows.windSpeed, icon: "≈", title: "WIND SPEED / GUST", unit: `SOLID SUSTAINED · GUST WHISKER · ${windUnit}` },
     { key: "pressure", ...rows.pressure, icon: "◌", title: "PRESSURE", unit: "IN HG" },
     { key: "clouds", ...rows.clouds, icon: "☁", title: "CLOUDS / CIG", unit: "FT AGL" },
     { key: "visibility", ...rows.visibility, icon: "◉", title: "VISIBILITY", unit: "SM / REPORTED" },
@@ -584,6 +584,22 @@ export function meteogramVisualLabelMask(timeline, xPositions, minimumDistance =
     if (selected.some((other) => Math.abs(other.x - candidate.x) < other.halfWidth + candidate.halfWidth)) continue;
     visible[candidate.index] = true;
     selected.push(candidate);
+  }
+  return visible;
+}
+
+export function meteogramGustLabelMask(gustPoints, minimumDistance = 34) {
+  const points = Array.isArray(gustPoints) ? gustPoints : [];
+  const visible = points.map(() => false);
+  const candidates = points
+    .map((point, index) => ({ index, x: Number(point?.x) }))
+    .filter((candidate) => Number.isFinite(candidate.x))
+    .sort((left, right) => right.x - left.x || right.index - left.index);
+  let nextVisibleX = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    if (nextVisibleX - candidate.x < minimumDistance) continue;
+    visible[candidate.index] = true;
+    nextVisibleX = candidate.x;
   }
   return visible;
 }
@@ -1868,6 +1884,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   const windSpeedGeometry = meteogramWindSpeedGeometry(model, normalizedSettings, dimensions, {
     maximumKt: scaleOverrides?.windMaximumKt,
   });
+  const gustLabelMask = meteogramGustLabelMask(windSpeedGeometry.gustPoints);
 
   const pressureRange = validScaleRange(scaleOverrides?.pressureRange)
     || usableRange(timeline.map((observation) => observation.pressureInHg), { minimumSpan: 0.08, padding: 0.18 });
@@ -1992,18 +2009,24 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     if (!sustained && !gust) return "";
     const bounds = cellBounds[index];
     const tooltip = windSpeedTooltipText(observation, normalizedSettings);
+    const gustLabel = gust ? `G${formatWind(gust.valueKt, normalizedSettings.windUnit)}` : "";
+    const gustLabelY = gust
+      ? gust.y - 13 >= rows.windSpeed.top ? gust.y - 5 : gust.y + 11
+      : null;
     const forecastClass = isForecast(observation) ? " aviation-meteogram-wind-speed-sample-forecast" : " aviation-meteogram-wind-speed-sample-observed";
     return `<g class="aviation-meteogram-wind-speed-sample${forecastClass}" data-wind-speed-sample="${index}" data-tooltip-x="${xAt(index).toFixed(1)}" data-wind-tooltip="${multilineAttribute(tooltip)}"${printMode ? "" : ` tabindex="0" role="img" aria-label="${escapeMarkup(tooltip.replace(/\n/g, " · "))}" aria-describedby="${idPrefix}WindTooltip"`} transform="translate(${xAt(index).toFixed(1)} 0)">
       <title>${escapeMarkup(tooltip)}</title>
       <rect class="aviation-meteogram-wind-speed-hit" x="${(bounds.left - xAt(index)).toFixed(1)}" y="${rows.windSpeed.top}" width="${cellWidthAt(index).toFixed(1)}" height="${rows.windSpeed.bottom - rows.windSpeed.top}"/>
+      ${gust && sustained ? `<line class="aviation-meteogram-wind-gust-whisker" data-sustained-kt="${sustained.valueKt}" data-gust-kt="${gust.valueKt}" x1="0" y1="${sustained.y.toFixed(1)}" x2="0" y2="${gust.y.toFixed(1)}"/>` : ""}
       ${sustained ? `<circle class="aviation-meteogram-wind-sustained-marker" data-speed-kt="${sustained.valueKt}" cx="0" cy="${sustained.y.toFixed(1)}" r="${isForecast(observation) ? "2.1" : "2.7"}"/>` : ""}
-      ${gust ? `<circle class="aviation-meteogram-wind-gust-marker" data-gust-kt="${gust.valueKt}" cx="0" cy="${gust.y.toFixed(1)}" r="${isForecast(observation) ? "2.1" : "2.7"}"/>` : ""}
+      ${gust ? `<line class="aviation-meteogram-wind-gust-marker aviation-meteogram-wind-gust-cap" data-gust-kt="${gust.valueKt}" x1="-4.5" y1="${gust.y.toFixed(1)}" x2="4.5" y2="${gust.y.toFixed(1)}"/>` : ""}
+      ${gust && gustLabelMask[index] ? `<text class="aviation-meteogram-wind-gust-label" data-gust-label-kt="${gust.valueKt}" x="0" y="${gustLabelY.toFixed(1)}">${escapeMarkup(gustLabel)}</text>` : ""}
     </g>`;
   }).join("");
-  const windSpeedSeriesMarkup = `<g class="aviation-meteogram-wind-speed-series" data-domain-min-kt="${windSpeedGeometry.range.minimum}" data-domain-max-kt="${windSpeedGeometry.range.maximum}" data-display-unit="${windSpeedGeometry.unit}" aria-label="Sustained wind solid line and gust dashed line on one zero-based ${windSpeedGeometry.unit} speed scale">
+  const windSpeedSeriesMarkup = `<g class="aviation-meteogram-wind-speed-series" data-domain-min-kt="${windSpeedGeometry.range.minimum}" data-domain-max-kt="${windSpeedGeometry.range.maximum}" data-display-unit="${windSpeedGeometry.unit}" aria-label="Sustained wind solid line with reported gust caps and sustained-to-gust whiskers where sustained wind is available; adjacent gusts use a dashed connection on one zero-based ${windSpeedGeometry.unit} speed scale">
     ${windSpeedTickMarkup}
     ${trendSeriesMarkup(windSpeedGeometry.sustainedPoints, timeline, "aviation-meteogram-wind-sustained-line")}
-    ${trendSeriesMarkup(windSpeedGeometry.gustPoints, timeline, "aviation-meteogram-wind-gust-line")}
+    ${trendSeriesMarkup(windSpeedGeometry.gustPoints, timeline, "aviation-meteogram-wind-gust-line", { minimumPoints: 2 })}
     ${windSpeedMarkersMarkup}
   </g>`;
 
@@ -2205,7 +2228,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
 
   return `<svg class="aviation-meteogram-svg${printMode ? " aviation-meteogram-svg-print" : ""}" xmlns="${SVG_NS}" width="${width.toFixed(1)}" height="${height}" viewBox="0 0 ${width.toFixed(1)} ${height}" data-label-width="${labelWidth}" data-axis-width="${axisWidth}" data-plot-left="${plotLeft}" data-cloud-axis-width="${METEOGRAM_CLOUD_AXIS_WIDTH}" role="img" aria-labelledby="${idPrefix}SvgTitle ${idPrefix}SvgDescription">
     <title id="${idPrefix}SvgTitle">${escapeMarkup(model.station)} aviation weather meteogram</title>
-    <desc id="${idPrefix}SvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Sustained wind and reported gusts use one shared zero-based speed scale; missing gusts are not inferred. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase. Missing values are not inferred.${escapeMarkup(solarDescription)}</desc>
+    <desc id="${idPrefix}SvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Sustained wind and reported gusts use one shared zero-based speed scale. Reported gusts use a distinct cap; when sustained wind is available, a whisker connects the sustained and gust values. Adjacent gust-bearing buckets use a dashed connection; missing gusts are not inferred. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase. Missing values are not inferred.${escapeMarkup(solarDescription)}</desc>
     ${definitions}
     <rect class="aviation-meteogram-background" width="${width.toFixed(1)}" height="${height}"/>
     ${forecastBackground}

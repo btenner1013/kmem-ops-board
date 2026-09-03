@@ -449,16 +449,39 @@
   stroke-dasharray:7 4 2 4;
   opacity:.56;
 }
-.aviation-meteogram-wind-sustained-marker,
-.aviation-meteogram-wind-gust-marker{
+.aviation-meteogram-wind-sustained-marker{
   pointer-events:none;
   stroke:#050909;
   stroke-width:1.2;
+  fill:#32d8eb;
 }
-.aviation-meteogram-wind-sustained-marker{fill:#32d8eb}
-.aviation-meteogram-wind-gust-marker{fill:#ffbf32}
+.aviation-meteogram-wind-gust-whisker,
+.aviation-meteogram-wind-gust-cap{
+  fill:none;
+  pointer-events:none;
+}
+.aviation-meteogram-wind-gust-whisker{
+  stroke:#c58d28;
+  stroke-width:1.15;
+}
+.aviation-meteogram-wind-gust-cap{
+  stroke:#ffbf32;
+  stroke-width:2.4;
+  stroke-linecap:square;
+}
+.aviation-meteogram-wind-gust-label{
+  fill:#ffd36b;
+  stroke:#050909;
+  stroke-width:2.4px;
+  paint-order:stroke;
+  pointer-events:none;
+  font:900 8px Consolas,"Courier New",monospace;
+  text-anchor:middle;
+}
 .aviation-meteogram-wind-speed-sample-forecast .aviation-meteogram-wind-sustained-marker,
-.aviation-meteogram-wind-speed-sample-forecast .aviation-meteogram-wind-gust-marker{opacity:.62}
+.aviation-meteogram-wind-speed-sample-forecast .aviation-meteogram-wind-gust-whisker,
+.aviation-meteogram-wind-speed-sample-forecast .aviation-meteogram-wind-gust-cap,
+.aviation-meteogram-wind-speed-sample-forecast .aviation-meteogram-wind-gust-label{opacity:.62}
 .aviation-meteogram-wind-speed-hit{
   fill:transparent;
   pointer-events:all;
@@ -792,8 +815,10 @@
   body.aviation-meteogram-printing .aviation-meteogram-visibility-line{stroke:#172829!important}
   body.aviation-meteogram-printing .aviation-meteogram-wind-sustained-line{stroke:#111!important;stroke-width:2.5!important}
   body.aviation-meteogram-printing .aviation-meteogram-wind-gust-line{stroke:#111!important;stroke-dasharray:4 4!important}
-  body.aviation-meteogram-printing .aviation-meteogram-wind-sustained-marker,
-  body.aviation-meteogram-printing .aviation-meteogram-wind-gust-marker{fill:#fff!important;stroke:#111!important}
+  body.aviation-meteogram-printing .aviation-meteogram-wind-sustained-marker{fill:#fff!important;stroke:#111!important}
+  body.aviation-meteogram-printing .aviation-meteogram-wind-gust-whisker,
+  body.aviation-meteogram-printing .aviation-meteogram-wind-gust-cap{stroke:#111!important;opacity:1!important}
+  body.aviation-meteogram-printing .aviation-meteogram-wind-gust-label{fill:#111!important;stroke:#fff!important;opacity:1!important}
   body.aviation-meteogram-printing .aviation-meteogram-wind-speed-hit{display:none!important}
   body.aviation-meteogram-printing .aviation-meteogram-wind-speed-tick line,
   body.aviation-meteogram-printing .aviation-meteogram-cloud-altitude-tick line{stroke:#a6b0b0!important}
