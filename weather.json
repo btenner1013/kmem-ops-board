@@ -1,6 +1,6 @@
 {
   "metar": "METAR KMEM 031654Z 00000KT 10SM FEW045 SCT070 SCT130 35/21 A3002 RMK AO2 SLP160 T03500206 $",
-  "taf": "TAF KMEM 031459Z 0315/0418 VRB03KT P6SM FEW250 \n  FM031900 19007KT P6SM SCT060 \n  FM040200 17003KT P6SM SKC \n  FM041400 07004KT P6SM SKC",
+  "taf": "TAF KMEM 031720Z 0318/0424 VRB03KT P6SM SCT060 SCT250 \n  FM031900 18007KT P6SM SCT060 SCT250 \n  FM040200 VRB03KT P6SM SKC \n  FM041400 18004KT P6SM SCT070",
   "atisText": "MEM ATIS INFO K 1654Z. 00000KT 10SM FEW045 SCT070 SCT130 35/21 A3002 (THREE ZERO ZERO TWO) RMK AO2 SLP160 T03500206. SIMUL VISUAL APCHS IN USE RY 36L, 36C, 27. SIMUL DEPS IN USE RY 36L 36C, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 18L, 36R CLSD. TWY Y CLSD BTN TWY, P AND TWY R. ILS RWY 27 OTS, RY 18R, 27 REILS OTS, RY 36C PAPI OTS, MEM VOR OTS, ELVIS DEPS EXPECT VECTORS TO FILED ROUTE, MEM ASDE OTS, FREQ 121.0 OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO K",
   "atisLetter": "K",
   "atisPhonetic": "KILO",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-03T16:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-09-03T16:54:00Z",
-  "atisAgeMinutes": 22,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "K:1654Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-03T14:25:40Z",
+  "trendReferenceTimestampZ": "2026-09-03T14:35:39Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -127,7 +127,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-03 17:12:00.000",
+  "bwcUpdatedZ": "2026-09-03 17:24:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -140,7 +140,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-03 17:16:59Z",
+  "milNotamUpdatedZ": "2026-09-03 17:26:53Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -275,13 +275,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-03 17:15Z",
+  "allFeedsUpdatedZ": "2026-09-03 17:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-03 17:15:40Z"
+    "lastWorkflowTimestampZ": "2026-09-03 17:25:40Z"
   }
 }
