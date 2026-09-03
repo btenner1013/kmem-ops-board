@@ -913,7 +913,7 @@ test("short BWC events keep exact width and gain only zoom-dependent event empha
   const plotWidth = 820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14;
   const expectedOverviewWidth = plotWidth * (6 / (24 * 60));
   const selected = selectBwcShortEventMarkers(overview, { plotWidth });
-  assert.equal(BWC_SHORT_EVENT_MAX_WIDTH_PX, 8);
+  assert.equal(BWC_SHORT_EVENT_MAX_WIDTH_PX, 4);
   assert.equal(selected.length, 1);
   assert.equal(selected[0].state, "SEVERE");
   assert.equal(selected[0].durationMs, 6 * 60_000);
@@ -934,10 +934,15 @@ test("short BWC events keep exact width and gain only zoom-dependent event empha
   assert.equal(Number(severePath.getAttribute("data-bwc-segment-duration-ms")), 6 * 60_000);
   const eventMarker = svg.querySelector(".bwc-history-short-event-marker");
   assert.ok(eventMarker, "a compact marker emphasizes the exact narrow event");
+  assert.equal(eventMarker.getAttribute("data-bwc-event-marker-shape"), "notch");
+  assert.match(eventMarker.getAttribute("d"), /^M [\d.]+ [\d.]+ V [\d.]+$/,
+    "the technical event notch does not introduce a decorative diamond");
   assert.equal(Number(eventMarker.getAttribute("data-bwc-event-start-ms")), severeStart);
   assert.equal(Number(eventMarker.getAttribute("data-bwc-event-end-ms")), severeEnd);
   assert.equal(Number(eventMarker.getAttribute("data-bwc-event-duration-ms")), 6 * 60_000);
   assert.ok(Math.abs(Number(eventMarker.getAttribute("data-bwc-event-width-px")) - expectedOverviewWidth) < 0.001);
+  assert.ok(Number(eventMarker.getAttribute("data-bwc-event-radius")) <= 3.25,
+    "overview emphasis stays compact instead of obscuring the exact plateau");
   assert.equal(eventMarker.getAttribute("aria-hidden"), "true", "the bounded focus proxy owns accessible event text");
   assert.equal(svg.querySelectorAll(".bwc-history-observation-marker").length, 3, "the event cue does not fabricate an observation");
   assert.equal(svg.querySelectorAll(".bwc-history-transition").length, 2);
@@ -995,10 +1000,32 @@ test("short BWC events keep exact width and gain only zoom-dependent event empha
   const expectedZoomedWidth = plotWidth * (6 / 120);
   assert.ok(Math.abs(Number(zoomedSeverePath.getAttribute("data-bwc-segment-width-px")) - expectedZoomedWidth) < 0.001);
   assert.equal(zoomedSvg.querySelectorAll(".bwc-history-short-event-marker").length, 0);
-  assert.equal(zoomedSvg.querySelectorAll(".bwc-history-change-marker").length, 2, "readable changes retain exact transition cues");
+  assert.equal(zoomedSvg.querySelectorAll(".bwc-history-change-marker").length, 0,
+    "the exact transition connector is not duplicated by a persistent midpoint diamond");
   assert.ok(Number(zoomedSvg.querySelector(".bwc-history-observation-marker").getAttribute("r"))
     > Number(svg.querySelector(".bwc-history-observation-marker").getAttribute("r")),
   "deep zoom makes exact observations more prominent without changing their timestamps");
+
+  const sixHour = {
+    ...overview,
+    range: {
+      startMs: Date.parse("2026-08-30T07:00:00Z"),
+      endMs: Date.parse("2026-08-30T13:00:00Z"),
+      durationMs: 6 * 60 * 60_000,
+    },
+  };
+  const sixHourChart = doc.createElement("div");
+  sixHourChart.clientWidth = 390;
+  const sixHourSvg = renderBwcHistoryChart(doc, sixHourChart, doc.createElement("div"), sixHour, {
+    masterDurationMs: 24 * 60 * 60_000,
+  });
+  assert.equal(sixHourSvg.querySelectorAll(".bwc-history-short-event-marker").length, 0,
+    "a six-minute event uses its naturally readable plateau at the physical six-hour zoom");
+  assert.equal(sixHourSvg.querySelectorAll(".bwc-history-change-marker").length, 0);
+  assert.equal(sixHourSvg.querySelectorAll(".bwc-history-transition").length, 2,
+    "exact H/V timing remains without barcode-style duplicate cues");
+  assert.ok(Number(sixHourSvg.querySelector(".bwc-history-observation-marker").getAttribute("r")) <= 1.3,
+    "routine dots remain subordinate at the physical six-hour zoom");
 
   const subMinute = {
     ...overview,
@@ -1058,7 +1085,7 @@ test("same-state basis splits remain one truthful visual episode", () => {
   assert.match(eventFocus.getAttribute("aria-label"), /NEXRAD — observed-backed.*NEXBAM — model-backed/);
 });
 
-test("dense event and change evidence is retained in bounded SVG paths", () => {
+test("dense event and change evidence stays exact without redundant change diamonds", () => {
   const view = new FakeEventTarget();
   const doc = new FakeDocument(view);
   const rangeStart = Date.parse("2026-08-30T00:00:00Z");
@@ -1095,10 +1122,15 @@ test("dense event and change evidence is retained in bounded SVG paths", () => {
   transitionChart.clientWidth = 820;
   const transitionSvg = renderBwcHistoryChart(doc, transitionChart, doc.createElement("div"), transitionTimeline);
   assert.equal(transitionSvg.querySelectorAll(".bwc-history-short-event-marker").length, 0);
-  const changePaths = transitionSvg.querySelectorAll(".bwc-history-change-marker");
-  assert.ok(changePaths.length <= 3, "change-marker DOM remains bounded by categorical states");
-  assert.equal(changePaths.reduce((sum, path) => sum + Number(path.getAttribute("data-bwc-change-count")), 0), 23);
-  assert.equal(transitionSvg.querySelectorAll(".bwc-history-event-focus-target").length, 1);
+  assert.equal(transitionSvg.querySelectorAll(".bwc-history-change-marker").length, 0,
+    "the exact connectors are not double-encoded as midpoint diamonds");
+  const transitions = transitionSvg.querySelectorAll(".bwc-history-transition");
+  assert.equal(transitions.length, 23, "every exact state change remains visible once");
+  assert.equal(new Set(transitions.map((line) => line.getAttribute("data-bwc-transition-ms"))).size, 23,
+    "transition timestamps remain exact and unique");
+  const eventFocus = transitionSvg.querySelector(".bwc-history-event-focus-target");
+  assert.ok(eventFocus, "state changes remain keyboard reachable without always-on diamonds");
+  assert.match(eventFocus.getAttribute("aria-label"), /BWC state change/);
 });
 
 test("exact SVG dots alone own observation-detail tooltips while event markers use interval metadata", () => {
@@ -1472,7 +1504,7 @@ test("marker geometry remains UTC-anchored across viewport ranges and dense comp
   assert.equal((colorBatch.getAttribute("d").match(/\bM /g) || []).length, denseTimes.length);
   assert.equal((colorBatch.getAttribute("d").match(/ h 0\b/g) || []).length, denseTimes.length);
   assert.equal(colorBatch.getAttribute("stroke-width"), "1.4", "annual dots stay exact but visually subdued");
-  assert.equal(outlineBatch.getAttribute("stroke-width"), "2.3");
+  assert.equal(outlineBatch.getAttribute("stroke-width"), "2");
   const denseXs = [...colorBatch.getAttribute("d").matchAll(/\bM ([\d.]+) [\d.]+ h 0/g)]
     .map((match) => Number(match[1]));
   assert.equal(denseXs.length, denseTimes.length);
@@ -1563,7 +1595,7 @@ test("chart rendering is dependency-free SVG with exact-state and bounded eviden
   assert.match(historyJs, /bwc-history-transition/);
   assert.match(historyJs, /selectBwcShortEventMarkers\(timeline/);
   assert.match(historyJs, /bwc-history-short-event-marker/);
-  assert.match(historyJs, /bwc-history-change-marker/);
+  assert.doesNotMatch(historyJs, /bwc-history-change-marker/);
   assert.match(historyJs, /selectBwcObservationMarkers\(timeline\)/);
   assert.match(historyJs, /createSvgElement\(doc, "circle"/);
   assert.match(historyJs, /bwc-history-observation-marker/);
@@ -1597,11 +1629,11 @@ test("modal styling stays fixed, internally scrollable, touch friendly, and resp
   assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*pointer-events:none/);
   assert.match(historyCss, /\.bwc-history-observation-focus-target\{[\s\S]*pointer-events:none/);
   assert.match(historyCss, /\.bwc-history-event-focus-target\{[\s\S]*pointer-events:none/);
-  assert.match(historyCss, /\.bwc-history-transition\{stroke:#73817a;[\s\S]*opacity:\.78/);
+  assert.match(historyCss, /\.bwc-history-transition\{stroke:#73817a;stroke-width:\.8;[\s\S]*opacity:\.32/);
   assert.doesNotMatch(historyCss, /\.bwc-history-transition-(?:low|moderate|severe)\s*\{/);
   assert.match(historyCss, /\.bwc-history-short-event-marker\{[\s\S]*pointer-events:none/);
-  assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*opacity:\.68/);
-  assert.match(historyCss, /\.bwc-history-detail-zoom \.bwc-history-observation-marker\{opacity:\.88\}/);
+  assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*opacity:\.5/);
+  assert.match(historyCss, /\.bwc-history-detail-zoom \.bwc-history-observation-marker\{opacity:\.7\}/);
   assert.match(historyCss, /\.bwc-history-time-grid-line\{stroke:rgba\(207,224,216,\.07\)/);
   assert.match(historyCss, /\.bwc-history-analysis\{[\s\S]*min-width:0;[\s\S]*max-width:100%/);
   assert.match(historyCss, /\.bwc-history-summary-content\{[\s\S]*max-width:calc\(100% - 18px\);[\s\S]*overflow:auto/);

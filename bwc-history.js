@@ -40,7 +40,7 @@ const RANGE_UI_LABELS = Object.freeze({
 const STATE_NAMES = ["LOW", "MODERATE", "SEVERE", "UNKNOWN"];
 const DEFAULT_RANGE = "24h";
 const SPARSE_OBSERVATION_MARKER_LIMIT = 500;
-export const BWC_SHORT_EVENT_MAX_WIDTH_PX = 8;
+export const BWC_SHORT_EVENT_MAX_WIDTH_PX = 4;
 // Keep full categorical labels inside the root SVG viewport at every width.
 // This semantic gutter also reserves enough room for UNKNOWN if it is added.
 const BWC_CATEGORY_AXIS_GUTTER_WIDTH = 84;
@@ -830,18 +830,13 @@ function observationMarkerPath(observations, xForTime, y) {
   return commands.join(" ");
 }
 
-function diamondMarkerPath(evidenceItems, xForTime, yForEvidence, radius) {
+function shortEventNotchPath(evidenceItems, xForTime, yForEvidence, radius) {
   const commands = [];
   for (const evidence of evidenceItems) {
     const x = xForTime(evidence.timeMs);
     const y = yForEvidence(evidence);
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-    commands.push(
-      `M ${svgCoordinate(x)} ${svgCoordinate(y - radius)}`,
-      `L ${svgCoordinate(x + radius)} ${svgCoordinate(y)}`,
-      `L ${svgCoordinate(x)} ${svgCoordinate(y + radius)}`,
-      `L ${svgCoordinate(x - radius)} ${svgCoordinate(y)} Z`,
-    );
+    commands.push(`M ${svgCoordinate(x)} ${svgCoordinate(y - radius)} V ${svgCoordinate(y + radius)}`);
   }
   return commands.join(" ");
 }
@@ -984,8 +979,8 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline, options
       ? 0.85
       : observations.length > 500
         ? 1.05
-        : compact ? 1.7 : 1.9;
-  const markerZoomBoost = zoomFactor >= 32 ? 1.35 : zoomFactor >= 8 ? 0.9 : zoomFactor >= 2 ? 0.4 : 0;
+        : compact ? 1.2 : 1.35;
+  const markerZoomBoost = zoomFactor >= 32 ? 0.55 : zoomFactor >= 8 ? 0.35 : zoomFactor >= 2 ? 0.1 : 0;
   const markerRadius = (baseMarkerRadius + markerZoomBoost) / Math.max(0.75, displayScaleX);
   const tickResult = Number.isFinite(rangeStart) && Number.isFinite(rangeEnd) && durationMs > 0
     ? selectBwcUtcTicks(timeline.range, {
@@ -1123,7 +1118,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline, options
           d: pathData,
           class: "bwc-history-observation-marker bwc-history-observation-marker-batch bwc-history-observation-outline",
           "data-bwc-observation-layer": "outline",
-          "stroke-width": svgCoordinate(markerRadius * 2 + 0.9),
+          "stroke-width": svgCoordinate(markerRadius * 2 + 0.6),
           "vector-effect": "non-scaling-stroke",
           "aria-hidden": "true",
         }));
@@ -1143,7 +1138,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline, options
   // Keep every exact event cue while bounding the event-marker DOM to one
   // compound path per state. Dense 90-day/year views therefore do not turn
   // thousands of truthful events into thousands of SVG elements.
-  const shortMarkerDisplayRadius = shortEvents.length > 60 ? 2.25 : shortEvents.length > 24 ? 3 : 5;
+  const shortMarkerDisplayRadius = shortEvents.length > 60 ? 1.75 : shortEvents.length > 24 ? 2.25 : 3.25;
   const shortMarkerRadius = shortMarkerDisplayRadius / Math.max(0.75, displayScaleX);
   const shortEventsByState = { LOW: [], MODERATE: [], SEVERE: [] };
   for (const event of shortEvents) {
@@ -1153,8 +1148,9 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline, options
     const stateEvents = shortEventsByState[state];
     if (!stateEvents.length) continue;
     const attributes = {
-      d: diamondMarkerPath(stateEvents, xForTime, yForEvidence, shortMarkerRadius),
+      d: shortEventNotchPath(stateEvents, xForTime, yForEvidence, shortMarkerRadius),
       class: `bwc-history-short-event-marker bwc-history-short-event-${state.toLowerCase()}`,
+      "data-bwc-event-marker-shape": "notch",
       "data-bwc-event-count": stateEvents.length,
       "data-bwc-event-radius": svgCoordinate(shortMarkerRadius),
       "vector-effect": "non-scaling-stroke",
@@ -1171,24 +1167,10 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline, options
     svg.appendChild(createSvgElement(doc, "path", attributes));
   }
 
-  const changeMarkerRadius = 3.75 / Math.max(0.75, displayScaleX);
-  const changesByState = { LOW: [], MODERATE: [], SEVERE: [] };
-  for (const transition of confirmedTransitions) {
-    if (changesByState[transition.toState]) changesByState[transition.toState].push(transition);
-  }
-  for (const state of ["LOW", "MODERATE", "SEVERE"]) {
-    const stateChanges = changesByState[state];
-    if (!stateChanges.length) continue;
-    svg.appendChild(createSvgElement(doc, "path", {
-      d: diamondMarkerPath(stateChanges, xForTime, yForEvidence, changeMarkerRadius),
-      class: `bwc-history-change-marker bwc-history-change-${state.toLowerCase()}`,
-      "data-bwc-change-count": stateChanges.length,
-      "data-bwc-change-radius": svgCoordinate(changeMarkerRadius),
-      "vector-effect": "non-scaling-stroke",
-      "aria-hidden": "true",
-    }));
-  }
-
+  // The exact neutral connector already communicates each categorical change.
+  // Do not duplicate it with an always-on midpoint diamond: dense alternating
+  // periods otherwise read as a field of candlesticks. Transitions remain in
+  // eventTargets below, so hover/tap/focus still exposes their exact evidence.
   const eventTargets = mergeSortedEvidence(shortEvents, confirmedTransitions);
   const activeHighlight = observations.length || eventTargets.length ? createSvgElement(doc, "circle", {
     r: svgCoordinate(markerRadius + 2.5),
