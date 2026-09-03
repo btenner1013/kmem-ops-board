@@ -1901,9 +1901,11 @@ export function buildStepPaths(timeline, options = {}) {
         fromState: previous.state,
         toState: segment.state,
         state: segment.state,
+        source: segment.source,
         basis: segment.basis,
         basisClass: segment.basisClass,
         startReason: segment.startReason,
+        confirmed: isConfirmedTransition(previous, segment),
       });
     }
     d += ` H ${svgNumber(x2)}`;

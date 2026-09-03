@@ -86,7 +86,8 @@ body.bwc-history-open{overflow:hidden!important}
 .bwc-history-summary-content:focus-visible,
 #bwcHistoryButton:focus-visible,
 .bwc-history-hit-area:focus-visible,
-.bwc-history-observation-focus-target:focus-visible{
+.bwc-history-observation-focus-target:focus-visible,
+.bwc-history-event-focus-target:focus-visible{
   outline:3px solid #fff;
   outline-offset:2px;
 }
@@ -266,8 +267,9 @@ body.getac-preset .bwc-history-zoom-reset{min-width:62px}
 .bwc-history-chart.bwc-history-panning{cursor:grabbing;user-select:none}
 
 .bwc-history-svg{display:block;width:100%;height:auto;min-height:230px}
-.bwc-history-plot-background{fill:#0c110f;stroke:rgba(255,255,255,.13)}
-.bwc-history-grid-line{stroke:rgba(255,255,255,.15);stroke-width:1}
+.bwc-history-plot-background{fill:#0c110f;stroke:rgba(255,255,255,.1)}
+.bwc-history-grid-line{stroke:rgba(255,255,255,.22);stroke-width:1}
+.bwc-history-time-grid-line{stroke:rgba(207,224,216,.07);stroke-width:1}
 .bwc-history-tick{stroke:rgba(255,255,255,.34);stroke-width:1}
 .bwc-history-axis-label{fill:#a9b5af;font:800 10px Arial,sans-serif;letter-spacing:.02em}
 .bwc-history-axis-low{fill:#42e36f}
@@ -287,16 +289,15 @@ body.getac-preset .bwc-history-zoom-reset{min-width:62px}
 .bwc-history-step-low{stroke:#42e36f}
 .bwc-history-step-moderate{stroke:#ffd34d}
 .bwc-history-step-severe{stroke:#ff4d55}
-.bwc-history-transition{stroke-width:1.25;stroke-linecap:butt}
-.bwc-history-transition-low{stroke:#42e36f}
-.bwc-history-transition-moderate{stroke:#ffd34d}
-.bwc-history-transition-severe{stroke:#ff4d55}
+.bwc-history-transition{stroke:#73817a;stroke-width:1.15;stroke-linecap:butt;opacity:.78}
 .bwc-history-observation-marker{
   pointer-events:none;
+  opacity:.68;
 }
+.bwc-history-detail-zoom .bwc-history-observation-marker{opacity:.88}
 circle.bwc-history-observation-marker{
   stroke:#07100c;
-  stroke-width:1.75;
+  stroke-width:1;
   paint-order:stroke fill;
 }
 .bwc-history-observation-marker-batch{fill:none;stroke-linecap:round}
@@ -307,6 +308,35 @@ circle.bwc-history-observation-severe{fill:#ff6269}
 path.bwc-history-observation-low{stroke:#42e36f}
 path.bwc-history-observation-moderate{stroke:#ffe06e}
 path.bwc-history-observation-severe{stroke:#ff6269}
+.bwc-history-short-event-marker{
+  fill:#07100c;
+  stroke-width:2;
+  stroke-linejoin:miter;
+  pointer-events:none;
+}
+.bwc-history-short-event-low{stroke:#42e36f}
+.bwc-history-short-event-moderate{stroke:#ffd34d}
+.bwc-history-short-event-severe{stroke:#ff6269}
+.bwc-history-change-marker{
+  fill:none;
+  stroke-width:1.25;
+  stroke-linejoin:miter;
+  pointer-events:none;
+  opacity:.9;
+}
+.bwc-history-change-low{stroke:#42e36f}
+.bwc-history-change-moderate{stroke:#ffd34d}
+.bwc-history-change-severe{stroke:#ff6269}
+.bwc-history-evidence-highlight{
+  stroke:#fff;
+  stroke-width:1.75;
+  paint-order:stroke fill;
+  pointer-events:none;
+  opacity:.98;
+}
+.bwc-history-highlight-low{fill:#42e36f}
+.bwc-history-highlight-moderate{fill:#ffe06e}
+.bwc-history-highlight-severe{fill:#ff6269}
 .bwc-history-observation-focus-target{
   fill:transparent;
   stroke:transparent;
@@ -316,6 +346,17 @@ path.bwc-history-observation-severe{stroke:#ff6269}
 }
 .bwc-history-observation-focus-target:focus-visible{
   fill:rgba(255,255,255,.14);
+  stroke:#fff;
+}
+.bwc-history-event-focus-target{
+  fill:transparent;
+  stroke:transparent;
+  stroke-width:2.5;
+  pointer-events:none;
+  outline:none;
+}
+.bwc-history-event-focus-target:focus-visible{
+  fill:rgba(255,255,255,.1);
   stroke:#fff;
 }
 .bwc-history-hit-area{fill:transparent;stroke:none;cursor:crosshair;pointer-events:all}

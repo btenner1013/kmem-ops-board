@@ -40,11 +40,97 @@ const RANGE_UI_LABELS = Object.freeze({
 const STATE_NAMES = ["LOW", "MODERATE", "SEVERE", "UNKNOWN"];
 const DEFAULT_RANGE = "24h";
 const SPARSE_OBSERVATION_MARKER_LIMIT = 500;
+export const BWC_SHORT_EVENT_MAX_WIDTH_PX = 8;
 // Keep full categorical labels inside the root SVG viewport at every width.
 // This semantic gutter also reserves enough room for UNKNOWN if it is added.
 const BWC_CATEGORY_AXIS_GUTTER_WIDTH = 84;
 const BWC_CATEGORY_AXIS_LABEL_X = 74;
 let lastLiveAgeRenderKey = null;
+
+/**
+ * Select truthful STATE intervals that are too narrow to read at the current
+ * rendered scale. The returned marker is an emphasis cue only: its center is
+ * derived from the exact interval and the underlying plateau is never widened.
+ */
+export function selectBwcShortEventMarkers(timeline, {
+  plotWidth = 0,
+  displayScaleX = 1,
+  maxWidthPx = BWC_SHORT_EVENT_MAX_WIDTH_PX,
+} = {}) {
+  const startMs = Number(timeline?.range?.startMs);
+  const endMs = Number(timeline?.range?.endMs);
+  const durationMs = endMs - startMs;
+  const svgPlotWidth = Number(plotWidth);
+  const scaleX = Number(displayScaleX);
+  const thresholdPx = Number(maxWidthPx);
+  if (!Array.isArray(timeline?.segments)
+      || !Number.isFinite(startMs)
+      || !Number.isFinite(endMs)
+      || !(durationMs > 0)
+      || !(svgPlotWidth > 0)
+      || !(scaleX > 0)
+      || !(thresholdPx > 0)) return [];
+
+  // Storage runs may split only because provenance/basis changed while the
+  // categorical state stayed the same. Build visual state episodes first so
+  // those backend boundaries never masquerade as new BWC events.
+  const episodes = [];
+  for (const segment of timeline.segments) {
+    if (segment?.kind !== "STATE") continue;
+    const segmentStartMs = Number(segment.startMs);
+    const segmentEndMs = Number(segment.endMs);
+    if (!Number.isFinite(segmentStartMs) || !Number.isFinite(segmentEndMs) || !(segmentEndMs > segmentStartMs)) continue;
+    const previous = episodes[episodes.length - 1];
+    if (previous && previous.state === segment.state && previous.endMs === segmentStartMs) {
+      previous.endMs = segmentEndMs;
+      previous.parts.push(segment);
+    } else {
+      episodes.push({
+        state: segment.state,
+        startMs: segmentStartMs,
+        endMs: segmentEndMs,
+        clippedAtRangeStart: Boolean(segment.clippedAtRangeStart),
+        parts: [segment],
+      });
+    }
+  }
+
+  const markers = [];
+  for (const episode of episodes) {
+    // A viewport-edge sliver does not prove that the underlying event is
+    // short, so only fully visible intervals receive this emphasis marker.
+    if (!(episode.startMs > startMs && episode.endMs < endMs) || episode.clippedAtRangeStart) continue;
+    const intervalDurationMs = episode.endMs - episode.startMs;
+    const widthPx = (intervalDurationMs / durationMs) * svgPlotWidth * scaleX;
+    if (!(widthPx > 0 && widthPx < thresholdPx)) continue;
+    const sources = [...new Set(episode.parts.map((part) => String(part.source || "USAHAS").trim().toUpperCase()))];
+    const basisDetails = [];
+    const seenBasis = new Set();
+    for (const part of episode.parts) {
+      const key = `${String(part.basis || "UNKNOWN").toUpperCase()}|${String(part.basisClass || "").toUpperCase()}`;
+      if (seenBasis.has(key)) continue;
+      seenBasis.add(key);
+      basisDetails.push({ basis: part.basis, basisClass: part.basisClass });
+    }
+    markers.push({
+      evidenceKind: "short-event",
+      kind: "STATE",
+      state: episode.state,
+      startMs: episode.startMs,
+      endMs: episode.endMs,
+      durationMs: intervalDurationMs,
+      timeMs: episode.startMs + intervalDurationMs / 2,
+      widthPx,
+      source: sources.join(" / "),
+      basis: basisDetails.length === 1 ? basisDetails[0].basis : "MULTIPLE",
+      basisClass: basisDetails.length === 1 ? basisDetails[0].basisClass : "MIXED",
+      basisDetails,
+      startReason: episode.parts[0]?.startReason,
+      segments: episode.parts,
+    });
+  }
+  return markers;
+}
 
 function clearChildren(element) {
   while (element?.firstChild) element.removeChild(element.firstChild);
@@ -616,6 +702,24 @@ function basisDescription(segment) {
   return `${basis} — ${classification}`;
 }
 
+function evidenceBasisDescription(evidence) {
+  const details = Array.isArray(evidence?.basisDetails) ? evidence.basisDetails : [];
+  if (!details.length) return basisDescription(evidence);
+  return [...new Set(details.map(basisDescription))].join(" · ");
+}
+
+function positionChartTooltip(tooltip, container, event) {
+  const containerRect = container.getBoundingClientRect?.() || { left: 0, top: 0, width: 0, height: 0 };
+  const x = finiteNumber(event?.clientX, containerRect.left + containerRect.width / 2) - containerRect.left;
+  const y = finiteNumber(event?.clientY, containerRect.top) - containerRect.top;
+  const tooltipWidth = tooltip.offsetWidth || 230;
+  const tooltipHeight = tooltip.offsetHeight || 96;
+  const clampedX = Math.max(8, Math.min(x + 12, Math.max(8, containerRect.width - tooltipWidth - 8)));
+  const clampedY = Math.max(8, Math.min(y - 12, Math.max(8, finiteNumber(containerRect.height, 0) - tooltipHeight - 8)));
+  tooltip.style.left = `${clampedX}px`;
+  tooltip.style.top = `${clampedY}px`;
+}
+
 function showChartTooltip(doc, tooltip, container, event, observation) {
   const time = Number(observation?.timeMs);
   if (!tooltip || !container || observation?.kind !== "STATE" || !Number.isFinite(time)) {
@@ -635,16 +739,47 @@ function showChartTooltip(doc, tooltip, container, event, observation) {
   basis.textContent = `Basis: ${basisDescription(observation)}`;
   tooltip.append(heading, zulu, local, source, basis);
   tooltip.hidden = false;
+  positionChartTooltip(tooltip, container, event);
+  return true;
+}
 
-  const containerRect = container.getBoundingClientRect?.() || { left: 0, top: 0, width: 0, height: 0 };
-  const x = finiteNumber(event?.clientX, containerRect.left + containerRect.width / 2) - containerRect.left;
-  const y = finiteNumber(event?.clientY, containerRect.top) - containerRect.top;
-  const tooltipWidth = tooltip.offsetWidth || 230;
-  const tooltipHeight = tooltip.offsetHeight || 96;
-  const clampedX = Math.max(8, Math.min(x + 12, Math.max(8, containerRect.width - tooltipWidth - 8)));
-  const clampedY = Math.max(8, Math.min(y - 12, Math.max(8, finiteNumber(containerRect.height, 0) - tooltipHeight - 8)));
-  tooltip.style.left = `${clampedX}px`;
-  tooltip.style.top = `${clampedY}px`;
+function showBwcEventTooltip(doc, tooltip, container, event, evidence) {
+  if (!tooltip || !container || !evidence || !Number.isFinite(Number(evidence.timeMs))) {
+    if (tooltip) tooltip.hidden = true;
+    return false;
+  }
+  clearChildren(tooltip);
+  const heading = doc.createElement("strong");
+  if (evidence.evidenceKind === "short-event") {
+    heading.textContent = `AHAS RISK EVENT: ${String(evidence.state || "UNKNOWN").toUpperCase()}`;
+    const zulu = doc.createElement("span");
+    zulu.textContent = `UTC: ${safeFormat(formatBwcZuluTime, evidence.startMs)} – ${safeFormat(formatBwcZuluTime, evidence.endMs)}`;
+    const local = doc.createElement("span");
+    local.textContent = `Local: ${safeFormat(formatBwcMemphisTime, evidence.startMs, "LOCAL TIME UNKNOWN")} – ${safeFormat(formatBwcMemphisTime, evidence.endMs, "LOCAL TIME UNKNOWN")}`;
+    const duration = doc.createElement("span");
+    duration.textContent = `Duration: ${formatBwcDuration(evidence.durationMs) || "UNKNOWN"}`;
+    const source = doc.createElement("span");
+    source.textContent = `Source: ${String(evidence.source || "USAHAS").trim().toUpperCase()}`;
+    const basis = doc.createElement("span");
+    basis.textContent = `Basis: ${evidenceBasisDescription(evidence)}`;
+    tooltip.append(heading, zulu, local, duration, source, basis);
+  } else if (evidence.evidenceKind === "transition") {
+    heading.textContent = `${String(evidence.fromState || "UNKNOWN").toUpperCase()} → ${String(evidence.toState || "UNKNOWN").toUpperCase()}`;
+    const zulu = doc.createElement("span");
+    zulu.textContent = safeFormat(formatBwcZuluTime, evidence.timeMs);
+    const local = doc.createElement("span");
+    local.textContent = safeFormat(formatBwcMemphisTime, evidence.timeMs, "LOCAL TIME UNKNOWN");
+    const source = doc.createElement("span");
+    source.textContent = `Source: ${String(evidence.source || "USAHAS").trim().toUpperCase()}`;
+    const basis = doc.createElement("span");
+    basis.textContent = `Basis: ${basisDescription(evidence)}`;
+    tooltip.append(heading, zulu, local, source, basis);
+  } else {
+    tooltip.hidden = true;
+    return false;
+  }
+  tooltip.hidden = false;
+  positionChartTooltip(tooltip, container, event);
   return true;
 }
 
@@ -695,7 +830,41 @@ function observationMarkerPath(observations, xForTime, y) {
   return commands.join(" ");
 }
 
-export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
+function diamondMarkerPath(evidenceItems, xForTime, yForEvidence, radius) {
+  const commands = [];
+  for (const evidence of evidenceItems) {
+    const x = xForTime(evidence.timeMs);
+    const y = yForEvidence(evidence);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    commands.push(
+      `M ${svgCoordinate(x)} ${svgCoordinate(y - radius)}`,
+      `L ${svgCoordinate(x + radius)} ${svgCoordinate(y)}`,
+      `L ${svgCoordinate(x)} ${svgCoordinate(y + radius)}`,
+      `L ${svgCoordinate(x - radius)} ${svgCoordinate(y)} Z`,
+    );
+  }
+  return commands.join(" ");
+}
+
+function mergeSortedEvidence(leftItems, rightItems) {
+  const merged = [];
+  let leftIndex = 0;
+  let rightIndex = 0;
+  while (leftIndex < leftItems.length || rightIndex < rightItems.length) {
+    const left = leftItems[leftIndex];
+    const right = rightItems[rightIndex];
+    if (!right || (left && left.timeMs <= right.timeMs)) {
+      merged.push(left);
+      leftIndex += 1;
+    } else {
+      merged.push(right);
+      rightIndex += 1;
+    }
+  }
+  return merged;
+}
+
+export function renderBwcHistoryChart(doc, container, tooltip, timeline, options = {}) {
   if (!container || !timeline?.range) return null;
   clearChildren(container);
   if (tooltip) {
@@ -706,6 +875,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
 
   const measuredWidth = finiteNumber(container.clientWidth, 0);
   const width = Math.max(320, Math.round(measuredWidth || 820));
+  const displayScaleX = measuredWidth > 0 ? measuredWidth / width : 1;
   const compact = width < 620;
   const height = compact ? 230 : 286;
   const padding = { left: BWC_CATEGORY_AXIS_GUTTER_WIDTH, right: 14, top: 18, bottom: 34 };
@@ -722,13 +892,18 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     return null;
   }
   const plot = chartPlot(stepLayout, dimensions);
+  const visibleDurationMs = finiteNumber(timeline.range.durationMs, 0);
+  const masterDurationMs = Math.max(visibleDurationMs, finiteNumber(options.masterDurationMs, visibleDurationMs));
+  const zoomFactor = visibleDurationMs > 0 ? masterDurationMs / visibleDurationMs : 1;
   const svg = createSvgElement(doc, "svg", {
     viewBox: `0 0 ${width} ${height}`,
     role: "group",
     "aria-label": "USAHAS AHAS risk step chart with exact observation markers and LOW, MODERATE, SEVERE, and unknown coverage",
     preserveAspectRatio: "xMidYMid meet",
+    "data-bwc-zoom-factor": svgCoordinate(zoomFactor),
   });
   svg.classList.add("bwc-history-svg");
+  if (zoomFactor >= 8) svg.classList.add("bwc-history-detail-zoom");
 
   const defs = createSvgElement(doc, "defs");
   const pattern = createSvgElement(doc, "pattern", {
@@ -798,6 +973,54 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
   const xForTime = (timeMs) => plot.left + ((timeMs - rangeStart) / durationMs) * plot.width;
   const markerResult = selectBwcObservationMarkers(timeline);
   const observations = markerResult?.ok ? markerResult.markers : [];
+  const shortEvents = selectBwcShortEventMarkers(timeline, {
+    plotWidth: plot.width,
+    displayScaleX,
+  });
+  const shortEventBoundaries = new Set(shortEvents.flatMap((event) => [event.startMs, event.endMs]));
+  const baseMarkerRadius = observations.length > 10_000
+    ? 0.7
+    : observations.length > 2_000
+      ? 0.85
+      : observations.length > 500
+        ? 1.05
+        : compact ? 1.7 : 1.9;
+  const markerZoomBoost = zoomFactor >= 32 ? 1.35 : zoomFactor >= 8 ? 0.9 : zoomFactor >= 2 ? 0.4 : 0;
+  const markerRadius = (baseMarkerRadius + markerZoomBoost) / Math.max(0.75, displayScaleX);
+  const tickResult = Number.isFinite(rangeStart) && Number.isFinite(rangeEnd) && durationMs > 0
+    ? selectBwcUtcTicks(timeline.range, {
+        width: plot.width,
+        minSpacingPx: compact ? 94 : 112,
+      })
+    : null;
+  const ticks = tickResult?.ok ? tickResult.ticks : [];
+  for (const tickData of ticks) {
+    const x = xForTime(tickData.timeMs);
+    svg.appendChild(createSvgElement(doc, "line", {
+      x1: x,
+      x2: x,
+      y1: plot.top,
+      y2: plot.bottom,
+      class: "bwc-history-time-grid-line",
+    }));
+  }
+  const confirmedTransitions = (stepLayout?.transitions || [])
+    .filter((transition) => transition.confirmed && !shortEventBoundaries.has(transition.atMs))
+    .map((transition) => {
+      const fromY = plot.yByState?.[transition.fromState];
+      const toY = plot.yByState?.[transition.toState];
+      return {
+        ...transition,
+        evidenceKind: "transition",
+        kind: "STATE_CHANGE",
+        timeMs: transition.atMs,
+        state: transition.toState,
+        markerY: Number.isFinite(fromY) && Number.isFinite(toY) ? (fromY + toY) / 2 : toY,
+      };
+    });
+  const yForEvidence = (evidence) => evidence?.evidenceKind === "transition"
+    ? evidence.markerY
+    : plot.yByState?.[evidence?.state];
 
   // Draw horizontal plateaus separately from thinner vertical changes. This
   // preserves the exact H/V step geometry while keeping short real states
@@ -811,6 +1034,10 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     svg.appendChild(createSvgElement(doc, "path", {
       d: `M ${svgCoordinate(x1)} ${svgCoordinate(y)} H ${svgCoordinate(x2)}`,
       class: `bwc-history-step bwc-history-step-${String(pathData.state || "unknown").toLowerCase()}`,
+      "data-bwc-segment-start-ms": segment.startMs,
+      "data-bwc-segment-end-ms": segment.endMs,
+      "data-bwc-segment-duration-ms": segment.endMs - segment.startMs,
+      "data-bwc-segment-width-px": svgCoordinate((x2 - x1) * displayScaleX),
       "vector-effect": "non-scaling-stroke",
     }));
   }
@@ -825,26 +1052,18 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
       x2: x,
       y1: fromY,
       y2: toY,
-      class: `bwc-history-transition bwc-history-transition-${String(transition.toState || "unknown").toLowerCase()}`,
+      class: "bwc-history-transition",
+      "data-bwc-transition-ms": transition.atMs,
+      "data-bwc-transition-from": transition.fromState,
+      "data-bwc-transition-to": transition.toState,
       "vector-effect": "non-scaling-stroke",
     }));
   }
 
   const renderedObservations = { LOW: [], MODERATE: [], SEVERE: [] };
-  const markerRadius = observations.length > 10_000
-    ? 1.75
-    : observations.length > 2_000
-      ? 2.1
-      : observations.length > 500
-        ? 2.6
-        : compact ? 3.25 : 3.5;
 
   if (Number.isFinite(rangeStart) && Number.isFinite(rangeEnd) && durationMs > 0) {
-    const tickResult = selectBwcUtcTicks(timeline.range, {
-      width: plot.width,
-      minSpacingPx: compact ? 94 : 112,
-    });
-    for (const tickData of tickResult?.ok ? tickResult.ticks : []) {
+    for (const tickData of ticks) {
       const ratio = (tickData.timeMs - rangeStart) / durationMs;
       const x = plot.left + ratio * plot.width;
       svg.appendChild(createSvgElement(doc, "line", {
@@ -885,9 +1104,10 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
         const marker = createSvgElement(doc, "circle", {
           cx: svgCoordinate(xForTime(observation.timeMs)),
           cy: svgCoordinate(y),
-          r: markerRadius,
+          r: svgCoordinate(markerRadius),
           class: `bwc-history-observation-marker bwc-history-observation-${String(observation.state || "unknown").toLowerCase()}`,
           "data-bwc-observation-ms": observation.timeMs,
+          "data-bwc-observation-radius": svgCoordinate(markerRadius),
           "vector-effect": "non-scaling-stroke",
           "aria-hidden": "true",
         });
@@ -903,7 +1123,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
           d: pathData,
           class: "bwc-history-observation-marker bwc-history-observation-marker-batch bwc-history-observation-outline",
           "data-bwc-observation-layer": "outline",
-          "stroke-width": svgCoordinate(markerRadius * 2 + 1.75),
+          "stroke-width": svgCoordinate(markerRadius * 2 + 0.9),
           "vector-effect": "non-scaling-stroke",
           "aria-hidden": "true",
         }));
@@ -919,6 +1139,65 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
       }
     }
   }
+
+  // Keep every exact event cue while bounding the event-marker DOM to one
+  // compound path per state. Dense 90-day/year views therefore do not turn
+  // thousands of truthful events into thousands of SVG elements.
+  const shortMarkerDisplayRadius = shortEvents.length > 60 ? 2.25 : shortEvents.length > 24 ? 3 : 5;
+  const shortMarkerRadius = shortMarkerDisplayRadius / Math.max(0.75, displayScaleX);
+  const shortEventsByState = { LOW: [], MODERATE: [], SEVERE: [] };
+  for (const event of shortEvents) {
+    if (shortEventsByState[event.state]) shortEventsByState[event.state].push(event);
+  }
+  for (const state of ["LOW", "MODERATE", "SEVERE"]) {
+    const stateEvents = shortEventsByState[state];
+    if (!stateEvents.length) continue;
+    const attributes = {
+      d: diamondMarkerPath(stateEvents, xForTime, yForEvidence, shortMarkerRadius),
+      class: `bwc-history-short-event-marker bwc-history-short-event-${state.toLowerCase()}`,
+      "data-bwc-event-count": stateEvents.length,
+      "data-bwc-event-radius": svgCoordinate(shortMarkerRadius),
+      "vector-effect": "non-scaling-stroke",
+      "aria-hidden": "true",
+    };
+    if (stateEvents.length === 1) {
+      const [event] = stateEvents;
+      attributes["data-bwc-event-start-ms"] = event.startMs;
+      attributes["data-bwc-event-end-ms"] = event.endMs;
+      attributes["data-bwc-event-duration-ms"] = event.durationMs;
+      attributes["data-bwc-event-center-ms"] = event.timeMs;
+      attributes["data-bwc-event-width-px"] = svgCoordinate(event.widthPx);
+    }
+    svg.appendChild(createSvgElement(doc, "path", attributes));
+  }
+
+  const changeMarkerRadius = 3.75 / Math.max(0.75, displayScaleX);
+  const changesByState = { LOW: [], MODERATE: [], SEVERE: [] };
+  for (const transition of confirmedTransitions) {
+    if (changesByState[transition.toState]) changesByState[transition.toState].push(transition);
+  }
+  for (const state of ["LOW", "MODERATE", "SEVERE"]) {
+    const stateChanges = changesByState[state];
+    if (!stateChanges.length) continue;
+    svg.appendChild(createSvgElement(doc, "path", {
+      d: diamondMarkerPath(stateChanges, xForTime, yForEvidence, changeMarkerRadius),
+      class: `bwc-history-change-marker bwc-history-change-${state.toLowerCase()}`,
+      "data-bwc-change-count": stateChanges.length,
+      "data-bwc-change-radius": svgCoordinate(changeMarkerRadius),
+      "vector-effect": "non-scaling-stroke",
+      "aria-hidden": "true",
+    }));
+  }
+
+  const eventTargets = mergeSortedEvidence(shortEvents, confirmedTransitions);
+  const activeHighlight = observations.length || eventTargets.length ? createSvgElement(doc, "circle", {
+    r: svgCoordinate(markerRadius + 2.5),
+    class: "bwc-history-evidence-highlight",
+    visibility: "hidden",
+    "vector-effect": "non-scaling-stroke",
+    "aria-hidden": "true",
+  }) : null;
+  if (activeHighlight) svg.appendChild(activeHighlight);
 
   const interaction = createSvgElement(doc, "rect", {
     x: plot.left,
@@ -944,14 +1223,29 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     focusTarget.setAttribute("aria-controls", tooltip.getAttribute("id"));
   }
   if (focusTarget) svg.appendChild(focusTarget);
+  const eventFocusTarget = eventTargets.length ? createSvgElement(doc, "circle", {
+    r: svgCoordinate(shortMarkerRadius + 3),
+    class: "bwc-history-event-focus-target",
+    tabindex: 0,
+    role: "button",
+    "aria-roledescription": "BWC event marker",
+    "aria-keyshortcuts": "ArrowLeft ArrowRight Home End Enter Space Escape",
+    "vector-effect": "non-scaling-stroke",
+  }) : null;
+  if (eventFocusTarget && tooltip?.getAttribute?.("id")) {
+    eventFocusTarget.setAttribute("aria-controls", tooltip.getAttribute("id"));
+  }
+  if (eventFocusTarget) svg.appendChild(eventFocusTarget);
   container.insertBefore(svg, tooltip || null);
 
   let pinned = false;
   let focusIndex = 0;
+  let eventFocusIndex = 0;
   let lastPointerType = "mouse";
   function hideTooltip() {
     pinned = false;
     if (tooltip) tooltip.hidden = true;
+    activeHighlight?.setAttribute("visibility", "hidden");
   }
   function observationLabel(observation, index) {
     return [
@@ -962,6 +1256,28 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
       `Source ${String(observation?.source || "USAHAS").trim().toUpperCase()}`,
       `Basis ${basisDescription(observation)}`,
       "Use Left and Right Arrow keys for adjacent observations",
+    ].join("; ");
+  }
+  function eventLabel(evidence, index) {
+    if (evidence?.evidenceKind === "short-event") {
+      return [
+        `Short BWC event ${index + 1} of ${eventTargets.length}`,
+        String(evidence.state || "UNKNOWN").toUpperCase(),
+        `${safeFormat(formatBwcZuluTime, evidence.startMs)} through ${safeFormat(formatBwcZuluTime, evidence.endMs)}`,
+        `Duration ${formatBwcDuration(evidence.durationMs) || "unknown"}`,
+        `Source ${String(evidence.source || "USAHAS").trim().toUpperCase()}`,
+        `Basis ${evidenceBasisDescription(evidence)}`,
+        "Use Left and Right Arrow keys for adjacent event markers",
+      ].join("; ");
+    }
+    return [
+      `BWC state change ${index + 1} of ${eventTargets.length}`,
+      `${String(evidence?.fromState || "UNKNOWN").toUpperCase()} to ${String(evidence?.toState || "UNKNOWN").toUpperCase()}`,
+      safeFormat(formatBwcZuluTime, evidence?.timeMs),
+      safeFormat(formatBwcMemphisTime, evidence?.timeMs, "LOCAL TIME UNKNOWN"),
+      `Source ${String(evidence?.source || "USAHAS").trim().toUpperCase()}`,
+      `Basis ${basisDescription(evidence)}`,
+      "Use Left and Right Arrow keys for adjacent event markers",
     ].join("; ");
   }
   function updateFocusTarget(index) {
@@ -977,14 +1293,45 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     focusTarget.setAttribute("aria-label", observationLabel(observation, focusIndex));
     return observation;
   }
-  function eventAtObservation(observation) {
+  function updateEventFocusTarget(index) {
+    if (!eventFocusTarget || !eventTargets.length) return null;
+    eventFocusIndex = Math.max(0, Math.min(eventTargets.length - 1, index));
+    const evidence = eventTargets[eventFocusIndex];
+    const y = yForEvidence(evidence);
+    if (!Number.isFinite(y)) return null;
+    eventFocusTarget.setAttribute("cx", svgCoordinate(xForTime(evidence.timeMs)));
+    eventFocusTarget.setAttribute("cy", svgCoordinate(y));
+    eventFocusTarget.setAttribute("data-bwc-event-kind", evidence.evidenceKind);
+    eventFocusTarget.setAttribute("data-bwc-event-index", eventFocusIndex);
+    eventFocusTarget.setAttribute("data-bwc-event-ms", evidence.timeMs);
+    eventFocusTarget.setAttribute("aria-roledescription", evidence.evidenceKind === "short-event"
+      ? "BWC short-duration event marker"
+      : "BWC state-change marker");
+    eventFocusTarget.setAttribute("aria-label", eventLabel(evidence, eventFocusIndex));
+    return evidence;
+  }
+  function eventAtEvidence(evidence) {
     const rect = svg.getBoundingClientRect?.();
-    const y = plot.yByState?.[observation?.state];
+    const y = yForEvidence(evidence);
     if (!rect?.width || !rect?.height || !Number.isFinite(y)) return null;
     return {
-      clientX: rect.left + xForTime(observation.timeMs) * rect.width / width,
+      clientX: rect.left + xForTime(evidence.timeMs) * rect.width / width,
       clientY: rect.top + y * rect.height / height,
     };
+  }
+  function showHighlight(evidence) {
+    const y = yForEvidence(evidence);
+    if (!activeHighlight || !Number.isFinite(y) || !Number.isFinite(Number(evidence?.timeMs))) return;
+    activeHighlight.setAttribute("cx", svgCoordinate(xForTime(evidence.timeMs)));
+    activeHighlight.setAttribute("cy", svgCoordinate(y));
+    activeHighlight.setAttribute("r", svgCoordinate(evidence.evidenceKind === "short-event"
+      ? shortMarkerRadius + 2
+      : evidence.evidenceKind === "transition"
+        ? 5.25 / Math.max(0.75, displayScaleX)
+        : markerRadius + 2.5));
+    activeHighlight.setAttribute("data-bwc-highlight-kind", evidence.evidenceKind || "observation");
+    activeHighlight.setAttribute("class", `bwc-history-evidence-highlight bwc-history-highlight-${String(evidence.state || "unknown").toLowerCase()}`);
+    activeHighlight.setAttribute("visibility", "visible");
   }
   function showObservation(observation, event = null, shouldPin = false) {
     if (!observation) {
@@ -992,12 +1339,28 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
       return false;
     }
     if (shouldPin) pinned = true;
+    showHighlight({ ...observation, evidenceKind: "observation" });
     return showChartTooltip(
       doc,
       tooltip,
       container,
-      event || eventAtObservation(observation),
+      event || eventAtEvidence(observation),
       observation,
+    );
+  }
+  function showEvent(evidence, event = null, shouldPin = false) {
+    if (!evidence) {
+      hideTooltip();
+      return false;
+    }
+    if (shouldPin) pinned = true;
+    showHighlight(evidence);
+    return showBwcEventTooltip(
+      doc,
+      tooltip,
+      container,
+      event || eventAtEvidence(evidence),
+      evidence,
     );
   }
   function nearestObservation(event, rect, pointerType = event?.pointerType) {
@@ -1040,7 +1403,44 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
         }
       }
     }
-    return nearest;
+    return nearest ? { evidence: nearest, distancePx: nearestDistance } : null;
+  }
+  function nearestEvent(event, rect, pointerType = event?.pointerType) {
+    const clientX = Number(event?.clientX);
+    const clientY = Number(event?.clientY);
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY) || !rect?.width || !rect?.height) return null;
+    const svgX = (clientX - rect.left) * width / rect.width;
+    const svgY = (clientY - rect.top) * height / rect.height;
+    const scaleX = rect.width / width;
+    const scaleY = rect.height / height;
+    const thresholdPx = pointerType === "touch" ? 22 : pointerType === "pen" ? 14 : 7;
+    let nearest = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    const targetTimeMs = rangeStart + Math.max(0, Math.min(1, (svgX - plot.left) / plot.width)) * durationMs;
+    let low = 0;
+    let high = eventTargets.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (eventTargets[middle].timeMs < targetTimeMs) low = middle + 1;
+      else high = middle;
+    }
+    // Only the nearest chronological candidates can fall inside the fixed
+    // pointer radius. Inspect a small bounded neighborhood instead of scanning
+    // an annual event ledger on every pointer move.
+    const firstCandidate = Math.max(0, low - 4);
+    const lastCandidate = Math.min(eventTargets.length, low + 4);
+    for (let index = firstCandidate; index < lastCandidate; index += 1) {
+      const evidence = eventTargets[index];
+      const markerY = yForEvidence(evidence);
+      if (!Number.isFinite(markerY)) continue;
+      const markerX = xForTime(evidence.timeMs);
+      const distance = Math.hypot((markerX - svgX) * scaleX, (markerY - svgY) * scaleY);
+      if (distance <= thresholdPx && distance < nearestDistance) {
+        nearest = evidence;
+        nearestDistance = distance;
+      }
+    }
+    return nearest ? { evidence: nearest, distancePx: nearestDistance } : null;
   }
   function inspect(event, shouldPin = false, pointerType = event?.pointerType) {
     if (!(durationMs > 0)) return;
@@ -1050,12 +1450,20 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     }
     const rect = svg.getBoundingClientRect?.();
     if (!rect?.width) return;
-    const observation = nearestObservation(event, rect, pointerType);
-    if (!observation) {
+    const observationMatch = nearestObservation(event, rect, pointerType);
+    const eventMatch = nearestEvent(event, rect, pointerType);
+    const match = eventMatch && (!observationMatch || eventMatch.distancePx < observationMatch.distancePx)
+      ? eventMatch
+      : observationMatch;
+    if (!match) {
       hideTooltip();
       return;
     }
-    showObservation(observation, event, shouldPin);
+    if (match.evidence.evidenceKind === "short-event" || match.evidence.evidenceKind === "transition") {
+      showEvent(match.evidence, event, shouldPin);
+    } else {
+      showObservation(match.evidence, event, shouldPin);
+    }
   }
   interaction.addEventListener("pointerdown", (event) => {
     lastPointerType = event.pointerType || "mouse";
@@ -1068,7 +1476,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
     inspect(event, false, pointerType);
   });
   interaction.addEventListener("pointerleave", () => {
-    if (!pinned && tooltip) tooltip.hidden = true;
+    if (!pinned) hideTooltip();
   });
   interaction.addEventListener("click", (event) => {
     const suppressUntil = finiteNumber(container.dataset?.bwcSuppressClickUntil, 0);
@@ -1122,6 +1530,37 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline) {
       event.preventDefault();
       const observation = updateFocusTarget(nextIndex);
       showObservation(observation, null, true);
+    });
+  }
+  if (eventFocusTarget) {
+    updateEventFocusTarget(0);
+    eventFocusTarget.addEventListener("focus", () => {
+      const evidence = updateEventFocusTarget(eventFocusIndex);
+      showEvent(evidence, null, true);
+    });
+    eventFocusTarget.addEventListener("blur", hideTooltip);
+    eventFocusTarget.addEventListener("keydown", (event) => {
+      let nextIndex = eventFocusIndex;
+      if (event.key === "ArrowLeft") nextIndex -= 1;
+      else if (event.key === "ArrowRight") nextIndex += 1;
+      else if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = eventTargets.length - 1;
+      else if (event.key === "Escape") {
+        const tooltipWasVisible = Boolean(tooltip && !tooltip.hidden);
+        hideTooltip();
+        if (tooltipWasVisible) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      } else if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showEvent(eventTargets[eventFocusIndex], null, true);
+        return;
+      } else return;
+      event.preventDefault();
+      const evidence = updateEventFocusTarget(nextIndex);
+      showEvent(evidence, null, true);
     });
   }
   return svg;
@@ -1279,7 +1718,9 @@ export function initializeBwcHistory(doc = document) {
       updateViewportControls();
       return false;
     }
-    renderBwcHistoryChart(doc, chart, tooltip, timeline);
+    renderBwcHistoryChart(doc, chart, tooltip, timeline, {
+      masterDurationMs: timeDomain.masterEndMs - timeDomain.masterStartMs,
+    });
     updateViewportControls();
     return true;
   }

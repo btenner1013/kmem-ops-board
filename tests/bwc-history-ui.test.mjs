@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
+  BWC_SHORT_EVENT_MAX_WIDTH_PX,
   applyBwcHistoryDialogState,
   availabilityLines,
   bwcPlotPointerRatio,
@@ -14,6 +15,7 @@ import {
   initializeBwcHistory,
   renderBwcHistoryChart,
   renderBwcSummaryTable,
+  selectBwcShortEventMarkers,
   updateBwcSummaryModeButtons,
   updateLiveBwcAge,
 } from "../bwc-history.js";
@@ -870,7 +872,236 @@ test("timeline lookup is deterministic at boundaries and across gaps", () => {
   assert.equal(findTimelineSegmentAt(segments, 400), null);
 });
 
-test("only exact SVG observation dots own mouse, keyboard, and touch tooltips", () => {
+test("short BWC events keep exact width and gain only zoom-dependent event emphasis", () => {
+  const view = new FakeEventTarget();
+  const doc = new FakeDocument(view);
+  const dayStart = Date.parse("2026-08-30T00:00:00Z");
+  const dayEnd = Date.parse("2026-08-31T00:00:00Z");
+  const moderateStart = Date.parse("2026-08-30T09:00:00Z");
+  const severeStart = Date.parse("2026-08-30T09:38:00Z");
+  const severeEnd = Date.parse("2026-08-30T09:44:00Z");
+  const moderateEnd = Date.parse("2026-08-30T11:00:00Z");
+  const runs = [
+    { state: "MODERATE", timeMs: moderateStart, basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL" },
+    { state: "SEVERE", timeMs: severeStart, basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL" },
+    { state: "MODERATE", timeMs: severeEnd, basis: "NEXBAM", basisClass: "MODEL_OPERATIONAL" },
+  ].map((run) => ({
+    kind: "STATE",
+    state: run.state,
+    startMs: run.timeMs,
+    firstObservedMs: run.timeMs,
+    lastObservedMs: run.timeMs,
+    observationsZ: [new Date(run.timeMs).toISOString()],
+    observationTimesMs: [run.timeMs],
+    observationsComplete: true,
+    confirmationCount: 1,
+    startReason: "STATE_CHANGE",
+    source: "USAHAS",
+    basis: run.basis,
+    basisClass: run.basisClass,
+  }));
+  const segments = [
+    { ...runs[0], startMs: moderateStart, endMs: severeStart },
+    { ...runs[1], startMs: severeStart, endMs: severeEnd },
+    { ...runs[2], startMs: severeEnd, endMs: moderateEnd },
+  ];
+  const overview = {
+    range: { startMs: dayStart, endMs: dayEnd, durationMs: dayEnd - dayStart },
+    history: { runs },
+    segments,
+  };
+  const plotWidth = 820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14;
+  const expectedOverviewWidth = plotWidth * (6 / (24 * 60));
+  const selected = selectBwcShortEventMarkers(overview, { plotWidth });
+  assert.equal(BWC_SHORT_EVENT_MAX_WIDTH_PX, 8);
+  assert.equal(selected.length, 1);
+  assert.equal(selected[0].state, "SEVERE");
+  assert.equal(selected[0].durationMs, 6 * 60_000);
+  assert.equal(selected[0].timeMs, Date.parse("2026-08-30T09:41:00Z"));
+  assert.ok(Math.abs(selected[0].widthPx - expectedOverviewWidth) < 0.001);
+
+  const chart = doc.createElement("div");
+  chart.clientWidth = 820;
+  chart.clientHeight = 286;
+  const tooltip = doc.createElement("div");
+  tooltip.hidden = true;
+  tooltip.offsetWidth = 230;
+  tooltip.offsetHeight = 118;
+  const svg = renderBwcHistoryChart(doc, chart, tooltip, overview, { masterDurationMs: 24 * 60 * 60_000 });
+  const severePath = svg.querySelector(".bwc-history-step-severe");
+  const exactRenderedWidth = Number(severePath.getAttribute("data-bwc-segment-width-px"));
+  assert.ok(Math.abs(exactRenderedWidth - expectedOverviewWidth) < 0.001, "the six-minute plateau is not widened");
+  assert.equal(Number(severePath.getAttribute("data-bwc-segment-duration-ms")), 6 * 60_000);
+  const eventMarker = svg.querySelector(".bwc-history-short-event-marker");
+  assert.ok(eventMarker, "a compact marker emphasizes the exact narrow event");
+  assert.equal(Number(eventMarker.getAttribute("data-bwc-event-start-ms")), severeStart);
+  assert.equal(Number(eventMarker.getAttribute("data-bwc-event-end-ms")), severeEnd);
+  assert.equal(Number(eventMarker.getAttribute("data-bwc-event-duration-ms")), 6 * 60_000);
+  assert.ok(Math.abs(Number(eventMarker.getAttribute("data-bwc-event-width-px")) - expectedOverviewWidth) < 0.001);
+  assert.equal(eventMarker.getAttribute("aria-hidden"), "true", "the bounded focus proxy owns accessible event text");
+  assert.equal(svg.querySelectorAll(".bwc-history-observation-marker").length, 3, "the event cue does not fabricate an observation");
+  assert.equal(svg.querySelectorAll(".bwc-history-transition").length, 2);
+  assert.equal(svg.querySelectorAll(".bwc-history-change-marker").length, 0, "narrow-event boundaries yield to one cleaner event cue");
+
+  const eventCenterX = EXPECTED_BWC_AXIS_GUTTER_WIDTH
+    + ((selected[0].timeMs - dayStart) / (dayEnd - dayStart)) * plotWidth;
+  const hitArea = svg.querySelector(".bwc-history-hit-area");
+  hitArea.dispatchEvent({
+    type: "pointermove", pointerType: "mouse", clientX: eventCenterX, clientY: 18,
+  });
+  assert.equal(tooltip.hidden, false);
+  assert.equal(tooltip.children.length, 6);
+  assert.equal(tooltip.children[0].textContent, "AHAS RISK EVENT: SEVERE");
+  assert.match(tooltip.children[1].textContent, /0938Z.*0944Z/);
+  assert.match(tooltip.children[2].textContent, /CDT|CST/);
+  assert.equal(tooltip.children[3].textContent, "Duration: 6 MIN");
+  assert.equal(tooltip.children[4].textContent, "Source: USAHAS");
+  assert.equal(tooltip.children[5].textContent, "Basis: NEXRAD — observed-backed");
+
+  const eventFocus = svg.querySelector(".bwc-history-event-focus-target");
+  assert.ok(eventFocus);
+  assert.equal(eventFocus.getAttribute("tabindex"), "0");
+  assert.equal(eventFocus.getAttribute("data-bwc-event-kind"), "short-event");
+  assert.match(eventFocus.getAttribute("aria-label"), /SEVERE.*0938Z.*0944Z.*Duration 6 MIN/);
+  eventFocus.dispatchEvent({ type: "focus" });
+  assert.equal(tooltip.hidden, false);
+  let eventEscapeStopped = false;
+  eventFocus.dispatchEvent({
+    type: "keydown", key: "Escape",
+    stopPropagation() { eventEscapeStopped = true; },
+  });
+  assert.equal(tooltip.hidden, true);
+  assert.equal(eventEscapeStopped, true);
+  hitArea.dispatchEvent({
+    type: "pointerdown", pointerType: "touch", pointerId: 71,
+    clientX: eventCenterX, clientY: 18,
+  });
+  hitArea.dispatchEvent({ type: "click", clientX: eventCenterX, clientY: 18 });
+  assert.equal(tooltip.hidden, false, "tapping the compact event cue exposes the same exact interval");
+  assert.equal(tooltip.children[3].textContent, "Duration: 6 MIN");
+
+  const zoomed = {
+    ...overview,
+    range: { startMs: moderateStart, endMs: moderateEnd, durationMs: moderateEnd - moderateStart },
+  };
+  const zoomedSelected = selectBwcShortEventMarkers(zoomed, { plotWidth });
+  assert.equal(zoomedSelected.length, 0, "the same six-minute plateau needs no cue after it becomes readable");
+  const zoomedChart = doc.createElement("div");
+  zoomedChart.clientWidth = 820;
+  const zoomedSvg = renderBwcHistoryChart(doc, zoomedChart, doc.createElement("div"), zoomed, {
+    masterDurationMs: 24 * 60 * 60_000,
+  });
+  const zoomedSeverePath = zoomedSvg.querySelector(".bwc-history-step-severe");
+  const expectedZoomedWidth = plotWidth * (6 / 120);
+  assert.ok(Math.abs(Number(zoomedSeverePath.getAttribute("data-bwc-segment-width-px")) - expectedZoomedWidth) < 0.001);
+  assert.equal(zoomedSvg.querySelectorAll(".bwc-history-short-event-marker").length, 0);
+  assert.equal(zoomedSvg.querySelectorAll(".bwc-history-change-marker").length, 2, "readable changes retain exact transition cues");
+  assert.ok(Number(zoomedSvg.querySelector(".bwc-history-observation-marker").getAttribute("r"))
+    > Number(svg.querySelector(".bwc-history-observation-marker").getAttribute("r")),
+  "deep zoom makes exact observations more prominent without changing their timestamps");
+
+  const subMinute = {
+    ...overview,
+    segments: [{ ...runs[1], startMs: severeStart, endMs: severeStart + 30_000 }],
+  };
+  const longEvent = {
+    ...overview,
+    segments: [{ ...runs[1], startMs: severeStart, endMs: severeStart + 60 * 60_000 }],
+  };
+  assert.equal(selectBwcShortEventMarkers(subMinute, { plotWidth })[0].durationMs, 30_000);
+  assert.equal(selectBwcShortEventMarkers(longEvent, { plotWidth }).length, 0);
+});
+
+test("same-state basis splits remain one truthful visual episode", () => {
+  const view = new FakeEventTarget();
+  const doc = new FakeDocument(view);
+  const rangeStart = Date.parse("2026-08-30T09:00:00Z");
+  const rangeEnd = Date.parse("2026-08-31T09:00:00Z");
+  const eventStart = Date.parse("2026-08-30T12:00:00Z");
+  const basisChange = eventStart + 3 * 60_000;
+  const eventEnd = eventStart + 6 * 60_000;
+  const timeline = {
+    range: { startMs: rangeStart, endMs: rangeEnd, durationMs: rangeEnd - rangeStart },
+    history: { runs: [] },
+    segments: [
+      {
+        kind: "STATE", state: "MODERATE", startMs: eventStart, endMs: basisChange,
+        source: "USAHAS", basis: "NEXRAD", basisClass: "OBSERVED_OPERATIONAL",
+        startReason: "STATE_CHANGE",
+      },
+      {
+        kind: "STATE", state: "MODERATE", startMs: basisChange, endMs: eventEnd,
+        source: "USAHAS", basis: "NEXBAM", basisClass: "MODEL_OPERATIONAL",
+        startReason: "BASIS_CHANGE",
+      },
+    ],
+  };
+  const plotWidth = 820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14;
+  const events = selectBwcShortEventMarkers(timeline, { plotWidth });
+  assert.equal(events.length, 1, "a provenance-only split must not become two BWC events");
+  assert.equal(events[0].startMs, eventStart);
+  assert.equal(events[0].endMs, eventEnd);
+  assert.equal(events[0].durationMs, 6 * 60_000);
+  assert.equal(events[0].basisDetails.length, 2);
+
+  const chart = doc.createElement("div");
+  chart.clientWidth = 820;
+  const tooltip = doc.createElement("div");
+  tooltip.hidden = true;
+  const svg = renderBwcHistoryChart(doc, chart, tooltip, timeline);
+  assert.equal(svg.querySelectorAll(".bwc-history-short-event-marker").length, 1);
+  assert.equal(svg.querySelector(".bwc-history-short-event-marker").getAttribute("data-bwc-event-count"), "1");
+  const eventFocus = svg.querySelector(".bwc-history-event-focus-target");
+  eventFocus.dispatchEvent({ type: "focus" });
+  assert.equal(tooltip.children[5].textContent,
+    "Basis: NEXRAD — observed-backed · NEXBAM — model-backed");
+  assert.match(eventFocus.getAttribute("aria-label"), /NEXRAD — observed-backed.*NEXBAM — model-backed/);
+});
+
+test("dense event and change evidence is retained in bounded SVG paths", () => {
+  const view = new FakeEventTarget();
+  const doc = new FakeDocument(view);
+  const rangeStart = Date.parse("2026-08-30T00:00:00Z");
+  const rangeEnd = rangeStart + 24 * 60 * 60_000;
+  const makeTimeline = (segmentMinutes, segmentCount) => ({
+    range: { startMs: rangeStart, endMs: rangeEnd, durationMs: rangeEnd - rangeStart },
+    history: { runs: [] },
+    segments: Array.from({ length: segmentCount }, (_value, index) => ({
+      kind: "STATE",
+      state: ["LOW", "MODERATE", "SEVERE"][index % 3],
+      startMs: rangeStart + index * segmentMinutes * 60_000,
+      endMs: Math.min(rangeEnd, rangeStart + (index + 1) * segmentMinutes * 60_000),
+      source: "USAHAS",
+      basis: index % 2 ? "NEXBAM" : "NEXRAD",
+      basisClass: index % 2 ? "MODEL_OPERATIONAL" : "OBSERVED_OPERATIONAL",
+      startReason: index ? "STATE_CHANGE" : "INITIAL",
+    })).filter((segment) => segment.endMs > segment.startMs),
+  });
+
+  const denseTimeline = makeTimeline(6, 240);
+  const plotWidth = 820 - EXPECTED_BWC_AXIS_GUTTER_WIDTH - 14;
+  const denseEvents = selectBwcShortEventMarkers(denseTimeline, { plotWidth });
+  assert.equal(denseEvents.length, 238, "every fully visible six-minute episode is retained");
+  const denseChart = doc.createElement("div");
+  denseChart.clientWidth = 820;
+  const denseSvg = renderBwcHistoryChart(doc, denseChart, doc.createElement("div"), denseTimeline);
+  const eventPaths = denseSvg.querySelectorAll(".bwc-history-short-event-marker");
+  assert.ok(eventPaths.length <= 3, "short-event DOM remains bounded by categorical states");
+  assert.equal(eventPaths.reduce((sum, path) => sum + Number(path.getAttribute("data-bwc-event-count")), 0), 238);
+  assert.equal(denseSvg.querySelectorAll(".bwc-history-event-focus-target").length, 1);
+
+  const transitionTimeline = makeTimeline(60, 24);
+  const transitionChart = doc.createElement("div");
+  transitionChart.clientWidth = 820;
+  const transitionSvg = renderBwcHistoryChart(doc, transitionChart, doc.createElement("div"), transitionTimeline);
+  assert.equal(transitionSvg.querySelectorAll(".bwc-history-short-event-marker").length, 0);
+  const changePaths = transitionSvg.querySelectorAll(".bwc-history-change-marker");
+  assert.ok(changePaths.length <= 3, "change-marker DOM remains bounded by categorical states");
+  assert.equal(changePaths.reduce((sum, path) => sum + Number(path.getAttribute("data-bwc-change-count")), 0), 23);
+  assert.equal(transitionSvg.querySelectorAll(".bwc-history-event-focus-target").length, 1);
+});
+
+test("exact SVG dots alone own observation-detail tooltips while event markers use interval metadata", () => {
   const view = new FakeEventTarget();
   const doc = new FakeDocument(view);
   const chart = doc.createElement("div");
@@ -949,6 +1180,10 @@ test("only exact SVG observation dots own mouse, keyboard, and touch tooltips", 
   assert.ok(Number.parseFloat(tooltip.style.top) >= 8);
   assert.ok(Number.parseFloat(tooltip.style.left) + tooltip.offsetWidth <= chart.clientWidth - 8);
   assert.ok(Number.parseFloat(tooltip.style.top) + tooltip.offsetHeight <= chart.clientHeight - 8);
+  const highlight = svg.querySelector(".bwc-history-evidence-highlight");
+  assert.equal(highlight.getAttribute("visibility"), "visible");
+  assert.equal(highlight.getAttribute("data-bwc-highlight-kind"), "observation");
+  assert.ok(Number(highlight.getAttribute("r")) > Number(first.getAttribute("r")), "hover enlarges only the selected exact dot");
 
   const plateauInspectionMs = Date.parse("2026-08-30T12:45:00Z");
   hitArea.dispatchEvent({
@@ -966,6 +1201,7 @@ test("only exact SVG observation dots own mouse, keyboard, and touch tooltips", 
     clientY: 120,
   });
   assert.equal(tooltip.hidden, true, "hovering blank chart space does not show the detailed tooltip");
+  assert.equal(highlight.getAttribute("visibility"), "hidden");
 
   const transitionX = plotLeft + ((severeTimes[0] - rangeStart) / (rangeEnd - rangeStart)) * plotWidth;
   hitArea.dispatchEvent({
@@ -974,7 +1210,29 @@ test("only exact SVG observation dots own mouse, keyboard, and touch tooltips", 
     clientX: transitionX,
     clientY: (18 + (286 - 34)) / 2,
   });
-  assert.equal(tooltip.hidden, true, "hovering a vertical state transition does not show the detailed tooltip");
+  assert.equal(tooltip.hidden, false, "the distinct midpoint cue exposes state-change evidence");
+  assert.equal(tooltip.children[0].textContent, "LOW → SEVERE");
+  assert.equal(highlight.getAttribute("data-bwc-highlight-kind"), "transition");
+
+  hitArea.dispatchEvent({
+    type: "pointermove",
+    pointerType: "mouse",
+    clientX: transitionX,
+    clientY: 18,
+  });
+  assert.equal(tooltip.children[0].textContent, "AHAS RISK: SEVERE",
+    "the exact destination dot remains the sole owner of observation detail");
+  assert.equal(highlight.getAttribute("data-bwc-highlight-kind"), "observation");
+
+  hitArea.dispatchEvent({
+    type: "pointerdown", pointerType: "touch", pointerId: 31,
+    clientX: transitionX, clientY: (18 + (286 - 34)) / 2,
+  });
+  hitArea.dispatchEvent({
+    type: "click", clientX: transitionX, clientY: (18 + (286 - 34)) / 2,
+  });
+  assert.equal(tooltip.children[0].textContent, "LOW → SEVERE",
+    "tap reaches the same visible transition cue rather than an invisible halo");
 
   hitArea.dispatchEvent({ type: "keydown", key: "Enter" });
   assert.equal(tooltip.hidden, true, "the chart navigation surface cannot fabricate a keyboard observation");
@@ -1047,12 +1305,18 @@ test("only exact SVG observation dots own mouse, keyboard, and touch tooltips", 
   assert.equal(tooltip.hidden, false);
 
   hitArea.dispatchEvent({
-    type: "pointerdown", pointerType: "touch", pointerId: 8, clientX: plotLeft + plotWidth / 2, clientY: 120,
+    type: "pointerdown", pointerType: "touch", pointerId: 8, clientX: plotLeft + plotWidth * 0.8, clientY: 120,
   });
-  hitArea.dispatchEvent({ type: "click", clientX: plotLeft + plotWidth / 2, clientY: 120 });
+  hitArea.dispatchEvent({ type: "click", clientX: plotLeft + plotWidth * 0.8, clientY: 120 });
   assert.equal(tooltip.hidden, true, "tapping blank chart space dismisses rather than fabricates metadata");
-  assert.equal(svg.children.at(-1), focusTarget, "a single focus proxy stays above the pointer hit surface");
-  assert.equal(svg.children.at(-2), hitArea);
+  assert.equal(svg.children.at(-1).className, "bwc-history-event-focus-target", "state changes have one bounded event focus proxy");
+  assert.equal(svg.children.at(-2), focusTarget, "the exact-observation focus proxy stays above the pointer hit surface");
+  assert.equal(svg.children.at(-3), hitArea);
+  const changeFocus = svg.children.at(-1);
+  changeFocus.dispatchEvent({ type: "focus" });
+  assert.equal(tooltip.hidden, false);
+  assert.equal(tooltip.children[0].textContent, "LOW → SEVERE");
+  assert.equal(tooltip.children[1].textContent, expectedZuluTime(severeTimes[0]));
 });
 
 test("UNKNOWN coverage bands never expose an observation tooltip without a retained dot", () => {
@@ -1207,8 +1471,8 @@ test("marker geometry remains UTC-anchored across viewport ranges and dense comp
   assert.equal(Number(colorBatch.dataset.bwcObservationCount), denseTimes.length);
   assert.equal((colorBatch.getAttribute("d").match(/\bM /g) || []).length, denseTimes.length);
   assert.equal((colorBatch.getAttribute("d").match(/ h 0\b/g) || []).length, denseTimes.length);
-  assert.equal(colorBatch.getAttribute("stroke-width"), "3.5");
-  assert.equal(outlineBatch.getAttribute("stroke-width"), "5.25");
+  assert.equal(colorBatch.getAttribute("stroke-width"), "1.4", "annual dots stay exact but visually subdued");
+  assert.equal(outlineBatch.getAttribute("stroke-width"), "2.3");
   const denseXs = [...colorBatch.getAttribute("d").matchAll(/\bM ([\d.]+) [\d.]+ h 0/g)]
     .map((match) => Number(match[1]));
   assert.equal(denseXs.length, denseTimes.length);
@@ -1290,17 +1554,21 @@ test("viewport interactions zoom, pan, reset, and keep summaries on the master r
   assert.match(historyJs, /renderChartViewport\(nowMs\)/);
 });
 
-test("chart rendering is dependency-free SVG with unknown gaps and observation-only interaction", () => {
+test("chart rendering is dependency-free SVG with exact-state and bounded evidence interaction", () => {
   assert.match(historyJs, /createElementNS\(SVG_NS, name\)/);
   assert.match(historyJs, /createSvgElement\(doc, "svg"/);
   assert.match(historyJs, /createSvgElement\(doc, "path"/);
   assert.match(historyJs, /bwc-history-unknown-band/);
   assert.match(historyJs, /selectBwcUtcTicks\(timeline\.range/);
   assert.match(historyJs, /bwc-history-transition/);
+  assert.match(historyJs, /selectBwcShortEventMarkers\(timeline/);
+  assert.match(historyJs, /bwc-history-short-event-marker/);
+  assert.match(historyJs, /bwc-history-change-marker/);
   assert.match(historyJs, /selectBwcObservationMarkers\(timeline\)/);
   assert.match(historyJs, /createSvgElement\(doc, "circle"/);
   assert.match(historyJs, /bwc-history-observation-marker/);
   assert.match(historyJs, /bwc-history-observation-focus-target/);
+  assert.match(historyJs, /bwc-history-event-focus-target/);
   assert.match(historyJs, /`M \$\{svgCoordinate\(x1\)\} \$\{svgCoordinate\(y\)\} H \$\{svgCoordinate\(x2\)\}`/);
   assert.match(historyJs, /addEventListener\("pointermove"/);
   assert.match(historyJs, /addEventListener\("click"/);
@@ -1328,6 +1596,13 @@ test("modal styling stays fixed, internally scrollable, touch friendly, and resp
   assert.match(historyCss, /\.bwc-history-chart\{[\s\S]*min-width:0/);
   assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*pointer-events:none/);
   assert.match(historyCss, /\.bwc-history-observation-focus-target\{[\s\S]*pointer-events:none/);
+  assert.match(historyCss, /\.bwc-history-event-focus-target\{[\s\S]*pointer-events:none/);
+  assert.match(historyCss, /\.bwc-history-transition\{stroke:#73817a;[\s\S]*opacity:\.78/);
+  assert.doesNotMatch(historyCss, /\.bwc-history-transition-(?:low|moderate|severe)\s*\{/);
+  assert.match(historyCss, /\.bwc-history-short-event-marker\{[\s\S]*pointer-events:none/);
+  assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*opacity:\.68/);
+  assert.match(historyCss, /\.bwc-history-detail-zoom \.bwc-history-observation-marker\{opacity:\.88\}/);
+  assert.match(historyCss, /\.bwc-history-time-grid-line\{stroke:rgba\(207,224,216,\.07\)/);
   assert.match(historyCss, /\.bwc-history-analysis\{[\s\S]*min-width:0;[\s\S]*max-width:100%/);
   assert.match(historyCss, /\.bwc-history-summary-content\{[\s\S]*max-width:calc\(100% - 18px\);[\s\S]*overflow:auto/);
   assert.match(historyCss, /\.bwc-history-summary-table\{[\s\S]*min-width:800px/);

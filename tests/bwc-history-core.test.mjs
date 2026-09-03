@@ -642,6 +642,102 @@ test("step chart emits only horizontal/vertical state paths and breaks them acro
   assert.doesNotMatch(severePath.d, / V /, "post-gap state must not draw a vertical transition");
 });
 
+test("six-minute severe replay preserves exact geometry, duration, analytics, and CSV truth", () => {
+  const payload = history([
+    stateRun("MODERATE", "2026-08-30T09:00:00Z", "2026-08-30T09:00:00Z", { startReason: "ARCHIVE_START" }),
+    stateRun("SEVERE", "2026-08-30T09:38:00Z"),
+    stateRun("MODERATE", "2026-08-30T09:44:00Z"),
+  ], { collectionStartedZ: "2026-08-30T09:00:00Z" });
+  const timeline = buildBwcTimeline(
+    payload,
+    customRange("2026-08-30T09:00:00Z", "2026-08-30T11:00:00Z"),
+  );
+  assert.equal(timeline.ok, true);
+  assert.deepEqual(timeline.segments.map((segment) => [segment.state, segment.startZ, segment.endZ]), [
+    ["MODERATE", "2026-08-30T09:00:00.000Z", "2026-08-30T09:38:00.000Z"],
+    ["SEVERE", "2026-08-30T09:38:00.000Z", "2026-08-30T09:44:00.000Z"],
+    ["MODERATE", "2026-08-30T09:44:00.000Z", "2026-08-30T11:00:00.000Z"],
+  ]);
+  const severe = timeline.segments[1];
+  assert.equal(severe.endMs - severe.startMs, 6 * 60_000);
+
+  const chart = buildStepPaths(timeline, {
+    width: 820,
+    height: 286,
+    padding: { left: 84, right: 14, top: 18, bottom: 34 },
+  });
+  assert.equal(chart.ok, true);
+  assert.deepEqual(chart.paths.map((path) => path.d), [
+    "M 84 135 H 312.633",
+    "M 312.633 135 V 18 H 348.733",
+    "M 348.733 18 V 135 H 806",
+  ]);
+  assert.deepEqual(chart.transitions.map((transition) => [
+    transition.atZ,
+    transition.fromState,
+    transition.toState,
+    transition.confirmed,
+  ]), [
+    ["2026-08-30T09:38:00.000Z", "MODERATE", "SEVERE", true],
+    ["2026-08-30T09:44:00.000Z", "SEVERE", "MODERATE", true],
+  ]);
+
+  const statistics = calculateBwcStatistics(timeline);
+  assert.equal(statistics.durationsMs.SEVERE, 6 * 60_000);
+  assert.equal(statistics.durationsMs.MODERATE, 114 * 60_000);
+  assert.equal(statistics.durationsMs.UNKNOWN, 0);
+  assert.equal(statistics.percentages.SEVERE, 5);
+  assert.equal(statistics.percentages.MODERATE, 95);
+  assert.equal(statistics.coveragePercent, 100);
+  assert.equal(statistics.changeCount, 2);
+  assert.equal(statistics.severeEpisodes, 1);
+  assert.equal(statistics.lastConfirmedChange.atZ, "2026-08-30T09:44:00.000Z");
+  assert.equal(formatBwcDuration(statistics.durationsMs.SEVERE), "6 MIN");
+
+  const csv = buildBwcCsvRows(timeline);
+  const severeInterval = csv.rows.find((row) => row.record_type === "STATE" && row.state === "SEVERE");
+  assert.equal(severeInterval.start_utc, "2026-08-30T09:38:00.000Z");
+  assert.equal(severeInterval.end_utc, "2026-08-30T09:44:00.000Z");
+  assert.equal(severeInterval.duration_minutes, "6");
+  assert.equal(csv.rows.filter((row) => row.record_type === "OBSERVATION").length, 3);
+});
+
+test("sub-minute and long severe events retain their actual widths and statistics", () => {
+  function replay(secondStartZ, secondEndZ) {
+    const payload = history([
+      stateRun("MODERATE", "2026-08-30T09:00:00Z", "2026-08-30T09:00:00Z", { startReason: "ARCHIVE_START" }),
+      stateRun("SEVERE", secondStartZ),
+      stateRun("MODERATE", secondEndZ),
+    ], { collectionStartedZ: "2026-08-30T09:00:00Z" });
+    return buildBwcTimeline(payload, customRange("2026-08-30T09:00:00Z", "2026-08-30T11:00:00Z"));
+  }
+
+  const subMinute = replay("2026-08-30T09:38:00Z", "2026-08-30T09:38:30Z");
+  const subMinuteStats = calculateBwcStatistics(subMinute);
+  assert.equal(subMinuteStats.durationsMs.SEVERE, 30_000);
+  assert.equal(formatBwcDuration(subMinuteStats.durationsMs.SEVERE), "<1 MIN");
+  assert.equal(subMinuteStats.changeCount, 2);
+  assert.equal(subMinuteStats.severeEpisodes, 1);
+  const subMinuteChart = buildStepPaths(subMinute, {
+    width: 820, height: 286, padding: { left: 84, right: 14, top: 18, bottom: 34 },
+  });
+  const subMinutePath = subMinuteChart.paths.find((path) => path.state === "SEVERE");
+  const [, subStart, subEnd] = subMinutePath.d.match(/^M ([\d.]+) [\d.]+(?: V [\d.]+)? H ([\d.]+)$/) || [];
+  assert.ok(Number(subEnd) > Number(subStart), "a real sub-minute episode keeps a nonzero proportional width");
+
+  const long = replay("2026-08-30T09:30:00Z", "2026-08-30T10:30:00Z");
+  const longStats = calculateBwcStatistics(long);
+  assert.equal(longStats.durationsMs.SEVERE, 60 * 60_000);
+  assert.equal(longStats.percentages.SEVERE, 50);
+  assert.equal(longStats.changeCount, 2);
+  const longChart = buildStepPaths(long, {
+    width: 820, height: 286, padding: { left: 84, right: 14, top: 18, bottom: 34 },
+  });
+  const longPath = longChart.paths.find((path) => path.state === "SEVERE");
+  const [, longStart, longEnd] = longPath.d.match(/^M ([\d.]+) [\d.]+(?: V [\d.]+)? H ([\d.]+)$/) || [];
+  assert.ok(Math.abs((Number(longEnd) - Number(longStart)) - 361) < 0.001, "one hour occupies exactly half the two-hour plot");
+});
+
 test("timeline and chart APIs fail closed on malformed inputs", () => {
   assert.equal(buildBwcTimeline({ schemaVersion: 99 }, "24h").error.code, "UNSUPPORTED_SCHEMA");
   assert.equal(buildBwcTimeline(history(), "made-up").error.code, "INVALID_RANGE");
