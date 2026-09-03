@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-03T11:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-09-03T11:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "B:1154Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-03T09:05:41Z",
+  "trendReferenceTimestampZ": "2026-09-03T09:25:40Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -125,13 +125,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-03 12:00:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-09-03 12:12:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "SEVERE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=3&hour=12&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -140,7 +140,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-03 12:06:52Z",
+  "milNotamUpdatedZ": "2026-09-03 12:16:51Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -187,6 +187,18 @@
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
     {
+      "number": "09/028",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY S, Y WIP MARKINGS",
+      "displayText": "TWY S, Y WIP MARKINGS",
+      "effectiveStart": "202609031300",
+      "effectiveEnd": "202609031930",
+      "lastUpdated": "2026-09-03T12:07:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY S, Y WIP MARKINGS"
+    },
+    {
       "number": "09/023",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -223,7 +235,7 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 3,
+  "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [
     {
       "number": "09/026",
@@ -263,13 +275,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-03 12:05Z",
+  "allFeedsUpdatedZ": "2026-09-03 12:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-03 12:05:40Z"
+    "lastWorkflowTimestampZ": "2026-09-03 12:15:40Z"
   }
 }
