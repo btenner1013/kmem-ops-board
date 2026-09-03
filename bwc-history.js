@@ -830,17 +830,6 @@ function observationMarkerPath(observations, xForTime, y) {
   return commands.join(" ");
 }
 
-function shortEventNotchPath(evidenceItems, xForTime, yForEvidence, radius) {
-  const commands = [];
-  for (const evidence of evidenceItems) {
-    const x = xForTime(evidence.timeMs);
-    const y = yForEvidence(evidence);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-    commands.push(`M ${svgCoordinate(x)} ${svgCoordinate(y - radius)} V ${svgCoordinate(y + radius)}`);
-  }
-  return commands.join(" ");
-}
-
 function mergeSortedEvidence(leftItems, rightItems) {
   const merged = [];
   let leftIndex = 0;
@@ -857,6 +846,100 @@ function mergeSortedEvidence(leftItems, rightItems) {
     }
   }
   return merged;
+}
+
+function knownBwcTraceRanges(segments) {
+  const ranges = [];
+  if (!Array.isArray(segments)) return ranges;
+  for (const segment of segments) {
+    const segmentStartMs = Number(segment?.startMs);
+    const segmentEndMs = Number(segment?.endMs);
+    if (segment?.kind !== "STATE"
+        || !Number.isFinite(segmentStartMs)
+        || !Number.isFinite(segmentEndMs)
+        || !(segmentEndMs > segmentStartMs)) continue;
+    const previous = ranges[ranges.length - 1];
+    if (previous && segmentStartMs <= previous.endMs) {
+      previous.endMs = Math.max(previous.endMs, segmentEndMs);
+    } else {
+      ranges.push({ startMs: segmentStartMs, endMs: segmentEndMs });
+    }
+  }
+  return ranges;
+}
+
+/**
+ * Connect retained observations directly with one categorical heartbeat trace.
+ * Each outgoing leg uses the color of its exact source observation and stops at
+ * the next exact retained point. UNKNOWN coverage always breaks the trace.
+ */
+export function buildBwcObservationTracePaths(observations, timeline, {
+  xForTime,
+  yByState,
+} = {}) {
+  const markers = Array.isArray(observations) ? observations : [];
+  const commandsByState = { LOW: [], MODERATE: [], SEVERE: [] };
+  const outlineCommands = [];
+  const knownRanges = knownBwcTraceRanges(timeline?.segments);
+  let knownRangeIndex = 0;
+  let segmentCount = 0;
+  if (typeof xForTime !== "function" || !yByState || !Array.isArray(timeline?.segments)) {
+    return { ok: false, outlineD: "", paths: [], segmentCount: 0 };
+  }
+
+  for (let index = 0; index + 1 < markers.length; index += 1) {
+    const from = markers[index];
+    const to = markers[index + 1];
+    const fromMs = Number(from?.timeMs);
+    const toMs = Number(to?.timeMs);
+    const fromY = Number(yByState?.[from?.state]);
+    const toY = Number(yByState?.[to?.state]);
+    while (knownRanges[knownRangeIndex]?.endMs <= fromMs) knownRangeIndex += 1;
+    const knownRange = knownRanges[knownRangeIndex];
+    if (!(toMs > fromMs)
+        || !Number.isFinite(fromY)
+        || !Number.isFinite(toY)
+        || !commandsByState[from?.state]
+        || !knownRange
+        || knownRange.startMs > fromMs
+        || knownRange.endMs < toMs) continue;
+
+    const x1 = xForTime(fromMs);
+    const x2 = xForTime(toMs);
+    if (!Number.isFinite(x1) || !Number.isFinite(x2)) continue;
+    const command = `M ${svgCoordinate(x1)} ${svgCoordinate(fromY)} L ${svgCoordinate(x2)} ${svgCoordinate(toY)}`;
+    outlineCommands.push(command);
+    if (from.state === to.state || !commandsByState[to?.state]) {
+      commandsByState[from.state].push(command);
+    } else {
+      // Split a categorical change at the connector midpoint so the trace
+      // visually carries both endpoint states without adding another stem,
+      // box, or fabricated observation.
+      const middleX = x1 + (x2 - x1) / 2;
+      const middleY = fromY + (toY - fromY) / 2;
+      commandsByState[from.state].push(
+        `M ${svgCoordinate(x1)} ${svgCoordinate(fromY)} L ${svgCoordinate(middleX)} ${svgCoordinate(middleY)}`,
+      );
+      commandsByState[to.state].push(
+        `M ${svgCoordinate(middleX)} ${svgCoordinate(middleY)} L ${svgCoordinate(x2)} ${svgCoordinate(toY)}`,
+      );
+    }
+    segmentCount += 1;
+  }
+
+  const paths = ["LOW", "MODERATE", "SEVERE"]
+    .filter((state) => commandsByState[state].length)
+    .map((state) => ({
+      state,
+      d: commandsByState[state].join(" "),
+      segmentCount: commandsByState[state].length,
+    }));
+  return {
+    ok: true,
+    outlineD: outlineCommands.join(" "),
+    paths,
+    segmentCount,
+  };
 }
 
 export function renderBwcHistoryChart(doc, container, tooltip, timeline, options = {}) {
@@ -893,7 +976,7 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline, options
   const svg = createSvgElement(doc, "svg", {
     viewBox: `0 0 ${width} ${height}`,
     role: "group",
-    "aria-label": "USAHAS AHAS risk step chart with exact observation markers and LOW, MODERATE, SEVERE, and unknown coverage",
+    "aria-label": "USAHAS AHAS risk point-to-point history trace with exact observation markers and LOW, MODERATE, SEVERE, and unknown coverage",
     preserveAspectRatio: "xMidYMid meet",
     "data-bwc-zoom-factor": svgCoordinate(zoomFactor),
   });
@@ -1017,41 +1100,27 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline, options
     ? evidence.markerY
     : plot.yByState?.[evidence?.state];
 
-  // Draw horizontal plateaus separately from thinner vertical changes. This
-  // preserves the exact H/V step geometry while keeping short real states
-  // legible instead of turning their corners into heavy blocks.
-  for (const pathData of stepLayout?.paths || []) {
-    const segment = pathData?.segment;
-    const y = plot.yByState?.[pathData?.state];
-    if (!segment || !Number.isFinite(y) || !(durationMs > 0)) continue;
-    const x1 = xForTime(segment.startMs);
-    const x2 = xForTime(segment.endMs);
+  const traceLayout = buildBwcObservationTracePaths(observations, timeline, {
+    xForTime,
+    yByState: plot.yByState,
+  });
+  if (traceLayout.outlineD) {
     svg.appendChild(createSvgElement(doc, "path", {
-      d: `M ${svgCoordinate(x1)} ${svgCoordinate(y)} H ${svgCoordinate(x2)}`,
-      class: `bwc-history-step bwc-history-step-${String(pathData.state || "unknown").toLowerCase()}`,
-      "data-bwc-segment-start-ms": segment.startMs,
-      "data-bwc-segment-end-ms": segment.endMs,
-      "data-bwc-segment-duration-ms": segment.endMs - segment.startMs,
-      "data-bwc-segment-width-px": svgCoordinate((x2 - x1) * displayScaleX),
+      d: traceLayout.outlineD,
+      class: "bwc-history-trace-outline",
+      "data-bwc-trace-segment-count": traceLayout.segmentCount,
       "vector-effect": "non-scaling-stroke",
+      "aria-hidden": "true",
     }));
   }
-
-  for (const transition of stepLayout?.transitions || []) {
-    const fromY = plot.yByState?.[transition?.fromState];
-    const toY = plot.yByState?.[transition?.toState];
-    if (!Number.isFinite(fromY) || !Number.isFinite(toY) || !(durationMs > 0)) continue;
-    const x = xForTime(transition.atMs);
-    svg.appendChild(createSvgElement(doc, "line", {
-      x1: x,
-      x2: x,
-      y1: fromY,
-      y2: toY,
-      class: "bwc-history-transition",
-      "data-bwc-transition-ms": transition.atMs,
-      "data-bwc-transition-from": transition.fromState,
-      "data-bwc-transition-to": transition.toState,
+  for (const tracePath of traceLayout.paths) {
+    svg.appendChild(createSvgElement(doc, "path", {
+      d: tracePath.d,
+      class: `bwc-history-trace bwc-history-trace-${tracePath.state.toLowerCase()}`,
+      "data-bwc-trace-state": tracePath.state,
+      "data-bwc-trace-segment-count": tracePath.segmentCount,
       "vector-effect": "non-scaling-stroke",
+      "aria-hidden": "true",
     }));
   }
 
@@ -1135,42 +1204,11 @@ export function renderBwcHistoryChart(doc, container, tooltip, timeline, options
     }
   }
 
-  // Keep every exact event cue while bounding the event-marker DOM to one
-  // compound path per state. Dense 90-day/year views therefore do not turn
-  // thousands of truthful events into thousands of SVG elements.
+  // Event metadata remains keyboard/pointer accessible, but the heartbeat and
+  // exact observation dots are the only always-visible evidence. This avoids
+  // reintroducing barcode stems or oversized event glyphs in dense ranges.
   const shortMarkerDisplayRadius = shortEvents.length > 60 ? 1.75 : shortEvents.length > 24 ? 2.25 : 3.25;
   const shortMarkerRadius = shortMarkerDisplayRadius / Math.max(0.75, displayScaleX);
-  const shortEventsByState = { LOW: [], MODERATE: [], SEVERE: [] };
-  for (const event of shortEvents) {
-    if (shortEventsByState[event.state]) shortEventsByState[event.state].push(event);
-  }
-  for (const state of ["LOW", "MODERATE", "SEVERE"]) {
-    const stateEvents = shortEventsByState[state];
-    if (!stateEvents.length) continue;
-    const attributes = {
-      d: shortEventNotchPath(stateEvents, xForTime, yForEvidence, shortMarkerRadius),
-      class: `bwc-history-short-event-marker bwc-history-short-event-${state.toLowerCase()}`,
-      "data-bwc-event-marker-shape": "notch",
-      "data-bwc-event-count": stateEvents.length,
-      "data-bwc-event-radius": svgCoordinate(shortMarkerRadius),
-      "vector-effect": "non-scaling-stroke",
-      "aria-hidden": "true",
-    };
-    if (stateEvents.length === 1) {
-      const [event] = stateEvents;
-      attributes["data-bwc-event-start-ms"] = event.startMs;
-      attributes["data-bwc-event-end-ms"] = event.endMs;
-      attributes["data-bwc-event-duration-ms"] = event.durationMs;
-      attributes["data-bwc-event-center-ms"] = event.timeMs;
-      attributes["data-bwc-event-width-px"] = svgCoordinate(event.widthPx);
-    }
-    svg.appendChild(createSvgElement(doc, "path", attributes));
-  }
-
-  // The exact neutral connector already communicates each categorical change.
-  // Do not duplicate it with an always-on midpoint diamond: dense alternating
-  // periods otherwise read as a field of candlesticks. Transitions remain in
-  // eventTargets below, so hover/tap/focus still exposes their exact evidence.
   const eventTargets = mergeSortedEvidence(shortEvents, confirmedTransitions);
   const activeHighlight = observations.length || eventTargets.length ? createSvgElement(doc, "circle", {
     r: svgCoordinate(markerRadius + 2.5),

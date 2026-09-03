@@ -279,25 +279,26 @@ body.getac-preset .bwc-history-zoom-reset{min-width:62px}
 .bwc-history-unknown-hatch-line{stroke:rgba(200,209,204,.14);stroke-width:2}
 .bwc-history-unknown-band{fill:url(#bwcHistoryUnknownHatch);stroke:none}
 
-.bwc-history-step{
+.bwc-history-trace-outline,
+.bwc-history-trace{
   fill:none;
-  stroke-width:2.5;
-  stroke-linecap:square;
-  stroke-linejoin:miter;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  pointer-events:none;
 }
-
-.bwc-history-step-low{stroke:#42e36f}
-.bwc-history-step-moderate{stroke:#ffd34d}
-.bwc-history-step-severe{stroke:#ff4d55}
-.bwc-history-transition{stroke:#73817a;stroke-width:.8;stroke-linecap:butt;opacity:.32}
+.bwc-history-trace-outline{stroke:#020604;stroke-width:5.8;opacity:.92}
+.bwc-history-trace{stroke-width:3.4;opacity:.98}
+.bwc-history-trace-low{stroke:#42e36f}
+.bwc-history-trace-moderate{stroke:#ffd34d}
+.bwc-history-trace-severe{stroke:#ff4d55}
 .bwc-history-observation-marker{
   pointer-events:none;
-  opacity:.5;
+  opacity:.72;
 }
-.bwc-history-detail-zoom .bwc-history-observation-marker{opacity:.7}
+.bwc-history-detail-zoom .bwc-history-observation-marker{opacity:.9}
 circle.bwc-history-observation-marker{
   stroke:#07100c;
-  stroke-width:.6;
+  stroke-width:.8;
   paint-order:stroke fill;
 }
 .bwc-history-observation-marker-batch{fill:none;stroke-linecap:round}
@@ -308,15 +309,6 @@ circle.bwc-history-observation-severe{fill:#ff6269}
 path.bwc-history-observation-low{stroke:#42e36f}
 path.bwc-history-observation-moderate{stroke:#ffe06e}
 path.bwc-history-observation-severe{stroke:#ff6269}
-.bwc-history-short-event-marker{
-  fill:none;
-  stroke-width:1.6;
-  stroke-linecap:round;
-  pointer-events:none;
-}
-.bwc-history-short-event-low{stroke:#42e36f}
-.bwc-history-short-event-moderate{stroke:#ffd34d}
-.bwc-history-short-event-severe{stroke:#ff6269}
 .bwc-history-evidence-highlight{
   stroke:#fff;
   stroke-width:1.75;

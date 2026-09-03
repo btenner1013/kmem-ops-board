@@ -6,6 +6,7 @@ import {
   BWC_SHORT_EVENT_MAX_WIDTH_PX,
   applyBwcHistoryDialogState,
   availabilityLines,
+  buildBwcObservationTracePaths,
   bwcPlotPointerRatio,
   createBwcHistoryLoader,
   downloadBwcCsv,
@@ -872,7 +873,38 @@ test("timeline lookup is deterministic at boundaries and across gaps", () => {
   assert.equal(findTimelineSegmentAt(segments, 400), null);
 });
 
-test("short BWC events keep exact width and gain only zoom-dependent event emphasis", () => {
+test("heartbeat trace connects exact observations diagonally, changes color, and breaks across UNKNOWN", () => {
+  const observations = [
+    { kind: "STATE", state: "LOW", timeMs: 100 },
+    { kind: "STATE", state: "MODERATE", timeMs: 200 },
+    { kind: "STATE", state: "SEVERE", timeMs: 400 },
+    { kind: "STATE", state: "LOW", timeMs: 500 },
+  ];
+  const timeline = {
+    segments: [
+      { kind: "STATE", state: "LOW", startMs: 100, endMs: 200 },
+      { kind: "STATE", state: "MODERATE", startMs: 200, endMs: 250 },
+      { kind: "UNKNOWN", startMs: 250, endMs: 400 },
+      { kind: "STATE", state: "SEVERE", startMs: 400, endMs: 500 },
+    ],
+  };
+  const trace = buildBwcObservationTracePaths(observations, timeline, {
+    xForTime: (timeMs) => timeMs,
+    yByState: { LOW: 200, MODERATE: 100, SEVERE: 0 },
+  });
+
+  assert.equal(trace.ok, true);
+  assert.equal(trace.segmentCount, 2, "the UNKNOWN interval is never bridged");
+  assert.equal(trace.outlineD, "M 100 200 L 200 100 M 400 0 L 500 200");
+  assert.doesNotMatch(trace.outlineD, /\b[HV]\b/, "the visible trace has no squared step commands");
+  const byState = Object.fromEntries(trace.paths.map((path) => [path.state, path.d]));
+  assert.equal(byState.LOW, "M 100 200 L 150 150 M 450 100 L 500 200");
+  assert.equal(byState.MODERATE, "M 150 150 L 200 100");
+  assert.equal(byState.SEVERE, "M 400 0 L 450 100");
+  assert.equal(trace.paths.length, 3, "color-coded geometry stays batched by categorical state");
+});
+
+test("short BWC events remain exact while the visible graph stays one heartbeat trace", () => {
   const view = new FakeEventTarget();
   const doc = new FakeDocument(view);
   const dayStart = Date.parse("2026-08-30T00:00:00Z");
@@ -928,25 +960,17 @@ test("short BWC events keep exact width and gain only zoom-dependent event empha
   tooltip.offsetWidth = 230;
   tooltip.offsetHeight = 118;
   const svg = renderBwcHistoryChart(doc, chart, tooltip, overview, { masterDurationMs: 24 * 60 * 60_000 });
-  const severePath = svg.querySelector(".bwc-history-step-severe");
-  const exactRenderedWidth = Number(severePath.getAttribute("data-bwc-segment-width-px"));
-  assert.ok(Math.abs(exactRenderedWidth - expectedOverviewWidth) < 0.001, "the six-minute plateau is not widened");
-  assert.equal(Number(severePath.getAttribute("data-bwc-segment-duration-ms")), 6 * 60_000);
-  const eventMarker = svg.querySelector(".bwc-history-short-event-marker");
-  assert.ok(eventMarker, "a compact marker emphasizes the exact narrow event");
-  assert.equal(eventMarker.getAttribute("data-bwc-event-marker-shape"), "notch");
-  assert.match(eventMarker.getAttribute("d"), /^M [\d.]+ [\d.]+ V [\d.]+$/,
-    "the technical event notch does not introduce a decorative diamond");
-  assert.equal(Number(eventMarker.getAttribute("data-bwc-event-start-ms")), severeStart);
-  assert.equal(Number(eventMarker.getAttribute("data-bwc-event-end-ms")), severeEnd);
-  assert.equal(Number(eventMarker.getAttribute("data-bwc-event-duration-ms")), 6 * 60_000);
-  assert.ok(Math.abs(Number(eventMarker.getAttribute("data-bwc-event-width-px")) - expectedOverviewWidth) < 0.001);
-  assert.ok(Number(eventMarker.getAttribute("data-bwc-event-radius")) <= 3.25,
-    "overview emphasis stays compact instead of obscuring the exact plateau");
-  assert.equal(eventMarker.getAttribute("aria-hidden"), "true", "the bounded focus proxy owns accessible event text");
-  assert.equal(svg.querySelectorAll(".bwc-history-observation-marker").length, 3, "the event cue does not fabricate an observation");
-  assert.equal(svg.querySelectorAll(".bwc-history-transition").length, 2);
-  assert.equal(svg.querySelectorAll(".bwc-history-change-marker").length, 0, "narrow-event boundaries yield to one cleaner event cue");
+  const outline = svg.querySelector(".bwc-history-trace-outline");
+  assert.ok(outline, "one outlined heartbeat visually joins the exact retained points");
+  assert.equal(Number(outline.getAttribute("data-bwc-trace-segment-count")), 2);
+  assert.match(outline.getAttribute("d"), /^M [\d.]+ 135 L [\d.]+ 18 M [\d.]+ 18 L [\d.]+ 135$/);
+  assert.doesNotMatch(outline.getAttribute("d"), /\b[HV]\b/);
+  assert.ok(svg.querySelector(".bwc-history-trace-moderate"));
+  assert.ok(svg.querySelector(".bwc-history-trace-severe"));
+  assert.equal(svg.querySelectorAll(".bwc-history-step").length, 0);
+  assert.equal(svg.querySelectorAll(".bwc-history-transition").length, 0);
+  assert.equal(svg.querySelectorAll(".bwc-history-short-event-marker").length, 0);
+  assert.equal(svg.querySelectorAll(".bwc-history-observation-marker").length, 3, "the trace does not fabricate an observation");
 
   const eventCenterX = EXPECTED_BWC_AXIS_GUTTER_WIDTH
     + ((selected[0].timeMs - dayStart) / (dayEnd - dayStart)) * plotWidth;
@@ -990,18 +1014,18 @@ test("short BWC events keep exact width and gain only zoom-dependent event empha
     range: { startMs: moderateStart, endMs: moderateEnd, durationMs: moderateEnd - moderateStart },
   };
   const zoomedSelected = selectBwcShortEventMarkers(zoomed, { plotWidth });
-  assert.equal(zoomedSelected.length, 0, "the same six-minute plateau needs no cue after it becomes readable");
+  assert.equal(zoomedSelected.length, 0, "the exact short interval needs no separate metadata cue after it becomes readable");
   const zoomedChart = doc.createElement("div");
   zoomedChart.clientWidth = 820;
   const zoomedSvg = renderBwcHistoryChart(doc, zoomedChart, doc.createElement("div"), zoomed, {
     masterDurationMs: 24 * 60 * 60_000,
   });
-  const zoomedSeverePath = zoomedSvg.querySelector(".bwc-history-step-severe");
-  const expectedZoomedWidth = plotWidth * (6 / 120);
-  assert.ok(Math.abs(Number(zoomedSeverePath.getAttribute("data-bwc-segment-width-px")) - expectedZoomedWidth) < 0.001);
+  const zoomedTrace = zoomedSvg.querySelector(".bwc-history-trace-outline");
+  assert.ok(zoomedTrace);
+  assert.equal(Number(zoomedTrace.getAttribute("data-bwc-trace-segment-count")), 2);
   assert.equal(zoomedSvg.querySelectorAll(".bwc-history-short-event-marker").length, 0);
   assert.equal(zoomedSvg.querySelectorAll(".bwc-history-change-marker").length, 0,
-    "the exact transition connector is not duplicated by a persistent midpoint diamond");
+    "the heartbeat is not duplicated by a persistent midpoint diamond");
   assert.ok(Number(zoomedSvg.querySelector(".bwc-history-observation-marker").getAttribute("r"))
     > Number(svg.querySelector(".bwc-history-observation-marker").getAttribute("r")),
   "deep zoom makes exact observations more prominent without changing their timestamps");
@@ -1020,10 +1044,11 @@ test("short BWC events keep exact width and gain only zoom-dependent event empha
     masterDurationMs: 24 * 60 * 60_000,
   });
   assert.equal(sixHourSvg.querySelectorAll(".bwc-history-short-event-marker").length, 0,
-    "a six-minute event uses its naturally readable plateau at the physical six-hour zoom");
+    "a six-minute event is already visible in the point-to-point trace at physical six-hour zoom");
   assert.equal(sixHourSvg.querySelectorAll(".bwc-history-change-marker").length, 0);
-  assert.equal(sixHourSvg.querySelectorAll(".bwc-history-transition").length, 2,
-    "exact H/V timing remains without barcode-style duplicate cues");
+  assert.equal(sixHourSvg.querySelectorAll(".bwc-history-transition").length, 0,
+    "barcode-style vertical transition stems are not rendered");
+  assert.equal(Number(sixHourSvg.querySelector(".bwc-history-trace-outline").getAttribute("data-bwc-trace-segment-count")), 2);
   assert.ok(Number(sixHourSvg.querySelector(".bwc-history-observation-marker").getAttribute("r")) <= 1.3,
     "routine dots remain subordinate at the physical six-hour zoom");
 
@@ -1076,8 +1101,8 @@ test("same-state basis splits remain one truthful visual episode", () => {
   const tooltip = doc.createElement("div");
   tooltip.hidden = true;
   const svg = renderBwcHistoryChart(doc, chart, tooltip, timeline);
-  assert.equal(svg.querySelectorAll(".bwc-history-short-event-marker").length, 1);
-  assert.equal(svg.querySelector(".bwc-history-short-event-marker").getAttribute("data-bwc-event-count"), "1");
+  assert.equal(svg.querySelectorAll(".bwc-history-short-event-marker").length, 0,
+    "basis metadata stays accessible without adding a visible glyph to the heartbeat");
   const eventFocus = svg.querySelector(".bwc-history-event-focus-target");
   eventFocus.dispatchEvent({ type: "focus" });
   assert.equal(tooltip.children[5].textContent,
@@ -1113,8 +1138,7 @@ test("dense event and change evidence stays exact without redundant change diamo
   denseChart.clientWidth = 820;
   const denseSvg = renderBwcHistoryChart(doc, denseChart, doc.createElement("div"), denseTimeline);
   const eventPaths = denseSvg.querySelectorAll(".bwc-history-short-event-marker");
-  assert.ok(eventPaths.length <= 3, "short-event DOM remains bounded by categorical states");
-  assert.equal(eventPaths.reduce((sum, path) => sum + Number(path.getAttribute("data-bwc-event-count")), 0), 238);
+  assert.equal(eventPaths.length, 0, "dense short events add no visible glyphs over the heartbeat");
   assert.equal(denseSvg.querySelectorAll(".bwc-history-event-focus-target").length, 1);
 
   const transitionTimeline = makeTimeline(60, 24);
@@ -1124,10 +1148,8 @@ test("dense event and change evidence stays exact without redundant change diamo
   assert.equal(transitionSvg.querySelectorAll(".bwc-history-short-event-marker").length, 0);
   assert.equal(transitionSvg.querySelectorAll(".bwc-history-change-marker").length, 0,
     "the exact connectors are not double-encoded as midpoint diamonds");
-  const transitions = transitionSvg.querySelectorAll(".bwc-history-transition");
-  assert.equal(transitions.length, 23, "every exact state change remains visible once");
-  assert.equal(new Set(transitions.map((line) => line.getAttribute("data-bwc-transition-ms"))).size, 23,
-    "transition timestamps remain exact and unique");
+  assert.equal(transitionSvg.querySelectorAll(".bwc-history-transition").length, 0,
+    "state changes do not add full-height barcode stems");
   const eventFocus = transitionSvg.querySelector(".bwc-history-event-focus-target");
   assert.ok(eventFocus, "state changes remain keyboard reachable without always-on diamonds");
   assert.match(eventFocus.getAttribute("aria-label"), /BWC state change/);
@@ -1505,6 +1527,12 @@ test("marker geometry remains UTC-anchored across viewport ranges and dense comp
   assert.equal((colorBatch.getAttribute("d").match(/ h 0\b/g) || []).length, denseTimes.length);
   assert.equal(colorBatch.getAttribute("stroke-width"), "1.4", "annual dots stay exact but visually subdued");
   assert.equal(outlineBatch.getAttribute("stroke-width"), "2");
+  assert.equal(compactSvg.querySelectorAll(".bwc-history-trace").length, 1,
+    "annual heartbeat keeps state-color trace DOM bounded");
+  assert.equal(compactSvg.querySelectorAll(".bwc-history-trace-outline").length, 1,
+    "annual heartbeat uses one shared contrast outline");
+  assert.equal(Number(compactSvg.querySelector(".bwc-history-trace-outline")
+    .getAttribute("data-bwc-trace-segment-count")), denseTimes.length - 1);
   const denseXs = [...colorBatch.getAttribute("d").matchAll(/\bM ([\d.]+) [\d.]+ h 0/g)]
     .map((match) => Number(match[1]));
   assert.equal(denseXs.length, denseTimes.length);
@@ -1592,16 +1620,20 @@ test("chart rendering is dependency-free SVG with exact-state and bounded eviden
   assert.match(historyJs, /createSvgElement\(doc, "path"/);
   assert.match(historyJs, /bwc-history-unknown-band/);
   assert.match(historyJs, /selectBwcUtcTicks\(timeline\.range/);
-  assert.match(historyJs, /bwc-history-transition/);
   assert.match(historyJs, /selectBwcShortEventMarkers\(timeline/);
-  assert.match(historyJs, /bwc-history-short-event-marker/);
+  assert.match(historyJs, /buildBwcObservationTracePaths\(observations, timeline/);
+  assert.match(historyJs, /bwc-history-trace-outline/);
+  assert.match(historyJs, /bwc-history-trace-/);
+  assert.doesNotMatch(historyJs, /class:\s*"bwc-history-transition"/);
+  assert.doesNotMatch(historyJs, /class:\s*`bwc-history-step/);
+  assert.doesNotMatch(historyJs, /class:\s*`bwc-history-short-event-marker/);
   assert.doesNotMatch(historyJs, /bwc-history-change-marker/);
   assert.match(historyJs, /selectBwcObservationMarkers\(timeline\)/);
   assert.match(historyJs, /createSvgElement\(doc, "circle"/);
   assert.match(historyJs, /bwc-history-observation-marker/);
   assert.match(historyJs, /bwc-history-observation-focus-target/);
   assert.match(historyJs, /bwc-history-event-focus-target/);
-  assert.match(historyJs, /`M \$\{svgCoordinate\(x1\)\} \$\{svgCoordinate\(y\)\} H \$\{svgCoordinate\(x2\)\}`/);
+  assert.match(historyJs, /`M \$\{svgCoordinate\(x1\)\} \$\{svgCoordinate\(fromY\)\} L \$\{svgCoordinate\(x2\)\} \$\{svgCoordinate\(toY\)\}`/);
   assert.match(historyJs, /addEventListener\("pointermove"/);
   assert.match(historyJs, /addEventListener\("click"/);
   assert.doesNotMatch(historyJs, /const timelineSegment = findTimelineSegmentAt/);
@@ -1629,11 +1661,14 @@ test("modal styling stays fixed, internally scrollable, touch friendly, and resp
   assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*pointer-events:none/);
   assert.match(historyCss, /\.bwc-history-observation-focus-target\{[\s\S]*pointer-events:none/);
   assert.match(historyCss, /\.bwc-history-event-focus-target\{[\s\S]*pointer-events:none/);
-  assert.match(historyCss, /\.bwc-history-transition\{stroke:#73817a;stroke-width:\.8;[\s\S]*opacity:\.32/);
-  assert.doesNotMatch(historyCss, /\.bwc-history-transition-(?:low|moderate|severe)\s*\{/);
-  assert.match(historyCss, /\.bwc-history-short-event-marker\{[\s\S]*pointer-events:none/);
-  assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*opacity:\.5/);
-  assert.match(historyCss, /\.bwc-history-detail-zoom \.bwc-history-observation-marker\{opacity:\.7\}/);
+  assert.match(historyCss, /\.bwc-history-trace-outline,[\s\S]*\.bwc-history-trace\{[\s\S]*stroke-linecap:round;[\s\S]*stroke-linejoin:round/);
+  assert.match(historyCss, /\.bwc-history-trace\{stroke-width:3\.4;opacity:\.98\}/);
+  assert.match(historyCss, /\.bwc-history-trace-low\{stroke:#42e36f\}/);
+  assert.match(historyCss, /\.bwc-history-trace-moderate\{stroke:#ffd34d\}/);
+  assert.match(historyCss, /\.bwc-history-trace-severe\{stroke:#ff4d55\}/);
+  assert.doesNotMatch(historyCss, /\.bwc-history-(?:step|transition|short-event-marker)(?:\{|[-])/);
+  assert.match(historyCss, /\.bwc-history-observation-marker\{[\s\S]*opacity:\.72/);
+  assert.match(historyCss, /\.bwc-history-detail-zoom \.bwc-history-observation-marker\{opacity:\.9\}/);
   assert.match(historyCss, /\.bwc-history-time-grid-line\{stroke:rgba\(207,224,216,\.07\)/);
   assert.match(historyCss, /\.bwc-history-analysis\{[\s\S]*min-width:0;[\s\S]*max-width:100%/);
   assert.match(historyCss, /\.bwc-history-summary-content\{[\s\S]*max-width:calc\(100% - 18px\);[\s\S]*overflow:auto/);
