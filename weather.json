@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-04T18:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-09-04T18:54:00Z",
-  "atisAgeMinutes": 22,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "R:1854Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -19,15 +19,8 @@
     "ATIS_INFO_API",
     "ATIS_RELAY"
   ],
-  "atisLiveCandidateCount": 2,
+  "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
-    {
-      "identity": "Q:1854Z",
-      "observedZ": "2026-09-04T18:54:00Z",
-      "sources": [
-        "ATIS_INFO_API"
-      ]
-    },
     {
       "identity": "R:1854Z",
       "observedZ": "2026-09-04T18:54:00Z",
@@ -52,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-04T16:15:41Z",
+  "trendReferenceTimestampZ": "2026-09-04T16:35:41Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -134,7 +127,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-04 19:12:00.000",
+  "bwcUpdatedZ": "2026-09-04 19:24:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -147,20 +140,9 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-04 19:16:51Z",
-  "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
+  "milNotamUpdatedZ": "2026-09-04 19:26:42Z",
+  "milNotamScrollText": "M0021/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
   "milNotams": [
-    {
-      "number": "M0024/26",
-      "classification": "MIL",
-      "severity": "red",
-      "text": "MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UNTIL FURTHER NOTICE",
-      "displayText": "MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
-      "effectiveStart": "202607281423",
-      "effectiveEnd": "202610252359",
-      "lastUpdated": "2026-07-28T14:23:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
     {
       "number": "M0021/26",
       "classification": "MIL",
@@ -170,6 +152,17 @@
       "effectiveStart": "202606091221",
       "effectiveEnd": "202609062359",
       "lastUpdated": "2026-06-09T12:21:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "M0024/26",
+      "classification": "MIL",
+      "severity": "red",
+      "text": "MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UNTIL FURTHER NOTICE",
+      "displayText": "MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
+      "effectiveStart": "202607281423",
+      "effectiveEnd": "202610252359",
+      "lastUpdated": "2026-07-28T14:23:00.000Z",
       "source": "FAA_NMS_STAGING"
     }
   ],
@@ -208,13 +201,13 @@
   "constructionStatusNotamCount": 2,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-09-04 19:15Z",
+  "allFeedsUpdatedZ": "2026-09-04 19:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-04 19:15:40Z"
+    "lastWorkflowTimestampZ": "2026-09-04 19:25:40Z"
   }
 }
