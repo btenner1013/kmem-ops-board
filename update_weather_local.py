@@ -45,7 +45,8 @@ TREND_LOOKBACK_HOURS = 3
 
 NMS_MIL_NOTAMS_SCRIPT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_test.py")
 NMS_MIL_NOTAMS_OUTPUT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_output.json")
-NMS_MIL_NOTAMS_TIMEOUT_SECONDS = 120
+NMS_MIL_NOTAMS_TIMEOUT_SECONDS = 300
+NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS = 8192
 NOTAM_OK_MAX_AGE_MINUTES = 30
 NOTAM_WARN_MAX_AGE_MINUTES = 60
 
@@ -4731,6 +4732,48 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
     }
 
 
+def nms_timeout_stream_tail(value, secrets=()):
+    """Return a bounded, decoded, redacted child-output tail for diagnostics."""
+    if value is None:
+        return ""
+
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="backslashreplace")
+    else:
+        text = str(value)
+
+    for secret in secrets:
+        if secret:
+            text = text.replace(str(secret), "[REDACTED]")
+
+    text = text.rstrip()
+    if len(text) > NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS:
+        text = (
+            f"[...last {NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS} characters...]\n"
+            + text[-NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS:]
+        )
+    return text
+
+
+def log_nms_timeout_diagnostics(error, secrets=()):
+    """Surface useful child progress without publishing a partial NMS result."""
+    for label, stream in (
+        ("STDOUT", getattr(error, "stdout", None)),
+        ("STDERR", getattr(error, "stderr", None)),
+    ):
+        tail = nms_timeout_stream_tail(stream, secrets)
+        if tail:
+            print(f"MIL NOTAMS: partial {label} before timeout:\n{tail}")
+
+
+def log_nms_process_output(stdout, stderr, secrets=()):
+    """Log bounded, redacted output from a completed NMS child process."""
+    for stream in (stdout, stderr):
+        tail = nms_timeout_stream_tail(stream, secrets)
+        if tail:
+            print(tail)
+
+
 def fetch_mil_notams(previous_data):
     """
     Runs the working FAA NMS KMEM MIL NOTAM test script and merges its JSON output.
@@ -4758,7 +4801,7 @@ def fetch_mil_notams(previous_data):
         if os.name == "nt":
             platform_options["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         result = subprocess.run(
-            [sys.executable, NMS_MIL_NOTAMS_SCRIPT_PATH],
+            [sys.executable, "-u", NMS_MIL_NOTAMS_SCRIPT_PATH],
             cwd=REPO_DIR,
             text=True,
             encoding="utf-8",
@@ -4768,11 +4811,11 @@ def fetch_mil_notams(previous_data):
             **platform_options,
         )
 
-        if result.stdout:
-            print(result.stdout.strip())
-
-        if result.stderr:
-            print(result.stderr.strip())
+        log_nms_process_output(
+            result.stdout,
+            result.stderr,
+            (client_id, client_secret),
+        )
 
         if result.returncode != 0:
             print(f"MIL NOTAMS: NMS script returned {result.returncode}; using previous data if available.")
@@ -4788,7 +4831,8 @@ def fetch_mil_notams(previous_data):
         print("MIL NOTAMS:", mil_data["milNotamStatus"], "SOURCE:", mil_data["milNotamSource"])
         return mil_data
 
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as error:
+        log_nms_timeout_diagnostics(error, (client_id, client_secret))
         print("MIL NOTAMS: NMS script timed out; using previous data if available.")
         return previous_mil_notams_or_default(previous_data, "TIMEOUT")
 

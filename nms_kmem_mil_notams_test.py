@@ -49,6 +49,7 @@ ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
 # NMS staging showed a rate limit around 1 request/sec.
 REQUEST_DELAY_SECONDS = 1.25
 MAX_RETRIES = 3
+TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
 
 def utc_now_z():
@@ -57,6 +58,25 @@ def utc_now_z():
 
 def ssl_context(insecure=False):
     return ssl._create_unverified_context() if insecure else ssl.create_default_context()
+
+
+def retry_wait_seconds(attempt):
+    return REQUEST_DELAY_SECONDS * attempt + 1.0
+
+
+def raise_or_retry_http_error(exc, attempt):
+    error_text = exc.read().decode("utf-8", errors="replace")
+
+    if exc.code in TRANSIENT_HTTP_STATUS_CODES and attempt < MAX_RETRIES:
+        wait = retry_wait_seconds(attempt)
+        print(
+            f"HTTP {exc.code} transient response. "
+            f"Waiting {wait:.1f} sec then retrying..."
+        )
+        time.sleep(wait)
+        return
+
+    raise RuntimeError(f"HTTP {exc.code}: {error_text}") from exc
 
 
 def http_request(method, url, headers=None, body=None, timeout=45):
@@ -68,36 +88,38 @@ def http_request(method, url, headers=None, body=None, timeout=45):
                 return resp.read()
 
         except HTTPError as exc:
-            error_text = exc.read().decode("utf-8", errors="replace")
+            raise_or_retry_http_error(exc, attempt)
+            continue
 
-            if exc.code == 429 and attempt < MAX_RETRIES:
-                wait = REQUEST_DELAY_SECONDS * attempt + 1.0
-                print(f"HTTP 429 rate limit. Waiting {wait:.1f} sec then retrying...")
+        except (ssl.SSLError, URLError, TimeoutError) as exc:
+            request_error = exc
+
+            if ALLOW_INSECURE_SSL_FALLBACK:
+                print(f"Normal SSL failed or was blocked: {exc}")
+                print("Trying temporary insecure SSL fallback for NMS test...")
+
+                try:
+                    with urlopen(req, timeout=timeout, context=ssl_context(True)) as resp:
+                        return resp.read()
+                except HTTPError as fallback_http_error:
+                    raise_or_retry_http_error(fallback_http_error, attempt)
+                    continue
+                except (ssl.SSLError, URLError, TimeoutError) as fallback_error:
+                    request_error = fallback_error
+
+            if attempt < MAX_RETRIES:
+                wait = retry_wait_seconds(attempt)
+                print(
+                    f"Transient NMS network error: {request_error}. "
+                    f"Waiting {wait:.1f} sec then retrying..."
+                )
                 time.sleep(wait)
                 continue
 
-            raise RuntimeError(f"HTTP {exc.code}: {error_text}") from exc
-
-        except (ssl.SSLError, URLError) as exc:
-            if not ALLOW_INSECURE_SSL_FALLBACK:
-                raise
-
-            print(f"Normal SSL failed or was blocked: {exc}")
-            print("Trying temporary insecure SSL fallback for NMS test...")
-
-            try:
-                with urlopen(req, timeout=timeout, context=ssl_context(True)) as resp:
-                    return resp.read()
-            except HTTPError as exc2:
-                error_text = exc2.read().decode("utf-8", errors="replace")
-
-                if exc2.code == 429 and attempt < MAX_RETRIES:
-                    wait = REQUEST_DELAY_SECONDS * attempt + 1.0
-                    print(f"HTTP 429 rate limit. Waiting {wait:.1f} sec then retrying...")
-                    time.sleep(wait)
-                    continue
-
-                raise RuntimeError(f"HTTP {exc2.code}: {error_text}") from exc2
+            raise RuntimeError(
+                f"NMS network request failed after {MAX_RETRIES} attempts: "
+                f"{request_error}"
+            ) from request_error
 
     raise RuntimeError("Request failed after retries.")
 

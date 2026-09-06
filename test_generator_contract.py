@@ -2,6 +2,7 @@
 """Focused contracts for generator publication and scheduled runtimes."""
 
 import ast
+import io
 import inspect
 import json
 import os
@@ -10,12 +11,32 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from urllib.error import HTTPError, URLError
 
 import update_weather_local as updater
 import kmem_updater
+import nms_kmem_mil_notams_test as nms
 
 
 REPO_DIR = Path(__file__).resolve().parent
+
+
+def _http_error(code, body=b"temporary failure"):
+    return HTTPError(
+        "https://nms.example.test/resource",
+        code,
+        "test error",
+        {},
+        io.BytesIO(body),
+    )
+
+
+def _http_response(body=b"ok"):
+    response = mock.MagicMock()
+    response.__enter__.return_value = response
+    response.__exit__.return_value = False
+    response.read.return_value = body
+    return response
 
 
 class WeatherGeneratorContractTests(unittest.TestCase):
@@ -166,6 +187,338 @@ class WeatherGeneratorContractTests(unittest.TestCase):
         )
         self.assertEqual(kwargs["encoding"], "utf-8")
         self.assertEqual(kwargs["errors"], "backslashreplace")
+
+    def test_nested_nms_process_uses_full_scan_budget_and_unbuffered_output(self):
+        completed = subprocess.CompletedProcess(["nms"], 1, "diagnostic", "warning")
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                clear=False,
+            ),
+            mock.patch.object(updater.os.path, "exists", return_value=True),
+            mock.patch.object(updater.subprocess, "run", return_value=completed) as run,
+            mock.patch("builtins.print"),
+        ):
+            updater.fetch_mil_notams({})
+
+        command = run.call_args.args[0]
+        self.assertEqual(command[:2], [updater.sys.executable, "-u"])
+        self.assertEqual(command[2], updater.NMS_MIL_NOTAMS_SCRIPT_PATH)
+        self.assertEqual(updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS, 5 * 60)
+        self.assertEqual(run.call_args.kwargs["timeout"], 5 * 60)
+        self.assertLess(
+            updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS,
+            kmem_updater.GENERATOR_TIMEOUT_SECONDS,
+        )
+
+    def test_nms_timeout_logs_bounded_partial_diagnostics_and_keeps_cache_untrusted(self):
+        diagnostic_limit = updater.NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS
+        expired = subprocess.TimeoutExpired(
+            cmd=[updater.sys.executable, "-u", updater.NMS_MIL_NOTAMS_SCRIPT_PATH],
+            timeout=updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS,
+            output=(
+                b"DROP-OLD-STDOUT\n"
+                + (b"x" * (diagnostic_limit + 100))
+                + b"\nPulling 09/047... test-secret invalid=\xff\n"
+            ),
+            stderr=(
+                b"DROP-OLD-STDERR\n"
+                + (b"y" * (diagnostic_limit + 100))
+                + b"\nHTTP 503 retry exhausted invalid=\xfe\n"
+            ),
+        )
+        previous = {
+            "milNotamCount": 1,
+            "milNotamStatus": "1 ACTIVE",
+            "milNotamScrollText": "09/047 RWY 18C/36C CLSD",
+            "milNotams": [],
+            "milNotamSource": "FAA_NMS_STAGING",
+            "milNotamUpdatedZ": "2026-09-06 17:38:38Z",
+            "milNotamRawStatus": "Success",
+            "runwayClosureNotams": [
+                {
+                    "number": "09/047",
+                    "text": "RWY 18C/36C CLSD",
+                    "effectiveStart": "202609061700",
+                    "effectiveEnd": "202609062300",
+                }
+            ],
+        }
+
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                clear=False,
+            ),
+            mock.patch.object(updater.os.path, "exists", return_value=True),
+            mock.patch.object(updater.subprocess, "run", side_effect=expired),
+            mock.patch("builtins.print") as output,
+        ):
+            result = updater.fetch_mil_notams(previous)
+
+        printed = "\n".join(
+            " ".join(str(argument) for argument in call.args)
+            for call in output.call_args_list
+        )
+        self.assertIn("Pulling 09/047... [REDACTED] invalid=\\xff", printed)
+        self.assertIn("HTTP 503 retry exhausted invalid=\\xfe", printed)
+        self.assertIn("[REDACTED]", printed)
+        self.assertNotIn("test-secret", printed)
+        self.assertNotIn("DROP-OLD-STDOUT", printed)
+        self.assertNotIn("DROP-OLD-STDERR", printed)
+        self.assertLessEqual(
+            len(printed),
+            (diagnostic_limit * 2) + 1000,
+            "timeout diagnostics must stay bounded",
+        )
+
+        self.assertEqual(result["milNotamFetchStatus"], "TIMEOUT")
+        self.assertEqual(result["milNotamRawStatus"], "Success")
+        self.assertEqual(result["milNotamUpdatedZ"], "2026-09-06 17:38:38Z")
+        self.assertEqual(result["runwayClosureNotamCount"], 1)
+        self.assertEqual(result["runwayClosureNotams"][0]["number"], "09/047")
+
+        decision_time = updater.datetime(
+            2026,
+            9,
+            6,
+            20,
+            0,
+            tzinfo=updater.timezone.utc,
+        )
+        self.assertEqual(
+            updater.classify_notam_feed(result, decision_time)["status"],
+            "ERROR",
+        )
+        self.assertEqual(
+            updater.resolve_closed_runways(
+                {"sourceIsCurrent": False},
+                result,
+                decision_time,
+            ),
+            "UNKNOWN",
+        )
+
+    def test_nms_timeout_without_captured_streams_falls_back_without_crashing(self):
+        expired = subprocess.TimeoutExpired(
+            cmd=[updater.sys.executable, "-u", updater.NMS_MIL_NOTAMS_SCRIPT_PATH],
+            timeout=updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS,
+        )
+        previous = {
+            "milNotamCount": 0,
+            "milNotamStatus": "NONE ACTIVE",
+            "milNotams": [],
+            "milNotamUpdatedZ": "2026-09-06 17:38:38Z",
+            "milNotamRawStatus": "Success",
+        }
+
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                clear=False,
+            ),
+            mock.patch.object(updater.os.path, "exists", return_value=True),
+            mock.patch.object(updater.subprocess, "run", side_effect=expired),
+            mock.patch("builtins.print") as output,
+        ):
+            result = updater.fetch_mil_notams(previous)
+
+        self.assertEqual(result["milNotamFetchStatus"], "TIMEOUT")
+        printed = "\n".join(str(call) for call in output.call_args_list)
+        self.assertIn("NMS script timed out", printed)
+
+    def test_failed_nms_process_logs_only_bounded_redacted_output(self):
+        diagnostic_limit = updater.NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS
+        completed = subprocess.CompletedProcess(
+            ["nms"],
+            1,
+            "DROP-OLD\n" + ("x" * (diagnostic_limit + 100)) + "\ntest-secret",
+            "HTTP 503 from test-id",
+        )
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                clear=False,
+            ),
+            mock.patch.object(updater.os.path, "exists", return_value=True),
+            mock.patch.object(updater.subprocess, "run", return_value=completed),
+            mock.patch("builtins.print") as output,
+        ):
+            result = updater.fetch_mil_notams({})
+
+        printed = "\n".join(
+            " ".join(str(argument) for argument in call.args)
+            for call in output.call_args_list
+        )
+        self.assertEqual(result["milNotamFetchStatus"], "SCRIPT_FAILED")
+        self.assertNotIn("DROP-OLD", printed)
+        self.assertNotIn("test-secret", printed)
+        self.assertNotIn("test-id", printed)
+        self.assertGreaterEqual(printed.count("[REDACTED]"), 2)
+        self.assertLessEqual(
+            len(printed),
+            (diagnostic_limit * 2) + 1000,
+            "completed-process diagnostics must stay bounded",
+        )
+
+    def test_successful_complete_nms_output_remains_authoritative(self):
+        completed = subprocess.CompletedProcess(["nms"], 0, "complete", "")
+        raw = {
+            "source": "FAA_NMS_STAGING",
+            "status": "Success",
+            "generatedZ": "2026-09-06 20:00:00Z",
+            "milNotams": [],
+            "runwayClosureNotams": [
+                {
+                    "number": "09/047",
+                    "text": "RWY 18C/36C CLSD",
+                    "effectiveStart": "202609061700",
+                    "effectiveEnd": "202609062300",
+                }
+            ],
+        }
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                clear=False,
+            ),
+            mock.patch.object(updater.os.path, "exists", return_value=True),
+            mock.patch.object(updater.subprocess, "run", return_value=completed),
+            mock.patch.object(updater, "load_json_file", return_value=raw),
+            mock.patch("builtins.print"),
+        ):
+            result = updater.fetch_mil_notams({})
+
+        self.assertEqual(result["milNotamFetchStatus"], "OK")
+        self.assertEqual(result["milNotamRawStatus"], "Success")
+        self.assertEqual(result["milNotamUpdatedZ"], "2026-09-06 20:00:00Z")
+        self.assertEqual(result["runwayClosureNotamCount"], 1)
+
+    def test_nms_full_candidate_scan_contract_is_preserved(self):
+        source = inspect.getsource(nms.main)
+        self.assertIn("MAX_RECENT_LOCAL_DETAIL_SCAN = 50", source)
+        self.assertIn("mil_candidates + explicit_ficon_candidates", source)
+        self.assertIn("+ explicit_runway_closure_candidates + recent_local_candidates", source)
+        self.assertIn("for item in sorted(candidates", source)
+
+
+class NmsHttpRetryTests(unittest.TestCase):
+    def test_transient_http_statuses_retry_then_succeed_with_bounded_backoff(self):
+        for status in (408, 425, 429, 500, 502, 503, 504):
+            with self.subTest(status=status):
+                with (
+                    mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
+                    mock.patch.object(
+                        nms,
+                        "urlopen",
+                        side_effect=[_http_error(status), _http_response(b"recovered")],
+                    ) as urlopen,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                    mock.patch("builtins.print"),
+                ):
+                    result = nms.http_request(
+                        "GET",
+                        "https://nms.example.test/resource",
+                        timeout=7,
+                    )
+
+                self.assertEqual(result, b"recovered")
+                self.assertEqual(urlopen.call_count, 2)
+                sleep.assert_called_once_with(nms.REQUEST_DELAY_SECONDS + 1.0)
+                self.assertTrue(
+                    all(call.kwargs["timeout"] == 7 for call in urlopen.call_args_list)
+                )
+
+    def test_transient_http_retries_stop_at_max_attempts(self):
+        failures = [_http_error(503) for _ in range(nms.MAX_RETRIES)]
+        with (
+            mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
+            mock.patch.object(nms, "urlopen", side_effect=failures) as urlopen,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "HTTP 503"):
+                nms.http_request("GET", "https://nms.example.test/resource")
+
+        self.assertEqual(urlopen.call_count, nms.MAX_RETRIES)
+        self.assertEqual(
+            [call.args[0] for call in sleep.call_args_list],
+            [
+                nms.REQUEST_DELAY_SECONDS * attempt + 1.0
+                for attempt in range(1, nms.MAX_RETRIES)
+            ],
+        )
+
+    def test_url_and_socket_timeouts_retry_with_bounded_attempts(self):
+        transient_errors = (
+            URLError("temporary DNS failure"),
+            TimeoutError("socket timed out"),
+        )
+        for transient in transient_errors:
+            with self.subTest(error=type(transient).__name__):
+                with (
+                    mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
+                    mock.patch.object(
+                        nms,
+                        "urlopen",
+                        side_effect=[transient, _http_response(b"recovered")],
+                    ) as urlopen,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                    mock.patch("builtins.print"),
+                ):
+                    result = nms.http_request(
+                        "GET",
+                        "https://nms.example.test/resource",
+                    )
+
+                self.assertEqual(result, b"recovered")
+                self.assertEqual(urlopen.call_count, 2)
+                sleep.assert_called_once_with(nms.REQUEST_DELAY_SECONDS + 1.0)
+
+    def test_network_errors_stop_at_max_attempts(self):
+        factories = (
+            lambda attempt: URLError(f"temporary network failure {attempt}"),
+            lambda attempt: TimeoutError(f"socket timeout {attempt}"),
+        )
+        for factory in factories:
+            failures = [factory(attempt) for attempt in range(nms.MAX_RETRIES)]
+            with self.subTest(error=type(failures[0]).__name__):
+                with (
+                    mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
+                    mock.patch.object(nms, "urlopen", side_effect=failures) as urlopen,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                    mock.patch("builtins.print"),
+                ):
+                    with self.assertRaises((URLError, TimeoutError, RuntimeError)):
+                        nms.http_request("GET", "https://nms.example.test/resource")
+
+                self.assertEqual(urlopen.call_count, nms.MAX_RETRIES)
+                self.assertEqual(
+                    [call.args[0] for call in sleep.call_args_list],
+                    [
+                        nms.REQUEST_DELAY_SECONDS * attempt + 1.0
+                        for attempt in range(1, nms.MAX_RETRIES)
+                    ],
+                )
+
+    def test_non_transient_client_errors_fail_immediately(self):
+        for status in (400, 401, 403, 404):
+            with self.subTest(status=status):
+                with (
+                    mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
+                    mock.patch.object(nms, "urlopen", side_effect=_http_error(status)) as urlopen,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                ):
+                    with self.assertRaisesRegex(RuntimeError, f"HTTP {status}"):
+                        nms.http_request("GET", "https://nms.example.test/resource")
+
+                self.assertEqual(urlopen.call_count, 1)
+                sleep.assert_not_called()
 
 
 class SchedulerContractTests(unittest.TestCase):
