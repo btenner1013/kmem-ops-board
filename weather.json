@@ -1,19 +1,19 @@
 {
-  "metar": "METAR KMEM 061954Z 03014KT 10SM SCT070 SCT200 39/19 A2984 RMK AO2 SLP101 T03890189 $",
+  "metar": "METAR KMEM 062054Z 03012KT 10SM SCT075 SCT200 38/19 A2983 RMK AO2 LTG DSNT SW SLP095 T03830194 56022 $",
   "taf": "TAF KMEM 062054Z 0621/0724 01009KT P6SM SCT080 \n  FM070200 06005KT P6SM SCT250 \n  FM071600 06008KT P6SM SCT080",
   "atisText": "MEM ATIS INFO B 2054Z. 03012KT 10SM SCT075 SCT200 38/19 A2983 (TWO NINER EIGHT THREE) RMK AO2 LTG DSNT SW SLP095 T03830194 56022. VISUAL APCH IN USE RY 36C. SIMUL DEPS IN USE RY 36L 36C 36R. NOTICE TO AIRMEN. ILS RWY 27 OTS, RY 18R, 27 REILS OTS, RY 36C PAPI OTS, MEM ASDE OTS, FREQ 121.0 OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO B",
   "atisLetter": "B",
   "atisPhonetic": "BRAVO",
   "atisDisplay": "BRAVO",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-09-06T19:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarObservedZ": "2026-09-06T20:54:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-09-06T20:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "B:2054Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,8 +25,7 @@
       "identity": "B:2054Z",
       "observedZ": "2026-09-06T20:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
-        "ATIS_RELAY"
+        "ATIS_INFO_API"
       ]
     }
   ],
@@ -46,7 +45,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-09-06T18:05:51Z",
-  "trendSampleCount": 20,
+  "trendSampleCount": 19,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -55,7 +54,7 @@
     "visibility": "ATIS",
     "ceiling": "NONE"
   },
-  "metarAltimeterRaw": 29.84,
+  "metarAltimeterRaw": 29.83,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
@@ -127,15 +126,15 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-06 20:54:00.000",
+  "bwcUpdatedZ": "2026-09-06 21:06:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
-  "bwcHeight100FtAgl": "5333",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=6&hour=20&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=6&iHour=20",
+  "bwcHeight100FtAgl": "5556",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=6&hour=21&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=6&iHour=21",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
@@ -287,13 +286,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-06 20:55Z",
+  "allFeedsUpdatedZ": "2026-09-06 21:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-06 20:55:52Z"
+    "lastWorkflowTimestampZ": "2026-09-06 21:05:49Z"
   }
 }
