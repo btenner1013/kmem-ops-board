@@ -1,17 +1,17 @@
 {
-  "metar": "METAR KMEM 061854Z 36006G16KT 10SM SCT080 SCT200 39/19 A2986 RMK AO2 SLP107 T03890194 $",
+  "metar": "METAR KMEM 061954Z 03014KT 10SM SCT070 SCT200 39/19 A2984 RMK AO2 SLP101 T03890189 $",
   "taf": "TAF KMEM 061720Z 0618/0724 01009KT P6SM SCT080 \n  FM070200 06005KT P6SM SCT250",
   "atisText": "MEM ATIS INFO Z 1954Z. 03014KT 10SM SCT070 SCT200 39/19 A2984 (TWO NINER EIGHT FOUR) RMK AO2 SLP101 T03890189. SIMUL VISUAL APCHS IN USE RY 36L, 36R, 9. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 9. NOTICE TO AIRMEN. ILS RWY 27 OTS, RY 18R, 27 REILS OTS, RY 36C PAPI OTS, MEM ASDE OTS, FREQ 121.0 OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO Z",
   "atisLetter": "Z",
   "atisPhonetic": "ZULU",
   "atisDisplay": "ZULU",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-09-06T18:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarObservedZ": "2026-09-06T19:54:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-09-06T19:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "Z:1954Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -46,7 +46,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-09-06T17:06:16Z",
-  "trendSampleCount": 19,
+  "trendSampleCount": 20,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -55,7 +55,7 @@
     "visibility": "ATIS",
     "ceiling": "NONE"
   },
-  "metarAltimeterRaw": 29.86,
+  "metarAltimeterRaw": 29.84,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
@@ -127,15 +127,15 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-06 19:54:00.000",
+  "bwcUpdatedZ": "2026-09-06 20:06:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
-  "bwcHeight100FtAgl": "5111",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=6&hour=19&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=6&iHour=19",
+  "bwcHeight100FtAgl": "5333",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=6&hour=20&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=6&iHour=20",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
@@ -166,7 +166,7 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "SCRIPT_FAILED",
+  "milNotamFetchStatus": "TIMEOUT",
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
@@ -287,13 +287,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-06 19:55Z",
+  "allFeedsUpdatedZ": "2026-09-06 20:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-06 19:55:49Z"
+    "lastWorkflowTimestampZ": "2026-09-06 20:05:56Z"
   }
 }
