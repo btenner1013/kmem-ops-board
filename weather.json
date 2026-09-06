@@ -1,18 +1,18 @@
 {
   "metar": "METAR KMEM 060254Z 00000KT 10SM SCT250 31/20 A2988 RMK AO2 SLP113 T03110200 53012 $",
   "taf": "TAF KMEM 060302Z 0603/0706 VRB03KT P6SM SCT250 \n  FM061600 02008KT P6SM SCT080 BKN150 \n  FM070200 04006KT P6SM SCT080",
-  "atisText": "MEM ATIS INFO F 0254Z. 00000KT 10SM SCT250 31/20 A2988 (TWO NINER EIGHT EIGHT). SIMUL VISUAL APCHS IN USE RY 36L, 36C, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. ILS RWY 27 OTS, RY 18R, 27 REILS OTS, RY 36C PAPI OTS, MEM ASDE OTS, FREQ 121.0 OTS. TWY P2 BTN TWY T AND THE RAMP CLSD. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO F",
-  "atisLetter": "F",
-  "atisPhonetic": "FOXTROT",
-  "atisDisplay": "FOXTROT",
-  "metarFetchStatus": "OK",
+  "atisText": "MEM ATIS INFO G 0354Z. 00000KT 10SM SCT250 30/21 A2988 (TWO NINER EIGHT EIGHT) RMK AO2 SLP113 T03000206. SIMUL VISUAL APCHS IN USE RY 36L, 36C, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. ILS RWY 27 OTS, RY 18R, 27 REILS OTS, RY 36C PAPI OTS, MEM ASDE OTS, FREQ 121.0 OTS. TWY P2 BTN TWY T AND THE RAMP CLSD. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO G",
+  "atisLetter": "G",
+  "atisPhonetic": "GOLF",
+  "atisDisplay": "GOLF",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-06T02:54:00Z",
-  "metarAgeMinutes": 52,
-  "atisObservedZ": "2026-09-06T02:54:00Z",
-  "atisAgeMinutes": 52,
-  "atisReportIdentity": "F:0254Z",
+  "metarAgeMinutes": 62,
+  "atisObservedZ": "2026-09-06T03:54:00Z",
+  "atisAgeMinutes": 2,
+  "atisReportIdentity": "G:0354Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -22,8 +22,8 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "F:0254Z",
-      "observedZ": "2026-09-06T02:54:00Z",
+      "identity": "G:0354Z",
+      "observedZ": "2026-09-06T03:54:00Z",
       "sources": [
         "ATIS_INFO_API",
         "ATIS_RELAY"
@@ -31,8 +31,8 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "F",
-  "atisReportedPhonetic": "FOXTROT",
+  "atisReportedLetter": "G",
+  "atisReportedPhonetic": "GOLF",
   "atisReportedArrRunways": "36L / 36C / 36R / 27",
   "atisReportedDepRunways": "36L / 36C / 36R / 27",
   "atisReportedClosedRunways": "NONE",
@@ -45,8 +45,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-06T00:55:47Z",
-  "trendSampleCount": 20,
+  "trendReferenceTimestampZ": "2026-09-06T01:06:24Z",
+  "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -101,9 +101,9 @@
   "windTrend": "\u25bc",
   "windTrendText": "DECREASING",
   "windTrendClass": "improving",
-  "tempC": 31,
-  "dewpointC": 20,
-  "tempDpDisplay": "31/20",
+  "tempC": 30,
+  "dewpointC": 21,
+  "tempDpDisplay": "30/21",
   "tempTrend": "\u25bc",
   "tempTrendText": "FALLING",
   "dewpointTrend": "\u25b2",
@@ -127,7 +127,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-06 03:42:00.000",
+  "bwcUpdatedZ": "2026-09-06 03:54:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "SEVERE",
@@ -287,13 +287,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-06 03:45Z",
+  "allFeedsUpdatedZ": "2026-09-06 03:55Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-06 03:45:52Z"
+    "lastWorkflowTimestampZ": "2026-09-06 03:55:58Z"
   }
 }
