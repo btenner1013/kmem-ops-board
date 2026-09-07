@@ -5,15 +5,15 @@
   "atisLetter": "V",
   "atisPhonetic": "VICTOR",
   "atisDisplay": "VICTOR",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T12:54:00Z",
-  "metarAgeMinutes": 42,
+  "metarAgeMinutes": 57,
   "atisObservedZ": "2026-09-07T12:54:00Z",
-  "atisAgeMinutes": 42,
+  "atisAgeMinutes": 57,
   "atisReportIdentity": "V:1254Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,8 +25,7 @@
       "identity": "V:1254Z",
       "observedZ": "2026-09-07T12:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
-        "ATIS_RELAY"
+        "ATIS_INFO_API"
       ]
     }
   ],
@@ -41,11 +40,11 @@
     "metar": false,
     "taf": false,
     "atis": false,
-    "ahas": true
+    "ahas": false
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-07T10:40:55Z",
+  "trendReferenceTimestampZ": "2026-09-07T11:56:42Z",
   "trendSampleCount": 14,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -81,8 +80,8 @@
   "rcrRaw": "--",
   "altimeter": "30.00",
   "altimeterRaw": 30.0,
-  "altimeterTrend": "\u2191",
-  "altimeterTrendText": "RISING",
+  "altimeterTrend": "\u2192",
+  "altimeterTrendText": "STEADY",
   "ceilingFt": null,
   "ceilingDisplay": "UNL",
   "ceilingTrend": "\u2192",
@@ -98,14 +97,14 @@
   "windGustKt": null,
   "windArrow": "\u2199",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25ba",
-  "windTrendText": "STEADY",
-  "windTrendClass": "steady",
+  "windTrend": "\u25b2",
+  "windTrendText": "INCREASING",
+  "windTrendClass": "worsening",
   "tempC": 25,
   "dewpointC": 20,
   "tempDpDisplay": "25/20",
-  "tempTrend": "\u25bc",
-  "tempTrendText": "FALLING",
+  "tempTrend": "\u25b2",
+  "tempTrendText": "RISING",
   "dewpointTrend": "\u25b2",
   "dewpointTrendText": "RISING",
   "lightning": "NONE",
@@ -125,13 +124,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-07 13:12:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-09-07 13:48:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "SEVERE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=13&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -277,13 +276,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 13:36Z",
+  "allFeedsUpdatedZ": "2026-09-07 13:50Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 13:36:18Z"
+    "lastWorkflowTimestampZ": "2026-09-07 13:50:56Z"
   }
 }
