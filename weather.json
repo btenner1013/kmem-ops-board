@@ -6,14 +6,14 @@
   "atisPhonetic": "UNIFORM",
   "atisDisplay": "UNIFORM",
   "metarFetchStatus": "OK",
-  "tafFetchStatus": "USED_LAST_GOOD",
+  "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T11:54:00Z",
-  "metarAgeMinutes": 43,
+  "metarAgeMinutes": 53,
   "atisObservedZ": "2026-09-07T11:54:00Z",
-  "atisAgeMinutes": 43,
+  "atisAgeMinutes": 53,
   "atisReportIdentity": "U:1154Z",
-  "atisSelectedSource": "ATIS_INFO_API",
+  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,7 +25,8 @@
       "identity": "U:1154Z",
       "observedZ": "2026-09-07T11:54:00Z",
       "sources": [
-        "ATIS_INFO_API"
+        "ATIS_INFO_API",
+        "ATIS_RELAY"
       ]
     }
   ],
@@ -38,9 +39,9 @@
   "atisReportedFlow": "MIXED",
   "lastKnownGoodUsed": {
     "metar": false,
-    "taf": true,
+    "taf": false,
     "atis": false,
-    "ahas": true
+    "ahas": false
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
@@ -124,13 +125,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "MODERATE",
+  "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-07 12:06:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-09-07 12:48:00.000",
+  "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "SEVERE",
-  "bwcAhasRisk": "MODERATE",
+  "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=12&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -276,13 +277,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 12:36Z",
+  "allFeedsUpdatedZ": "2026-09-07 12:47Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 12:36:33Z"
+    "lastWorkflowTimestampZ": "2026-09-07 12:47:05Z"
   }
 }
