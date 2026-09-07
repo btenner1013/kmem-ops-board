@@ -22,17 +22,19 @@ Does not modify weather.json or GitHub.
 
 import base64
 import html
+import http.client
 import json
 import os
 import re
 import signal
+import socket
 import ssl
 import subprocess
 import sys
 import tempfile
 import time
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from xml.etree import ElementTree as ET
@@ -57,9 +59,9 @@ MAX_RETRIES = 2
 URLLIB_TOTAL_TIMEOUT_SECONDS = 25
 TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
-# Windows production prefers OS curl, then pinned Windows PowerShell/HttpClient,
-# because urllib DNS/TLS calls can outlive a socket timeout. Every Windows
-# transport process has both native and parent-enforced limits.
+# Windows production prefers OS curl, then verified HTTPS in the already-bounded
+# helper runtime.  This avoids relying on another host executable after curl
+# fails; the updater enforces the helper's hard parent timeout.
 CURL_CONNECT_TIMEOUT_SECONDS = 8
 CURL_TOTAL_TIMEOUT_SECONDS = 25
 CURL_PROCESS_TIMEOUT_SECONDS = 30
@@ -83,6 +85,10 @@ PYTHON_CHILD_TOTAL_TIMEOUT_SECONDS = 25
 PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS = 30
 PYTHON_CHILD_MAX_RETRIES = 2
 PYTHON_CHILD_RESPONSE_LIMIT_BYTES = 32 * 1024 * 1024
+PYTHON_RUNTIME_TOTAL_TIMEOUT_SECONDS = 25
+PYTHON_RUNTIME_MAX_RETRIES = 2
+PYTHON_RUNTIME_RESPONSE_LIMIT_BYTES = 32 * 1024 * 1024
+NMS_API_HOST = "api-staging.cgifederal-aim.com"
 LAST_HTTP_TRANSPORT = "NOT_USED"
 LAST_PROCESS_BOUNDARY = "NOT_USED"
 SAFE_FAILURE_CATEGORIES = {
@@ -121,7 +127,7 @@ def helper_failure_category(error):
         return "UPSTREAM_HTTP"
     if any(term in text for term in ("certificate", "ssl", "tls", "trust")):
         return "TLS_SECURITY"
-    if "curl exit 2" in text:
+    if re.search(r"\bcurl exit 2\b", text):
         return "TRANSPORT_COMPATIBILITY"
     if isinstance(error, NmsTransportError):
         return "TRANSPORT_UNAVAILABLE"
@@ -1420,6 +1426,146 @@ def python_child_http_request(
     raise RuntimeError("NMS Python child HTTP request failed after bounded retries.")
 
 
+def python_runtime_http_request(
+    method,
+    url,
+    headers=None,
+    body=None,
+    timeout=45,
+    *,
+    data=None,
+):
+    """Use this already-bounded helper runtime for verified NMS HTTPS.
+
+    The updater owns this helper process with a hard 300-second parent timeout, so
+    no second Python launcher is needed.  That avoids both loader/runtime failures
+    and transport timeouts observed in nested ``python.exe`` attempts.
+    """
+    del timeout  # Fixed native timeout plus the updater's hard helper boundary.
+    body = _python_child_body_alias(body, data)
+    normalized_method = str(method or "GET").strip().upper()
+    if normalized_method not in {"GET", "POST"}:
+        raise ValueError("invalid HTTP method")
+
+    parsed = urlsplit(str(url or ""))
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.hostname is None
+        or parsed.hostname.lower() != NMS_API_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+        or parsed.port not in (None, 443)
+    ):
+        raise ValueError("invalid NMS Python runtime destination")
+
+    normalized_headers = validated_http_headers(headers)
+    prohibited_headers = {
+        "connection",
+        "content-length",
+        "host",
+        "proxy-authorization",
+        "transfer-encoding",
+    }
+    if any(name.casefold() in prohibited_headers for name in normalized_headers):
+        raise ValueError("invalid NMS Python runtime headers")
+
+    body_bytes = None
+    if body is not None:
+        body_bytes = body if isinstance(body, bytes) else str(body).encode("utf-8")
+        if body_bytes != b"grant_type=client_credentials":
+            raise ValueError("unexpected NMS Python runtime request body")
+
+    target = parsed.path or "/"
+    if parsed.query:
+        target += "?" + parsed.query
+
+    for attempt in range(1, PYTHON_RUNTIME_MAX_RETRIES + 1):
+        transport_error = None
+        transport_cause = None
+        context = ssl.create_default_context()
+        context.check_hostname = True
+        context.verify_mode = ssl.CERT_REQUIRED
+        if hasattr(ssl, "TLSVersion"):
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+        connection = http.client.HTTPSConnection(
+            parsed.hostname,
+            port=parsed.port or 443,
+            timeout=PYTHON_RUNTIME_TOTAL_TIMEOUT_SECONDS,
+            context=context,
+        )
+        try:
+            connection.request(
+                normalized_method,
+                target,
+                body=body_bytes,
+                headers=normalized_headers,
+            )
+            response = connection.getresponse()
+            response_body = response.read(PYTHON_RUNTIME_RESPONSE_LIMIT_BYTES + 1)
+            status = int(response.status)
+        except ssl.SSLCertVerificationError as error:
+            raise RuntimeError(
+                "NMS Python runtime HTTPS failed (TLS certificate verification)"
+            ) from error
+        except ssl.SSLError as error:
+            raise RuntimeError(
+                "NMS Python runtime HTTPS failed (TLS security)"
+            ) from error
+        except socket.gaierror as error:
+            transport_error = NmsTransportError(
+                "NMS Python runtime HTTPS failed (DNS unavailable)"
+            )
+            transport_cause = error
+        except (socket.timeout, TimeoutError) as error:
+            transport_error = NmsTransportError(
+                "NMS Python runtime HTTPS failed (timed out)"
+            )
+            transport_cause = error
+        except (ConnectionError, OSError, http.client.HTTPException) as error:
+            transport_error = NmsTransportError(
+                "NMS Python runtime HTTPS failed (connection unavailable)"
+            )
+            transport_cause = error
+        else:
+            if len(response_body) > PYTHON_RUNTIME_RESPONSE_LIMIT_BYTES:
+                raise RuntimeError("NMS Python runtime HTTPS response is too large")
+            if 200 <= status < 300:
+                return response_body
+            if status in TRANSIENT_HTTP_STATUS_CODES and attempt < PYTHON_RUNTIME_MAX_RETRIES:
+                wait = retry_wait_seconds(attempt)
+                print(
+                    "Transient NMS Python runtime HTTP failure "
+                    f"(attempt {attempt}/{PYTHON_RUNTIME_MAX_RETRIES}). "
+                    f"Waiting {wait:.1f} sec then retrying..."
+                )
+                time.sleep(wait)
+                continue
+            diagnostic = curl_http_body_diagnostic(response_body, normalized_headers)
+            detail = diagnostic or "no diagnostic text"
+            raise RuntimeError(
+                f"NMS Python runtime HTTP request failed (HTTP {status:03d}): {detail}"
+            )
+        finally:
+            connection.close()
+
+        if attempt < PYTHON_RUNTIME_MAX_RETRIES:
+            wait = retry_wait_seconds(attempt)
+            print(
+                "Transient NMS Python runtime transport failure "
+                f"(attempt {attempt}/{PYTHON_RUNTIME_MAX_RETRIES}). "
+                f"Waiting {wait:.1f} sec then retrying..."
+            )
+            time.sleep(wait)
+            continue
+        raise transport_error from transport_cause
+
+    raise NmsTransportError(
+        "NMS Python runtime HTTPS failed after bounded retries"
+    )
+
+
 def record_http_transport(name):
     """Emit only a safe enum so partial timeout logs identify the chosen path."""
     global LAST_HTTP_TRANSPORT
@@ -1435,11 +1581,12 @@ def http_request(method, url, headers=None, body=None, timeout=45):
         try:
             return curl_http_request(curl_path, method, url, headers, body)
         except NmsTransportError:
-            # PRIMARY's pinned curl and PowerShell have both repeatedly failed
-            # before producing an HTTP response. The isolated child uses the
-            # same verified TLS policy without another unreliable host-tool hop.
+            # PRIMARY's pinned curl repeatedly fails before producing an HTTP
+            # response.  Reuse this already parent-bounded Python runtime rather
+            # than launching the host's broken nested python.exe executable.
             record_http_transport("WINDOWS_CURL_TO_PYTHON")
-            return python_child_http_request(
+            record_process_boundary("WINDOWS_DIRECT_BOUNDED")
+            return python_runtime_http_request(
                 method,
                 url,
                 headers,
@@ -1459,7 +1606,8 @@ def http_request(method, url, headers=None, body=None, timeout=45):
             )
         except NmsTransportError:
             record_http_transport("WINDOWS_POWERSHELL_TO_PYTHON")
-            return python_child_http_request(
+            record_process_boundary("WINDOWS_DIRECT_BOUNDED")
+            return python_runtime_http_request(
                 method,
                 url,
                 headers,
@@ -1468,7 +1616,8 @@ def http_request(method, url, headers=None, body=None, timeout=45):
 
     if os.name == "nt":
         record_http_transport("WINDOWS_PYTHON")
-        return python_child_http_request(method, url, headers, body)
+        record_process_boundary("WINDOWS_DIRECT_BOUNDED")
+        return python_runtime_http_request(method, url, headers, body)
 
     record_http_transport("PORTABLE_URLLIB")
     return urllib_http_request(method, url, headers, body, timeout)
