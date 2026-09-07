@@ -104,6 +104,10 @@ class NmsTransportError(RuntimeError):
     """A curl process/protocol failure that may use another verified transport."""
 
 
+class NmsCompatibilityError(NmsTransportError):
+    """A local transport command is incompatible with its fixed invocation."""
+
+
 def helper_failure_category(error):
     """Map a failed helper run to a credential-free operational category."""
     text = str(error).casefold()
@@ -879,7 +883,12 @@ def curl_http_request(curl_path, method, url, headers=None, body=None):
         # curl process which could not produce a complete HTTP response. Valid
         # HTTP errors remain owned by curl and never trigger provider replay.
         if curl_result_is_transport_failure(result):
-            raise NmsTransportError(curl_failure_message(result))
+            error_type = (
+                NmsCompatibilityError
+                if result.get("returncode") == 2
+                else NmsTransportError
+            )
+            raise error_type(curl_failure_message(result))
 
         if curl_result_is_transient(result) and attempt < CURL_MAX_RETRIES:
             wait = retry_wait_seconds(attempt)
@@ -1096,7 +1105,12 @@ def powershell_http_request(powershell_path, method, url, headers=None, body=Non
             and not isinstance(result.get("status"), int)
         )
         if powershell_compatibility_failure or powershell_framing_failure:
-            raise NmsTransportError(
+            error_type = (
+                NmsCompatibilityError
+                if powershell_compatibility_failure
+                else NmsTransportError
+            )
+            raise error_type(
                 curl_failure_message(result).replace(
                     "NMS curl",
                     "NMS PowerShell HTTP",
@@ -1420,6 +1434,17 @@ def http_request(method, url, headers=None, body=None, timeout=45):
         record_http_transport("WINDOWS_CURL")
         try:
             return curl_http_request(curl_path, method, url, headers, body)
+        except NmsCompatibilityError:
+            # PRIMARY has repeatedly shown curl exit 2 followed by the same
+            # PowerShell command-compatibility failure. Skip that known-bad
+            # host-tool pair and use the isolated verified Python transport.
+            record_http_transport("WINDOWS_CURL_TO_PYTHON")
+            return python_child_http_request(
+                method,
+                url,
+                headers,
+                body,
+            )
         except NmsTransportError:
             powershell_path = windows_powershell_path()
             if powershell_path:

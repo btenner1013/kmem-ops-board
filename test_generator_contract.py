@@ -1519,11 +1519,6 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 b"missing marker",
             ),
             _curl_completed(0, 0, body=b"status zero"),
-            _curl_completed(
-                2,
-                0,
-                diagnostic=b"installed curl does not support one fixed option",
-            ),
         )
         for failure in transport_failures:
             with self.subTest(failure=type(failure).__name__):
@@ -1611,6 +1606,57 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 mock.call(
                     "NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL_TO_PYTHON"
                 ),
+            ],
+        )
+
+    def test_curl_exit_two_bypasses_the_known_broken_powershell_route(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+            mock.patch.object(
+                nms,
+                "windows_powershell_path",
+                return_value=powershell_path,
+            ),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=_curl_completed(
+                    2,
+                    0,
+                    diagnostic=b"installed curl rejects the fixed invocation",
+                ),
+            ) as run,
+            mock.patch.object(nms, "powershell_http_request") as powershell,
+            mock.patch.object(
+                nms,
+                "python_child_http_request",
+                return_value=b'{"status":"Success"}',
+            ) as python_child,
+            mock.patch("builtins.print") as output,
+        ):
+            result = nms.http_request(
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                {"Authorization": "Bearer token"},
+            )
+
+        self.assertEqual(result, b'{"status":"Success"}')
+        self.assertEqual(run.call_count, 1)
+        powershell.assert_not_called()
+        python_child.assert_called_once_with(
+            "GET",
+            "https://nms.example.test/notams?location=KMEM",
+            {"Authorization": "Bearer token"},
+            None,
+        )
+        self.assertEqual(
+            output.call_args_list,
+            [
+                mock.call("NMS HTTP transport: WINDOWS_CURL"),
+                mock.call("NMS HTTP transport: WINDOWS_CURL_TO_PYTHON"),
             ],
         )
 
