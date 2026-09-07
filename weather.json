@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T00:54:00Z",
-  "metarAgeMinutes": 13,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-09-07T00:54:00Z",
-  "atisAgeMinutes": 13,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "H:0054Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -41,12 +41,12 @@
     "metar": false,
     "taf": false,
     "atis": false,
-    "ahas": false
+    "ahas": true
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-06T22:09:29Z",
-  "trendSampleCount": 14,
+  "trendReferenceTimestampZ": "2026-09-06T22:25:43Z",
+  "trendSampleCount": 15,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -140,7 +140,7 @@
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-07 00:58:48Z",
+  "milNotamUpdatedZ": "2026-09-07 01:21:25Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN",
   "milNotams": [
     {
@@ -155,7 +155,7 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "SCRIPT_FAILED",
+  "milNotamFetchStatus": "OK",
   "milNotamRawStatus": "Success",
   "ficonNotams": [],
   "ficonNotamCount": 0,
@@ -276,13 +276,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 01:06Z",
+  "allFeedsUpdatedZ": "2026-09-07 01:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 01:06:38Z"
+    "lastWorkflowTimestampZ": "2026-09-07 01:15:55Z"
   }
 }
