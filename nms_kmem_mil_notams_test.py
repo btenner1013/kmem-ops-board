@@ -61,9 +61,9 @@ CURL_TOTAL_TIMEOUT_SECONDS = 25
 CURL_PROCESS_TIMEOUT_SECONDS = 30
 CURL_MAX_RETRIES = 2
 CURL_TRANSIENT_EXIT_CODES = {5, 6, 7, 18, 28, 52, 55, 56, 92, 95, 96}
-CURL_HTTP_STATUS_MARKER = "NMS_CURL_HTTP_STATUS:"
+CURL_HTTP_STATUS_MARKER = "__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:"
 CURL_STATUS_RE = re.compile(
-    r"(?:^|\r?\n)NMS_CURL_HTTP_STATUS:(\d{3})\r?\n?\Z"
+    rb"(?:\r?\n)__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:([0-9]{3})\r?\n?\Z"
 )
 CURL_DIAGNOSTIC_LIMIT = 1024
 
@@ -232,7 +232,7 @@ def curl_request_command(curl_path, method, url, body=None):
         "--url",
         str(url),
         "--write-out",
-        f"%{{stderr}}\\n{CURL_HTTP_STATUS_MARKER}%{{http_code}}\\n",
+        f"\\n{CURL_HTTP_STATUS_MARKER}%{{http_code}}\\n",
         "--header",
         "@-",
     ]
@@ -267,7 +267,6 @@ def redact_authorization_diagnostics(text, headers=None):
 def curl_diagnostics(stderr, headers=None):
     """Return bounded curl diagnostics with authorization values redacted."""
     text = (stderr or b"").decode("utf-8", errors="backslashreplace")
-    text = CURL_STATUS_RE.sub("", text)
     text = redact_authorization_diagnostics(text, headers)
     return text.strip()[-CURL_DIAGNOSTIC_LIMIT:]
 
@@ -277,6 +276,15 @@ def curl_http_body_diagnostic(body, headers=None):
     text = (body or b"").decode("utf-8", errors="backslashreplace")
     text = redact_authorization_diagnostics(text, headers)
     return text.strip()[-CURL_DIAGNOSTIC_LIMIT:]
+
+
+def split_curl_response(stdout):
+    """Strip and return only curl's unique final stdout HTTP status marker."""
+    raw = stdout or b""
+    status_match = CURL_STATUS_RE.search(raw)
+    if not status_match:
+        return None, b""
+    return int(status_match.group(1)), raw[:status_match.start()]
 
 
 def run_curl_attempt(curl_path, method, url, headers=None, body=None):
@@ -311,17 +319,15 @@ def run_curl_attempt(curl_path, method, url, headers=None, body=None):
         }
 
     stderr = completed.stderr or b""
-    status_match = CURL_STATUS_RE.search(
-        stderr.decode("utf-8", errors="backslashreplace")
-    )
+    status, response_body = split_curl_response(completed.stdout)
     return {
         "returncode": completed.returncode,
-        "status": int(status_match.group(1)) if status_match else None,
-        "body": completed.stdout or b"",
+        "status": status,
+        "body": response_body,
         "diagnostic": curl_diagnostics(stderr, headers),
         "httpBodyDiagnostic": (
-            curl_http_body_diagnostic(completed.stdout, headers)
-            if completed.returncode == 0 and status_match
+            curl_http_body_diagnostic(response_body, headers)
+            if completed.returncode == 0 and status is not None
             else ""
         ),
     }

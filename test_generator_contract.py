@@ -41,8 +41,8 @@ def _http_response(body=b"ok"):
 
 
 def _curl_completed(returncode=0, status=200, body=b"ok", diagnostic=b""):
-    stderr = diagnostic + f"\n{nms.CURL_HTTP_STATUS_MARKER}{status:03d}\n".encode("ascii")
-    return subprocess.CompletedProcess(["curl.exe"], returncode, body, stderr)
+    stdout = body + f"\n{nms.CURL_HTTP_STATUS_MARKER}{status:03d}\n".encode("ascii")
+    return subprocess.CompletedProcess(["curl.exe"], returncode, stdout, diagnostic)
 
 
 def _aixm_record(classification, number, text, *, updated="2026-09-07T06:25:00Z"):
@@ -790,6 +790,8 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         )
         self.assertEqual(command[command.index("--header") + 1], "@-")
         self.assertNotIn("--insecure", command)
+        self.assertNotIn("%{stderr}", command[command.index("--write-out") + 1])
+        self.assertIn(nms.CURL_HTTP_STATUS_MARKER, command[command.index("--write-out") + 1])
         self.assertFalse(kwargs["shell"])
         self.assertEqual(kwargs["timeout"], nms.CURL_PROCESS_TIMEOUT_SECONDS)
         self.assertIn(authorization.encode("utf-8"), kwargs["input"])
@@ -806,6 +808,48 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             self.assertNotIn(secret, serialized_argv)
             self.assertNotIn(secret, serialized_environment)
         output.assert_not_called()
+
+    def test_stdout_status_marker_is_stripped_from_json_body_for_older_curl(self):
+        json_body = b'{"status":"Success","data":{"aixm":[]}}'
+        with mock.patch.object(
+            nms.subprocess,
+            "run",
+            return_value=_curl_completed(
+                0,
+                200,
+                body=json_body,
+                diagnostic=b"stderr remains diagnostics only",
+            ),
+        ):
+            result = nms.curl_http_request(
+                self.CURL_PATH,
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                {"Authorization": "Bearer token"},
+            )
+
+        self.assertEqual(result, json_body)
+        self.assertNotIn(nms.CURL_HTTP_STATUS_MARKER.encode("ascii"), result)
+
+    def test_marker_text_inside_body_cannot_spoof_final_http_status(self):
+        embedded = (
+            b"body-prefix\n"
+            + nms.CURL_HTTP_STATUS_MARKER.encode("ascii")
+            + b"401\nbody-continues"
+        )
+        with mock.patch.object(
+            nms.subprocess,
+            "run",
+            return_value=_curl_completed(0, 200, body=embedded),
+        ):
+            result = nms.curl_http_request(
+                self.CURL_PATH,
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                {"Authorization": "Bearer token"},
+            )
+
+        self.assertEqual(result, embedded)
 
     def test_all_transient_curl_http_statuses_retry_once_then_succeed(self):
         for status in sorted(nms.TRANSIENT_HTTP_STATUS_CODES):
@@ -947,18 +991,22 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 self.assertIn("[REDACTED]", stderr_diagnostic)
 
     def test_missing_or_malformed_status_marker_fails_closed_once(self):
-        malformed_stderr_values = (
+        malformed_stdout_values = (
             b"",
-            b"NMS_CURL_HTTP_STATUS:not-a-number\n",
-            b"NMS_CURL_HTTP_STATUS:200\ntrailing-data",
+            nms.CURL_HTTP_STATUS_MARKER.encode("ascii") + b"not-a-number\n",
+            (
+                b"response\n"
+                + nms.CURL_HTTP_STATUS_MARKER.encode("ascii")
+                + b"200\ntrailing-data"
+            ),
         )
-        for stderr in malformed_stderr_values:
-            with self.subTest(stderr=stderr):
+        for stdout in malformed_stdout_values:
+            with self.subTest(stdout=stdout):
                 completed = subprocess.CompletedProcess(
                     [self.CURL_PATH],
                     0,
-                    b"must not be returned",
-                    stderr,
+                    stdout,
+                    b"curl diagnostic only",
                 )
                 with (
                     mock.patch.object(nms.subprocess, "run", return_value=completed) as run,
