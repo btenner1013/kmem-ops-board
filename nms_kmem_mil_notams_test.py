@@ -65,9 +65,9 @@ MAX_RETRIES = 2
 URLLIB_TOTAL_TIMEOUT_SECONDS = 25
 TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
-# Windows production prefers OS curl, then verified HTTPS in the already-bounded
-# helper runtime.  This avoids relying on another host executable after curl
-# fails; the updater enforces the helper's hard parent timeout.
+# Windows production prefers OS curl, then the checked-in PowerShell transport
+# using the interactive task user's Windows system-proxy settings. Both child
+# processes have hard deadlines below the updater's parent timeout.
 CURL_CONNECT_TIMEOUT_SECONDS = 8
 CURL_TOTAL_TIMEOUT_SECONDS = 25
 CURL_PROCESS_TIMEOUT_SECONDS = 30
@@ -95,13 +95,37 @@ PYTHON_RUNTIME_TOTAL_TIMEOUT_SECONDS = 25
 PYTHON_RUNTIME_MAX_RETRIES = 2
 PYTHON_RUNTIME_RESPONSE_LIMIT_BYTES = 32 * 1024 * 1024
 NMS_API_HOST = "api-staging.cgifederal-aim.com"
+POWERSHELL_SYSTEM_PROXY_SCRIPT_PATH = os.path.realpath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "nms_windows_system_proxy.ps1",
+    )
+)
 LAST_HTTP_TRANSPORT = "NOT_USED"
 LAST_PROCESS_BOUNDARY = "NOT_USED"
+LAST_REQUEST_STAGE = "NOT_USED"
+LAST_SYSTEM_PROXY_ROUTE = "NOT_USED"
+LAST_TRANSPORT_REASON = "NOT_USED"
+SAFE_REQUEST_STAGES = {"TOKEN", "NOTAMS", "NOT_USED"}
+SAFE_SYSTEM_PROXY_ROUTES = {"DIRECT", "SYSTEM_PROXY", "NOT_USED"}
+SAFE_TRANSPORT_REASONS = {
+    "NONE",
+    "CONFIGURATION",
+    "DNS",
+    "PROXY_ROUTE",
+    "CONNECTION",
+    "TIMEOUT",
+    "TLS_SECURITY",
+    "RESPONSE_TOO_LARGE",
+    "UNCLASSIFIED",
+    "NOT_USED",
+}
 SAFE_FAILURE_CATEGORIES = {
     "AUTH_HTTP",
     "RATE_LIMIT",
     "UPSTREAM_HTTP",
     "TLS_SECURITY",
+    "PROXY_AUTH",
     "TRANSPORT_COMPATIBILITY",
     "TRANSPORT_UNAVAILABLE",
     "PROCESS_LAUNCH",
@@ -127,6 +151,8 @@ def helper_failure_category(error):
         return "CONFIGURATION"
     if "http 401" in text or "http 403" in text:
         return "AUTH_HTTP"
+    if "http 407" in text:
+        return "PROXY_AUTH"
     if "http 429" in text:
         return "RATE_LIMIT"
     if re.search(r"\bhttp 5\d\d\b", text):
@@ -135,7 +161,16 @@ def helper_failure_category(error):
         return "TLS_SECURITY"
     if re.search(r"\bcurl exit 2\b", text):
         return "TRANSPORT_COMPATIBILITY"
+    if isinstance(error, NmsCompatibilityError):
+        return "TRANSPORT_COMPATIBILITY"
+    if "process launch" in text:
+        return "PROCESS_LAUNCH"
     if isinstance(error, NmsTransportError):
+        return "TRANSPORT_UNAVAILABLE"
+    if re.search(
+        r"\btransport (?:dns|proxy_route|connection|timeout)\b",
+        text,
+    ):
         return "TRANSPORT_UNAVAILABLE"
     if any(
         term in text
@@ -144,12 +179,11 @@ def helper_failure_category(error):
             "failed to connect",
             "sending the request",
             "name or service not known",
+            "timeout",
             "timed out",
         )
     ):
         return "TRANSPORT_UNAVAILABLE"
-    if "process launch" in text:
-        return "PROCESS_LAUNCH"
     if isinstance(error, (json.JSONDecodeError, ET.ParseError)) or any(
         term in text for term in ("malformed xml", "no complete aixm", "incomplete page")
     ):
@@ -916,108 +950,55 @@ def curl_http_request(curl_path, method, url, headers=None, body=None):
     raise RuntimeError("NMS curl request failed after bounded retries.")
 
 
-POWERSHELL_HTTP_SCRIPT = r"""
-$ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
-$client = $null
-$message = $null
-$response = $null
-try {
-    Add-Type -AssemblyName System.Net.Http
-    [Net.ServicePointManager]::SecurityProtocol =
-        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-    $requestJson = [Console]::In.ReadToEnd()
-    $request = $requestJson | ConvertFrom-Json
-    $uri = [Uri]([string]$request.url)
-    if ($uri.Scheme -ne 'https') { throw 'NMS transport requires HTTPS' }
-
-    $handler = New-Object System.Net.Http.HttpClientHandler
-    $handler.AllowAutoRedirect = $false
-    $handler.CheckCertificateRevocationList = $true
-    $client = New-Object System.Net.Http.HttpClient -ArgumentList @($handler)
-    $client.Timeout = [TimeSpan]::FromSeconds(__TIMEOUT_SECONDS__)
-    $method = New-Object System.Net.Http.HttpMethod -ArgumentList @([string]$request.method)
-    $message = New-Object System.Net.Http.HttpRequestMessage -ArgumentList @($method, $uri)
-
-    if ([bool]$request.hasBody) {
-        $bodyBytes = [Convert]::FromBase64String([string]$request.bodyBase64)
-        $message.Content = New-Object System.Net.Http.ByteArrayContent -ArgumentList @(,$bodyBytes)
-    }
-
-    foreach ($property in $request.headers.PSObject.Properties) {
-        $name = [string]$property.Name
-        $value = [string]$property.Value
-        if ($name -ieq 'Content-Type') {
-            if ($null -eq $message.Content) {
-                $message.Content = New-Object System.Net.Http.ByteArrayContent -ArgumentList @(,[byte[]]@())
-            }
-            [void]$message.Content.Headers.TryAddWithoutValidation($name, $value)
-        } else {
-            [void]$message.Headers.TryAddWithoutValidation($name, $value)
-        }
-    }
-
-    $response = $client.SendAsync(
-        $message,
-        [System.Net.Http.HttpCompletionOption]::ResponseContentRead
-    ).GetAwaiter().GetResult()
-    $responseBytes = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-    $output = [Console]::OpenStandardOutput()
-    if ($responseBytes.Length -gt 0) {
-        $output.Write($responseBytes, 0, $responseBytes.Length)
-    }
-    $statusText = "`n__STATUS_MARKER__$([int]$response.StatusCode)`n"
-    $statusBytes = [Text.Encoding]::ASCII.GetBytes($statusText)
-    $output.Write($statusBytes, 0, $statusBytes.Length)
-    $output.Flush()
-} catch [System.Threading.Tasks.TaskCanceledException] {
-    [Console]::Error.WriteLine('NMS PowerShell HTTP request timed out')
-    exit 28
-} catch [System.TimeoutException] {
-    [Console]::Error.WriteLine('NMS PowerShell HTTP request timed out')
-    exit 28
-} catch {
-    [Console]::Error.WriteLine($_.Exception.Message)
-    exit 1
-} finally {
-    if ($null -ne $response) { $response.Dispose() }
-    if ($null -ne $message) { $message.Dispose() }
-    if ($null -ne $client) { $client.Dispose() }
-}
-"""
-
-
 def powershell_http_script():
-    """Return a fixed, credential-free HttpClient script for Windows fallback."""
-    return (
-        POWERSHELL_HTTP_SCRIPT
-        .replace("__TIMEOUT_SECONDS__", str(POWERSHELL_TOTAL_TIMEOUT_SECONDS))
-        .replace("__STATUS_MARKER__", CURL_HTTP_STATUS_MARKER)
-    )
+    """Return the checked-in, credential-free system-proxy transport source."""
+    with open(
+        POWERSHELL_SYSTEM_PROXY_SCRIPT_PATH,
+        "r",
+        encoding="utf-8-sig",
+    ) as script_file:
+        return script_file.read()
 
 
 def powershell_request_command(powershell_path):
-    """Build secret-free argv for the pinned Windows PowerShell executable."""
-    encoded_script = base64.b64encode(
-        powershell_http_script().encode("utf-16-le")
-    ).decode("ascii")
+    """Build secret-free argv for the pinned checked-in proxy transport."""
+    script_path = POWERSHELL_SYSTEM_PROXY_SCRIPT_PATH
+    expected_parent = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
+    if (
+        not os.path.isabs(script_path)
+        or not os.path.isfile(script_path)
+        or os.path.commonpath((expected_parent, script_path)) != expected_parent
+    ):
+        raise OSError("checked-in NMS PowerShell transport is unavailable")
     return [
         powershell_path,
         "-NoLogo",
         "-NoProfile",
         "-NonInteractive",
-        "-EncodedCommand",
-        encoded_script,
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        script_path,
     ]
 
 
 def powershell_request_stdin(method, url, headers=None, body=None):
     """Serialize the request, including authorization, only to child stdin."""
     normalized_method = str(method or "GET").strip().upper()
-    if not re.fullmatch(r"[A-Z]+", normalized_method):
+    if normalized_method not in {"GET", "POST"}:
         raise ValueError("invalid HTTP method")
-    if not str(url).lower().startswith("https://"):
-        raise ValueError("NMS PowerShell transport requires HTTPS")
+
+    parsed = urlsplit(str(url or ""))
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.hostname is None
+        or parsed.hostname.lower() != NMS_API_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+        or parsed.port not in (None, 443)
+    ):
+        raise ValueError("invalid NMS PowerShell destination")
 
     body_bytes = None
     if body is not None:
@@ -1025,10 +1006,36 @@ def powershell_request_stdin(method, url, headers=None, body=None):
         if body_bytes != b"grant_type=client_credentials":
             raise ValueError("unexpected NMS PowerShell request body")
 
+    expected_token_request = (
+        parsed.path == "/v1/auth/token"
+        and not parsed.query
+        and normalized_method == "POST"
+        and body_bytes is not None
+    )
+    expected_notam_request = (
+        parsed.path == "/nmsapi/v1/notams"
+        and parsed.query == "location=KMEM"
+        and normalized_method == "GET"
+        and body_bytes is None
+    )
+    if not (expected_token_request or expected_notam_request):
+        raise ValueError("invalid NMS PowerShell endpoint contract")
+
+    normalized_headers = validated_http_headers(headers)
+    prohibited_headers = {
+        "connection",
+        "content-length",
+        "host",
+        "proxy-authorization",
+        "transfer-encoding",
+    }
+    if any(name.casefold() in prohibited_headers for name in normalized_headers):
+        raise ValueError("invalid NMS PowerShell headers")
+
     payload = {
         "method": normalized_method,
         "url": str(url),
-        "headers": validated_http_headers(headers),
+        "headers": normalized_headers,
         "hasBody": body_bytes is not None,
         "bodyBase64": base64.b64encode(body_bytes or b"").decode("ascii"),
     }
@@ -1050,26 +1057,93 @@ def run_powershell_attempt(powershell_path, method, url, headers=None, body=None
             timeout=POWERSHELL_PROCESS_TIMEOUT_SECONDS,
             env=child_environment,
         )
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as error:
+        route, _ = powershell_safe_markers(getattr(error, "stderr", None))
         return {
             "returncode": 28,
             "status": None,
             "body": b"",
-            "diagnostic": "PowerShell HTTP process exceeded its hard timeout",
+            "diagnostic": "NMS system proxy transport timed out",
+            "proxyRoute": route,
+            "transportReason": "TIMEOUT",
         }
 
     status, response_body = split_curl_response(completed.stdout)
+    route, reason = powershell_safe_markers(completed.stderr)
+    if completed.returncode == 0 and isinstance(status, int):
+        reason = "NONE"
     return {
         "returncode": completed.returncode,
         "status": status,
         "body": response_body,
-        "diagnostic": curl_diagnostics(completed.stderr, headers),
-        "httpBodyDiagnostic": (
-            curl_http_body_diagnostic(response_body, headers)
-            if completed.returncode == 0 and status is not None
+        "diagnostic": (
+            f"system proxy route {route}; reason {reason}"
+            if completed.returncode != 0
             else ""
         ),
+        "proxyRoute": route,
+        "transportReason": reason,
+        # Proxy-generated HTTP bodies can contain internal route details. The
+        # numeric status is sufficient for safe operational diagnosis.
+        "httpBodyDiagnostic": "",
     }
+
+
+def _last_allowlisted_marker(raw, label, allowed, default="NOT_USED"):
+    """Return only the last exact safe enum emitted by a transport child."""
+    if isinstance(raw, bytes):
+        text = raw.decode("ascii", errors="ignore")
+    else:
+        text = str(raw or "")
+    values = re.findall(
+        rf"(?m)^{re.escape(label)}\s*([A-Z0-9_]+)\s*$",
+        text,
+    )
+    return values[-1] if values and values[-1] in allowed else default
+
+
+def powershell_safe_markers(stderr):
+    """Extract credential-free route/failure telemetry from the fixed script."""
+    route = _last_allowlisted_marker(
+        stderr,
+        "NMS system proxy route:",
+        SAFE_SYSTEM_PROXY_ROUTES,
+    )
+    reason = _last_allowlisted_marker(
+        stderr,
+        "NMS system proxy reason:",
+        SAFE_TRANSPORT_REASONS,
+    )
+    return route, reason
+
+
+def record_system_proxy_result(result):
+    """Publish only allowlisted system-proxy route and reason enums."""
+    global LAST_SYSTEM_PROXY_ROUTE, LAST_TRANSPORT_REASON
+    route = str(result.get("proxyRoute") or "NOT_USED").strip().upper()
+    reason = str(result.get("transportReason") or "NOT_USED").strip().upper()
+    LAST_SYSTEM_PROXY_ROUTE = (
+        route if route in SAFE_SYSTEM_PROXY_ROUTES else "NOT_USED"
+    )
+    LAST_TRANSPORT_REASON = (
+        reason if reason in SAFE_TRANSPORT_REASONS else "UNCLASSIFIED"
+    )
+    print(f"NMS system proxy route: {LAST_SYSTEM_PROXY_ROUTE}")
+    print(f"NMS transport reason: {LAST_TRANSPORT_REASON}")
+
+
+def powershell_failure_message(result):
+    """Describe a PowerShell result without echoing request/exception details."""
+    status = result.get("status")
+    return_code = result.get("returncode")
+    reason = result.get("transportReason") or "UNCLASSIFIED"
+    if return_code == 0 and isinstance(status, int):
+        return f"NMS PowerShell HTTP request failed (HTTP {status:03d})"
+    if return_code == 2:
+        summary = "transport compatibility"
+    else:
+        summary = f"transport {reason}"
+    return f"NMS PowerShell HTTP request failed ({summary})"
 
 
 def powershell_http_request(powershell_path, method, url, headers=None, body=None):
@@ -1088,6 +1162,7 @@ def powershell_http_request(powershell_path, method, url, headers=None, body=Non
                 "NMS PowerShell HTTP request failed "
                 "(process launch error): no diagnostic text"
             ) from error
+        record_system_proxy_result(result)
         if curl_result_is_success(result):
             return result["body"]
 
@@ -1110,28 +1185,26 @@ def powershell_http_request(powershell_path, method, url, headers=None, body=Non
         # 2) or a successful process with malformed framing may cross again.
         # Exhausted timeouts and every security/HTTP failure remain terminal.
         powershell_compatibility_failure = (
-            result.get("returncode") == 2 and result.get("status") is None
+            result.get("returncode") == 2
+            and result.get("status") is None
+            and result.get("transportReason") == "NOT_USED"
         )
         powershell_framing_failure = (
             result.get("returncode") == 0
             and not isinstance(result.get("status"), int)
         )
-        if powershell_compatibility_failure or powershell_framing_failure:
+        if (
+            powershell_compatibility_failure
+            or powershell_framing_failure
+        ):
             error_type = (
                 NmsCompatibilityError
                 if powershell_compatibility_failure
                 else NmsTransportError
             )
-            raise error_type(
-                curl_failure_message(result).replace(
-                    "NMS curl",
-                    "NMS PowerShell HTTP",
-                )
-            )
+            raise error_type(powershell_failure_message(result))
 
-        raise RuntimeError(
-            curl_failure_message(result).replace("NMS curl", "NMS PowerShell HTTP")
-        )
+        raise RuntimeError(powershell_failure_message(result))
 
     raise RuntimeError("NMS PowerShell HTTP request failed after bounded retries.")
 
@@ -1525,11 +1598,11 @@ def python_runtime_http_request(
         except ssl.SSLCertVerificationError as error:
             raise RuntimeError(
                 "NMS Python runtime HTTPS failed (TLS certificate verification)"
-            ) from error
+            ) from None
         except ssl.SSLError as error:
             raise RuntimeError(
                 "NMS Python runtime HTTPS failed (TLS security)"
-            ) from error
+            ) from None
         except socket.gaierror as error:
             transport_error = NmsTransportError(
                 "NMS Python runtime HTTPS failed (DNS unavailable)"
@@ -1587,7 +1660,7 @@ def python_runtime_http_request(
             )
             time.sleep(wait)
             continue
-        raise transport_error from transport_cause
+        raise transport_error from None
 
     raise NmsTransportError(
         "NMS Python runtime HTTPS failed after bounded retries"
@@ -1601,6 +1674,20 @@ def record_http_transport(name):
     print(f"NMS HTTP transport: {name}")
 
 
+def record_request_stage(name):
+    """Record only the current allowlisted NMS request stage."""
+    global LAST_REQUEST_STAGE, LAST_SYSTEM_PROXY_ROUTE, LAST_TRANSPORT_REASON
+    normalized = str(name or "NOT_USED").strip().upper()
+    LAST_REQUEST_STAGE = (
+        normalized if normalized in SAFE_REQUEST_STAGES else "NOT_USED"
+    )
+    LAST_SYSTEM_PROXY_ROUTE = "NOT_USED"
+    LAST_TRANSPORT_REASON = "NOT_USED"
+    print(f"NMS request stage: {LAST_REQUEST_STAGE}")
+    print("NMS system proxy route: NOT_USED")
+    print("NMS transport reason: NOT_USED")
+
+
 def http_request(method, url, headers=None, body=None, timeout=45):
     """Select bounded verified Windows transports, then portable urllib."""
     curl_path = windows_curl_path()
@@ -1609,49 +1696,48 @@ def http_request(method, url, headers=None, body=None, timeout=45):
         try:
             return curl_http_request(curl_path, method, url, headers, body)
         except NmsTransportError:
-            # PRIMARY's pinned curl repeatedly fails before producing an HTTP
-            # response.  Reuse this already parent-bounded Python runtime rather
-            # than launching the host's broken nested python.exe executable.
-            record_http_transport("WINDOWS_CURL_TO_PYTHON")
-            record_process_boundary("WINDOWS_DIRECT_BOUNDED")
-            return python_runtime_http_request(
-                method,
-                url,
-                headers,
-                body,
-            )
+            # Curl produced no completed HTTP response. Use the checked-in
+            # Windows system-proxy route so the interactive PRIMARY task can
+            # honor its Internet Options/PAC and proxy credentials.
+            powershell_path = windows_powershell_path()
+            if powershell_path:
+                record_http_transport("WINDOWS_CURL_TO_POWERSHELL")
+                return powershell_http_request(
+                    powershell_path,
+                    method,
+                    url,
+                    headers,
+                    body,
+                )
+
+            record_http_transport("WINDOWS_NO_TRUSTED_TRANSPORT")
+            raise NmsTransportError(
+                "NMS Windows HTTPS failed (no trusted bounded fallback)"
+            ) from None
 
     powershell_path = windows_powershell_path()
     if powershell_path:
         record_http_transport("WINDOWS_POWERSHELL")
-        try:
-            return powershell_http_request(
-                powershell_path,
-                method,
-                url,
-                headers,
-                body,
-            )
-        except NmsTransportError:
-            record_http_transport("WINDOWS_POWERSHELL_TO_PYTHON")
-            record_process_boundary("WINDOWS_DIRECT_BOUNDED")
-            return python_runtime_http_request(
-                method,
-                url,
-                headers,
-                body,
-            )
+        return powershell_http_request(
+            powershell_path,
+            method,
+            url,
+            headers,
+            body,
+        )
 
     if os.name == "nt":
-        record_http_transport("WINDOWS_PYTHON")
-        record_process_boundary("WINDOWS_DIRECT_BOUNDED")
-        return python_runtime_http_request(method, url, headers, body)
+        record_http_transport("WINDOWS_NO_TRUSTED_TRANSPORT")
+        raise NmsTransportError(
+            "NMS Windows HTTPS failed (no trusted bounded transport)"
+        ) from None
 
     record_http_transport("PORTABLE_URLLIB")
     return urllib_http_request(method, url, headers, body, timeout)
 
 
 def get_token(client_id, client_secret):
+    record_request_stage("TOKEN")
     auth = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
 
     raw = http_request(
@@ -1675,6 +1761,7 @@ def get_token(client_id, client_secret):
 
 
 def nms_get_json(path, token, query=None, response_format=None):
+    record_request_stage("NOTAMS")
     url = BASE_URL + path
 
     if query:
@@ -2509,6 +2596,9 @@ def build_bulk_notam_result(response, generated_z=None):
         "source": "FAA_NMS_STAGING",
         "httpTransport": LAST_HTTP_TRANSPORT,
         "processBoundary": LAST_PROCESS_BOUNDARY,
+        "requestStage": LAST_REQUEST_STAGE,
+        "systemProxyRoute": LAST_SYSTEM_PROXY_ROUTE,
+        "transportReason": LAST_TRANSPORT_REASON,
         "milNotamCount": len(notams),
         "milNotamStatus": f"{len(notams)} ACTIVE" if notams else "NONE ACTIVE",
         "milNotamScrollText": "  |  ".join(

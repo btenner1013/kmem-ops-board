@@ -469,6 +469,9 @@ class WeatherGeneratorContractTests(unittest.TestCase):
                 "NMS HTTP transport: WINDOWS_CURL\n"
                 "NMS process boundary: WINDOWS_DIRECT_BOUNDED\n"
                 "NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL\n"
+                "NMS request stage: NOTAMS\n"
+                "NMS system proxy route: SYSTEM_PROXY\n"
+                "NMS transport reason: TIMEOUT\n"
             ),
             "NMS failure category: AUTH_HTTP\n",
         )
@@ -495,20 +498,49 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             result["milNotamAttemptBoundary"],
             "WINDOWS_DIRECT_BOUNDED",
         )
+        self.assertEqual(result["milNotamAttemptStage"], "NOTAMS")
+        self.assertEqual(result["milNotamAttemptProxyRoute"], "SYSTEM_PROXY")
+        self.assertEqual(result["milNotamAttemptReason"], "TIMEOUT")
         self.assertEqual(result["milNotamFailureCategory"], "AUTH_HTTP")
         self.assertRegex(result["milNotamAttemptZ"], r"^2026-09-07[ T]")
 
     def test_nms_attempt_telemetry_rejects_untrusted_child_values(self):
         result = updater.nms_attempt_metadata(
             "NMS HTTP transport: CREDENTIAL_PATH_C_USERS\n"
-            "NMS process boundary: UNTRUSTED_SHELL\n",
+            "NMS process boundary: UNTRUSTED_SHELL\n"
+            "NMS request stage: CLIENT_SECRET\n",
+            "NMS system proxy route: HTTPS_PROXY_SECRET\n"
+            "NMS transport reason: SECRET_VALUE\n"
             "NMS failure category: SECRET_VALUE\n",
             "HELPER_EXIT_NONZERO",
         )
 
         self.assertEqual(result["milNotamAttemptTransport"], "NOT_USED")
         self.assertEqual(result["milNotamAttemptBoundary"], "NOT_USED")
+        self.assertEqual(result["milNotamAttemptStage"], "NOT_USED")
+        self.assertEqual(result["milNotamAttemptProxyRoute"], "NOT_USED")
+        self.assertEqual(result["milNotamAttemptReason"], "NOT_USED")
         self.assertEqual(result["milNotamFailureCategory"], "HELPER_EXIT_NONZERO")
+
+    def test_notam_stage_reset_prevents_stale_token_proxy_telemetry(self):
+        result = updater.nms_attempt_metadata(
+            "NMS request stage: TOKEN\n"
+            "NMS system proxy route: SYSTEM_PROXY\n"
+            "NMS transport reason: NONE\n"
+            "NMS request stage: NOTAMS\n"
+            "NMS system proxy route: NOT_USED\n"
+            "NMS transport reason: NOT_USED\n",
+            "NMS failure category: TRANSPORT_UNAVAILABLE\n",
+            "HELPER_EXIT_NONZERO",
+        )
+
+        self.assertEqual(result["milNotamAttemptStage"], "NOTAMS")
+        self.assertEqual(result["milNotamAttemptProxyRoute"], "NOT_USED")
+        self.assertEqual(result["milNotamAttemptReason"], "NOT_USED")
+        self.assertEqual(
+            result["milNotamFailureCategory"],
+            "TRANSPORT_UNAVAILABLE",
+        )
 
     def test_successful_complete_nms_output_remains_authoritative(self):
         completed = subprocess.CompletedProcess(["nms"], 0, "complete", "")
@@ -518,6 +550,9 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             "generatedZ": "2026-09-06 20:00:00Z",
             "httpTransport": "WINDOWS_POWERSHELL",
             "processBoundary": "WINDOWS_DIRECT_BOUNDED",
+            "requestStage": "NOTAMS",
+            "systemProxyRoute": "SYSTEM_PROXY",
+            "transportReason": "NONE",
             "milNotams": [],
             "runwayClosureNotams": [
                 {
@@ -548,6 +583,9 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             result["milNotamProcessBoundary"],
             "WINDOWS_DIRECT_BOUNDED",
         )
+        self.assertEqual(result["milNotamAttemptStage"], "NOTAMS")
+        self.assertEqual(result["milNotamAttemptProxyRoute"], "SYSTEM_PROXY")
+        self.assertEqual(result["milNotamAttemptReason"], "NONE")
         self.assertEqual(result["milNotamFailureCategory"], "NONE")
         self.assertEqual(result["milNotamUpdatedZ"], "2026-09-06 20:00:00Z")
         self.assertEqual(result["runwayClosureNotamCount"], 1)
@@ -909,12 +947,25 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             (RuntimeError("HTTP 401 unauthorized"), "AUTH_HTTP"),
             (RuntimeError("HTTP 429 limit"), "RATE_LIMIT"),
             (RuntimeError("HTTP 503 unavailable"), "UPSTREAM_HTTP"),
+            (RuntimeError("HTTP 407 proxy auth"), "PROXY_AUTH"),
             (RuntimeError("certificate trust failed"), "TLS_SECURITY"),
             (nms.NmsTransportError("failed to connect"), "TRANSPORT_UNAVAILABLE"),
             (RuntimeError("curl exit 2"), "TRANSPORT_COMPATIBILITY"),
             (
+                nms.NmsCompatibilityError("transport compatibility"),
+                "TRANSPORT_COMPATIBILITY",
+            ),
+            (RuntimeError("transport DNS"), "TRANSPORT_UNAVAILABLE"),
+            (RuntimeError("transport PROXY_ROUTE"), "TRANSPORT_UNAVAILABLE"),
+            (RuntimeError("transport CONNECTION"), "TRANSPORT_UNAVAILABLE"),
+            (RuntimeError("transport TIMEOUT"), "TRANSPORT_UNAVAILABLE"),
+            (
                 nms.NmsTransportError("Python child failed (curl exit 28): TIMEOUT"),
                 "TRANSPORT_UNAVAILABLE",
+            ),
+            (
+                nms.NmsTransportError("process launch error"),
+                "PROCESS_LAUNCH",
             ),
             (OSError("access denied"), "OS_ERROR"),
         )
@@ -1394,7 +1445,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         ):
             result = nms.http_request(
                 "GET",
-                "https://nms.example.test/notams?location=KMEM",
+                nms.BASE_URL + "/notams?location=KMEM",
                 headers={"Authorization": authorization},
             )
 
@@ -1404,13 +1455,19 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertEqual(command[0], powershell_path)
         self.assertIn("-NoProfile", command)
         self.assertIn("-NonInteractive", command)
-        encoded_script = command[command.index("-EncodedCommand") + 1]
-        script = base64.b64decode(encoded_script).decode("utf-16-le")
-        self.assertIn("AllowAutoRedirect = $false", script)
-        self.assertIn(
-            f"FromSeconds({nms.POWERSHELL_TOTAL_TIMEOUT_SECONDS})",
-            script,
+        self.assertNotIn("-EncodedCommand", command)
+        self.assertEqual(
+            os.path.normcase(command[command.index("-File") + 1]),
+            os.path.normcase(nms.POWERSHELL_SYSTEM_PROXY_SCRIPT_PATH),
         )
+        script = nms.powershell_http_script()
+        self.assertIn("AllowAutoRedirect = $false", script)
+        self.assertIn("GetSystemWebProxy()", script)
+        self.assertIn("DefaultNetworkCredentials", script)
+        self.assertIn("UseDefaultCredentials = $false", script)
+        self.assertIn("CheckCertificateRevocationList = $true", script)
+        self.assertIn("ResponseHeadersRead", script)
+        self.assertIn("$responseLimitBytes = 32MB", script)
         self.assertNotIn("ServerCertificateValidationCallback", script)
         self.assertNotIn("DangerousAcceptAnyServerCertificateValidator", script)
         self.assertEqual(kwargs["timeout"], nms.POWERSHELL_PROCESS_TIMEOUT_SECONDS)
@@ -1423,7 +1480,18 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         for secret in (authorization, client_id, client_secret):
             self.assertNotIn(secret, serialized_argv)
             self.assertNotIn(secret, serialized_environment)
-        output.assert_called_once_with("NMS HTTP transport: WINDOWS_POWERSHELL")
+        self.assertEqual(
+            output.call_args_list,
+            [
+                mock.call("NMS HTTP transport: WINDOWS_POWERSHELL"),
+                mock.call("NMS system proxy route: NOT_USED"),
+                mock.call("NMS transport reason: NONE"),
+            ],
+        )
+        self.assertIn(
+            "shell=False",
+            inspect.getsource(nms.run_bounded_transport_process),
+        )
 
     def test_powershell_transient_http_retry_and_hard_timeout_are_bounded(self):
         powershell_path = (
@@ -1444,7 +1512,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             result = nms.powershell_http_request(
                 powershell_path,
                 "GET",
-                "https://nms.example.test/notams?location=KMEM",
+                nms.BASE_URL + "/notams?location=KMEM",
                 {"Authorization": "Bearer token"},
             )
 
@@ -1465,11 +1533,11 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             mock.patch.object(nms.time, "sleep") as sleep,
             mock.patch("builtins.print"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "hard timeout"):
+            with self.assertRaisesRegex(RuntimeError, "transport TIMEOUT"):
                 nms.powershell_http_request(
                     powershell_path,
                     "GET",
-                    "https://nms.example.test/notams?location=KMEM",
+                    nms.BASE_URL + "/notams?location=KMEM",
                     {"Authorization": "Bearer token"},
                 )
 
@@ -1494,7 +1562,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             result = nms.powershell_http_request(
                 powershell_path,
                 "GET",
-                "https://nms.example.test/notams?location=KMEM",
+                nms.BASE_URL + "/notams?location=KMEM",
                 {"Authorization": "Bearer token"},
             )
 
@@ -1502,11 +1570,217 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertEqual(run.call_count, 2)
         sleep.assert_called_once_with(nms.retry_wait_seconds(1))
         script = nms.powershell_http_script()
-        self.assertIn("catch [System.Threading.Tasks.TaskCanceledException]", script)
-        self.assertIn("catch [System.TimeoutException]", script)
-        self.assertIn("exit 28", script)
+        self.assertIn("TaskCanceledException", script)
+        self.assertIn("TimeoutException", script)
+        self.assertIn('Reason = "TIMEOUT"; ExitCode = 28', script)
 
-    def test_curl_transport_failures_fall_back_once_to_current_python_runtime(self):
+    def test_system_proxy_script_enforces_transport_security_contract(self):
+        script = nms.powershell_http_script()
+        for required in (
+            '$expectedHost = "api-staging.cgifederal-aim.com"',
+            '$uri.Port -ne 443',
+            '$handler.AllowAutoRedirect = $false',
+            '$handler.CheckCertificateRevocationList = $true',
+            '$handler.UseDefaultCredentials = $false',
+            '$handler.PreAuthenticate = $false',
+            '[System.Net.WebRequest]::GetSystemWebProxy()',
+            '$systemProxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials',
+            '[System.Net.SecurityProtocolType]::Tls12',
+            '[System.Net.Http.HttpCompletionOption]::ResponseHeadersRead',
+            '$responseLimitBytes = 32MB',
+            '$timeoutSeconds = 25',
+        ):
+            self.assertIn(required, script)
+        self.assertNotIn("UseDefaultCredentials = $true", script)
+        self.assertNotIn("ServerCertificateValidationCallback", script)
+        self.assertNotIn("DangerousAcceptAnyServerCertificateValidator", script)
+        timeout_match = re.search(r"\$timeoutSeconds\s*=\s*(\d+)", script)
+        self.assertIsNotNone(timeout_match)
+        self.assertEqual(
+            int(timeout_match.group(1)),
+            nms.POWERSHELL_TOTAL_TIMEOUT_SECONDS,
+        )
+
+    @unittest.skipUnless(os.name == "nt", "Windows PowerShell 5.1 smoke coverage")
+    def test_checked_in_system_proxy_script_runs_in_pinned_windows_powershell(self):
+        powershell_path = nms.windows_powershell_path()
+        self.assertIsNotNone(powershell_path)
+        command = nms.powershell_request_command(powershell_path)
+        harmless_invalid_request = json.dumps(
+            {
+                "method": "GET",
+                "url": "https://example.invalid/nmsapi/v1/notams?location=KMEM",
+                "headers": {},
+                "hasBody": False,
+                "bodyBase64": "",
+            },
+            separators=(",", ":"),
+        ).encode("utf-8")
+        completed = nms.run_bounded_transport_process(
+            command,
+            input=harmless_invalid_request,
+            timeout=5,
+            env=os.environ.copy(),
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertEqual(completed.stdout, b"")
+        self.assertIn(
+            b"NMS system proxy reason: CONFIGURATION",
+            completed.stderr,
+        )
+
+    def test_powershell_parent_validation_allows_only_exact_nms_contracts(self):
+        token_request = json.loads(
+            nms.powershell_request_stdin(
+                "POST",
+                nms.AUTH_URL,
+                {
+                    "Authorization": "Basic opaque",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                b"grant_type=client_credentials",
+            ).decode("utf-8")
+        )
+        self.assertEqual(token_request["method"], "POST")
+        notam_request = json.loads(
+            nms.powershell_request_stdin(
+                "GET",
+                nms.BASE_URL + "/notams?location=KMEM",
+                {"Authorization": "Bearer opaque"},
+            ).decode("utf-8")
+        )
+        self.assertFalse(notam_request["hasBody"])
+
+        invalid_requests = (
+            ("GET", nms.AUTH_URL, None),
+            ("POST", nms.BASE_URL + "/notams?location=KMEM", b"grant_type=client_credentials"),
+            ("GET", nms.BASE_URL + "/notams?location=KATL", None),
+            ("GET", "https://example.test/nmsapi/v1/notams?location=KMEM", None),
+            ("GET", nms.BASE_URL + "/notams?location=KMEM#fragment", None),
+            ("GET", "http://" + nms.NMS_API_HOST + "/nmsapi/v1/notams?location=KMEM", None),
+        )
+        for method, url, body in invalid_requests:
+            with self.subTest(method=method, url=url):
+                with self.assertRaises(ValueError):
+                    nms.powershell_request_stdin(
+                        method,
+                        url,
+                        {"Authorization": "Bearer opaque"},
+                        body,
+                    )
+        with self.assertRaises(ValueError):
+            nms.powershell_request_stdin(
+                "GET",
+                nms.BASE_URL + "/notams?location=KMEM",
+                {"Proxy-Authorization": "secret"},
+            )
+
+    def test_powershell_terminal_no_response_reasons_never_replay(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        cases = (
+            (6, "DNS"),
+            (7, "PROXY_ROUTE"),
+            (7, "CONNECTION"),
+            (28, "TIMEOUT"),
+        )
+        for returncode, reason in cases:
+            completed = subprocess.CompletedProcess(
+                [powershell_path],
+                returncode,
+                b"",
+                (
+                    "NMS system proxy route: SYSTEM_PROXY\n"
+                    f"NMS system proxy reason: {reason}\n"
+                ).encode("ascii"),
+            )
+            with self.subTest(reason=reason):
+                with (
+                    mock.patch.object(nms, "windows_curl_path", return_value=None),
+                    mock.patch.object(
+                        nms,
+                        "windows_powershell_path",
+                        return_value=powershell_path,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "run_bounded_transport_process",
+                        side_effect=[completed, completed],
+                    ) as run,
+                    mock.patch.object(nms, "python_runtime_http_request") as python_runtime,
+                    mock.patch.object(nms.time, "sleep"),
+                    mock.patch("builtins.print"),
+                ):
+                    with self.assertRaises(RuntimeError) as raised:
+                        nms.http_request(
+                            "GET",
+                            nms.BASE_URL + "/notams?location=KMEM",
+                            {"Authorization": "Bearer token"},
+                        )
+                python_runtime.assert_not_called()
+                expected_calls = 2 if reason == "TIMEOUT" else 1
+                self.assertEqual(run.call_count, expected_calls)
+                self.assertEqual(
+                    nms.helper_failure_category(raised.exception),
+                    "TRANSPORT_UNAVAILABLE",
+                )
+
+    def test_powershell_http_407_is_terminal_proxy_auth_failure(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        completed = _curl_completed(0, 407, body=b"proxy authentication required")
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=None),
+            mock.patch.object(nms, "windows_powershell_path", return_value=powershell_path),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=completed,
+            ) as run,
+            mock.patch.object(nms, "python_runtime_http_request") as python_runtime,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "HTTP 407") as raised:
+                nms.http_request(
+                    "GET",
+                    nms.BASE_URL + "/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+        self.assertEqual(run.call_count, 1)
+        python_runtime.assert_not_called()
+        self.assertEqual(nms.helper_failure_category(raised.exception), "PROXY_AUTH")
+
+    def test_powershell_oversized_response_failure_is_terminal(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        completed = subprocess.CompletedProcess(
+            [powershell_path],
+            1,
+            b"",
+            (
+                b"NMS system proxy route: SYSTEM_PROXY\n"
+                b"NMS system proxy reason: RESPONSE_TOO_LARGE\n"
+            ),
+        )
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=None),
+            mock.patch.object(nms, "windows_powershell_path", return_value=powershell_path),
+            mock.patch.object(nms, "run_bounded_transport_process", return_value=completed),
+            mock.patch.object(nms, "python_runtime_http_request") as python_runtime,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "RESPONSE_TOO_LARGE"):
+                nms.http_request(
+                    "GET",
+                    nms.BASE_URL + "/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+        python_runtime.assert_not_called()
+
+    def test_curl_no_response_failures_use_system_proxy_without_python(self):
         powershell_path = (
             r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         )
@@ -1538,7 +1812,11 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                         "run_bounded_transport_process",
                         side_effect=[failure],
                     ) as run,
-                    mock.patch.object(nms, "powershell_http_request") as powershell,
+                    mock.patch.object(
+                        nms,
+                        "powershell_http_request",
+                        return_value=b"recovered",
+                    ) as powershell,
                     mock.patch.object(
                         nms,
                         "python_runtime_http_request",
@@ -1555,19 +1833,24 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
 
                 self.assertEqual(result, b"recovered")
                 self.assertEqual(run.call_count, 1)
-                powershell.assert_not_called()
-                python_runtime.assert_called_once()
+                powershell.assert_called_once_with(
+                    powershell_path,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                    None,
+                )
+                python_runtime.assert_not_called()
                 sleep.assert_not_called()
                 self.assertEqual(
                     output.call_args_list,
                     [
                         mock.call("NMS HTTP transport: WINDOWS_CURL"),
-                        mock.call("NMS HTTP transport: WINDOWS_CURL_TO_PYTHON"),
-                        mock.call("NMS process boundary: WINDOWS_DIRECT_BOUNDED"),
+                        mock.call("NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL"),
                     ],
                 )
 
-    def test_generic_curl_transport_failure_never_enters_powershell(self):
+    def test_generic_curl_transport_failure_enters_system_proxy(self):
         powershell_path = (
             r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         )
@@ -1584,7 +1867,11 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 "curl_http_request",
                 side_effect=nms.NmsTransportError("curl framing incompatible"),
             ) as curl,
-            mock.patch.object(nms, "powershell_http_request") as powershell,
+            mock.patch.object(
+                nms,
+                "powershell_http_request",
+                return_value=b'{"status":"Success"}',
+            ) as powershell,
             mock.patch.object(
                 nms,
                 "python_runtime_http_request",
@@ -1600,23 +1887,23 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
 
         self.assertEqual(result, b'{"status":"Success"}')
         curl.assert_called_once()
-        powershell.assert_not_called()
-        python_runtime.assert_called_once_with(
+        powershell.assert_called_once_with(
+            powershell_path,
             "GET",
             "https://nms.example.test/notams?location=KMEM",
             {"Authorization": authorization},
             None,
         )
+        python_runtime.assert_not_called()
         self.assertEqual(
             output.call_args_list,
             [
                 mock.call("NMS HTTP transport: WINDOWS_CURL"),
-                mock.call("NMS HTTP transport: WINDOWS_CURL_TO_PYTHON"),
-                mock.call("NMS process boundary: WINDOWS_DIRECT_BOUNDED"),
+                mock.call("NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL"),
             ],
         )
 
-    def test_curl_exit_two_bypasses_the_known_broken_powershell_route(self):
+    def test_curl_exit_two_uses_checked_in_system_proxy_route(self):
         powershell_path = (
             r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         )
@@ -1636,7 +1923,11 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     diagnostic=b"installed curl rejects the fixed invocation",
                 ),
             ) as run,
-            mock.patch.object(nms, "powershell_http_request") as powershell,
+            mock.patch.object(
+                nms,
+                "powershell_http_request",
+                return_value=b'{"status":"Success"}',
+            ) as powershell,
             mock.patch.object(
                 nms,
                 "python_runtime_http_request",
@@ -1652,30 +1943,34 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
 
         self.assertEqual(result, b'{"status":"Success"}')
         self.assertEqual(run.call_count, 1)
-        powershell.assert_not_called()
-        python_runtime.assert_called_once_with(
+        powershell.assert_called_once_with(
+            powershell_path,
             "GET",
             "https://nms.example.test/notams?location=KMEM",
             {"Authorization": "Bearer token"},
             None,
         )
+        python_runtime.assert_not_called()
         self.assertEqual(
             output.call_args_list,
             [
                 mock.call("NMS HTTP transport: WINDOWS_CURL"),
-                mock.call("NMS HTTP transport: WINDOWS_CURL_TO_PYTHON"),
-                mock.call("NMS process boundary: WINDOWS_DIRECT_BOUNDED"),
+                mock.call("NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL"),
             ],
         )
 
-    def test_windows_transport_compatibility_routes_to_current_python_runtime(self):
+    def test_windows_transport_failures_never_enter_python_runtime(self):
         powershell_path = (
             r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         )
         cases = (
-            (self.CURL_PATH, None, "WINDOWS_CURL_TO_PYTHON"),
-            (None, powershell_path, "WINDOWS_POWERSHELL_TO_PYTHON"),
-            (None, None, "WINDOWS_PYTHON"),
+            (
+                self.CURL_PATH,
+                powershell_path,
+                "WINDOWS_CURL_TO_POWERSHELL",
+            ),
+            (None, powershell_path, "WINDOWS_POWERSHELL"),
+            (None, None, "WINDOWS_NO_TRUSTED_TRANSPORT"),
         )
         for curl_path, ps_path, expected_transport in cases:
             with self.subTest(expected_transport=expected_transport):
@@ -1704,24 +1999,38 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     ) as python_runtime,
                     mock.patch("builtins.print") as output,
                 ):
-                    result = nms.http_request(
-                        "GET",
-                        "https://nms.example.test/notams?location=KMEM",
-                        {"Authorization": "Bearer token"},
-                    )
+                    with self.assertRaises(nms.NmsTransportError):
+                        nms.http_request(
+                            "GET",
+                            nms.BASE_URL + "/notams?location=KMEM",
+                            {"Authorization": "Bearer token"},
+                        )
 
-                self.assertEqual(result, b"python runtime response")
-                python_runtime.assert_called_once()
+                python_runtime.assert_not_called()
                 self.assertIn(
                     mock.call(f"NMS HTTP transport: {expected_transport}"),
                     output.call_args_list,
                 )
-                self.assertEqual(
-                    output.call_args_list[-1],
-                    mock.call("NMS process boundary: WINDOWS_DIRECT_BOUNDED"),
-                )
                 self.assertEqual(curl.call_count, int(curl_path is not None))
                 self.assertEqual(powershell.call_count, int(ps_path is not None))
+
+    def test_each_request_stage_clears_stale_system_proxy_result(self):
+        nms.LAST_SYSTEM_PROXY_ROUTE = "SYSTEM_PROXY"
+        nms.LAST_TRANSPORT_REASON = "TIMEOUT"
+        with mock.patch("builtins.print") as output:
+            nms.record_request_stage("NOTAMS")
+
+        self.assertEqual(nms.LAST_REQUEST_STAGE, "NOTAMS")
+        self.assertEqual(nms.LAST_SYSTEM_PROXY_ROUTE, "NOT_USED")
+        self.assertEqual(nms.LAST_TRANSPORT_REASON, "NOT_USED")
+        self.assertEqual(
+            output.call_args_list,
+            [
+                mock.call("NMS request stage: NOTAMS"),
+                mock.call("NMS system proxy route: NOT_USED"),
+                mock.call("NMS transport reason: NOT_USED"),
+            ],
+        )
 
     def test_completed_http_and_tls_failures_never_replay_on_python_runtime(self):
         powershell_path = (
@@ -1774,9 +2083,12 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         )
         tls_failure = subprocess.CompletedProcess(
             [powershell_path],
-            1,
+            60,
             b"",
-            b"The SSL connection could not be established: certificate trust failed",
+            (
+                b"NMS system proxy route: SYSTEM_PROXY\n"
+                b"NMS system proxy reason: TLS_SECURITY\n"
+            ),
         )
         with (
             mock.patch.object(nms, "windows_curl_path", return_value=None),
@@ -1793,10 +2105,10 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             mock.patch.object(nms, "python_runtime_http_request") as python_runtime,
             mock.patch("builtins.print"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "certificate trust") as raised:
+            with self.assertRaisesRegex(RuntimeError, "TLS_SECURITY") as raised:
                 nms.http_request(
                     "GET",
-                    "https://nms.example.test/notams?location=KMEM",
+                    nms.BASE_URL + "/notams?location=KMEM",
                     {"Authorization": "Bearer token"},
                 )
 
@@ -1823,11 +2135,11 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             ) as run,
             mock.patch.object(nms.time, "sleep") as sleep,
         ):
-            with self.assertRaisesRegex(nms.NmsTransportError, "curl exit 2"):
+            with self.assertRaisesRegex(nms.NmsTransportError, "compatibility"):
                 nms.powershell_http_request(
                     powershell_path,
                     "GET",
-                    "https://nms.example.test/notams?location=KMEM",
+                    nms.BASE_URL + "/notams?location=KMEM",
                     {"Authorization": "Bearer token"},
                 )
 
@@ -1965,9 +2277,37 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             any(isinstance(handler, nms.NmsNoRedirectHandler) for handler in handlers)
         )
 
-    def test_curl_failure_does_not_launch_second_python_executable(self):
+    def test_python_runtime_failure_suppresses_raw_proxy_exception_context(self):
+        opener = mock.MagicMock()
+        opener.open.side_effect = URLError(
+            "https://proxy-user:proxy-password@proxy.example.test:8443"
+        )
+        with (
+            mock.patch.object(nms, "build_opener", return_value=opener),
+            mock.patch.object(nms.time, "sleep"),
+        ):
+            with self.assertRaises(nms.NmsTransportError) as raised:
+                nms.python_runtime_http_request(
+                    "GET",
+                    nms.BASE_URL + "/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+
+        self.assertNotIn("proxy-user", str(raised.exception))
+        self.assertNotIn("proxy-password", str(raised.exception))
+        self.assertTrue(raised.exception.__suppress_context__)
+
+    def test_curl_failure_uses_powershell_without_second_python_executable(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
         with (
             mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+            mock.patch.object(
+                nms,
+                "windows_powershell_path",
+                return_value=powershell_path,
+            ),
             mock.patch.object(
                 nms,
                 "curl_http_request",
@@ -1975,9 +2315,10 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             ),
             mock.patch.object(
                 nms,
-                "python_runtime_http_request",
-                return_value=b"recovered in current runtime",
-            ) as runtime,
+                "powershell_http_request",
+                return_value=b"recovered through system proxy",
+            ) as powershell,
+            mock.patch.object(nms, "python_runtime_http_request") as runtime,
             mock.patch.object(nms, "python_child_http_request") as nested_python,
             mock.patch("builtins.print"),
         ):
@@ -1987,10 +2328,10 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 {"Authorization": "Bearer token"},
             )
 
-        self.assertEqual(result, b"recovered in current runtime")
-        runtime.assert_called_once()
+        self.assertEqual(result, b"recovered through system proxy")
+        powershell.assert_called_once()
+        runtime.assert_not_called()
         nested_python.assert_not_called()
-        self.assertEqual(nms.LAST_PROCESS_BOUNDARY, "WINDOWS_DIRECT_BOUNDED")
 
     def test_curl_tls_and_certificate_failures_never_cross_transports(self):
         powershell_path = (
@@ -2248,23 +2589,35 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         sleep.assert_not_called()
 
         # The helper makes exactly two HTTP calls: token plus one bulk location
-        # request. After one bounded curl failure, the already parent-bounded
-        # helper runtime performs at most two native-timeout HTTPS attempts.
-        python_request_budget = (
-            nms.PYTHON_RUNTIME_MAX_RETRIES * nms.PYTHON_RUNTIME_TOTAL_TIMEOUT_SECONDS
+        # request. Windows has no unbounded Python replay: a full curl process
+        # can reach at most two bounded PowerShell attempts plus one retry wait.
+        powershell_request_budget = (
+            nms.POWERSHELL_MAX_RETRIES * nms.POWERSHELL_PROCESS_TIMEOUT_SECONDS
             + sum(
                 nms.retry_wait_seconds(attempt)
-                for attempt in range(1, nms.PYTHON_RUNTIME_MAX_RETRIES)
+                for attempt in range(1, nms.POWERSHELL_MAX_RETRIES)
             )
         )
         per_request_budget = (
             nms.CURL_PROCESS_TIMEOUT_SECONDS
-            + python_request_budget
+            + powershell_request_budget
         )
-        helper_budget = (2 * per_request_budget) + nms.REQUEST_DELAY_SECONDS
+        cleanup_margin = (
+            2
+            * (1 + nms.POWERSHELL_MAX_RETRIES)
+            * (
+                nms.TRANSPORT_TREE_KILL_TIMEOUT_SECONDS
+                + nms.TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS
+            )
+        )
+        helper_budget = (
+            (2 * per_request_budget)
+            + cleanup_margin
+            + nms.REQUEST_DELAY_SECONDS
+        )
         self.assertLess(helper_budget, updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS)
 
-    def test_missing_windows_tools_uses_current_python_runtime_not_legacy_urllib(self):
+    def test_missing_windows_tools_fail_closed_without_python_or_urllib(self):
         with (
             mock.patch.object(nms.os, "name", "nt"),
             mock.patch.object(nms, "windows_curl_path", return_value=None),
@@ -2281,28 +2634,28 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             ) as fallback,
             mock.patch("builtins.print") as output,
         ):
-            result = nms.http_request(
-                "GET",
-                "https://nms.example.test/notams?location=KMEM",
-                headers={"Authorization": "Bearer token"},
-                timeout=9,
-            )
+            with self.assertRaisesRegex(
+                nms.NmsTransportError,
+                "no trusted bounded transport",
+            ):
+                nms.http_request(
+                    "GET",
+                    nms.BASE_URL + "/notams?location=KMEM",
+                    headers={"Authorization": "Bearer token"},
+                    timeout=9,
+                )
 
-        self.assertEqual(result, b"python runtime response")
-        python_runtime.assert_called_once_with(
-            "GET",
-            "https://nms.example.test/notams?location=KMEM",
-            {"Authorization": "Bearer token"},
-            None,
-        )
+        python_runtime.assert_not_called()
         fallback.assert_not_called()
         self.assertEqual(
             output.call_args_list,
             [
-                mock.call("NMS HTTP transport: WINDOWS_PYTHON"),
-                mock.call("NMS process boundary: WINDOWS_DIRECT_BOUNDED"),
+                mock.call("NMS HTTP transport: WINDOWS_NO_TRUSTED_TRANSPORT"),
             ],
         )
+        active_router = inspect.getsource(nms.http_request)
+        self.assertNotIn("python_runtime_http_request", active_router)
+        self.assertNotIn("_TO_PYTHON", active_router)
 
     def test_non_windows_keeps_existing_portable_urllib_fallback(self):
         with (

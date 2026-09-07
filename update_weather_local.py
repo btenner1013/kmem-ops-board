@@ -68,12 +68,27 @@ NMS_SAFE_PROCESS_BOUNDARIES = {
     "POSIX_PROCESS_GROUP",
     "NOT_USED",
 }
+NMS_SAFE_REQUEST_STAGES = {"TOKEN", "NOTAMS", "NOT_USED"}
+NMS_SAFE_SYSTEM_PROXY_ROUTES = {"DIRECT", "SYSTEM_PROXY", "NOT_USED"}
+NMS_SAFE_TRANSPORT_REASONS = {
+    "NONE",
+    "CONFIGURATION",
+    "DNS",
+    "PROXY_ROUTE",
+    "CONNECTION",
+    "TIMEOUT",
+    "TLS_SECURITY",
+    "RESPONSE_TOO_LARGE",
+    "UNCLASSIFIED",
+    "NOT_USED",
+}
 NMS_SAFE_FAILURE_CATEGORIES = {
     "NONE",
     "AUTH_HTTP",
     "RATE_LIMIT",
     "UPSTREAM_HTTP",
     "TLS_SECURITY",
+    "PROXY_AUTH",
     "TRANSPORT_COMPATIBILITY",
     "TRANSPORT_UNAVAILABLE",
     "PROCESS_LAUNCH",
@@ -4848,6 +4863,24 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         "milNotamProcessBoundary": process_boundary,
         "milNotamAttemptTransport": transport,
         "milNotamAttemptBoundary": process_boundary,
+        "milNotamAttemptStage": str(
+            raw.get("requestStage") or "NOT_USED"
+        ).strip().upper()
+        if str(raw.get("requestStage") or "NOT_USED").strip().upper()
+        in NMS_SAFE_REQUEST_STAGES
+        else "NOT_USED",
+        "milNotamAttemptProxyRoute": str(
+            raw.get("systemProxyRoute") or "NOT_USED"
+        ).strip().upper()
+        if str(raw.get("systemProxyRoute") or "NOT_USED").strip().upper()
+        in NMS_SAFE_SYSTEM_PROXY_ROUTES
+        else "NOT_USED",
+        "milNotamAttemptReason": str(
+            raw.get("transportReason") or "NOT_USED"
+        ).strip().upper()
+        if str(raw.get("transportReason") or "NOT_USED").strip().upper()
+        in NMS_SAFE_TRANSPORT_REASONS
+        else "UNCLASSIFIED",
         "milNotamFailureCategory": safe_nms_failure_category(
             "NONE" if fetch_status == "OK" else fetch_status,
         ),
@@ -4872,6 +4905,9 @@ def previous_mil_notams_or_default(
     current_attempt = {
         "milNotamAttemptTransport": "NOT_USED",
         "milNotamAttemptBoundary": "NOT_USED",
+        "milNotamAttemptStage": "NOT_USED",
+        "milNotamAttemptProxyRoute": "NOT_USED",
+        "milNotamAttemptReason": "NOT_USED",
         "milNotamFailureCategory": safe_nms_failure_category(fetch_status),
         "milNotamAttemptZ": datetime.now(timezone.utc).strftime(
             "%Y-%m-%d %H:%M:%SZ"
@@ -4894,6 +4930,28 @@ def previous_mil_notams_or_default(
     )
     current_attempt["milNotamFailureCategory"] = safe_nms_failure_category(
         current_attempt["milNotamFailureCategory"],
+    )
+    attempt_stage = str(
+        current_attempt["milNotamAttemptStage"] or ""
+    ).strip().upper()
+    current_attempt["milNotamAttemptStage"] = (
+        attempt_stage if attempt_stage in NMS_SAFE_REQUEST_STAGES else "NOT_USED"
+    )
+    attempt_proxy_route = str(
+        current_attempt["milNotamAttemptProxyRoute"] or ""
+    ).strip().upper()
+    current_attempt["milNotamAttemptProxyRoute"] = (
+        attempt_proxy_route
+        if attempt_proxy_route in NMS_SAFE_SYSTEM_PROXY_ROUTES
+        else "NOT_USED"
+    )
+    attempt_reason = str(
+        current_attempt["milNotamAttemptReason"] or ""
+    ).strip().upper()
+    current_attempt["milNotamAttemptReason"] = (
+        attempt_reason
+        if attempt_reason in NMS_SAFE_TRANSPORT_REASONS
+        else "UNCLASSIFIED"
     )
 
     if "milNotams" in previous_data or "milNotamCount" in previous_data:
@@ -4975,6 +5033,18 @@ def nms_attempt_metadata(stdout, stderr, failure_category):
         "milNotamAttemptBoundary": last_safe_marker(
             "NMS process boundary:",
             NMS_SAFE_PROCESS_BOUNDARIES,
+        ),
+        "milNotamAttemptStage": last_safe_marker(
+            "NMS request stage:",
+            NMS_SAFE_REQUEST_STAGES,
+        ),
+        "milNotamAttemptProxyRoute": last_safe_marker(
+            "NMS system proxy route:",
+            NMS_SAFE_SYSTEM_PROXY_ROUTES,
+        ),
+        "milNotamAttemptReason": last_safe_marker(
+            "NMS transport reason:",
+            NMS_SAFE_TRANSPORT_REASONS,
         ),
         "milNotamFailureCategory": reported_failure,
         "milNotamAttemptZ": datetime.now(timezone.utc).strftime(
@@ -5602,6 +5672,18 @@ def build_weather_json():
         ),
         "milNotamAttemptBoundary": mil_notam_data.get(
             "milNotamAttemptBoundary",
+            "NOT_USED",
+        ),
+        "milNotamAttemptStage": mil_notam_data.get(
+            "milNotamAttemptStage",
+            "NOT_USED",
+        ),
+        "milNotamAttemptProxyRoute": mil_notam_data.get(
+            "milNotamAttemptProxyRoute",
+            "NOT_USED",
+        ),
+        "milNotamAttemptReason": mil_notam_data.get(
+            "milNotamAttemptReason",
             "NOT_USED",
         ),
         "milNotamFailureCategory": mil_notam_data.get(
