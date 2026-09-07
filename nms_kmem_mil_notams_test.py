@@ -1434,40 +1434,10 @@ def http_request(method, url, headers=None, body=None, timeout=45):
         record_http_transport("WINDOWS_CURL")
         try:
             return curl_http_request(curl_path, method, url, headers, body)
-        except NmsCompatibilityError:
-            # PRIMARY has repeatedly shown curl exit 2 followed by the same
-            # PowerShell command-compatibility failure. Skip that known-bad
-            # host-tool pair and use the isolated verified Python transport.
-            record_http_transport("WINDOWS_CURL_TO_PYTHON")
-            return python_child_http_request(
-                method,
-                url,
-                headers,
-                body,
-            )
         except NmsTransportError:
-            powershell_path = windows_powershell_path()
-            if powershell_path:
-                record_http_transport("WINDOWS_CURL_TO_POWERSHELL")
-                try:
-                    return powershell_http_request(
-                        powershell_path,
-                        method,
-                        url,
-                        headers,
-                        body,
-                    )
-                except NmsTransportError:
-                    record_http_transport(
-                        "WINDOWS_CURL_TO_POWERSHELL_TO_PYTHON"
-                    )
-                    return python_child_http_request(
-                        method,
-                        url,
-                        headers,
-                        body,
-                    )
-
+            # PRIMARY's pinned curl and PowerShell have both repeatedly failed
+            # before producing an HTTP response. The isolated child uses the
+            # same verified TLS policy without another unreliable host-tool hop.
             record_http_transport("WINDOWS_CURL_TO_PYTHON")
             return python_child_http_request(
                 method,

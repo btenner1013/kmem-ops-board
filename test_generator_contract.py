@@ -1502,7 +1502,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertIn("catch [System.TimeoutException]", script)
         self.assertIn("exit 28", script)
 
-    def test_curl_transport_failures_fall_back_once_to_pinned_powershell(self):
+    def test_curl_transport_failures_fall_back_once_to_python_child(self):
         powershell_path = (
             r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         )
@@ -1532,8 +1532,14 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     mock.patch.object(
                         nms,
                         "run_bounded_transport_process",
-                        side_effect=[failure, _curl_completed(body=b"recovered")],
+                        side_effect=[failure],
                     ) as run,
+                    mock.patch.object(nms, "powershell_http_request") as powershell,
+                    mock.patch.object(
+                        nms,
+                        "python_child_http_request",
+                        return_value=b"recovered",
+                    ) as python_child,
                     mock.patch.object(nms.time, "sleep") as sleep,
                     mock.patch("builtins.print") as output,
                 ):
@@ -1544,17 +1550,19 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     )
 
                 self.assertEqual(result, b"recovered")
-                self.assertEqual(run.call_count, 2)
+                self.assertEqual(run.call_count, 1)
+                powershell.assert_not_called()
+                python_child.assert_called_once()
                 sleep.assert_not_called()
                 self.assertEqual(
                     output.call_args_list,
                     [
                         mock.call("NMS HTTP transport: WINDOWS_CURL"),
-                        mock.call("NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL"),
+                        mock.call("NMS HTTP transport: WINDOWS_CURL_TO_PYTHON"),
                     ],
                 )
 
-    def test_curl_and_powershell_compatibility_failures_reach_python_child(self):
+    def test_generic_curl_transport_failure_never_enters_powershell(self):
         powershell_path = (
             r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         )
@@ -1571,11 +1579,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 "curl_http_request",
                 side_effect=nms.NmsTransportError("curl framing incompatible"),
             ) as curl,
-            mock.patch.object(
-                nms,
-                "powershell_http_request",
-                side_effect=nms.NmsTransportError("PowerShell process incompatible"),
-            ) as powershell,
+            mock.patch.object(nms, "powershell_http_request") as powershell,
             mock.patch.object(
                 nms,
                 "python_child_http_request",
@@ -1591,7 +1595,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
 
         self.assertEqual(result, b'{"status":"Success"}')
         curl.assert_called_once()
-        powershell.assert_called_once()
+        powershell.assert_not_called()
         python_child.assert_called_once_with(
             "GET",
             "https://nms.example.test/notams?location=KMEM",
@@ -1602,10 +1606,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             output.call_args_list,
             [
                 mock.call("NMS HTTP transport: WINDOWS_CURL"),
-                mock.call("NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL"),
-                mock.call(
-                    "NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL_TO_PYTHON"
-                ),
+                mock.call("NMS HTTP transport: WINDOWS_CURL_TO_PYTHON"),
             ],
         )
 
