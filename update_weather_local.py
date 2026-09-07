@@ -577,14 +577,79 @@ def cached_atis_observed_datetime(data):
     return None
 
 
+MIL_NOTAM_CACHE_LIST_COUNTS = (
+    ("milNotams", "milNotamCount"),
+    ("ficonNotams", "ficonNotamCount"),
+    ("runwayClosureNotams", "runwayClosureNotamCount"),
+    ("constructionStatusNotams", "constructionStatusNotamCount"),
+    ("taxiRestrictionNotams", "taxiRestrictionNotamCount"),
+)
+MIL_NOTAM_CACHE_FIELDS = (
+    "milNotamCount",
+    "milNotamStatus",
+    "milNotamScrollText",
+    "milNotams",
+    "milNotamSource",
+    "milNotamUpdatedZ",
+    "milNotamFetchStatus",
+    "milNotamRawStatus",
+    "ficonNotams",
+    "ficonNotamCount",
+    "runwayClosureNotams",
+    "runwayClosureNotamCount",
+    "constructionStatusNotams",
+    "constructionStatusNotamCount",
+    "taxiRestrictionNotams",
+    "taxiRestrictionNotamCount",
+)
+
+
+def cached_mil_notam_updated_datetime(data):
+    """Return the timestamp only for a complete, coherent cached NMS block."""
+    if not isinstance(data, dict):
+        return None
+
+    if str(data.get("milNotamRawStatus") or "").strip().upper() != "SUCCESS":
+        return None
+
+    updated = parse_z_datetime(data.get("milNotamUpdatedZ"))
+    if not updated:
+        return None
+
+    for list_key, count_key in MIL_NOTAM_CACHE_LIST_COUNTS:
+        items = data.get(list_key)
+        count = data.get(count_key)
+        if not isinstance(items, list):
+            return None
+        if isinstance(count, bool) or not isinstance(count, int) or count != len(items):
+            return None
+
+    required_text = (
+        "milNotamStatus",
+        "milNotamScrollText",
+        "milNotamSource",
+        "milNotamFetchStatus",
+    )
+    if any(not isinstance(data.get(key), str) for key in required_text):
+        return None
+    if any(
+        not data.get(key, "").strip()
+        for key in ("milNotamStatus", "milNotamSource", "milNotamFetchStatus")
+    ):
+        return None
+
+    return updated
+
+
 def load_previous_weather():
     """
-    Load the preferred weather cache, then overlay the newest cached ATIS.
+    Load the preferred weather cache, then overlay newest coherent cache families.
 
     This prevents a weak GitHub/manual fallback weather.json from becoming the only
     backup source after git reset --hard origin/main. Location priority continues
     to govern the other weather fields, but it must not make an older cached ATIS
-    beat a newer one with a persisted observation time.
+    beat a newer one with a persisted observation time or make an older host-local
+    NMS snapshot replace a newer complete repository snapshot after role handoff.
     """
     weather_path = os.path.join(REPO_DIR, "weather.json")
     sources = [
@@ -632,6 +697,27 @@ def load_previous_weather():
         print(
             f"Selected newest cached D-ATIS from {atis_source}: {atis_path} "
             f"({previous['atisObservedZ'] or 'TIME UNKNOWN'})"
+        )
+
+    mil_notam_candidates = []
+    for priority, source_name, path, data in loaded:
+        updated = cached_mil_notam_updated_datetime(data)
+        if updated:
+            mil_notam_candidates.append((updated, priority, source_name, path, data))
+
+    if mil_notam_candidates:
+        # Timestamp wins across PRIMARY/BACKUP cache locations. Equal timestamps
+        # retain the established local -> repo-last-good -> weather.json priority.
+        selected = max(
+            mil_notam_candidates,
+            key=lambda item: (item[0], -item[1]),
+        )
+        updated, _, notam_source, notam_path, notam_data = selected
+        notam_block = {key: notam_data[key] for key in MIL_NOTAM_CACHE_FIELDS}
+        previous.update(notam_block)
+        print(
+            f"Selected newest coherent cached NMS block from {notam_source}: "
+            f"{notam_path} ({zulu_iso(updated)})"
         )
 
     return previous

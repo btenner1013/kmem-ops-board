@@ -6,6 +6,7 @@ import io
 import inspect
 import json
 import os
+import re
 import subprocess
 import tempfile
 import unittest
@@ -37,6 +38,42 @@ def _http_response(body=b"ok"):
     response.__exit__.return_value = False
     response.read.return_value = body
     return response
+
+
+def _aixm_record(classification, number, text, *, updated="2026-09-07T06:25:00Z"):
+    number_markup = ""
+    simple_number = number
+    match = nms.NOTAM_SERIES_NUMBER_RE.fullmatch(number)
+
+    if match:
+        number_markup = (
+            f"<series>{match.group(1).upper()}</series>"
+            f"<number>{int(match.group(2))}</number>"
+            f"<year>20{match.group(3)}</year>"
+        )
+    elif re.fullmatch(r"\d{1,2}/\d{3,4}", number):
+        simple_number = number
+    else:
+        simple_number = ""
+
+    source = "FDC" if classification.upper() == "FDC" else "MEM"
+
+    return (
+        "<Notam>"
+        f"<classification>{classification}</classification>"
+        f"{number_markup}"
+        f"<simpleText>!{source} {simple_number} {text}</simpleText>"
+        f"<text>{text}</text>"
+        f"<lastUpdated>{updated}</lastUpdated>"
+        "</Notam>"
+    )
+
+
+def _bulk_response(*records, **extra_data):
+    return {
+        "status": "Success",
+        "data": {"aixm": list(records), **extra_data},
+    }
 
 
 class WeatherGeneratorContractTests(unittest.TestCase):
@@ -399,12 +436,305 @@ class WeatherGeneratorContractTests(unittest.TestCase):
         self.assertEqual(result["milNotamUpdatedZ"], "2026-09-06 20:00:00Z")
         self.assertEqual(result["runwayClosureNotamCount"], 1)
 
-    def test_nms_full_candidate_scan_contract_is_preserved(self):
+    def test_nms_single_location_bulk_scan_contract_is_preserved(self):
         source = inspect.getsource(nms.main)
-        self.assertIn("MAX_RECENT_LOCAL_DETAIL_SCAN = 50", source)
-        self.assertIn("mil_candidates + explicit_ficon_candidates", source)
-        self.assertIn("+ explicit_runway_closure_candidates + recent_local_candidates", source)
-        self.assertIn("for item in sorted(candidates", source)
+        self.assertIn('nms_get_json(\n        "/notams"', source)
+        self.assertIn('query={"location": LOCATION}', source)
+        self.assertIn('response_format="AIXM"', source)
+        self.assertNotIn("/notams/checklist", source)
+        self.assertNotIn("notamNumber", source)
+
+
+class NmsBulkLocationTests(unittest.TestCase):
+    def test_main_makes_one_bulk_request_and_writes_complete_result_atomically(self):
+        response = _bulk_response(
+            _aixm_record("DOM", "09/047", "RWY 18C/36C CLSD"),
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output_path = Path(temporary) / "nms.json"
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                    clear=False,
+                ),
+                mock.patch.object(nms, "OUTPUT_FILE", str(output_path)),
+                mock.patch.object(nms, "get_token", return_value="token"),
+                mock.patch.object(nms, "nms_get_json", return_value=response) as get_json,
+                mock.patch.object(nms.time, "sleep"),
+                mock.patch("builtins.print"),
+            ):
+                nms.main()
+
+            get_json.assert_called_once_with(
+                "/notams",
+                "token",
+                query={"location": "KMEM"},
+                response_format="AIXM",
+            )
+            result = json.loads(output_path.read_text(encoding="utf-8"))
+            self.assertEqual(result["detailScanMode"], "NMS_AIXM_LOCATION_BULK")
+            self.assertEqual(result["bulkRecordsReturned"], 1)
+            self.assertEqual(result["runwayClosureNotamCount"], 1)
+            self.assertEqual(list(Path(temporary).glob("*.tmp")), [])
+
+    def test_bulk_replay_matches_production_categories_after_eight_live_alias_pairs(self):
+        domestic = {
+            "09/047": "RWY 18C/36C CLSD EXC XNG TWY D, P, E",
+            "09/048": "TWY C1, C2, C3, C4, C5, C6, C7 CLSD",
+            "09/049": "TWY J BTN TWY E AND TWY H CLSD",
+            "09/050": "TWY C, S WIP SFC PAINTING",
+            "09/051": "TWY A, N WIP SPRAYING AND MOWING",
+            "09/052": "TWY C BTN TWY A AND TWY C5 WIP SPRAYING AND MOWING",
+            "09/053": "TWY H, R2 WIP PAVEMENT REPAIRS",
+            "06/574": "TWY A GEOGRAPHIC PSN MARKINGS NOT STD",
+        }
+        international_aliases = {
+            "A7330/26": "09/047",
+            "A7331/26": "09/048",
+            "A7332/26": "09/049",
+            "A7335/26": "09/050",
+            "A7334/26": "09/051",
+            "A7333/26": "09/052",
+            "A7336/26": "09/053",
+            "A5522/26": "06/574",
+        }
+        records = [
+            _aixm_record("MIL", "M0024/26", "MIL RAMP ARFF STATUS YELLOW"),
+            *[
+                _aixm_record("DOM", number, text)
+                for number, text in domestic.items()
+            ],
+            *[
+                _aixm_record("INTL", number, domestic[domestic_number])
+                for number, domestic_number in international_aliases.items()
+            ],
+            _aixm_record("FDC", "4/5306", "SPECIAL NOTICE"),
+        ]
+
+        result = nms.build_bulk_notam_result(
+            _bulk_response(*records),
+            generated_z="2026-09-07 06:30:00Z",
+        )
+
+        self.assertEqual(result["bulkRecordsReturned"], 18)
+        self.assertEqual(result["bulkRecordsParsed"], 18)
+        self.assertEqual(result["detailRecordsScanned"], 18)
+        self.assertEqual(result["bulkAliasRecordsCollapsed"], 8)
+        self.assertEqual(result["operationalRecordsScanned"], 9)
+        self.assertEqual(result["milNotamCount"], 1)
+        self.assertEqual(result["ficonNotamCount"], 0)
+        self.assertEqual(result["runwayClosureNotamCount"], 1)
+        self.assertEqual(result["constructionStatusNotamCount"], 5)
+        self.assertEqual(result["taxiRestrictionNotamCount"], 3)
+        self.assertEqual(result["milNotams"][0]["number"], "M0024/26")
+        self.assertEqual(result["runwayClosureNotams"][0]["number"], "09/047")
+        self.assertEqual(
+            {item["number"] for item in result["constructionStatusNotams"]},
+            {"06/574", "09/050", "09/051", "09/052", "09/053"},
+        )
+        self.assertEqual(
+            {item["number"] for item in result["taxiRestrictionNotams"]},
+            {"09/047", "09/048", "09/049"},
+        )
+
+    def test_bulk_number_extraction_covers_structured_domestic_and_fdc_forms(self):
+        cases = (
+            ("INTL", "A7330/26", "A7330/26"),
+            ("MIL", "M0024/26", "M0024/26"),
+            ("DOM", "09/047", "09/047"),
+            ("FDC", "4/5306", "04/5306"),
+        )
+
+        for classification, number, expected in cases:
+            with self.subTest(classification=classification, number=number):
+                root = nms.parse_xml(
+                    _aixm_record(classification, number, "TEST RECORD")
+                )
+                normalized = nms.canonical_bulk_classification(root)
+                self.assertEqual(
+                    nms.extract_bulk_notam_number(root, normalized),
+                    expected,
+                )
+
+    def test_live_shape_45_structured_32_domestic_9_fdc_all_validate(self):
+        records = [
+            _aixm_record("INTL", f"A{index:04d}/26", f"INTL RECORD {index}")
+            for index in range(1, 45)
+        ]
+        records.append(_aixm_record("MIL", "M0024/26", "MIL VALIDATION RECORD"))
+        records.extend(
+            _aixm_record("DOM", f"09/{index:03d}", f"DOM RECORD {index}")
+            for index in range(1, 33)
+        )
+        records.extend(
+            _aixm_record("FDC", f"{index}/1{index:03d}", f"FDC RECORD {index}")
+            for index in range(1, 10)
+        )
+
+        result = nms.build_bulk_notam_result(_bulk_response(*records))
+
+        self.assertEqual(len(records), 86)
+        self.assertEqual(result["bulkRecordsReturned"], 86)
+        self.assertEqual(result["bulkRecordsParsed"], 86)
+        self.assertEqual(result["detailRecordsScanned"], 86)
+        self.assertEqual(result["operationalRecordsScanned"], 77)
+        self.assertEqual(result["milNotamCount"], 1)
+
+    def test_unpaired_international_operational_record_is_not_silently_dropped(self):
+        result = nms.build_bulk_notam_result(
+            _bulk_response(
+                _aixm_record("INTL", "A9000/26", "RWY 18L/36R CLSD"),
+            )
+        )
+
+        self.assertEqual(result["runwayClosureNotamCount"], 1)
+        self.assertEqual(result["runwayClosureNotams"][0]["number"], "A9000/26")
+
+    def test_domestic_number_must_be_anchored_and_not_an_action_target(self):
+        unresolved = (
+            "<Notam><classification>DOM</classification>"
+            "<series>A</series><number>7330</number><year>2026</year>"
+            "<simpleText>NOTAMC 09/047 A) KMEM</simpleText>"
+            "<text>NOTAMC 09/047 A) KMEM</text></Notam>"
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "no anchored local NOTAM number"):
+            nms.build_bulk_notam_result(_bulk_response(unresolved))
+
+    def test_domestic_simple_text_own_number_precedes_structured_crossover_id(self):
+        crossover = (
+            "<Notam><classification>DOM</classification>"
+            "<series>A</series><number>7330</number><year>2026</year>"
+            "<simpleText>!MEM 09/047 MEM RWY 18C/36C CLSD</simpleText>"
+            "<text>RWY 18C/36C CLSD</text></Notam>"
+        )
+
+        result = nms.build_bulk_notam_result(_bulk_response(crossover))
+
+        self.assertEqual(result["runwayClosureNotamCount"], 1)
+        self.assertEqual(result["runwayClosureNotams"][0]["number"], "09/047")
+
+    def test_exact_duplicate_is_collapsed_but_conflicting_duplicate_fails_closed(self):
+        exact = _aixm_record("DOMESTIC", "09/047", "RWY 18C/36C CLSD")
+        result = nms.build_bulk_notam_result(_bulk_response(exact, exact))
+        self.assertEqual(result["bulkRecordsReturned"], 2)
+        self.assertEqual(result["bulkRecordsParsed"], 2)
+        self.assertEqual(result["detailRecordsScanned"], 2)
+        self.assertEqual(result["operationalRecordsScanned"], 1)
+        self.assertEqual(result["runwayClosureNotamCount"], 1)
+
+        conflicting = _aixm_record("DOM", "09/047", "RWY 18L/36R CLSD")
+        with self.assertRaisesRegex(RuntimeError, "conflicting records for 09/047"):
+            nms.build_bulk_notam_result(_bulk_response(exact, conflicting))
+
+    def test_cancellation_is_applied_after_complete_bulk_scan_in_any_order(self):
+        target = _aixm_record("DOM", "09/047", "RWY 18C/36C CLSD")
+        cancel = _aixm_record("DOM", "09/048", "09/048 NOTAMC 09/047 A) KMEM")
+
+        for records in ((target, cancel), (cancel, target)):
+            with self.subTest(order=records[0]):
+                result = nms.build_bulk_notam_result(_bulk_response(*records))
+                self.assertEqual(result["runwayClosureNotams"], [])
+
+    def test_intl_action_target_suppresses_its_domestic_alias_in_any_order(self):
+        domestic = _aixm_record("DOM", "09/047", "RWY 18C/36C CLSD")
+        international = _aixm_record("INTL", "A7330/26", "RWY 18C/36C CLSD")
+        cancel = _aixm_record(
+            "INTL",
+            "A8000/26",
+            "A8000/26 NOTAMC A7330/26 A) KMEM",
+        )
+
+        for records in (
+            (domestic, international, cancel),
+            (cancel, international, domestic),
+        ):
+            with self.subTest(order=records[0]):
+                result = nms.build_bulk_notam_result(_bulk_response(*records))
+                self.assertEqual(result["bulkAliasRecordsCollapsed"], 1)
+                self.assertEqual(result["runwayClosureNotams"], [])
+
+    def test_replacement_is_applied_after_complete_bulk_scan_in_any_order(self):
+        original = _aixm_record("MIL", "M0100/26", "MIL RAMP COMMS INOP")
+        replacement = _aixm_record(
+            "MIL",
+            "M0101/26",
+            "M0101/26 NOTAMR M0100/26 MIL RAMP COMMS RESTORED UHF ONLY",
+        )
+
+        for records in ((original, replacement), (replacement, original)):
+            with self.subTest(order=records[0]):
+                result = nms.build_bulk_notam_result(_bulk_response(*records))
+                self.assertEqual(
+                    [item["number"] for item in result["milNotams"]],
+                    ["M0101/26"],
+                )
+
+    def test_invalid_bulk_response_cannot_replace_last_complete_output(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output_path = Path(temporary) / "nms.json"
+            output_path.write_text('{"sentinel": true}', encoding="utf-8")
+
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                    clear=False,
+                ),
+                mock.patch.object(nms, "OUTPUT_FILE", str(output_path)),
+                mock.patch.object(nms, "get_token", return_value="token"),
+                mock.patch.object(
+                    nms,
+                    "nms_get_json",
+                    return_value=_bulk_response("<malformed"),
+                ),
+                mock.patch.object(nms.time, "sleep"),
+                mock.patch("builtins.print"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "malformed XML"):
+                    nms.main()
+
+            self.assertEqual(
+                json.loads(output_path.read_text(encoding="utf-8")),
+                {"sentinel": True},
+            )
+            self.assertEqual(list(Path(temporary).glob("*.tmp")), [])
+
+    def test_malformed_incomplete_or_unresolved_bulk_data_never_partially_succeeds(self):
+        valid = _aixm_record("DOM", "09/047", "RWY 18C/36C CLSD")
+        missing_text = (
+            "<Notam><classification>MIL</classification>"
+            "<series>M</series><number>48</number><year>2026</year>"
+            "<simpleText>NOT AVAILABLE</simpleText></Notam>"
+        )
+        unresolved_fdc = (
+            "<Notam><classification>FDC</classification>"
+            "<simpleText>!FDC UNKNOWN SPECIAL NOTICE</simpleText>"
+            "<text>SPECIAL NOTICE</text></Notam>"
+        )
+        missing_intl_text = (
+            "<Notam><classification>INTL</classification>"
+            "<series>A</series><number>9000</number><year>2026</year>"
+            "<simpleText>NOT AVAILABLE</simpleText></Notam>"
+        )
+        cases = (
+            ({"status": "Error", "data": {"aixm": [valid]}}, "did not report Success"),
+            (_bulk_response(), "no complete AIXM list"),
+            (_bulk_response(valid, "<broken"), "malformed XML"),
+            (_bulk_response(valid, nextCursor="more"), "requires pagination"),
+            (_bulk_response(valid, totalCount=2), "incomplete page"),
+            (_bulk_response("<Notam><classification>OTHER</classification></Notam>"), "unsupported classification"),
+            (_bulk_response(missing_text), "no usable event text"),
+            (_bulk_response(unresolved_fdc), "no anchored local NOTAM number"),
+            (_bulk_response(missing_intl_text), "no usable event text"),
+        )
+
+        for response, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(RuntimeError, message):
+                    nms.build_bulk_notam_result(response)
 
 
 class NmsHttpRetryTests(unittest.TestCase):

@@ -47,9 +47,44 @@ from updater_git import (
     _default_runner,
     normalize_remote_identity,
 )
+import update_weather_local as weather
 
 
 FIXED_NOW = datetime(2026, 8, 28, 4, 0, tzinfo=timezone.utc)
+
+
+def notam_cache_fixture(tag, updated_z, *, fetch_status="OK", raw_status="Success"):
+    """Return one internally coherent generated NMS cache block for handoff tests."""
+    collections = {
+        "milNotams": [{"number": f"{tag}-MIL", "text": "MIL RAMP STATUS"}],
+        "ficonNotams": [{"number": f"{tag}-FICON", "text": "RWY 18C FICON 5/5/5"}],
+        "runwayClosureNotams": [{
+            "number": f"{tag}-CLOSURE",
+            "text": "RWY 18C/36C CLSD",
+            "effectiveStart": "202609070400",
+            "effectiveEnd": "202609070700",
+        }],
+        "constructionStatusNotams": [{
+            "number": f"{tag}-CONST",
+            "text": "RWY 18L WIP MEN AND EQUIPMENT",
+        }],
+        "taxiRestrictionNotams": [{
+            "number": f"{tag}-TAXI",
+            "text": "TWY A CLSD",
+        }],
+    }
+    block = {
+        "milNotamStatus": "1 ACTIVE",
+        "milNotamScrollText": f"{tag} MIL RAMP STATUS",
+        "milNotamSource": "FAA_NMS_STAGING",
+        "milNotamUpdatedZ": updated_z,
+        "milNotamFetchStatus": fetch_status,
+        "milNotamRawStatus": raw_status,
+    }
+    for list_key, count_key in weather.MIL_NOTAM_CACHE_LIST_COUNTS:
+        block[list_key] = collections[list_key]
+        block[count_key] = len(collections[list_key])
+    return block
 
 
 BWC_LIFECYCLE_GENERATOR = """import json
@@ -155,6 +190,129 @@ def run_git(cwd, *args, check=True):
 
 def write(path, value):
     Path(path).write_text(value, encoding="utf-8")
+
+
+class WeatherCacheHandoffTests(unittest.TestCase):
+    def load_caches(self, local, repo_last_good, repo_weather):
+        with tempfile.TemporaryDirectory(prefix="KMEM weather cache handoff ") as directory:
+            root = Path(directory)
+            local_path = root / "local-weather-last-good.json"
+            repo_path = root / "weather-last-good.json"
+            weather_path = root / "weather.json"
+            for path, payload in (
+                (local_path, local),
+                (repo_path, repo_last_good),
+                (weather_path, repo_weather),
+            ):
+                path.write_text(json.dumps(payload), encoding="utf-8")
+
+            with (
+                mock.patch.object(weather, "LAST_GOOD_WEATHER_PATH", str(local_path)),
+                mock.patch.object(weather, "REPO_LAST_GOOD_WEATHER_PATH", str(repo_path)),
+                mock.patch.object(weather, "REPO_DIR", str(root)),
+            ):
+                return weather.load_previous_weather()
+
+    def test_newest_complete_notam_block_overlays_without_replacing_local_weather(self):
+        local = {
+            "metar": "LOCAL METAR MUST WIN",
+            "localOnly": "preserved",
+            **notam_cache_fixture("LOCAL", "2026-09-07T01:38:53Z"),
+        }
+        repo_last_good = {
+            "metar": "REPO METAR MUST NOT WIN",
+            **notam_cache_fixture(
+                "REPO",
+                "2026-09-07T05:01:41Z",
+                fetch_status="SCRIPT_FAILED",
+            ),
+        }
+        repo_weather = {
+            "metar": "WEATHER.JSON METAR MUST NOT WIN",
+            **notam_cache_fixture("WEATHER", "2026-09-07T04:00:00Z"),
+        }
+
+        selected = self.load_caches(local, repo_last_good, repo_weather)
+
+        self.assertEqual(selected["metar"], "LOCAL METAR MUST WIN")
+        self.assertEqual(selected["localOnly"], "preserved")
+        for key in weather.MIL_NOTAM_CACHE_FIELDS:
+            self.assertEqual(selected[key], repo_last_good[key], key)
+
+    def test_incomplete_or_incoherent_newer_notam_block_cannot_win(self):
+        local = {
+            "metar": "LOCAL",
+            **notam_cache_fixture("LOCAL", "2026-09-07T01:38:53Z"),
+        }
+        invalid_cases = []
+
+        missing_list = notam_cache_fixture("MISSING", "2026-09-07T06:00:00Z")
+        del missing_list["taxiRestrictionNotams"]
+        invalid_cases.append(missing_list)
+
+        mismatched_count = notam_cache_fixture("COUNT", "2026-09-07T06:00:00Z")
+        mismatched_count["runwayClosureNotamCount"] = 99
+        invalid_cases.append(mismatched_count)
+
+        bad_raw_status = notam_cache_fixture(
+            "RAW-ERROR",
+            "2026-09-07T06:00:00Z",
+            raw_status="Error",
+        )
+        invalid_cases.append(bad_raw_status)
+
+        missing_source = notam_cache_fixture("NO-SOURCE", "2026-09-07T06:00:00Z")
+        missing_source["milNotamSource"] = ""
+        invalid_cases.append(missing_source)
+
+        for invalid in invalid_cases:
+            with self.subTest(tag=invalid.get("milNotamScrollText")):
+                selected = self.load_caches(local, invalid, {})
+                self.assertEqual(selected["milNotamUpdatedZ"], local["milNotamUpdatedZ"])
+                self.assertEqual(selected["milNotams"], local["milNotams"])
+
+    def test_equal_notam_timestamps_keep_location_priority(self):
+        timestamp = "2026-09-07T05:01:41Z"
+        local = {"metar": "LOCAL", **notam_cache_fixture("LOCAL", timestamp)}
+        repo_last_good = {"metar": "REPO", **notam_cache_fixture("REPO", timestamp)}
+        repo_weather = {"metar": "WEATHER", **notam_cache_fixture("WEATHER", timestamp)}
+
+        selected = self.load_caches(local, repo_last_good, repo_weather)
+
+        self.assertEqual(selected["milNotams"], local["milNotams"])
+        self.assertEqual(selected["metar"], "LOCAL")
+
+    def test_failed_fetch_retains_newest_content_but_remains_error_and_fail_closed(self):
+        local = {
+            "metar": "LOCAL",
+            **notam_cache_fixture("LOCAL", "2026-09-07T01:38:53Z"),
+        }
+        repo_last_good = {
+            "metar": "REPO",
+            **notam_cache_fixture("REPO", "2026-09-07T05:01:41Z"),
+        }
+        selected = self.load_caches(local, repo_last_good, {})
+        decision_now = datetime(2026, 9, 7, 5, 5, tzinfo=timezone.utc)
+
+        for fetch_status in ("SCRIPT_FAILED", "TIMEOUT"):
+            with self.subTest(fetch_status=fetch_status):
+                retained = weather.previous_mil_notams_or_default(selected, fetch_status)
+                self.assertEqual(retained["milNotamUpdatedZ"], "2026-09-07T05:01:41Z")
+                self.assertEqual(retained["milNotamFetchStatus"], fetch_status)
+                self.assertEqual(retained["milNotamRawStatus"], "Success")
+                self.assertEqual(retained["runwayClosureNotamCount"], 1)
+                self.assertEqual(
+                    weather.classify_notam_feed(retained, decision_now),
+                    {"status": "ERROR", "detail": fetch_status, "age": 4},
+                )
+                self.assertEqual(
+                    weather.resolve_closed_runways(
+                        {"sourceIsCurrent": False},
+                        retained,
+                        decision_now,
+                    ),
+                    "UNKNOWN",
+                )
 
 
 class GitFixture(unittest.TestCase):

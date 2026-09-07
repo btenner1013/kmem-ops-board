@@ -51,6 +51,34 @@ REQUEST_DELAY_SECONDS = 1.25
 MAX_RETRIES = 3
 TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
+BULK_CLASSIFICATION_ALIASES = {
+    "DOM": "DOM",
+    "DOMESTIC": "DOM",
+    "FICON": "DOM",
+    "SNOW": "DOM",
+    "MIL": "MIL",
+    "MILITARY": "MIL",
+    "INTL": "INTL",
+    "INTERNATIONAL": "INTL",
+    "FDC": "FDC",
+}
+BULK_OPERATIONAL_CLASSIFICATIONS = {"DOM", "MIL", "INTL"}
+BULK_CONTINUATION_KEYS = {
+    "continuationtoken",
+    "cursor",
+    "hasmore",
+    "next",
+    "nextcursor",
+    "nextpage",
+}
+BULK_TOTAL_KEYS = {"count", "recordcount", "total", "totalcount", "totalrecords"}
+BULK_SIMPLE_NUMBER_RE = re.compile(
+    r"^\s*![A-Z0-9]{3,4}\s+(\d{1,2})/(\d{3,4})\b",
+    re.IGNORECASE,
+)
+BULK_ALIAS_CLASSIFICATIONS = {"DOM", "INTL"}
+BULK_ALIAS_PREFERENCE = {"DOM": 0, "INTL": 1}
+
 
 def utc_now_z():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
@@ -200,6 +228,62 @@ def extract_notam_number(root, fallback):
         return f"{series}{number}/{str(year)[-2:]}"
 
     return fallback
+
+
+def canonical_bulk_classification(root):
+    """Return the stable NMS bulk class without guessing at unknown values."""
+    classifications = all_text(root, "classification")
+
+    if not classifications:
+        raise RuntimeError("NMS bulk AIXM record is missing classification.")
+
+    value = re.sub(r"[^A-Z]", "", classifications[-1].upper())
+    classification = BULK_CLASSIFICATION_ALIASES.get(value)
+
+    if not classification:
+        raise RuntimeError(
+            f"NMS bulk AIXM record has unsupported classification: {classifications[-1]!r}"
+        )
+
+    return classification
+
+
+def canonical_bulk_notam_number(value):
+    """Canonicalize operational and four-digit FDC local-style identifiers."""
+    canonical = canonical_notam_number(value)
+
+    if canonical:
+        return canonical
+
+    match = re.search(r"\b(\d{1,2})\s*/\s*(\d{4})\b", str(value or ""))
+    return f"{int(match.group(1)):02d}/{match.group(2)}" if match else ""
+
+
+def extract_bulk_notam_number(root, classification):
+    """Resolve the record identifier without mistaking an action target for it."""
+    # Domestic and FDC bulk AIXM omit the structured number fields.  Their own
+    # identifier is the token immediately after the leading ``!MEM``/``!FDC`` in
+    # simpleText.  The strict anchor prevents a later NOTAMC/NOTAMR target or a
+    # date in the body from being mistaken for the current record number.
+    if classification in {"DOM", "FDC"}:
+        simple = first_text(root, "simpleText") or ""
+        match = BULK_SIMPLE_NUMBER_RE.match(simple)
+
+        if match:
+            return f"{int(match.group(1)):02d}/{match.group(2)}"
+
+        raise RuntimeError(
+            f"NMS bulk {classification} AIXM record has no anchored local NOTAM number."
+        )
+
+    structured = canonical_bulk_notam_number(extract_notam_number(root, ""))
+
+    if structured:
+        return structured
+
+    raise RuntimeError(
+        f"NMS bulk {classification} AIXM record has no resolvable own NOTAM number."
+    )
 
 
 def extract_event_text(root):
@@ -634,149 +718,262 @@ def apply_effective_fallback(record, txt):
     return record
 
 
-def main():
-    client_id = os.environ.get("NMS_CLIENT_ID")
-    client_secret = os.environ.get("NMS_CLIENT_SECRET")
+def validated_bulk_aixm_roots(response):
+    """Validate a complete one-page location response and parse every AIXM item."""
+    if not isinstance(response, dict) or str(response.get("status", "")).upper() != "SUCCESS":
+        raise RuntimeError("NMS bulk location response did not report Success.")
 
-    if not client_id or not client_secret:
-        raise SystemExit(
-            "Missing credentials. Run:\n"
-            "  set NMS_CLIENT_ID=YOUR_KEY_HERE\n"
-            "  set NMS_CLIENT_SECRET=YOUR_SECRET_HERE"
+    data = response.get("data")
+
+    if not isinstance(data, dict):
+        raise RuntimeError("NMS bulk location response is missing its data object.")
+
+    aixm_list = data.get("aixm")
+
+    if not isinstance(aixm_list, list) or not aixm_list:
+        raise RuntimeError("NMS bulk location response has no complete AIXM list.")
+
+    # The live location response is deliberately one unpaginated AIXM collection.
+    # Refuse an incomplete page instead of publishing a plausible-looking subset.
+    for container in (response, data):
+        for key, value in container.items():
+            normalized_key = re.sub(r"[^a-z]", "", str(key).lower())
+
+            if normalized_key in BULK_CONTINUATION_KEYS and value:
+                raise RuntimeError("NMS bulk location response requires pagination.")
+
+            if normalized_key in BULK_TOTAL_KEYS:
+                try:
+                    advertised_total = int(value)
+                except (TypeError, ValueError):
+                    continue
+
+                if advertised_total > len(aixm_list):
+                    raise RuntimeError("NMS bulk location response is an incomplete page.")
+
+    roots = []
+
+    for index, xml_text in enumerate(aixm_list):
+        if not isinstance(xml_text, str) or not xml_text.strip():
+            raise RuntimeError(f"NMS bulk AIXM record {index} is empty or not text.")
+
+        try:
+            roots.append(parse_xml(xml_text))
+        except ET.ParseError as exc:
+            raise RuntimeError(f"NMS bulk AIXM record {index} is malformed XML.") from exc
+
+    return roots
+
+
+def bulk_record_from_root(root, classification):
+    number = extract_bulk_notam_number(root, classification)
+    txt = extract_event_text(root)
+
+    if txt == "TEXT NOT FOUND":
+        raise RuntimeError(f"NMS bulk record {number} has no usable event text.")
+
+    classifications = all_text(root, "classification")
+    last_updates = all_text(root, "lastUpdated")
+    record = {
+        "number": number,
+        "classification": classifications[-1],
+        "severity": severity(txt),
+        "text": txt,
+        "displayText": display_text(txt),
+        "effectiveStart": first_text(root, "effectiveStart"),
+        "effectiveEnd": first_text(root, "effectiveEnd"),
+        "lastUpdated": last_updates[-1] if last_updates else None,
+        "source": "FAA_NMS_STAGING",
+    }
+    return apply_effective_fallback(record, txt)
+
+
+def bulk_semantic_signature(record):
+    """Return the exact operational identity shared by DOM/INTL crossover views."""
+    text = clean_created_text(record.get("text") or "")
+    return (
+        LOCATION,
+        re.sub(r"\s+", " ", text).strip().upper(),
+        normalize_notam_effective_compact(record.get("effectiveStart")),
+        normalize_notam_effective_compact(record.get("effectiveEnd")),
+    )
+
+
+def preferred_bulk_record(records):
+    """Prefer the local DOM representation, then the newest identical record."""
+    preferred_rank = min(
+        BULK_ALIAS_PREFERENCE.get(item[0], 2) for item in records
+    )
+    preferred = [
+        item
+        for item in records
+        if BULK_ALIAS_PREFERENCE.get(item[0], 2) == preferred_rank
+    ]
+    return max(preferred, key=lambda item: str(item[1].get("lastUpdated") or ""))
+
+
+def deduplicate_bulk_operational_records(records):
+    """Collapse exact DOM/INTL aliases and return their number equivalence map."""
+    by_number = {}
+    duplicate_count = 0
+
+    for classification, record in records:
+        number = canonical_bulk_notam_number(record.get("number"))
+
+        if not number:
+            raise RuntimeError("NMS bulk response contains a record with no number.")
+
+        signature = bulk_semantic_signature(record)
+        prior = by_number.get(number)
+
+        if prior:
+            prior_classification, prior_record, prior_signature = prior
+
+            if signature != prior_signature:
+                raise RuntimeError(
+                    f"NMS bulk response contains conflicting records for {number}."
+                )
+
+            by_number[number] = preferred_bulk_record(
+                [(prior_classification, prior_record), (classification, record)]
+            ) + (signature,)
+            duplicate_count += 1
+            continue
+
+        by_number[number] = (classification, record, signature)
+
+    unique_records = [
+        (classification, record)
+        for classification, record, _signature in by_number.values()
+    ]
+    semantic_groups = {}
+
+    for classification, record in unique_records:
+        if classification in BULK_ALIAS_CLASSIFICATIONS:
+            semantic_groups.setdefault(bulk_semantic_signature(record), []).append(
+                (classification, record)
+            )
+
+    alias_numbers = {}
+    collapsed_numbers = set()
+
+    for aliases in semantic_groups.values():
+        domestic = [item for item in aliases if item[0] == "DOM"]
+        international = [item for item in aliases if item[0] == "INTL"]
+
+        if not domestic or not international:
+            continue
+
+        # More than one number from the same representation class with identical
+        # text/times is ambiguous; do not guess that they are all crossover aliases.
+        if len(domestic) != 1 or len(international) != 1:
+            raise RuntimeError("NMS bulk response contains an ambiguous alias group.")
+
+        numbers = {
+            canonical_bulk_notam_number(item[1].get("number"))
+            for item in aliases
+        }
+        for number in numbers:
+            alias_numbers[number] = set(numbers)
+
+        collapsed_numbers.add(
+            canonical_bulk_notam_number(international[0][1].get("number"))
+        )
+        duplicate_count += 1
+
+    deduplicated = [
+        (classification, record)
+        for classification, record in unique_records
+        if canonical_bulk_notam_number(record.get("number")) not in collapsed_numbers
+    ]
+    return deduplicated, alias_numbers, duplicate_count
+
+
+def expand_inactive_alias_numbers(inactive_numbers, alias_numbers):
+    """Make an action against either crossover identifier suppress both views."""
+    expanded = set()
+
+    for value in inactive_numbers:
+        number = canonical_bulk_notam_number(value)
+
+        if number:
+            expanded.add(number)
+            expanded.update(alias_numbers.get(number, ()))
+
+    return expanded
+
+
+def local_number_key(item):
+    number = str(item[1].get("number", "")) if isinstance(item, tuple) else str(item.get("number", ""))
+    match = re.match(r"^(\d{1,2})/(\d{3})$", number)
+
+    if not match:
+        return (-1, -1)
+
+    return (int(match.group(1)), int(match.group(2)))
+
+
+def build_bulk_notam_result(response, generated_z=None):
+    roots = validated_bulk_aixm_roots(response)
+    complete_records = []
+
+    # Build every returned record before selecting board categories.  A malformed
+    # INTL or FDC record must not be silently skipped inside an otherwise plausible
+    # Success response.
+    for root in roots:
+        classification = canonical_bulk_classification(root)
+        complete_records.append(
+            (classification, bulk_record_from_root(root, classification))
         )
 
-    token = get_token(client_id, client_secret)
+    deduplicated_records, alias_numbers, alias_count = (
+        deduplicate_bulk_operational_records(complete_records)
+    )
+    inactive_notam_numbers = set()
 
-    print(f"Pulling checklist for {LOCATION}...")
-    time.sleep(REQUEST_DELAY_SECONDS)
+    # Collect every action from the complete response before filtering categories.
+    # If an action targets either side of a DOM/INTL crossover pair, suppress both.
+    for _classification, record in complete_records:
+        if is_notam_cancellation(record):
+            target = notam_cancellation_target(record)
 
-    checklist_resp = nms_get_json("/notams/checklist", token, query={"location": LOCATION})
-    checklist = checklist_resp.get("data", {}).get("checklist", [])
+            if target:
+                inactive_notam_numbers.add(target)
+                print(f"  Cancellation: {record['number']} cancels {target}")
+            else:
+                print(f"  Cancellation: {record['number']} has no parseable target")
+        elif is_notam_replacement(record):
+            target = notam_replacement_target(record)
 
-    def is_mil_candidate(item):
-        return str(item.get("classification", "")).upper() == "MILITARY"
+            if target:
+                inactive_notam_numbers.add(target)
+                print(f"  Replacement: {record['number']} replaces {target}")
+            else:
+                print(f"  Replacement: {record['number']} has no parseable target")
 
-    def is_ficon_candidate(item):
-        blob = " ".join(str(item.get(k, "")) for k in item.keys()).upper()
-        return (
-            "FICON" in blob
-            or "SNOW" in blob
-            or str(item.get("classification", "")).upper() in ("SNOW", "FICON")
-        )
-
-    # Phase 59: do NOT brute-force every checklist detail record.
-    # NMS checklist metadata can hide FICON wording, but active runway FICON NOTAMs are
-    # normally recent local NOTAMs (for example 06/141-06/146). Pull MIL records plus
-    # the newest local MEM records, then classify by full text. This keeps the update
-    # usable for a 15-minute board cycle.
-
-    MAX_RECENT_LOCAL_DETAIL_SCAN = 50
-
-    def local_number_key(item):
-        num = str(item.get("number", ""))
-        match = re.match(r"^(\d{1,2})/(\d{3})$", num)
-        if not match:
-            return (-1, -1)
-        return (int(match.group(1)), int(match.group(2)))
-
-    mil_candidates = [item for item in checklist if is_mil_candidate(item) or str(item.get("number", "")).upper().startswith("M")]
-
-    explicit_ficon_candidates = [item for item in checklist if is_ficon_candidate(item)]
-
-    explicit_runway_closure_candidates = [item for item in checklist if is_runway_closure_candidate(item)]
-
-    recent_local_candidates = sorted(
-        [item for item in checklist if re.match(r"^\d{1,2}/\d{3}$", str(item.get("number", "")))],
-        key=local_number_key,
-        reverse=True
-    )[:MAX_RECENT_LOCAL_DETAIL_SCAN]
-
-    candidates_by_number = {}
-    for item in mil_candidates + explicit_ficon_candidates + explicit_runway_closure_candidates + recent_local_candidates:
-        num = str(item.get("number", ""))
-        if num:
-            candidates_by_number[num] = item
-
-    candidates = list(candidates_by_number.values())
-
-    print(f"Checklist records returned: {len(checklist)}")
-    print(f"MIL candidates: {len(mil_candidates)}")
-    print(f"Explicit FICON metadata candidates: {len(explicit_ficon_candidates)}")
-    print(f"Explicit RWY closure metadata candidates: {len(explicit_runway_closure_candidates)}")
-    print(f"Recent local records scanned for hidden FICON/RWY closures: {len(recent_local_candidates)}")
-    print(f"Detail records to scan for MIL/FICON/AFLD status: {len(candidates)}")
+    inactive_notam_numbers = expand_inactive_alias_numbers(
+        inactive_notam_numbers,
+        alias_numbers,
+    )
+    operational_records = [
+        item
+        for item in deduplicated_records
+        if item[0] in BULK_OPERATIONAL_CLASSIFICATIONS
+    ]
+    operational_records.sort(key=local_number_key, reverse=True)
 
     notams = []
     ficon_notams = []
     runway_closure_notams = []
     construction_status_notams = []
     taxi_restriction_notams = []
-    inactive_notam_numbers = set()
 
-    for item in sorted(candidates, key=local_number_key, reverse=True):
-        time.sleep(REQUEST_DELAY_SECONDS)
+    for classification, record in operational_records:
+        txt = record["text"]
 
-        num = item.get("number")
-        print(f"Pulling {num}...")
-
-        detail = nms_get_json(
-            "/notams",
-            token,
-            query={"location": LOCATION, "notamNumber": num},
-            response_format="AIXM",
-        )
-
-        aixm_list = detail.get("data", {}).get("aixm", [])
-
-        if not aixm_list:
-            print(f"  No AIXM returned for {num}")
-            continue
-
-        root = parse_xml(aixm_list[0])
-        txt = extract_event_text(root)
-        classifications = all_text(root, "classification")
-        last_updates = all_text(root, "lastUpdated")
-
-        record = {
-            "number": extract_notam_number(root, num),
-            "classification": classifications[-1] if classifications else "MIL",
-            "severity": severity(txt),
-            "text": txt,
-            "displayText": display_text(txt),
-            "effectiveStart": first_text(root, "effectiveStart"),
-            "effectiveEnd": first_text(root, "effectiveEnd"),
-            "lastUpdated": last_updates[-1] if last_updates else item.get("lastUpdated"),
-            "source": "FAA_NMS_STAGING",
-        }
-
-        record = apply_effective_fallback(record, txt)
-
-        if is_notam_cancellation(record):
-            cancellation_target = notam_cancellation_target(record)
-
-            if cancellation_target:
-                inactive_notam_numbers.add(cancellation_target)
-                print(f"  Cancellation: {record['number']} cancels {cancellation_target}")
-            else:
-                print(f"  Cancellation: {record['number']} has no parseable target")
-        elif is_notam_replacement(record):
-            replacement_target = notam_replacement_target(record)
-
-            if replacement_target:
-                inactive_notam_numbers.add(replacement_target)
-                print(f"  Replacement: {record['number']} replaces {replacement_target}")
-            else:
-                print(f"  Replacement: {record['number']} has no parseable target")
-
-        txt_upper = txt.upper()
-
-        # Keep runway/taxiway/apron FICON in the separate FICON list for RSC/RCR parsing.
-        # Do not put FICON into the MIL NOTAM crawl.
-        if "FICON" in txt_upper:
+        if "FICON" in txt.upper():
             ficon_notams.append(record)
 
-        # Phase 85: export runway closure NOTAMs for display only.
-        # This does not change ATIS-driven runway data block behavior.
         if is_runway_closure_text(txt):
             closure_display = compact_runway_closure_display(txt)
 
@@ -795,27 +992,26 @@ def main():
         if is_taxi_route_restriction_text(txt):
             taxi_restriction_notams.append(status_record(record, "TAXI_ROUTE_RESTR"))
 
-        if str(record.get("classification", "")).upper() in ("MIL", "MILITARY") or record["number"].upper().startswith("M"):
+        if classification == "MIL":
             notams.append(record)
 
-    # Apply every NOTAMC/NOTAMR target after the scan so action chains are
-    # order-independent. NOTAMC action records are hidden; NOTAMR replacements
-    # remain active unless a later action targets them.
+    # Apply every action after the complete bulk scan, so cancellation/replacement
+    # results remain independent of the API's record order.
     notams = filter_inactive_notam_records(notams, inactive_notam_numbers)
     ficon_notams = filter_inactive_notam_records(ficon_notams, inactive_notam_numbers)
     runway_closure_notams = filter_inactive_notam_records(runway_closure_notams, inactive_notam_numbers)
     construction_status_notams = filter_inactive_notam_records(construction_status_notams, inactive_notam_numbers)
     taxi_restriction_notams = filter_inactive_notam_records(taxi_restriction_notams, inactive_notam_numbers)
 
-    result = {
+    return {
         "status": "Success",
-        "generatedZ": utc_now_z(),
+        "generatedZ": generated_z or utc_now_z(),
         "location": LOCATION,
         "source": "FAA_NMS_STAGING",
         "milNotamCount": len(notams),
         "milNotamStatus": f"{len(notams)} ACTIVE" if notams else "NONE ACTIVE",
         "milNotamScrollText": "  |  ".join(
-            f"{n['number']} {n['displayText']}" for n in notams
+            f"{item['number']} {item['displayText']}" for item in notams
         ),
         "milNotams": notams,
         "ficonNotams": ficon_notams,
@@ -826,12 +1022,56 @@ def main():
         "constructionStatusNotamCount": len(construction_status_notams),
         "taxiRestrictionNotams": taxi_restriction_notams,
         "taxiRestrictionNotamCount": len(taxi_restriction_notams),
-        "detailScanMode": "PHASE102_AFLD_STATUS_SCOPED",
-        "detailRecordsScanned": len(candidates),
+        "detailScanMode": "NMS_AIXM_LOCATION_BULK",
+        "bulkRecordsReturned": len(roots),
+        "bulkRecordsParsed": len(complete_records),
+        "bulkAliasRecordsCollapsed": alias_count,
+        "detailRecordsScanned": len(complete_records),
+        "operationalRecordsScanned": len(operational_records),
     }
 
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+
+def write_json_atomically(path, result):
+    temporary_path = f"{path}.{os.getpid()}.{time.time_ns()}.tmp"
+
+    try:
+        with open(temporary_path, "w", encoding="utf-8") as output:
+            json.dump(result, output, indent=2, ensure_ascii=False)
+            output.flush()
+            os.fsync(output.fileno())
+
+        os.replace(temporary_path, path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
+def main():
+    client_id = os.environ.get("NMS_CLIENT_ID")
+    client_secret = os.environ.get("NMS_CLIENT_SECRET")
+
+    if not client_id or not client_secret:
+        raise SystemExit(
+            "Missing credentials. Run:\n"
+            "  set NMS_CLIENT_ID=YOUR_KEY_HERE\n"
+            "  set NMS_CLIENT_SECRET=YOUR_SECRET_HERE"
+        )
+
+    token = get_token(client_id, client_secret)
+    print(f"Pulling complete AIXM location set for {LOCATION}...")
+    time.sleep(REQUEST_DELAY_SECONDS)
+    response = nms_get_json(
+        "/notams",
+        token,
+        query={"location": LOCATION},
+        response_format="AIXM",
+    )
+    result = build_bulk_notam_result(response)
+
+    print(f"Bulk AIXM records returned: {result['bulkRecordsReturned']}")
+    print(f"Bulk AIXM records parsed: {result['bulkRecordsParsed']}")
+    print(f"Operational records after alias handling: {result['operationalRecordsScanned']}")
+    write_json_atomically(OUTPUT_FILE, result)
 
     print()
     print("KMEM MIL NOTAM pull complete.")
@@ -843,21 +1083,21 @@ def main():
     print(f"Wrote:  {OUTPUT_FILE}")
     print()
 
-    for n in notams:
+    for n in result["milNotams"]:
         print(f"{n['severity'].upper():5} {n['number']}: {n['displayText']}")
 
-    for n in ficon_notams:
+    for n in result["ficonNotams"]:
         print(f"FICON {n['number']}: {n['displayText']}")
 
-    for n in runway_closure_notams:
+    for n in result["runwayClosureNotams"]:
         eff_start = n.get("effectiveStart") or "UNK"
         eff_end = n.get("effectiveEnd") or "UFN"
         print(f"RWYCL {n['number']}: {n['displayText']} EFF {eff_start}-{eff_end}")
 
-    for n in construction_status_notams:
+    for n in result["constructionStatusNotams"]:
         print(f"CONST {n['number']}: {n['displayText']}")
 
-    for n in taxi_restriction_notams:
+    for n in result["taxiRestrictionNotams"]:
         print(f"TAXI  {n['number']}: {n['displayText']}")
 
 
