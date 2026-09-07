@@ -22,7 +22,6 @@ Does not modify weather.json or GitHub.
 
 import base64
 import html
-import http.client
 import json
 import os
 import re
@@ -35,7 +34,14 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from urllib.parse import urlencode, urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import (
+    HTTPRedirectHandler,
+    HTTPSHandler,
+    ProxyHandler,
+    Request,
+    build_opener,
+    urlopen,
+)
 from urllib.error import HTTPError, URLError
 from xml.etree import ElementTree as ET
 
@@ -1426,6 +1432,14 @@ def python_child_http_request(
     raise RuntimeError("NMS Python child HTTP request failed after bounded retries.")
 
 
+class NmsNoRedirectHandler(HTTPRedirectHandler):
+    """Keep NMS authorization requests on the exact validated origin."""
+
+    def redirect_request(self, request, file_pointer, code, message, headers, new_url):
+        del request, file_pointer, code, message, headers, new_url
+        return None
+
+
 def python_runtime_http_request(
     method,
     url,
@@ -1476,35 +1490,38 @@ def python_runtime_http_request(
         if body_bytes != b"grant_type=client_credentials":
             raise ValueError("unexpected NMS Python runtime request body")
 
-    target = parsed.path or "/"
-    if parsed.query:
-        target += "?" + parsed.query
-
     for attempt in range(1, PYTHON_RUNTIME_MAX_RETRIES + 1):
         transport_error = None
         transport_cause = None
+        response_body = b""
+        status = None
         context = ssl.create_default_context()
         context.check_hostname = True
         context.verify_mode = ssl.CERT_REQUIRED
         if hasattr(ssl, "TLSVersion"):
             context.minimum_version = ssl.TLSVersion.TLSv1_2
 
-        connection = http.client.HTTPSConnection(
-            parsed.hostname,
-            port=parsed.port or 443,
-            timeout=PYTHON_RUNTIME_TOTAL_TIMEOUT_SECONDS,
-            context=context,
+        request = Request(
+            url=str(url),
+            data=body_bytes,
+            headers=normalized_headers,
+            method=normalized_method,
+        )
+        opener = build_opener(
+            ProxyHandler(),
+            HTTPSHandler(context=context),
+            NmsNoRedirectHandler(),
         )
         try:
-            connection.request(
-                normalized_method,
-                target,
-                body=body_bytes,
-                headers=normalized_headers,
-            )
-            response = connection.getresponse()
-            response_body = response.read(PYTHON_RUNTIME_RESPONSE_LIMIT_BYTES + 1)
-            status = int(response.status)
+            with opener.open(
+                request,
+                timeout=PYTHON_RUNTIME_TOTAL_TIMEOUT_SECONDS,
+            ) as response:
+                response_body = response.read(PYTHON_RUNTIME_RESPONSE_LIMIT_BYTES + 1)
+                status = int(response.getcode())
+        except HTTPError as error:
+            response_body = error.read(PYTHON_RUNTIME_RESPONSE_LIMIT_BYTES + 1)
+            status = int(error.code)
         except ssl.SSLCertVerificationError as error:
             raise RuntimeError(
                 "NMS Python runtime HTTPS failed (TLS certificate verification)"
@@ -1523,12 +1540,26 @@ def python_runtime_http_request(
                 "NMS Python runtime HTTPS failed (timed out)"
             )
             transport_cause = error
-        except (ConnectionError, OSError, http.client.HTTPException) as error:
+        except URLError as error:
+            reason = getattr(error, "reason", None)
+            if isinstance(reason, ssl.SSLCertVerificationError):
+                raise RuntimeError(
+                    "NMS Python runtime HTTPS failed (TLS certificate verification)"
+                ) from error
+            if isinstance(reason, ssl.SSLError):
+                raise RuntimeError(
+                    "NMS Python runtime HTTPS failed (TLS security)"
+                ) from error
+            transport_error = NmsTransportError(
+                "NMS Python runtime HTTPS failed (system route unavailable)"
+            )
+            transport_cause = error
+        except (ConnectionError, OSError) as error:
             transport_error = NmsTransportError(
                 "NMS Python runtime HTTPS failed (connection unavailable)"
             )
             transport_cause = error
-        else:
+        if status is not None:
             if len(response_body) > PYTHON_RUNTIME_RESPONSE_LIMIT_BYTES:
                 raise RuntimeError("NMS Python runtime HTTPS response is too large")
             if 200 <= status < 300:
@@ -1547,9 +1578,6 @@ def python_runtime_http_request(
             raise RuntimeError(
                 f"NMS Python runtime HTTP request failed (HTTP {status:03d}): {detail}"
             )
-        finally:
-            connection.close()
-
         if attempt < PYTHON_RUNTIME_MAX_RETRIES:
             wait = retry_wait_seconds(attempt)
             print(

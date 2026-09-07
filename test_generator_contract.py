@@ -1916,20 +1916,22 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             )
         )
 
-    def test_python_runtime_https_uses_verified_tls_without_nested_launcher(self):
+    def test_python_runtime_https_uses_system_route_and_verified_tls_without_nested_launcher(self):
         response = mock.MagicMock()
-        response.status = 200
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        response.getcode.return_value = 200
         response.read.return_value = b'{"status":"Success"}'
-        connection = mock.MagicMock()
-        connection.getresponse.return_value = response
+        opener = mock.MagicMock()
+        opener.open.return_value = response
         authorization = "Bearer runtime-sensitive-token"
 
         with (
             mock.patch.object(
-                nms.http.client,
-                "HTTPSConnection",
-                return_value=connection,
-            ) as connection_factory,
+                nms,
+                "build_opener",
+                return_value=opener,
+            ) as opener_factory,
             mock.patch.object(nms, "run_bounded_transport_process") as nested_process,
         ):
             result = nms.python_runtime_http_request(
@@ -1940,17 +1942,28 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
 
         self.assertEqual(result, b'{"status":"Success"}')
         nested_process.assert_not_called()
-        connection.request.assert_called_once_with(
-            "GET",
-            "/nmsapi/v1/notams?location=KMEM",
-            body=None,
-            headers={"Authorization": authorization},
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.full_url, (
+            "https://api-staging.cgifederal-aim.com/"
+            "nmsapi/v1/notams?location=KMEM"
+        ))
+        self.assertEqual(request.get_method(), "GET")
+        self.assertEqual(request.get_header("Authorization"), authorization)
+        self.assertEqual(
+            opener.open.call_args.kwargs["timeout"],
+            nms.PYTHON_RUNTIME_TOTAL_TIMEOUT_SECONDS,
         )
-        connection.close.assert_called_once_with()
-        kwargs = connection_factory.call_args.kwargs
-        self.assertEqual(kwargs["timeout"], nms.PYTHON_RUNTIME_TOTAL_TIMEOUT_SECONDS)
-        self.assertTrue(kwargs["context"].check_hostname)
-        self.assertEqual(kwargs["context"].verify_mode, nms.ssl.CERT_REQUIRED)
+        handlers = opener_factory.call_args.args
+        self.assertTrue(any(isinstance(handler, nms.ProxyHandler) for handler in handlers))
+        https_handler = next(
+            handler for handler in handlers if isinstance(handler, nms.HTTPSHandler)
+        )
+        context = https_handler._context
+        self.assertTrue(context.check_hostname)
+        self.assertEqual(context.verify_mode, nms.ssl.CERT_REQUIRED)
+        self.assertTrue(
+            any(isinstance(handler, nms.NmsNoRedirectHandler) for handler in handlers)
+        )
 
     def test_curl_failure_does_not_launch_second_python_executable(self):
         with (
