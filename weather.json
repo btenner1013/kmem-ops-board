@@ -9,11 +9,11 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T11:54:00Z",
-  "metarAgeMinutes": 3,
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-09-07T11:54:00Z",
-  "atisAgeMinutes": 3,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "U:1154Z",
-  "atisSelectedSource": "ATIS_INFO_API",
+  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,7 +25,8 @@
       "identity": "U:1154Z",
       "observedZ": "2026-09-07T11:54:00Z",
       "sources": [
-        "ATIS_INFO_API"
+        "ATIS_INFO_API",
+        "ATIS_RELAY"
       ]
     }
   ],
@@ -45,7 +46,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-09-07T09:06:39Z",
-  "trendSampleCount": 15,
+  "trendSampleCount": 11,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -124,17 +125,17 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-07 11:54:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-09-07 12:06:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
-  "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "SEVERE",
+  "bwcBamRisk": "SEVERE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=11&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=7&iHour=11",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=12&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=7&iHour=12",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
@@ -276,13 +277,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 11:56Z",
+  "allFeedsUpdatedZ": "2026-09-07 12:06Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 11:56:42Z"
+    "lastWorkflowTimestampZ": "2026-09-07 12:06:12Z"
   }
 }
