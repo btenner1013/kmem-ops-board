@@ -44,7 +44,7 @@ OUTPUT_FILE = "nms_kmem_mil_notams_output.json"
 
 # Production default: do not silently bypass TLS verification.
 # This legacy opt-in applies only to the portable non-Windows urllib fallback.
-# Both Windows transports always use verified TLS and fail closed on certificate
+# All Windows transports always use verified TLS and fail closed on certificate
 # or TLS errors.
 ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
     "NMS_ALLOW_INSECURE_SSL_FALLBACK",
@@ -79,6 +79,10 @@ TRANSPORT_TREE_KILL_TIMEOUT_SECONDS = 5
 POWERSHELL_TOTAL_TIMEOUT_SECONDS = 25
 POWERSHELL_PROCESS_TIMEOUT_SECONDS = 30
 POWERSHELL_MAX_RETRIES = 2
+PYTHON_CHILD_TOTAL_TIMEOUT_SECONDS = 25
+PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS = 30
+PYTHON_CHILD_MAX_RETRIES = 2
+PYTHON_CHILD_RESPONSE_LIMIT_BYTES = 32 * 1024 * 1024
 LAST_HTTP_TRANSPORT = "NOT_USED"
 LAST_PROCESS_BOUNDARY = "NOT_USED"
 SAFE_FAILURE_CATEGORIES = {
@@ -1050,13 +1054,19 @@ def run_powershell_attempt(powershell_path, method, url, headers=None, body=None
 def powershell_http_request(powershell_path, method, url, headers=None, body=None):
     """Use bounded verified-TLS Windows HttpClient attempts and fail closed."""
     for attempt in range(1, POWERSHELL_MAX_RETRIES + 1):
-        result = run_powershell_attempt(
-            powershell_path,
-            method,
-            url,
-            headers,
-            body,
-        )
+        try:
+            result = run_powershell_attempt(
+                powershell_path,
+                method,
+                url,
+                headers,
+                body,
+            )
+        except OSError as error:
+            raise NmsTransportError(
+                "NMS PowerShell HTTP request failed "
+                "(process launch error): no diagnostic text"
+            ) from error
         if curl_result_is_success(result):
             return result["body"]
 
@@ -1074,11 +1084,326 @@ def powershell_http_request(powershell_path, method, url, headers=None, body=Non
             time.sleep(wait)
             continue
 
+        # PowerShell's own script maps network/TLS/timeouts to deliberate exit
+        # codes. Only command-line compatibility (the PRIMARY's observed exit
+        # 2) or a successful process with malformed framing may cross again.
+        # Exhausted timeouts and every security/HTTP failure remain terminal.
+        powershell_compatibility_failure = (
+            result.get("returncode") == 2 and result.get("status") is None
+        )
+        powershell_framing_failure = (
+            result.get("returncode") == 0
+            and not isinstance(result.get("status"), int)
+        )
+        if powershell_compatibility_failure or powershell_framing_failure:
+            raise NmsTransportError(
+                curl_failure_message(result).replace(
+                    "NMS curl",
+                    "NMS PowerShell HTTP",
+                )
+            )
+
         raise RuntimeError(
             curl_failure_message(result).replace("NMS curl", "NMS PowerShell HTTP")
         )
 
     raise RuntimeError("NMS PowerShell HTTP request failed after bounded retries.")
+
+
+PYTHON_CHILD_HTTP_SCRIPT = r"""
+import base64
+import http.client
+import json
+import re
+import socket
+import ssl
+import sys
+from urllib.parse import urlsplit
+
+STATUS_MARKER = __STATUS_MARKER__
+TOTAL_TIMEOUT_SECONDS = __TOTAL_TIMEOUT_SECONDS__
+RESPONSE_LIMIT_BYTES = __RESPONSE_LIMIT_BYTES__
+ALLOWED_HOST = "api-staging.cgifederal-aim.com"
+
+
+def fail(category, returncode):
+    # Emit a fixed credential-free enum, never exception/request text.
+    sys.stderr.write("NMS Python child error: " + category + "\n")
+    sys.stderr.flush()
+    raise SystemExit(returncode)
+
+
+try:
+    raw_request = sys.stdin.buffer.read(RESPONSE_LIMIT_BYTES + 1)
+    if len(raw_request) > RESPONSE_LIMIT_BYTES:
+        fail("REQUEST_TOO_LARGE", 1)
+    request = json.loads(raw_request.decode("utf-8"))
+    method = str(request.get("method") or "").strip().upper()
+    if method not in {"GET", "POST"}:
+        fail("INVALID_METHOD", 1)
+
+    parsed = urlsplit(str(request.get("url") or ""))
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.hostname is None
+        or parsed.hostname.lower() != ALLOWED_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+        or parsed.port not in (None, 443)
+    ):
+        fail("INVALID_DESTINATION", 1)
+
+    headers = request.get("headers") or {}
+    if not isinstance(headers, dict):
+        fail("INVALID_HEADERS", 1)
+    normalized_headers = {}
+    for raw_name, raw_value in headers.items():
+        name = str(raw_name).strip()
+        value = str(raw_value)
+        if (
+            not re.fullmatch(r"[A-Za-z0-9!#$%&'*+.^_`|~-]+", name)
+            or any(character in value for character in ("\x00", "\r", "\n"))
+            or name.casefold() in {
+                "connection",
+                "content-length",
+                "host",
+                "proxy-authorization",
+                "transfer-encoding",
+            }
+        ):
+            fail("INVALID_HEADERS", 1)
+        normalized_headers[name] = value
+
+    has_body = bool(request.get("hasBody"))
+    body = base64.b64decode(
+        str(request.get("bodyBase64") or ""),
+        validate=True,
+    ) if has_body else None
+    if body is not None and body != b"grant_type=client_credentials":
+        fail("INVALID_BODY", 1)
+
+    context = ssl.create_default_context()
+    context.check_hostname = True
+    context.verify_mode = ssl.CERT_REQUIRED
+    if hasattr(ssl, "TLSVersion"):
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+    target = parsed.path or "/"
+    if parsed.query:
+        target += "?" + parsed.query
+    connection = http.client.HTTPSConnection(
+        parsed.hostname,
+        port=parsed.port or 443,
+        timeout=TOTAL_TIMEOUT_SECONDS,
+        context=context,
+    )
+    try:
+        connection.request(method, target, body=body, headers=normalized_headers)
+        response = connection.getresponse()
+        response_body = response.read(RESPONSE_LIMIT_BYTES + 1)
+        if len(response_body) > RESPONSE_LIMIT_BYTES:
+            fail("RESPONSE_TOO_LARGE", 1)
+        status = int(response.status)
+    finally:
+        connection.close()
+
+    output = sys.stdout.buffer
+    if response_body:
+        output.write(response_body)
+    output.write(("\n" + STATUS_MARKER + "%03d\n" % status).encode("ascii"))
+    output.flush()
+except SystemExit:
+    raise
+except ssl.SSLCertVerificationError:
+    fail("TLS_CERTIFICATE", 60)
+except ssl.SSLError:
+    fail("TLS_SECURITY", 35)
+except (socket.timeout, TimeoutError):
+    fail("TIMEOUT", 28)
+except socket.gaierror:
+    fail("DNS", 6)
+except (ConnectionError, OSError):
+    fail("CONNECTION", 7)
+except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+    fail("INVALID_REQUEST", 1)
+except BaseException:
+    fail("UNCLASSIFIED", 1)
+"""
+
+
+def current_python_executable_path():
+    """Resolve this runtime's pinned launcher without consulting PATH."""
+    candidate = os.path.realpath(sys.executable)
+    if os.path.isabs(candidate) and os.path.isfile(candidate):
+        return candidate
+    raise OSError("current Python interpreter has no pinned absolute launcher")
+
+
+def python_child_request_command():
+    """Build an isolated command using only this runtime's pinned launcher."""
+    python_path = current_python_executable_path()
+    child_script = (
+        PYTHON_CHILD_HTTP_SCRIPT
+        .replace("__STATUS_MARKER__", repr(CURL_HTTP_STATUS_MARKER))
+        .replace(
+            "__TOTAL_TIMEOUT_SECONDS__",
+            repr(PYTHON_CHILD_TOTAL_TIMEOUT_SECONDS),
+        )
+        .replace(
+            "__RESPONSE_LIMIT_BYTES__",
+            repr(PYTHON_CHILD_RESPONSE_LIMIT_BYTES),
+        )
+    )
+    return [python_path, "-I", "-u", "-c", child_script]
+
+
+def _python_child_body_alias(body, data):
+    """Resolve the urllib-style data alias without accepting ambiguity."""
+    if data is None:
+        return body
+    if body is not None:
+        body_bytes = body if isinstance(body, bytes) else str(body).encode("utf-8")
+        data_bytes = data if isinstance(data, bytes) else str(data).encode("utf-8")
+        if body_bytes != data_bytes:
+            raise ValueError("body and data specify different request payloads")
+    return data
+
+
+def python_child_request_stdin(
+    method,
+    url,
+    headers=None,
+    body=None,
+    *,
+    data=None,
+):
+    """Serialize one validated NMS request only to isolated child stdin."""
+    body = _python_child_body_alias(body, data)
+    normalized_method = str(method or "GET").strip().upper()
+    if normalized_method not in {"GET", "POST"}:
+        raise ValueError("invalid HTTP method")
+    if not str(url).lower().startswith("https://"):
+        raise ValueError("NMS Python child transport requires HTTPS")
+
+    body_bytes = None
+    if body is not None:
+        body_bytes = body if isinstance(body, bytes) else str(body).encode("utf-8")
+        if body_bytes != b"grant_type=client_credentials":
+            raise ValueError("unexpected NMS Python child request body")
+
+    payload = {
+        "method": normalized_method,
+        "url": str(url),
+        "headers": validated_http_headers(headers),
+        "hasBody": body_bytes is not None,
+        "bodyBase64": base64.b64encode(body_bytes or b"").decode("ascii"),
+    }
+    return json.dumps(payload, separators=(",", ":")).encode("utf-8")
+
+
+def run_python_child_attempt(
+    method,
+    url,
+    headers=None,
+    body=None,
+    *,
+    data=None,
+):
+    """Run one hard-bounded verified-TLS request in an isolated Python child."""
+    command = python_child_request_command()
+    request_input = python_child_request_stdin(
+        method,
+        url,
+        headers,
+        body,
+        data=data,
+    )
+    child_environment = os.environ.copy()
+    for name in tuple(child_environment):
+        normalized_name = name.upper()
+        if normalized_name in {"NMS_CLIENT_ID", "NMS_CLIENT_SECRET"} or normalized_name.startswith("PYTHON"):
+            child_environment.pop(name, None)
+
+    try:
+        completed = run_bounded_transport_process(
+            command,
+            input=request_input,
+            timeout=PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS,
+            env=child_environment,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "returncode": 28,
+            "status": None,
+            "body": b"",
+            "diagnostic": "Python child HTTP process exceeded its hard timeout",
+        }
+
+    status, response_body = split_curl_response(completed.stdout)
+    return {
+        "returncode": completed.returncode,
+        "status": status,
+        "body": response_body,
+        "diagnostic": curl_diagnostics(completed.stderr, headers),
+        "httpBodyDiagnostic": (
+            curl_http_body_diagnostic(response_body, headers)
+            if completed.returncode == 0 and status is not None
+            else ""
+        ),
+    }
+
+
+def python_child_http_request(
+    method,
+    url,
+    headers=None,
+    body=None,
+    timeout=45,
+    *,
+    data=None,
+):
+    """Use the isolated verified-TLS Python child as the final Windows path."""
+    del timeout  # The child/native and parent-enforced limits are fixed safety caps.
+    body = _python_child_body_alias(body, data)
+    for attempt in range(1, PYTHON_CHILD_MAX_RETRIES + 1):
+        try:
+            result = run_python_child_attempt(
+                method,
+                url,
+                headers,
+                body,
+            )
+        except OSError as error:
+            raise RuntimeError(
+                "NMS Python child request failed "
+                "(process launch error): no diagnostic text"
+            ) from error
+        if curl_result_is_success(result):
+            return result["body"]
+
+        transient = (
+            result.get("status") in TRANSIENT_HTTP_STATUS_CODES
+            or result.get("returncode") in {6, 7, 28}
+        )
+        if transient and attempt < PYTHON_CHILD_MAX_RETRIES:
+            wait = retry_wait_seconds(attempt)
+            print(
+                "Transient NMS Python child HTTP failure "
+                f"(attempt {attempt}/{PYTHON_CHILD_MAX_RETRIES}). "
+                f"Waiting {wait:.1f} sec then retrying..."
+            )
+            time.sleep(wait)
+            continue
+
+        raise RuntimeError(
+            curl_failure_message(result).replace(
+                "NMS curl",
+                "NMS Python child HTTP",
+            )
+        )
+
+    raise RuntimeError("NMS Python child HTTP request failed after bounded retries.")
 
 
 def record_http_transport(name):
@@ -1089,7 +1414,7 @@ def record_http_transport(name):
 
 
 def http_request(method, url, headers=None, body=None, timeout=45):
-    """Select a bounded trusted Windows transport, then portable urllib."""
+    """Select bounded verified Windows transports, then portable urllib."""
     curl_path = windows_curl_path()
     if curl_path:
         record_http_transport("WINDOWS_CURL")
@@ -1097,11 +1422,29 @@ def http_request(method, url, headers=None, body=None, timeout=45):
             return curl_http_request(curl_path, method, url, headers, body)
         except NmsTransportError:
             powershell_path = windows_powershell_path()
-            if not powershell_path:
-                raise
-            record_http_transport("WINDOWS_CURL_TO_POWERSHELL")
-            return powershell_http_request(
-                powershell_path,
+            if powershell_path:
+                record_http_transport("WINDOWS_CURL_TO_POWERSHELL")
+                try:
+                    return powershell_http_request(
+                        powershell_path,
+                        method,
+                        url,
+                        headers,
+                        body,
+                    )
+                except NmsTransportError:
+                    record_http_transport(
+                        "WINDOWS_CURL_TO_POWERSHELL_TO_PYTHON"
+                    )
+                    return python_child_http_request(
+                        method,
+                        url,
+                        headers,
+                        body,
+                    )
+
+            record_http_transport("WINDOWS_CURL_TO_PYTHON")
+            return python_child_http_request(
                 method,
                 url,
                 headers,
@@ -1111,20 +1454,26 @@ def http_request(method, url, headers=None, body=None, timeout=45):
     powershell_path = windows_powershell_path()
     if powershell_path:
         record_http_transport("WINDOWS_POWERSHELL")
-        return powershell_http_request(
-            powershell_path,
-            method,
-            url,
-            headers,
-            body,
-        )
+        try:
+            return powershell_http_request(
+                powershell_path,
+                method,
+                url,
+                headers,
+                body,
+            )
+        except NmsTransportError:
+            record_http_transport("WINDOWS_POWERSHELL_TO_PYTHON")
+            return python_child_http_request(
+                method,
+                url,
+                headers,
+                body,
+            )
 
     if os.name == "nt":
-        record_http_transport("WINDOWS_NO_TRUSTED_TRANSPORT")
-        raise RuntimeError(
-            "NMS requires pinned System32 curl.exe or Windows PowerShell; "
-            "the urllib fallback is disabled on Windows."
-        )
+        record_http_transport("WINDOWS_PYTHON")
+        return python_child_http_request(method, url, headers, body)
 
     record_http_transport("PORTABLE_URLLIB")
     return urllib_http_request(method, url, headers, body, timeout)

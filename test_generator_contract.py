@@ -562,6 +562,10 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             "WINDOWS_CURL",
             "WINDOWS_POWERSHELL",
             "WINDOWS_CURL_TO_POWERSHELL",
+            "WINDOWS_CURL_TO_POWERSHELL_TO_PYTHON",
+            "WINDOWS_POWERSHELL_TO_PYTHON",
+            "WINDOWS_CURL_TO_PYTHON",
+            "WINDOWS_PYTHON",
             "PORTABLE_URLLIB",
         ):
             with self.subTest(transport=transport):
@@ -1555,6 +1559,305 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     ],
                 )
 
+    def test_curl_and_powershell_compatibility_failures_reach_python_child(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        authorization = "Bearer third-transport-secret"
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+            mock.patch.object(
+                nms,
+                "windows_powershell_path",
+                return_value=powershell_path,
+            ),
+            mock.patch.object(
+                nms,
+                "curl_http_request",
+                side_effect=nms.NmsTransportError("curl framing incompatible"),
+            ) as curl,
+            mock.patch.object(
+                nms,
+                "powershell_http_request",
+                side_effect=nms.NmsTransportError("PowerShell process incompatible"),
+            ) as powershell,
+            mock.patch.object(
+                nms,
+                "python_child_http_request",
+                return_value=b'{"status":"Success"}',
+            ) as python_child,
+            mock.patch("builtins.print") as output,
+        ):
+            result = nms.http_request(
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                {"Authorization": authorization},
+            )
+
+        self.assertEqual(result, b'{"status":"Success"}')
+        curl.assert_called_once()
+        powershell.assert_called_once()
+        python_child.assert_called_once_with(
+            "GET",
+            "https://nms.example.test/notams?location=KMEM",
+            {"Authorization": authorization},
+            None,
+        )
+        self.assertEqual(
+            output.call_args_list,
+            [
+                mock.call("NMS HTTP transport: WINDOWS_CURL"),
+                mock.call("NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL"),
+                mock.call(
+                    "NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL_TO_PYTHON"
+                ),
+            ],
+        )
+
+    def test_windows_transport_compatibility_routes_to_python_child(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        cases = (
+            (self.CURL_PATH, None, "WINDOWS_CURL_TO_PYTHON"),
+            (None, powershell_path, "WINDOWS_POWERSHELL_TO_PYTHON"),
+            (None, None, "WINDOWS_PYTHON"),
+        )
+        for curl_path, ps_path, expected_transport in cases:
+            with self.subTest(expected_transport=expected_transport):
+                with (
+                    mock.patch.object(nms.os, "name", "nt"),
+                    mock.patch.object(nms, "windows_curl_path", return_value=curl_path),
+                    mock.patch.object(
+                        nms,
+                        "windows_powershell_path",
+                        return_value=ps_path,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "curl_http_request",
+                        side_effect=nms.NmsTransportError("curl unavailable"),
+                    ) as curl,
+                    mock.patch.object(
+                        nms,
+                        "powershell_http_request",
+                        side_effect=nms.NmsTransportError("PowerShell unavailable"),
+                    ) as powershell,
+                    mock.patch.object(
+                        nms,
+                        "python_child_http_request",
+                        return_value=b"python child response",
+                    ) as python_child,
+                    mock.patch("builtins.print") as output,
+                ):
+                    result = nms.http_request(
+                        "GET",
+                        "https://nms.example.test/notams?location=KMEM",
+                        {"Authorization": "Bearer token"},
+                    )
+
+                self.assertEqual(result, b"python child response")
+                python_child.assert_called_once()
+                self.assertEqual(
+                    output.call_args_list[-1],
+                    mock.call(f"NMS HTTP transport: {expected_transport}"),
+                )
+                self.assertEqual(curl.call_count, int(curl_path is not None))
+                self.assertEqual(powershell.call_count, int(ps_path is not None))
+
+    def test_completed_http_and_tls_failures_never_replay_on_python_child(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        cases = (
+            (RuntimeError("NMS curl request failed (HTTP 401)"), True),
+            (RuntimeError("NMS curl request failed (TLS certificate trust)"), True),
+            (RuntimeError("NMS PowerShell HTTP request failed (HTTP 503)"), False),
+            (RuntimeError("NMS PowerShell HTTP request failed (TLS trust)"), False),
+        )
+        for failure, use_curl in cases:
+            with self.subTest(failure=str(failure)):
+                with (
+                    mock.patch.object(
+                        nms,
+                        "windows_curl_path",
+                        return_value=self.CURL_PATH if use_curl else None,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "windows_powershell_path",
+                        return_value=powershell_path,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "curl_http_request",
+                        side_effect=failure,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "powershell_http_request",
+                        side_effect=failure,
+                    ),
+                    mock.patch.object(nms, "python_child_http_request") as python_child,
+                    mock.patch("builtins.print"),
+                ):
+                    with self.assertRaisesRegex(RuntimeError, re.escape(str(failure))):
+                        nms.http_request(
+                            "GET",
+                            "https://nms.example.test/notams?location=KMEM",
+                            {"Authorization": "Bearer token"},
+                        )
+
+                python_child.assert_not_called()
+
+    def test_raw_powershell_tls_failure_is_terminal_and_safely_classified(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        tls_failure = subprocess.CompletedProcess(
+            [powershell_path],
+            1,
+            b"",
+            b"The SSL connection could not be established: certificate trust failed",
+        )
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=None),
+            mock.patch.object(
+                nms,
+                "windows_powershell_path",
+                return_value=powershell_path,
+            ),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=tls_failure,
+            ) as run,
+            mock.patch.object(nms, "python_child_http_request") as python_child,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "certificate trust") as raised:
+                nms.http_request(
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+
+        self.assertEqual(run.call_count, 1)
+        python_child.assert_not_called()
+        self.assertNotIsInstance(raised.exception, nms.NmsTransportError)
+        self.assertEqual(nms.helper_failure_category(raised.exception), "TLS_SECURITY")
+
+    def test_raw_powershell_exit_two_is_a_typed_compatibility_failure(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        compatibility_failure = subprocess.CompletedProcess(
+            [powershell_path],
+            2,
+            b"",
+            b"command-line compatibility failure",
+        )
+        with (
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=compatibility_failure,
+            ) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(nms.NmsTransportError, "curl exit 2"):
+                nms.powershell_http_request(
+                    powershell_path,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_python_child_is_pinned_isolated_and_keeps_secrets_off_argv_and_env(self):
+        authorization = "Bearer python-child-sensitive-token"
+        client_id = "python-child-sensitive-id"
+        client_secret = "python-child-sensitive-secret"
+        with (
+            mock.patch.dict(
+                os.environ,
+                {
+                    "NMS_CLIENT_ID": client_id,
+                    "NMS_CLIENT_SECRET": client_secret,
+                },
+                clear=False,
+            ),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=_curl_completed(body=b'{"status":"Success"}'),
+            ) as run,
+        ):
+            result = nms.python_child_http_request(
+                "POST",
+                "https://nms.example.test/token",
+                headers={
+                    "Authorization": authorization,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                data=b"grant_type=client_credentials",
+            )
+
+        self.assertEqual(result, b'{"status":"Success"}')
+        command = run.call_args.args[0]
+        kwargs = run.call_args.kwargs
+        self.assertEqual(
+            os.path.normcase(command[0]),
+            os.path.normcase(nms.current_python_executable_path()),
+        )
+        self.assertIn("-I", command)
+        self.assertIn("-u", command)
+        self.assertEqual(kwargs["timeout"], nms.PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS)
+        request = json.loads(kwargs["input"].decode("utf-8"))
+        self.assertEqual(request["headers"]["Authorization"], authorization)
+        self.assertNotIn("NMS_CLIENT_ID", kwargs["env"])
+        self.assertNotIn("NMS_CLIENT_SECRET", kwargs["env"])
+        serialized_argv = repr(command)
+        serialized_environment = repr(kwargs["env"])
+        for secret in (authorization, client_id, client_secret):
+            self.assertNotIn(secret, serialized_argv)
+            self.assertNotIn(secret, serialized_environment)
+
+        child_script = command[command.index("-c") + 1]
+        self.assertIn("ssl.create_default_context", child_script)
+        self.assertNotIn("_create_unverified_context", child_script)
+
+    def test_python_child_timeout_retry_is_bounded(self):
+        expired = subprocess.TimeoutExpired(
+            [sys.executable],
+            nms.PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS,
+        )
+        with (
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                side_effect=[expired, expired],
+            ) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "hard timeout"):
+                nms.python_child_http_request(
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+
+        self.assertEqual(run.call_count, nms.PYTHON_CHILD_MAX_RETRIES)
+        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+        self.assertTrue(
+            all(
+                call.kwargs["timeout"] == nms.PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS
+                for call in run.call_args_list
+            )
+        )
+
     def test_curl_tls_and_certificate_failures_never_cross_transports(self):
         powershell_path = (
             r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -1785,7 +2088,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertLess(elapsed, 3.0)
         self.assertFalse(sentinel.exists())
 
-    def test_curl_hard_timeout_and_powershell_fallback_fit_parent_timeout(self):
+    def test_transport_fallback_budget_fits_parent_timeout(self):
         expired = subprocess.TimeoutExpired([self.CURL_PATH], nms.CURL_PROCESS_TIMEOUT_SECONDS)
         with (
             mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
@@ -1811,30 +2114,41 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         sleep.assert_not_called()
 
         # The helper makes exactly two HTTP calls: token plus one bulk location
-        # request. In the slowest mixed path each curl request fails once, then
-        # PowerShell makes its bounded retry. Even including two bounded tree-kill
-        # attempts, the helper finishes before the parent's five-minute deadline.
+        # request. A hard PowerShell timeout remains terminal, so the longest
+        # route which is permitted to reach Python consists of one completed
+        # curl compatibility failure, one completed PowerShell compatibility
+        # failure, and Python's bounded retries. Completed compatibility exits
+        # do not incur timeout tree-kill budgets; Python hard timeouts do.
         hard_attempt_budget = (
-            nms.CURL_PROCESS_TIMEOUT_SECONDS
+            nms.PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS
             + (2 * nms.TRANSPORT_TREE_KILL_TIMEOUT_SECONDS)
             + nms.TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS
         )
-        powershell_request_budget = (
-            nms.POWERSHELL_MAX_RETRIES * hard_attempt_budget
+        python_request_budget = (
+            nms.PYTHON_CHILD_MAX_RETRIES * hard_attempt_budget
             + sum(
                 nms.retry_wait_seconds(attempt)
-                for attempt in range(1, nms.POWERSHELL_MAX_RETRIES)
+                for attempt in range(1, nms.PYTHON_CHILD_MAX_RETRIES)
             )
         )
-        per_request_budget = hard_attempt_budget + powershell_request_budget
+        per_request_budget = (
+            nms.CURL_PROCESS_TIMEOUT_SECONDS
+            + nms.POWERSHELL_PROCESS_TIMEOUT_SECONDS
+            + python_request_budget
+        )
         helper_budget = (2 * per_request_budget) + nms.REQUEST_DELAY_SECONDS
         self.assertLess(helper_budget, updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS)
 
-    def test_missing_trusted_windows_transports_fails_without_urllib(self):
+    def test_missing_windows_tools_uses_pinned_python_child_not_parent_urllib(self):
         with (
             mock.patch.object(nms.os, "name", "nt"),
             mock.patch.object(nms, "windows_curl_path", return_value=None),
             mock.patch.object(nms, "windows_powershell_path", return_value=None),
+            mock.patch.object(
+                nms,
+                "python_child_http_request",
+                return_value=b"python child response",
+            ) as python_child,
             mock.patch.object(
                 nms,
                 "urllib_http_request",
@@ -1842,17 +2156,23 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             ) as fallback,
             mock.patch("builtins.print") as output,
         ):
-            with self.assertRaisesRegex(RuntimeError, "urllib fallback is disabled"):
-                nms.http_request(
-                    "GET",
-                    "https://nms.example.test/notams?location=KMEM",
-                    headers={"Authorization": "Bearer token"},
-                    timeout=9,
-                )
+            result = nms.http_request(
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                headers={"Authorization": "Bearer token"},
+                timeout=9,
+            )
 
+        self.assertEqual(result, b"python child response")
+        python_child.assert_called_once_with(
+            "GET",
+            "https://nms.example.test/notams?location=KMEM",
+            {"Authorization": "Bearer token"},
+            None,
+        )
         fallback.assert_not_called()
         output.assert_called_once_with(
-            "NMS HTTP transport: WINDOWS_NO_TRUSTED_TRANSPORT"
+            "NMS HTTP transport: WINDOWS_PYTHON"
         )
 
     def test_non_windows_keeps_existing_portable_urllib_fallback(self):
