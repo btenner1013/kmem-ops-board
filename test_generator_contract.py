@@ -40,6 +40,11 @@ def _http_response(body=b"ok"):
     return response
 
 
+def _curl_completed(returncode=0, status=200, body=b"ok", diagnostic=b""):
+    stderr = diagnostic + f"\n{nms.CURL_HTTP_STATUS_MARKER}{status:03d}\n".encode("ascii")
+    return subprocess.CompletedProcess(["curl.exe"], returncode, body, stderr)
+
+
 def _aixm_record(classification, number, text, *, updated="2026-09-07T06:25:00Z"):
     number_markup = ""
     simple_number = number
@@ -737,7 +742,410 @@ class NmsBulkLocationTests(unittest.TestCase):
                     nms.build_bulk_notam_result(response)
 
 
-class NmsHttpRetryTests(unittest.TestCase):
+class NmsWindowsCurlTransportTests(unittest.TestCase):
+    CURL_PATH = r"C:\Windows\System32\curl.exe"
+
+    def test_curl_success_uses_bounded_https_transport_and_stdin_authorization(self):
+        authorization = "Bearer test-sensitive-token"
+        with (
+            mock.patch.dict(
+                os.environ,
+                {
+                    "NMS_CLIENT_ID": "test-sensitive-id",
+                    "NMS_CLIENT_SECRET": "test-sensitive-secret",
+                },
+                clear=False,
+            ),
+            mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+            mock.patch.object(
+                nms.subprocess,
+                "run",
+                return_value=_curl_completed(body=b'{"status":"Success"}'),
+            ) as run,
+            mock.patch("builtins.print") as output,
+        ):
+            result = nms.http_request(
+                "POST",
+                "https://nms.example.test/token",
+                headers={
+                    "Authorization": authorization,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body=b"grant_type=client_credentials",
+            )
+
+        self.assertEqual(result, b'{"status":"Success"}')
+        command = run.call_args.args[0]
+        kwargs = run.call_args.kwargs
+        self.assertEqual(command[:2], [self.CURL_PATH, "--disable"])
+        self.assertIn("--proto", command)
+        self.assertEqual(command[command.index("--proto") + 1], "=https")
+        self.assertEqual(
+            command[command.index("--connect-timeout") + 1],
+            str(nms.CURL_CONNECT_TIMEOUT_SECONDS),
+        )
+        self.assertEqual(
+            command[command.index("--max-time") + 1],
+            str(nms.CURL_TOTAL_TIMEOUT_SECONDS),
+        )
+        self.assertEqual(command[command.index("--header") + 1], "@-")
+        self.assertNotIn("--insecure", command)
+        self.assertFalse(kwargs["shell"])
+        self.assertEqual(kwargs["timeout"], nms.CURL_PROCESS_TIMEOUT_SECONDS)
+        self.assertIn(authorization.encode("utf-8"), kwargs["input"])
+        self.assertNotIn("NMS_CLIENT_ID", kwargs["env"])
+        self.assertNotIn("NMS_CLIENT_SECRET", kwargs["env"])
+
+        serialized_argv = repr(command)
+        serialized_environment = repr(kwargs["env"])
+        for secret in (
+            authorization,
+            "test-sensitive-id",
+            "test-sensitive-secret",
+        ):
+            self.assertNotIn(secret, serialized_argv)
+            self.assertNotIn(secret, serialized_environment)
+        output.assert_not_called()
+
+    def test_all_transient_curl_http_statuses_retry_once_then_succeed(self):
+        for status in sorted(nms.TRANSIENT_HTTP_STATUS_CODES):
+            with self.subTest(status=status):
+                with (
+                    mock.patch.object(
+                        nms.subprocess,
+                        "run",
+                        side_effect=[
+                            _curl_completed(0, status, body=b"temporary response"),
+                            _curl_completed(body=b"recovered"),
+                        ],
+                    ) as run,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                    mock.patch("builtins.print"),
+                ):
+                    result = nms.curl_http_request(
+                        self.CURL_PATH,
+                        "GET",
+                        "https://nms.example.test/notams?location=KMEM",
+                        {"Authorization": "Bearer token"},
+                    )
+
+                self.assertEqual(result, b"recovered")
+                self.assertEqual(run.call_count, 2)
+                sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+
+    def test_exhausted_curl_503_is_bounded_and_retains_response_body(self):
+        failures = [
+            _curl_completed(0, 503, body=b"NMS temporarily unavailable")
+            for _ in range(nms.CURL_MAX_RETRIES)
+        ]
+        with (
+            mock.patch.object(nms.subprocess, "run", side_effect=failures) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "HTTP 503") as raised:
+                nms.curl_http_request(
+                    self.CURL_PATH,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+
+        self.assertEqual(run.call_count, nms.CURL_MAX_RETRIES)
+        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+        self.assertIn("NMS temporarily unavailable", str(raised.exception))
+
+    def test_curl_never_uses_insecure_even_when_urllib_opt_in_is_enabled(self):
+        authorization = "Bearer do-not-log-this-token"
+        with (
+            mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", True),
+            mock.patch.object(
+                nms.subprocess,
+                "run",
+                return_value=_curl_completed(
+                    60,
+                    0,
+                    diagnostic=("certificate error " + authorization).encode("utf-8"),
+                ),
+            ) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "curl exit 60") as raised:
+                nms.curl_http_request(
+                    self.CURL_PATH,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": authorization},
+                )
+
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
+        self.assertNotIn("--insecure", run.call_args.args[0])
+        self.assertNotIn(authorization, str(raised.exception))
+        self.assertIn("[REDACTED]", str(raised.exception))
+
+    def test_nontransient_401_fails_once_with_bounded_redacted_body(self):
+        authorization = "Bearer response-secret"
+        response_body = (
+            ("x" * (nms.CURL_DIAGNOSTIC_LIMIT + 50))
+            + " reflected="
+            + authorization
+        ).encode("utf-8")
+        with (
+            mock.patch.object(
+                nms.subprocess,
+                "run",
+                return_value=_curl_completed(0, 401, body=response_body),
+            ) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "HTTP 401") as raised:
+                nms.curl_http_request(
+                    self.CURL_PATH,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": authorization},
+                )
+
+        message = str(raised.exception)
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
+        self.assertNotIn(authorization, message)
+        self.assertIn("[REDACTED]", message)
+        self.assertLessEqual(len(message), nms.CURL_DIAGNOSTIC_LIMIT + 100)
+
+    def test_http_error_body_redacts_bare_bearer_and_basic_payloads(self):
+        cases = (
+            ("Bearer bare-bearer-token-value", "bare-bearer-token-value"),
+            ("Basic dGVzdC1pZDp0ZXN0LXNlY3JldA==", "dGVzdC1pZDp0ZXN0LXNlY3JldA=="),
+        )
+        for authorization, bare_payload in cases:
+            with self.subTest(scheme=authorization.split()[0]):
+                response_body = f"server echoed credential={bare_payload}".encode("utf-8")
+                with mock.patch.object(
+                    nms.subprocess,
+                    "run",
+                    return_value=_curl_completed(0, 401, body=response_body),
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "HTTP 401") as raised:
+                        nms.curl_http_request(
+                            self.CURL_PATH,
+                            "GET",
+                            "https://nms.example.test/notams?location=KMEM",
+                            {"Authorization": authorization},
+                        )
+
+                message = str(raised.exception)
+                self.assertNotIn(authorization, message)
+                self.assertNotIn(bare_payload, message)
+                self.assertIn("[REDACTED]", message)
+                stderr_diagnostic = nms.curl_diagnostics(
+                    f"curl echoed credential={bare_payload}".encode("utf-8"),
+                    {"Authorization": authorization},
+                )
+                self.assertNotIn(bare_payload, stderr_diagnostic)
+                self.assertIn("[REDACTED]", stderr_diagnostic)
+
+    def test_missing_or_malformed_status_marker_fails_closed_once(self):
+        malformed_stderr_values = (
+            b"",
+            b"NMS_CURL_HTTP_STATUS:not-a-number\n",
+            b"NMS_CURL_HTTP_STATUS:200\ntrailing-data",
+        )
+        for stderr in malformed_stderr_values:
+            with self.subTest(stderr=stderr):
+                completed = subprocess.CompletedProcess(
+                    [self.CURL_PATH],
+                    0,
+                    b"must not be returned",
+                    stderr,
+                )
+                with (
+                    mock.patch.object(nms.subprocess, "run", return_value=completed) as run,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "missing HTTP status"):
+                        nms.curl_http_request(
+                            self.CURL_PATH,
+                            "GET",
+                            "https://nms.example.test/notams?location=KMEM",
+                            {"Authorization": "Bearer token"},
+                        )
+                self.assertEqual(run.call_count, 1)
+                sleep.assert_not_called()
+
+    def test_status_000_fails_closed_once(self):
+        with (
+            mock.patch.object(
+                nms.subprocess,
+                "run",
+                return_value=_curl_completed(0, 0, body=b"not an HTTP response"),
+            ) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "HTTP 000"):
+                nms.curl_http_request(
+                    self.CURL_PATH,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_partial_stdout_from_transport_error_is_discarded(self):
+        partial = b"partial response must never be published"
+        failures = [
+            _curl_completed(28, 0, body=partial, diagnostic=b"operation timed out")
+            for _ in range(nms.CURL_MAX_RETRIES)
+        ]
+        with (
+            mock.patch.object(nms.subprocess, "run", side_effect=failures),
+            mock.patch.object(nms.time, "sleep"),
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "curl exit 28") as raised:
+                nms.curl_http_request(
+                    self.CURL_PATH,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+        self.assertNotIn(partial.decode("ascii"), str(raised.exception))
+
+    def test_cr_or_lf_in_header_values_is_rejected_before_process_launch(self):
+        for injected in ("Bearer token\rInjected: yes", "Bearer token\nInjected: yes"):
+            with self.subTest(injected=repr(injected)):
+                with self.assertRaisesRegex(ValueError, "header value"):
+                    nms.curl_header_stdin({"Authorization": injected})
+
+    def test_system_curl_is_pinned_and_path_shadow_is_ignored(self):
+        expected = os.path.abspath(r"C:\Windows\System32\curl.exe")
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"SystemRoot": r"C:\Windows", "PATH": r"C:\untrusted-cwd"},
+                clear=True,
+            ),
+            mock.patch.object(
+                nms.os.path,
+                "isfile",
+                side_effect=lambda value: os.path.normcase(value) == os.path.normcase(expected),
+            ),
+        ):
+            self.assertEqual(nms.windows_curl_path(), expected)
+
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"SystemRoot": r"C:\Windows", "PATH": r"C:\untrusted-cwd"},
+                clear=True,
+            ),
+            mock.patch.object(nms.os.path, "isfile", return_value=False),
+        ):
+            self.assertIsNone(nms.windows_curl_path())
+
+    def test_sysnative_curl_is_preferred_for_redirected_32_bit_process(self):
+        expected = os.path.abspath(r"C:\Windows\Sysnative\curl.exe")
+        with (
+            mock.patch.dict(
+                os.environ,
+                {
+                    "SystemRoot": r"C:\Windows",
+                    "PROCESSOR_ARCHITEW6432": "AMD64",
+                },
+                clear=True,
+            ),
+            mock.patch.object(
+                nms.os.path,
+                "isfile",
+                side_effect=lambda value: os.path.normcase(value) == os.path.normcase(expected),
+            ),
+        ):
+            self.assertEqual(nms.windows_curl_path(), expected)
+
+    def test_curl_hard_timeout_retries_are_bounded_below_parent_timeout(self):
+        expired = subprocess.TimeoutExpired([self.CURL_PATH], nms.CURL_PROCESS_TIMEOUT_SECONDS)
+        with (
+            mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
+            mock.patch.object(nms.subprocess, "run", side_effect=[expired, expired]) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "hard timeout"):
+                nms.curl_http_request(
+                    self.CURL_PATH,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+
+        self.assertEqual(run.call_count, nms.CURL_MAX_RETRIES)
+        self.assertTrue(
+            all(
+                call.kwargs["timeout"] == nms.CURL_PROCESS_TIMEOUT_SECONDS
+                for call in run.call_args_list
+            )
+        )
+        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+
+        # The helper makes exactly two HTTP calls: token plus one bulk location
+        # request. Curl has no insecure second transport path.
+        per_request_budget = (
+            nms.CURL_MAX_RETRIES * nms.CURL_PROCESS_TIMEOUT_SECONDS
+            + sum(
+                nms.retry_wait_seconds(attempt)
+                for attempt in range(1, nms.CURL_MAX_RETRIES)
+            )
+        )
+        helper_budget = (2 * per_request_budget) + nms.REQUEST_DELAY_SECONDS
+        self.assertLess(helper_budget, updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS)
+
+    def test_missing_windows_curl_uses_existing_urllib_fallback(self):
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=None),
+            mock.patch.object(
+                nms,
+                "urllib_http_request",
+                return_value=b"urllib response",
+            ) as fallback,
+        ):
+            result = nms.http_request(
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                headers={"Authorization": "Bearer token"},
+                timeout=9,
+            )
+
+        self.assertEqual(result, b"urllib response")
+        fallback.assert_called_once_with(
+            "GET",
+            "https://nms.example.test/notams?location=KMEM",
+            {"Authorization": "Bearer token"},
+            None,
+            9,
+        )
+
+
+class NmsUrllibRetryTests(unittest.TestCase):
+    def test_fallback_timeout_is_capped_below_parent_process_budget(self):
+        with mock.patch.object(
+            nms,
+            "urlopen",
+            return_value=_http_response(b"bounded fallback"),
+        ) as urlopen:
+            result = nms.urllib_http_request(
+                "GET",
+                "https://nms.example.test/resource",
+                timeout=999,
+            )
+
+        self.assertEqual(result, b"bounded fallback")
+        self.assertEqual(
+            urlopen.call_args.kwargs["timeout"],
+            nms.URLLIB_TOTAL_TIMEOUT_SECONDS,
+        )
+
     def test_transient_http_statuses_retry_then_succeed_with_bounded_backoff(self):
         for status in (408, 425, 429, 500, 502, 503, 504):
             with self.subTest(status=status):
@@ -751,7 +1159,7 @@ class NmsHttpRetryTests(unittest.TestCase):
                     mock.patch.object(nms.time, "sleep") as sleep,
                     mock.patch("builtins.print"),
                 ):
-                    result = nms.http_request(
+                    result = nms.urllib_http_request(
                         "GET",
                         "https://nms.example.test/resource",
                         timeout=7,
@@ -773,7 +1181,7 @@ class NmsHttpRetryTests(unittest.TestCase):
             mock.patch("builtins.print"),
         ):
             with self.assertRaisesRegex(RuntimeError, "HTTP 503"):
-                nms.http_request("GET", "https://nms.example.test/resource")
+                nms.urllib_http_request("GET", "https://nms.example.test/resource")
 
         self.assertEqual(urlopen.call_count, nms.MAX_RETRIES)
         self.assertEqual(
@@ -801,7 +1209,7 @@ class NmsHttpRetryTests(unittest.TestCase):
                     mock.patch.object(nms.time, "sleep") as sleep,
                     mock.patch("builtins.print"),
                 ):
-                    result = nms.http_request(
+                    result = nms.urllib_http_request(
                         "GET",
                         "https://nms.example.test/resource",
                     )
@@ -825,7 +1233,7 @@ class NmsHttpRetryTests(unittest.TestCase):
                     mock.patch("builtins.print"),
                 ):
                     with self.assertRaises((URLError, TimeoutError, RuntimeError)):
-                        nms.http_request("GET", "https://nms.example.test/resource")
+                        nms.urllib_http_request("GET", "https://nms.example.test/resource")
 
                 self.assertEqual(urlopen.call_count, nms.MAX_RETRIES)
                 self.assertEqual(
@@ -845,7 +1253,7 @@ class NmsHttpRetryTests(unittest.TestCase):
                     mock.patch.object(nms.time, "sleep") as sleep,
                 ):
                     with self.assertRaisesRegex(RuntimeError, f"HTTP {status}"):
-                        nms.http_request("GET", "https://nms.example.test/resource")
+                        nms.urllib_http_request("GET", "https://nms.example.test/resource")
 
                 self.assertEqual(urlopen.call_count, 1)
                 sleep.assert_not_called()

@@ -6,7 +6,7 @@ Reads credentials from:
   NMS_CLIENT_ID
   NMS_CLIENT_SECRET
 
-Optional local-only testing override:
+Optional local-only urllib-fallback testing override (never used by curl):
   NMS_ALLOW_INSECURE_SSL_FALLBACK=1
 
 Run:
@@ -26,6 +26,7 @@ import json
 import os
 import re
 import ssl
+import subprocess
 import time
 from datetime import datetime, timezone
 from urllib.parse import urlencode
@@ -39,8 +40,8 @@ LOCATION = "KMEM"
 OUTPUT_FILE = "nms_kmem_mil_notams_output.json"
 
 # Production default: do not silently bypass TLS verification.
-# If a trusted/local Windows certificate issue blocks NMS staging during testing,
-# set NMS_ALLOW_INSECURE_SSL_FALLBACK=1 in nms_credentials_local.bat.
+# This legacy opt-in applies only to the no-curl urllib fallback. Windows curl
+# always uses verified TLS and fails closed on every certificate/TLS error.
 ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
     "NMS_ALLOW_INSECURE_SSL_FALLBACK",
     "0"
@@ -48,8 +49,23 @@ ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
 
 # NMS staging showed a rate limit around 1 request/sec.
 REQUEST_DELAY_SECONDS = 1.25
-MAX_RETRIES = 3
+MAX_RETRIES = 2
+URLLIB_TOTAL_TIMEOUT_SECONDS = 25
 TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
+
+# Windows production uses the OS curl transport because urllib can remain blocked
+# inside a socket call long enough to consume the updater's five-minute child
+# budget. Every curl process has both curl-native and parent-enforced limits.
+CURL_CONNECT_TIMEOUT_SECONDS = 8
+CURL_TOTAL_TIMEOUT_SECONDS = 25
+CURL_PROCESS_TIMEOUT_SECONDS = 30
+CURL_MAX_RETRIES = 2
+CURL_TRANSIENT_EXIT_CODES = {5, 6, 7, 18, 28, 52, 55, 56, 92, 95, 96}
+CURL_HTTP_STATUS_MARKER = "NMS_CURL_HTTP_STATUS:"
+CURL_STATUS_RE = re.compile(
+    r"(?:^|\r?\n)NMS_CURL_HTTP_STATUS:(\d{3})\r?\n?\Z"
+)
+CURL_DIAGNOSTIC_LIMIT = 1024
 
 BULK_CLASSIFICATION_ALIASES = {
     "DOM": "DOM",
@@ -107,8 +123,12 @@ def raise_or_retry_http_error(exc, attempt):
     raise RuntimeError(f"HTTP {exc.code}: {error_text}") from exc
 
 
-def http_request(method, url, headers=None, body=None, timeout=45):
+def urllib_http_request(method, url, headers=None, body=None, timeout=45):
+    """Portable verified-TLS fallback used when Windows curl is unavailable."""
     req = Request(url=url, data=body, headers=headers or {}, method=method)
+    timeout = min(float(timeout), URLLIB_TOTAL_TIMEOUT_SECONDS)
+    if timeout <= 0:
+        raise ValueError("urllib request timeout must be positive")
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -150,6 +170,220 @@ def http_request(method, url, headers=None, body=None, timeout=45):
             ) from request_error
 
     raise RuntimeError("Request failed after retries.")
+
+
+def windows_curl_path():
+    """Return only the trusted Windows system curl, never a PATH shadow."""
+    if os.name != "nt":
+        return None
+
+    system_root = os.environ.get("SystemRoot") or os.environ.get("WINDIR")
+    if not system_root or not os.path.isabs(system_root):
+        return None
+
+    system_root = os.path.abspath(system_root)
+    candidates = []
+    if os.environ.get("PROCESSOR_ARCHITEW6432"):
+        # A 32-bit Python process uses Sysnative to bypass System32 redirection.
+        candidates.append(os.path.join(system_root, "Sysnative", "curl.exe"))
+    candidates.append(os.path.join(system_root, "System32", "curl.exe"))
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def curl_header_stdin(headers=None):
+    """Build curl's stdin header file after rejecting header injection."""
+    lines = []
+    for name, value in (headers or {}).items():
+        header_name = str(name).strip()
+        header_value = str(value)
+        if not re.fullmatch(r"[A-Za-z0-9!#$%&'*+.^_`|~-]+", header_name):
+            raise ValueError("invalid HTTP header name")
+        if any(character in header_value for character in ("\x00", "\r", "\n")):
+            raise ValueError("invalid HTTP header value")
+        lines.append(f"{header_name}: {header_value}")
+    return (("\n".join(lines) + "\n") if lines else "").encode("utf-8")
+
+
+def curl_request_command(curl_path, method, url, body=None):
+    """Build a secret-free curl argv with explicit HTTPS and time limits."""
+    normalized_method = str(method or "GET").strip().upper()
+    if not re.fullmatch(r"[A-Z]+", normalized_method):
+        raise ValueError("invalid HTTP method")
+    if not str(url).lower().startswith("https://"):
+        raise ValueError("NMS curl transport requires HTTPS")
+
+    command = [
+        curl_path,
+        "--disable",
+        "--silent",
+        "--show-error",
+        "--proto",
+        "=https",
+        "--connect-timeout",
+        str(CURL_CONNECT_TIMEOUT_SECONDS),
+        "--max-time",
+        str(CURL_TOTAL_TIMEOUT_SECONDS),
+        "--request",
+        normalized_method,
+        "--url",
+        str(url),
+        "--write-out",
+        f"%{{stderr}}\\n{CURL_HTTP_STATUS_MARKER}%{{http_code}}\\n",
+        "--header",
+        "@-",
+    ]
+
+    if body is not None:
+        body_bytes = body if isinstance(body, bytes) else str(body).encode("utf-8")
+        if body_bytes != b"grant_type=client_credentials":
+            raise ValueError("unexpected NMS curl request body")
+        # This fixed OAuth grant declaration contains no credential material.
+        command.extend(["--data", "grant_type=client_credentials"])
+
+    return command
+
+
+def redact_authorization_diagnostics(text, headers=None):
+    """Redact full Authorization values and their Basic/Bearer payloads."""
+    secrets = set()
+    for name, value in (headers or {}).items():
+        if str(name).strip().lower() == "authorization" and value:
+            authorization = str(value).strip()
+            secrets.add(authorization)
+            match = re.fullmatch(r"(?:Basic|Bearer)\s+(.+)", authorization, re.IGNORECASE)
+            if match:
+                secrets.add(match.group(1).strip())
+
+    for secret in sorted(secrets, key=len, reverse=True):
+        if secret:
+            text = text.replace(secret, "[REDACTED]")
+    return text
+
+
+def curl_diagnostics(stderr, headers=None):
+    """Return bounded curl diagnostics with authorization values redacted."""
+    text = (stderr or b"").decode("utf-8", errors="backslashreplace")
+    text = CURL_STATUS_RE.sub("", text)
+    text = redact_authorization_diagnostics(text, headers)
+    return text.strip()[-CURL_DIAGNOSTIC_LIMIT:]
+
+
+def curl_http_body_diagnostic(body, headers=None):
+    """Return a bounded/redacted body from a completed non-success HTTP reply."""
+    text = (body or b"").decode("utf-8", errors="backslashreplace")
+    text = redact_authorization_diagnostics(text, headers)
+    return text.strip()[-CURL_DIAGNOSTIC_LIMIT:]
+
+
+def run_curl_attempt(curl_path, method, url, headers=None, body=None):
+    """Run one bounded curl process and return transport metadata."""
+    command = curl_request_command(curl_path, method, url, body)
+    header_input = curl_header_stdin(headers)
+    platform_options = {}
+    if os.name == "nt":
+        platform_options["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+    child_environment = os.environ.copy()
+    child_environment.pop("NMS_CLIENT_ID", None)
+    child_environment.pop("NMS_CLIENT_SECRET", None)
+
+    try:
+        completed = subprocess.run(
+            command,
+            input=header_input,
+            capture_output=True,
+            timeout=CURL_PROCESS_TIMEOUT_SECONDS,
+            check=False,
+            shell=False,
+            env=child_environment,
+            **platform_options,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "returncode": 28,
+            "status": None,
+            "body": b"",
+            "diagnostic": "curl process exceeded its hard timeout",
+        }
+
+    stderr = completed.stderr or b""
+    status_match = CURL_STATUS_RE.search(
+        stderr.decode("utf-8", errors="backslashreplace")
+    )
+    return {
+        "returncode": completed.returncode,
+        "status": int(status_match.group(1)) if status_match else None,
+        "body": completed.stdout or b"",
+        "diagnostic": curl_diagnostics(stderr, headers),
+        "httpBodyDiagnostic": (
+            curl_http_body_diagnostic(completed.stdout, headers)
+            if completed.returncode == 0 and status_match
+            else ""
+        ),
+    }
+
+
+def curl_result_is_success(result):
+    status = result.get("status")
+    return result.get("returncode") == 0 and status is not None and 200 <= status < 300
+
+
+def curl_result_is_transient(result):
+    status = result.get("status")
+    return (
+        status in TRANSIENT_HTTP_STATUS_CODES
+        or result.get("returncode") in CURL_TRANSIENT_EXIT_CODES
+    )
+
+
+def curl_failure_message(result):
+    status = result.get("status")
+    if result.get("returncode") != 0:
+        summary = f"curl exit {result.get('returncode')}"
+    elif status is not None:
+        summary = f"HTTP {status:03d}"
+    else:
+        summary = "missing HTTP status"
+    details = []
+    if result.get("diagnostic"):
+        details.append(result["diagnostic"])
+    if result.get("httpBodyDiagnostic"):
+        details.append(result["httpBodyDiagnostic"])
+    diagnostic = " | ".join(details) or "no diagnostic text"
+    return f"NMS curl request failed ({summary}): {diagnostic}"
+
+
+def curl_http_request(curl_path, method, url, headers=None, body=None):
+    """Use bounded verified-TLS Windows curl attempts and fail closed."""
+    for attempt in range(1, CURL_MAX_RETRIES + 1):
+        result = run_curl_attempt(curl_path, method, url, headers, body)
+        if curl_result_is_success(result):
+            return result["body"]
+
+        if curl_result_is_transient(result) and attempt < CURL_MAX_RETRIES:
+            wait = retry_wait_seconds(attempt)
+            print(
+                f"Transient NMS curl failure (attempt {attempt}/{CURL_MAX_RETRIES}). "
+                f"Waiting {wait:.1f} sec then retrying..."
+            )
+            time.sleep(wait)
+            continue
+
+        raise RuntimeError(curl_failure_message(result))
+
+    raise RuntimeError("NMS curl request failed after bounded retries.")
+
+
+def http_request(method, url, headers=None, body=None, timeout=45):
+    """Select bounded Windows curl, otherwise retain the urllib fallback."""
+    curl_path = windows_curl_path()
+    if curl_path:
+        return curl_http_request(curl_path, method, url, headers, body)
+    return urllib_http_request(method, url, headers, body, timeout)
 
 
 def get_token(client_id, client_secret):
