@@ -2,13 +2,16 @@
 """Focused contracts for generator publication and scheduled runtimes."""
 
 import ast
+import base64
 import io
 import inspect
 import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -207,8 +210,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             "KMEM_PRIMARY_UPDATER",
         )
 
-    @unittest.skipUnless(os.name == "nt", "Windows no-window NMS child contract")
-    def test_nested_nms_process_is_hidden_and_decoded_deterministically(self):
+    def test_nested_nms_process_uses_tree_bounded_runner(self):
         completed = subprocess.CompletedProcess(["nms"], 1, "diagnostic", "warning")
         with (
             mock.patch.dict(
@@ -217,18 +219,14 @@ class WeatherGeneratorContractTests(unittest.TestCase):
                 clear=False,
             ),
             mock.patch.object(updater.os.path, "exists", return_value=True),
-            mock.patch.object(updater.subprocess, "run", return_value=completed) as run,
+            mock.patch.object(updater, "run_bounded_process", return_value=completed) as run,
             mock.patch("builtins.print"),
         ):
             updater.fetch_mil_notams({})
 
         kwargs = run.call_args.kwargs
-        self.assertEqual(
-            kwargs["creationflags"] & subprocess.CREATE_NO_WINDOW,
-            subprocess.CREATE_NO_WINDOW,
-        )
-        self.assertEqual(kwargs["encoding"], "utf-8")
-        self.assertEqual(kwargs["errors"], "backslashreplace")
+        self.assertEqual(kwargs["cwd"], Path(updater.REPO_DIR))
+        self.assertTrue(kwargs["capture_output"])
 
     def test_nested_nms_process_uses_full_scan_budget_and_unbuffered_output(self):
         completed = subprocess.CompletedProcess(["nms"], 1, "diagnostic", "warning")
@@ -239,7 +237,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
                 clear=False,
             ),
             mock.patch.object(updater.os.path, "exists", return_value=True),
-            mock.patch.object(updater.subprocess, "run", return_value=completed) as run,
+            mock.patch.object(updater, "run_bounded_process", return_value=completed) as run,
             mock.patch("builtins.print"),
         ):
             updater.fetch_mil_notams({})
@@ -253,6 +251,54 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS,
             kmem_updater.GENERATOR_TIMEOUT_SECONDS,
         )
+
+    def test_nested_nms_timeout_kills_descendant_holding_output_pipe(self):
+        previous = {
+            "milNotamCount": 1,
+            "milNotamStatus": "1 ACTIVE",
+            "milNotamUpdatedZ": "2026-09-07 07:50:44Z",
+            "milNotamRawStatus": "Success",
+            "milNotams": [{"number": "M0024/26"}],
+        }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_path = Path(temporary)
+            helper = temporary_path / "nms_hanging_helper.py"
+            sentinel = temporary_path / "descendant-survived.txt"
+            descendant = (
+                "import pathlib,sys,time; "
+                "time.sleep(0.8); pathlib.Path(sys.argv[1]).write_text('survived')"
+            )
+            helper.write_text(
+                "import subprocess,sys,time\n"
+                f"subprocess.Popen([sys.executable, '-c', {descendant!r}, {str(sentinel)!r}])\n"
+                "print('AUTH phase test-secret', flush=True)\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                    clear=False,
+                ),
+                mock.patch.object(updater, "NMS_MIL_NOTAMS_SCRIPT_PATH", str(helper)),
+                mock.patch.object(updater, "NMS_MIL_NOTAMS_TIMEOUT_SECONDS", 0.25),
+                mock.patch("builtins.print") as output,
+            ):
+                started = time.monotonic()
+                result = updater.fetch_mil_notams(previous)
+                elapsed = time.monotonic() - started
+
+            time.sleep(1.0)
+            printed = "\n".join(str(call) for call in output.call_args_list)
+            self.assertLess(elapsed, 3.0)
+            self.assertFalse(sentinel.exists())
+            self.assertEqual(result["milNotamFetchStatus"], "TIMEOUT")
+            self.assertEqual(result["milNotamUpdatedZ"], previous["milNotamUpdatedZ"])
+            self.assertIn("AUTH phase [REDACTED]", printed)
+            self.assertNotIn("test-secret", printed)
 
     def test_nms_timeout_logs_bounded_partial_diagnostics_and_keeps_cache_untrusted(self):
         diagnostic_limit = updater.NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS
@@ -295,7 +341,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
                 clear=False,
             ),
             mock.patch.object(updater.os.path, "exists", return_value=True),
-            mock.patch.object(updater.subprocess, "run", side_effect=expired),
+            mock.patch.object(updater, "run_bounded_process", side_effect=expired),
             mock.patch("builtins.print") as output,
         ):
             result = updater.fetch_mil_notams(previous)
@@ -363,7 +409,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
                 clear=False,
             ),
             mock.patch.object(updater.os.path, "exists", return_value=True),
-            mock.patch.object(updater.subprocess, "run", side_effect=expired),
+            mock.patch.object(updater, "run_bounded_process", side_effect=expired),
             mock.patch("builtins.print") as output,
         ):
             result = updater.fetch_mil_notams(previous)
@@ -387,7 +433,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
                 clear=False,
             ),
             mock.patch.object(updater.os.path, "exists", return_value=True),
-            mock.patch.object(updater.subprocess, "run", return_value=completed),
+            mock.patch.object(updater, "run_bounded_process", return_value=completed),
             mock.patch("builtins.print") as output,
         ):
             result = updater.fetch_mil_notams({})
@@ -413,6 +459,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             "source": "FAA_NMS_STAGING",
             "status": "Success",
             "generatedZ": "2026-09-06 20:00:00Z",
+            "httpTransport": "WINDOWS_POWERSHELL",
             "milNotams": [],
             "runwayClosureNotams": [
                 {
@@ -430,7 +477,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
                 clear=False,
             ),
             mock.patch.object(updater.os.path, "exists", return_value=True),
-            mock.patch.object(updater.subprocess, "run", return_value=completed),
+            mock.patch.object(updater, "run_bounded_process", return_value=completed),
             mock.patch.object(updater, "load_json_file", return_value=raw),
             mock.patch("builtins.print"),
         ):
@@ -438,8 +485,32 @@ class WeatherGeneratorContractTests(unittest.TestCase):
 
         self.assertEqual(result["milNotamFetchStatus"], "OK")
         self.assertEqual(result["milNotamRawStatus"], "Success")
+        self.assertEqual(result["milNotamTransport"], "WINDOWS_POWERSHELL")
         self.assertEqual(result["milNotamUpdatedZ"], "2026-09-06 20:00:00Z")
         self.assertEqual(result["runwayClosureNotamCount"], 1)
+
+    def test_nms_transport_metadata_is_restricted_to_safe_enums(self):
+        raw = {
+            "status": "Success",
+            "generatedZ": "2026-09-07 10:00:00Z",
+            "milNotams": [],
+        }
+        for transport in (
+            "WINDOWS_CURL",
+            "WINDOWS_POWERSHELL",
+            "WINDOWS_CURL_TO_POWERSHELL",
+            "PORTABLE_URLLIB",
+        ):
+            with self.subTest(transport=transport):
+                result = updater.normalize_mil_notams_output(
+                    {**raw, "httpTransport": transport},
+                )
+                self.assertEqual(result["milNotamTransport"], transport)
+
+        rejected = updater.normalize_mil_notams_output(
+            {**raw, "httpTransport": r"C:\\sensitive\\host-path"},
+        )
+        self.assertEqual(rejected["milNotamTransport"], "UNKNOWN")
 
     def test_nms_single_location_bulk_scan_contract_is_preserved(self):
         source = inspect.getsource(nms.main)
@@ -465,6 +536,7 @@ class NmsBulkLocationTests(unittest.TestCase):
                     clear=False,
                 ),
                 mock.patch.object(nms, "OUTPUT_FILE", str(output_path)),
+                mock.patch.object(nms, "LAST_HTTP_TRANSPORT", "WINDOWS_POWERSHELL"),
                 mock.patch.object(nms, "get_token", return_value="token"),
                 mock.patch.object(nms, "nms_get_json", return_value=response) as get_json,
                 mock.patch.object(nms.time, "sleep"),
@@ -482,6 +554,7 @@ class NmsBulkLocationTests(unittest.TestCase):
             self.assertEqual(result["detailScanMode"], "NMS_AIXM_LOCATION_BULK")
             self.assertEqual(result["bulkRecordsReturned"], 1)
             self.assertEqual(result["runwayClosureNotamCount"], 1)
+            self.assertEqual(result["httpTransport"], "WINDOWS_POWERSHELL")
             self.assertEqual(list(Path(temporary).glob("*.tmp")), [])
 
     def test_bulk_replay_matches_production_categories_after_eight_live_alias_pairs(self):
@@ -758,8 +831,8 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             ),
             mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
             mock.patch.object(
-                nms.subprocess,
-                "run",
+                nms,
+                "run_bounded_transport_process",
                 return_value=_curl_completed(body=b'{"status":"Success"}'),
             ) as run,
             mock.patch("builtins.print") as output,
@@ -792,7 +865,6 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertNotIn("--insecure", command)
         self.assertNotIn("%{stderr}", command[command.index("--write-out") + 1])
         self.assertIn(nms.CURL_HTTP_STATUS_MARKER, command[command.index("--write-out") + 1])
-        self.assertFalse(kwargs["shell"])
         self.assertEqual(kwargs["timeout"], nms.CURL_PROCESS_TIMEOUT_SECONDS)
         self.assertIn(authorization.encode("utf-8"), kwargs["input"])
         self.assertNotIn("NMS_CLIENT_ID", kwargs["env"])
@@ -807,13 +879,13 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         ):
             self.assertNotIn(secret, serialized_argv)
             self.assertNotIn(secret, serialized_environment)
-        output.assert_not_called()
+        output.assert_called_once_with("NMS HTTP transport: WINDOWS_CURL")
 
     def test_stdout_status_marker_is_stripped_from_json_body_for_older_curl(self):
         json_body = b'{"status":"Success","data":{"aixm":[]}}'
         with mock.patch.object(
-            nms.subprocess,
-            "run",
+            nms,
+            "run_bounded_transport_process",
             return_value=_curl_completed(
                 0,
                 200,
@@ -838,8 +910,8 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             + b"401\nbody-continues"
         )
         with mock.patch.object(
-            nms.subprocess,
-            "run",
+            nms,
+            "run_bounded_transport_process",
             return_value=_curl_completed(0, 200, body=embedded),
         ):
             result = nms.curl_http_request(
@@ -856,8 +928,8 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             with self.subTest(status=status):
                 with (
                     mock.patch.object(
-                        nms.subprocess,
-                        "run",
+                        nms,
+                        "run_bounded_transport_process",
                         side_effect=[
                             _curl_completed(0, status, body=b"temporary response"),
                             _curl_completed(body=b"recovered"),
@@ -883,7 +955,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             for _ in range(nms.CURL_MAX_RETRIES)
         ]
         with (
-            mock.patch.object(nms.subprocess, "run", side_effect=failures) as run,
+            mock.patch.object(nms, "run_bounded_transport_process", side_effect=failures) as run,
             mock.patch.object(nms.time, "sleep") as sleep,
             mock.patch("builtins.print"),
         ):
@@ -898,14 +970,56 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertEqual(run.call_count, nms.CURL_MAX_RETRIES)
         sleep.assert_called_once_with(nms.retry_wait_seconds(1))
         self.assertIn("NMS temporarily unavailable", str(raised.exception))
+        self.assertNotIsInstance(raised.exception, nms.NmsTransportError)
+
+    def test_valid_curl_http_errors_never_fall_back_to_powershell(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        for status in (401, 429, 500, 503):
+            attempts = (
+                nms.CURL_MAX_RETRIES
+                if status in nms.TRANSIENT_HTTP_STATUS_CODES
+                else 1
+            )
+            responses = [
+                _curl_completed(0, status, body=b"completed HTTP response")
+                for _ in range(attempts)
+            ]
+            with self.subTest(status=status):
+                with (
+                    mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+                    mock.patch.object(
+                        nms,
+                        "windows_powershell_path",
+                        return_value=powershell_path,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "run_bounded_transport_process",
+                        side_effect=responses,
+                    ),
+                    mock.patch.object(nms, "powershell_http_request") as powershell,
+                    mock.patch.object(nms.time, "sleep"),
+                    mock.patch("builtins.print"),
+                ):
+                    with self.assertRaisesRegex(RuntimeError, f"HTTP {status}") as raised:
+                        nms.http_request(
+                            "GET",
+                            "https://nms.example.test/notams?location=KMEM",
+                            {"Authorization": "Bearer token"},
+                        )
+
+                self.assertNotIsInstance(raised.exception, nms.NmsTransportError)
+                powershell.assert_not_called()
 
     def test_curl_never_uses_insecure_even_when_urllib_opt_in_is_enabled(self):
         authorization = "Bearer do-not-log-this-token"
         with (
             mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", True),
             mock.patch.object(
-                nms.subprocess,
-                "run",
+                nms,
+                "run_bounded_transport_process",
                 return_value=_curl_completed(
                     60,
                     0,
@@ -937,8 +1051,8 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         ).encode("utf-8")
         with (
             mock.patch.object(
-                nms.subprocess,
-                "run",
+                nms,
+                "run_bounded_transport_process",
                 return_value=_curl_completed(0, 401, body=response_body),
             ) as run,
             mock.patch.object(nms.time, "sleep") as sleep,
@@ -967,8 +1081,8 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             with self.subTest(scheme=authorization.split()[0]):
                 response_body = f"server echoed credential={bare_payload}".encode("utf-8")
                 with mock.patch.object(
-                    nms.subprocess,
-                    "run",
+                    nms,
+                    "run_bounded_transport_process",
                     return_value=_curl_completed(0, 401, body=response_body),
                 ):
                     with self.assertRaisesRegex(RuntimeError, "HTTP 401") as raised:
@@ -1009,7 +1123,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     b"curl diagnostic only",
                 )
                 with (
-                    mock.patch.object(nms.subprocess, "run", return_value=completed) as run,
+                    mock.patch.object(nms, "run_bounded_transport_process", return_value=completed) as run,
                     mock.patch.object(nms.time, "sleep") as sleep,
                 ):
                     with self.assertRaisesRegex(RuntimeError, "missing HTTP status"):
@@ -1025,8 +1139,8 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
     def test_status_000_fails_closed_once(self):
         with (
             mock.patch.object(
-                nms.subprocess,
-                "run",
+                nms,
+                "run_bounded_transport_process",
                 return_value=_curl_completed(0, 0, body=b"not an HTTP response"),
             ) as run,
             mock.patch.object(nms.time, "sleep") as sleep,
@@ -1043,22 +1157,29 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
 
     def test_partial_stdout_from_transport_error_is_discarded(self):
         partial = b"partial response must never be published"
-        failures = [
-            _curl_completed(28, 0, body=partial, diagnostic=b"operation timed out")
-            for _ in range(nms.CURL_MAX_RETRIES)
-        ]
         with (
-            mock.patch.object(nms.subprocess, "run", side_effect=failures),
-            mock.patch.object(nms.time, "sleep"),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=_curl_completed(
+                    28,
+                    0,
+                    body=partial,
+                    diagnostic=b"operation timed out",
+                ),
+            ) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
             mock.patch("builtins.print"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "curl exit 28") as raised:
+            with self.assertRaisesRegex(nms.NmsTransportError, "curl exit 28") as raised:
                 nms.curl_http_request(
                     self.CURL_PATH,
                     "GET",
                     "https://nms.example.test/notams?location=KMEM",
                     {"Authorization": "Bearer token"},
                 )
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
         self.assertNotIn(partial.decode("ascii"), str(raised.exception))
 
     def test_cr_or_lf_in_header_values_is_rejected_before_process_launch(self):
@@ -1112,15 +1233,327 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         ):
             self.assertEqual(nms.windows_curl_path(), expected)
 
-    def test_curl_hard_timeout_retries_are_bounded_below_parent_timeout(self):
-        expired = subprocess.TimeoutExpired([self.CURL_PATH], nms.CURL_PROCESS_TIMEOUT_SECONDS)
+    def test_powershell_and_taskkill_are_pinned_outside_path_and_cwd(self):
+        powershell = os.path.abspath(
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        taskkill = os.path.abspath(r"C:\Windows\System32\taskkill.exe")
+        trusted = {
+            os.path.normcase(powershell),
+            os.path.normcase(taskkill),
+        }
         with (
-            mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
-            mock.patch.object(nms.subprocess, "run", side_effect=[expired, expired]) as run,
+            mock.patch.dict(
+                os.environ,
+                {"SystemRoot": r"C:\Windows", "PATH": r"C:\untrusted-cwd"},
+                clear=True,
+            ),
+            mock.patch.object(
+                nms.os.path,
+                "isfile",
+                side_effect=lambda value: os.path.normcase(value) in trusted,
+            ),
+        ):
+            self.assertEqual(nms.windows_powershell_path(), powershell)
+            self.assertEqual(nms.windows_taskkill_path(), taskkill)
+
+    def test_powershell_fallback_is_pinned_and_keeps_secrets_off_argv_and_env(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        authorization = "Bearer powershell-sensitive-token"
+        client_id = "powershell-sensitive-id"
+        client_secret = "powershell-sensitive-secret"
+        with (
+            mock.patch.dict(
+                os.environ,
+                {
+                    "NMS_CLIENT_ID": client_id,
+                    "NMS_CLIENT_SECRET": client_secret,
+                },
+                clear=False,
+            ),
+            mock.patch.object(nms, "windows_curl_path", return_value=None),
+            mock.patch.object(
+                nms,
+                "windows_powershell_path",
+                return_value=powershell_path,
+            ),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=_curl_completed(body=b'{"status":"Success"}'),
+            ) as run,
+            mock.patch("builtins.print") as output,
+        ):
+            result = nms.http_request(
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                headers={"Authorization": authorization},
+            )
+
+        self.assertEqual(result, b'{"status":"Success"}')
+        command = run.call_args.args[0]
+        kwargs = run.call_args.kwargs
+        self.assertEqual(command[0], powershell_path)
+        self.assertIn("-NoProfile", command)
+        self.assertIn("-NonInteractive", command)
+        encoded_script = command[command.index("-EncodedCommand") + 1]
+        script = base64.b64decode(encoded_script).decode("utf-16-le")
+        self.assertIn("AllowAutoRedirect = $false", script)
+        self.assertIn(
+            f"FromSeconds({nms.POWERSHELL_TOTAL_TIMEOUT_SECONDS})",
+            script,
+        )
+        self.assertNotIn("ServerCertificateValidationCallback", script)
+        self.assertNotIn("DangerousAcceptAnyServerCertificateValidator", script)
+        self.assertEqual(kwargs["timeout"], nms.POWERSHELL_PROCESS_TIMEOUT_SECONDS)
+        request = json.loads(kwargs["input"].decode("utf-8"))
+        self.assertEqual(request["headers"]["Authorization"], authorization)
+        self.assertNotIn("NMS_CLIENT_ID", kwargs["env"])
+        self.assertNotIn("NMS_CLIENT_SECRET", kwargs["env"])
+        serialized_argv = repr(command)
+        serialized_environment = repr(kwargs["env"])
+        for secret in (authorization, client_id, client_secret):
+            self.assertNotIn(secret, serialized_argv)
+            self.assertNotIn(secret, serialized_environment)
+        output.assert_called_once_with("NMS HTTP transport: WINDOWS_POWERSHELL")
+
+    def test_powershell_transient_http_retry_and_hard_timeout_are_bounded(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        with (
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                side_effect=[
+                    _curl_completed(0, 503, body=b"temporary"),
+                    _curl_completed(0, 200, body=b"recovered"),
+                ],
+            ) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            result = nms.powershell_http_request(
+                powershell_path,
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                {"Authorization": "Bearer token"},
+            )
+
+        self.assertEqual(result, b"recovered")
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+
+        expired = subprocess.TimeoutExpired(
+            [powershell_path],
+            nms.POWERSHELL_PROCESS_TIMEOUT_SECONDS,
+        )
+        with (
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                side_effect=[expired, expired],
+            ) as run,
             mock.patch.object(nms.time, "sleep") as sleep,
             mock.patch("builtins.print"),
         ):
             with self.assertRaisesRegex(RuntimeError, "hard timeout"):
+                nms.powershell_http_request(
+                    powershell_path,
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
+
+        self.assertEqual(run.call_count, nms.POWERSHELL_MAX_RETRIES)
+        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+
+        native_timeout = subprocess.CompletedProcess(
+            [powershell_path],
+            28,
+            b"",
+            b"NMS PowerShell HTTP request timed out",
+        )
+        with (
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                side_effect=[native_timeout, _curl_completed(0, 200, body=b"recovered")],
+            ) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            result = nms.powershell_http_request(
+                powershell_path,
+                "GET",
+                "https://nms.example.test/notams?location=KMEM",
+                {"Authorization": "Bearer token"},
+            )
+
+        self.assertEqual(result, b"recovered")
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+        script = nms.powershell_http_script()
+        self.assertIn("catch [System.Threading.Tasks.TaskCanceledException]", script)
+        self.assertIn("catch [System.TimeoutException]", script)
+        self.assertIn("exit 28", script)
+
+    def test_curl_transport_failures_fall_back_once_to_pinned_powershell(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        transport_failures = (
+            subprocess.TimeoutExpired(
+                [self.CURL_PATH],
+                nms.CURL_PROCESS_TIMEOUT_SECONDS,
+            ),
+            OSError("simulated process launch failure"),
+            subprocess.CompletedProcess(
+                [self.CURL_PATH],
+                0,
+                b"response without final marker",
+                b"missing marker",
+            ),
+            _curl_completed(0, 0, body=b"status zero"),
+        )
+        for failure in transport_failures:
+            with self.subTest(failure=type(failure).__name__):
+                with (
+                    mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+                    mock.patch.object(
+                        nms,
+                        "windows_powershell_path",
+                        return_value=powershell_path,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "run_bounded_transport_process",
+                        side_effect=[failure, _curl_completed(body=b"recovered")],
+                    ) as run,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                    mock.patch("builtins.print") as output,
+                ):
+                    result = nms.http_request(
+                        "GET",
+                        "https://nms.example.test/notams?location=KMEM",
+                        {"Authorization": "Bearer token"},
+                    )
+
+                self.assertEqual(result, b"recovered")
+                self.assertEqual(run.call_count, 2)
+                sleep.assert_not_called()
+                self.assertEqual(
+                    output.call_args_list,
+                    [
+                        mock.call("NMS HTTP transport: WINDOWS_CURL"),
+                        mock.call("NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL"),
+                    ],
+                )
+
+    def test_curl_tls_and_certificate_failures_never_cross_transports(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        terminal_security_exit_codes = (35, 51, 58, 59, 60, 77, 82, 83, 90, 91)
+        for exit_code in terminal_security_exit_codes:
+            with self.subTest(exit_code=exit_code):
+                with (
+                    mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+                    mock.patch.object(
+                        nms,
+                        "windows_powershell_path",
+                        return_value=powershell_path,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "run_bounded_transport_process",
+                        return_value=_curl_completed(
+                            exit_code,
+                            0,
+                            diagnostic=b"TLS or certificate validation failure",
+                        ),
+                    ) as run,
+                    mock.patch.object(nms, "powershell_http_request") as powershell,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                    mock.patch("builtins.print"),
+                ):
+                    with self.assertRaisesRegex(RuntimeError, f"curl exit {exit_code}") as raised:
+                        nms.http_request(
+                            "GET",
+                            "https://nms.example.test/notams?location=KMEM",
+                            {"Authorization": "Bearer token"},
+                        )
+
+                self.assertNotIsInstance(raised.exception, nms.NmsTransportError)
+                self.assertEqual(run.call_count, 1)
+                powershell.assert_not_called()
+                sleep.assert_not_called()
+
+    @unittest.skipUnless(os.name == "nt", "Windows process-tree timeout coverage")
+    def test_bounded_transport_timeout_terminates_inherited_pipe_grandchild(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sentinel = Path(directory) / "transport-grandchild-survived.txt"
+            grandchild = (
+                "import pathlib,sys,time; time.sleep(1.0); "
+                "pathlib.Path(sys.argv[1]).write_text('survived')"
+            )
+            parent = (
+                "import subprocess,sys,time; "
+                f"subprocess.Popen([sys.executable,'-c',{grandchild!r},sys.argv[1]]); "
+                "print('grandchild started',flush=True); time.sleep(30)"
+            )
+            started = time.monotonic()
+            with self.assertRaises(subprocess.TimeoutExpired):
+                nms.run_bounded_transport_process(
+                    [sys.executable, "-u", "-c", parent, str(sentinel)],
+                    input=b"",
+                    timeout=0.25,
+                    env=os.environ.copy(),
+                )
+            elapsed = time.monotonic() - started
+            time.sleep(1.25)
+
+        self.assertLess(elapsed, 3.0)
+        self.assertFalse(sentinel.exists())
+
+    @unittest.skipUnless(os.name == "nt", "Windows exited-parent timeout coverage")
+    def test_bounded_transport_timeout_kills_grandchild_after_parent_exits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sentinel = Path(directory) / "exited-parent-grandchild-survived.txt"
+            grandchild = (
+                "import pathlib,sys,time; time.sleep(1.0); "
+                "pathlib.Path(sys.argv[1]).write_text('survived')"
+            )
+            parent = (
+                "import subprocess,sys; "
+                f"subprocess.Popen([sys.executable,'-c',{grandchild!r},sys.argv[1]]); "
+                "print('parent exiting',flush=True)"
+            )
+            started = time.monotonic()
+            with self.assertRaises(subprocess.TimeoutExpired):
+                nms.run_bounded_transport_process(
+                    [sys.executable, "-u", "-c", parent, str(sentinel)],
+                    input=b"",
+                    timeout=0.15,
+                    env=os.environ.copy(),
+                )
+            elapsed = time.monotonic() - started
+            time.sleep(1.25)
+
+        self.assertLess(elapsed, 3.0)
+        self.assertFalse(sentinel.exists())
+
+    def test_curl_hard_timeout_and_powershell_fallback_fit_parent_timeout(self):
+        expired = subprocess.TimeoutExpired([self.CURL_PATH], nms.CURL_PROCESS_TIMEOUT_SECONDS)
+        with (
+            mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
+            mock.patch.object(nms, "run_bounded_transport_process", side_effect=expired) as run,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(nms.NmsTransportError, "hard timeout"):
                 nms.curl_http_request(
                     self.CURL_PATH,
                     "GET",
@@ -1128,35 +1561,71 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     {"Authorization": "Bearer token"},
                 )
 
-        self.assertEqual(run.call_count, nms.CURL_MAX_RETRIES)
+        self.assertEqual(run.call_count, 1)
         self.assertTrue(
             all(
                 call.kwargs["timeout"] == nms.CURL_PROCESS_TIMEOUT_SECONDS
                 for call in run.call_args_list
             )
         )
-        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+        sleep.assert_not_called()
 
         # The helper makes exactly two HTTP calls: token plus one bulk location
-        # request. Curl has no insecure second transport path.
-        per_request_budget = (
-            nms.CURL_MAX_RETRIES * nms.CURL_PROCESS_TIMEOUT_SECONDS
+        # request. In the slowest mixed path each curl request fails once, then
+        # PowerShell makes its bounded retry. Even including two bounded tree-kill
+        # attempts, the helper finishes before the parent's five-minute deadline.
+        hard_attempt_budget = (
+            nms.CURL_PROCESS_TIMEOUT_SECONDS
+            + (2 * nms.TRANSPORT_TREE_KILL_TIMEOUT_SECONDS)
+            + nms.TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS
+        )
+        powershell_request_budget = (
+            nms.POWERSHELL_MAX_RETRIES * hard_attempt_budget
             + sum(
                 nms.retry_wait_seconds(attempt)
-                for attempt in range(1, nms.CURL_MAX_RETRIES)
+                for attempt in range(1, nms.POWERSHELL_MAX_RETRIES)
             )
         )
+        per_request_budget = hard_attempt_budget + powershell_request_budget
         helper_budget = (2 * per_request_budget) + nms.REQUEST_DELAY_SECONDS
         self.assertLess(helper_budget, updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS)
 
-    def test_missing_windows_curl_uses_existing_urllib_fallback(self):
+    def test_missing_trusted_windows_transports_fails_without_urllib(self):
         with (
+            mock.patch.object(nms.os, "name", "nt"),
             mock.patch.object(nms, "windows_curl_path", return_value=None),
+            mock.patch.object(nms, "windows_powershell_path", return_value=None),
             mock.patch.object(
                 nms,
                 "urllib_http_request",
                 return_value=b"urllib response",
             ) as fallback,
+            mock.patch("builtins.print") as output,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "urllib fallback is disabled"):
+                nms.http_request(
+                    "GET",
+                    "https://nms.example.test/notams?location=KMEM",
+                    headers={"Authorization": "Bearer token"},
+                    timeout=9,
+                )
+
+        fallback.assert_not_called()
+        output.assert_called_once_with(
+            "NMS HTTP transport: WINDOWS_NO_TRUSTED_TRANSPORT"
+        )
+
+    def test_non_windows_keeps_existing_portable_urllib_fallback(self):
+        with (
+            mock.patch.object(nms.os, "name", "posix"),
+            mock.patch.object(nms, "windows_curl_path", return_value=None),
+            mock.patch.object(nms, "windows_powershell_path", return_value=None),
+            mock.patch.object(
+                nms,
+                "urllib_http_request",
+                return_value=b"urllib response",
+            ) as fallback,
+            mock.patch("builtins.print") as output,
         ):
             result = nms.http_request(
                 "GET",
@@ -1173,6 +1642,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             None,
             9,
         )
+        output.assert_called_once_with("NMS HTTP transport: PORTABLE_URLLIB")
 
 
 class NmsUrllibRetryTests(unittest.TestCase):
@@ -1448,7 +1918,8 @@ class SchedulerContractTests(unittest.TestCase):
         )
         self.assertIn('getattr(subprocess, "CREATE_NO_WINDOW", 0)', updater_source)
         self.assertIn('platform_options["creationflags"] = getattr(', git_source)
-        self.assertIn('platform_options["creationflags"] = getattr(', generator_source)
+        self.assertIn("from kmem_updater import run_bounded_process", generator_source)
+        self.assertIn("result = run_bounded_process(", generator_source)
 
     @unittest.skipUnless(os.name == "nt", "PowerShell classifier test is Windows-only")
     def test_primary_task_classifier_regressions(self):

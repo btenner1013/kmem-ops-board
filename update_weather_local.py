@@ -12,6 +12,9 @@ import time
 from datetime import datetime, timezone, timedelta
 from html import unescape
 from http.cookiejar import CookieJar
+from pathlib import Path
+
+from kmem_updater import run_bounded_process
 
 
 # Force UTF-8 output so Windows Task Scheduler logs do not crash on arrows like → ↑ ↓.
@@ -714,6 +717,10 @@ def load_previous_weather():
         )
         updated, _, notam_source, notam_path, notam_data = selected
         notam_block = {key: notam_data[key] for key in MIL_NOTAM_CACHE_FIELDS}
+        notam_block["milNotamTransport"] = notam_data.get(
+            "milNotamTransport",
+            "UNKNOWN",
+        )
         previous.update(notam_block)
         print(
             f"Selected newest coherent cached NMS block from {notam_source}: "
@@ -4705,6 +4712,14 @@ def is_taxi_restriction_notam_text(text):
 
 def normalize_mil_notams_output(raw, fetch_status="OK"):
     raw = raw or {}
+    transport = str(raw.get("httpTransport") or "UNKNOWN").strip().upper()
+    if transport not in {
+        "WINDOWS_CURL",
+        "WINDOWS_POWERSHELL",
+        "WINDOWS_CURL_TO_POWERSHELL",
+        "PORTABLE_URLLIB",
+    }:
+        transport = "UNKNOWN"
     inactive_numbers = collect_inactive_notam_targets(raw)
     items = raw.get("milNotams") or raw.get("items") or []
 
@@ -4771,6 +4786,7 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         "milNotams": normalized_items,
         "milNotamFetchStatus": fetch_status,
         "milNotamRawStatus": raw.get("status") or "UNKNOWN",
+        "milNotamTransport": transport,
         "ficonNotams": ficon_notams,
         "ficonNotamCount": len(ficon_notams),
         "runwayClosureNotams": runway_closure_notams,
@@ -4790,6 +4806,7 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
             "source": use_previous_field(previous_data, "milNotamSource", "FAA_NMS_STAGING"),
             "generatedZ": use_previous_field(previous_data, "milNotamUpdatedZ", "--"),
             "status": use_previous_field(previous_data, "milNotamRawStatus", "LAST_GOOD"),
+            "httpTransport": use_previous_field(previous_data, "milNotamTransport", "UNKNOWN"),
             "milNotams": use_previous_field(previous_data, "milNotams", []),
             "ficonNotams": use_previous_field(previous_data, "ficonNotams", []),
             "runwayClosureNotams": use_previous_field(previous_data, "runwayClosureNotams", []),
@@ -4807,6 +4824,7 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
         "milNotams": [],
         "milNotamFetchStatus": fetch_status,
         "milNotamRawStatus": "NO_PREVIOUS_DATA",
+        "milNotamTransport": "UNKNOWN",
         "ficonNotams": [],
         "ficonNotamCount": 0,
         "runwayClosureNotams": [],
@@ -4883,18 +4901,11 @@ def fetch_mil_notams(previous_data):
     try:
         print("MIL NOTAMS: running FAA NMS pull...")
 
-        platform_options = {}
-        if os.name == "nt":
-            platform_options["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        result = subprocess.run(
+        result = run_bounded_process(
             [sys.executable, "-u", NMS_MIL_NOTAMS_SCRIPT_PATH],
-            cwd=REPO_DIR,
-            text=True,
-            encoding="utf-8",
-            errors="backslashreplace",
+            cwd=Path(REPO_DIR),
             capture_output=True,
             timeout=NMS_MIL_NOTAMS_TIMEOUT_SECONDS,
-            **platform_options,
         )
 
         log_nms_process_output(
@@ -5405,6 +5416,7 @@ def build_weather_json():
         "milNotams": mil_notam_data["milNotams"],
         "milNotamFetchStatus": mil_notam_data["milNotamFetchStatus"],
         "milNotamRawStatus": mil_notam_data["milNotamRawStatus"],
+        "milNotamTransport": mil_notam_data.get("milNotamTransport", "UNKNOWN"),
         "ficonNotams": mil_notam_data.get("ficonNotams", []),
         "ficonNotamCount": mil_notam_data.get("ficonNotamCount", 0),
         "runwayClosureNotams": mil_notam_data.get("runwayClosureNotams", []),

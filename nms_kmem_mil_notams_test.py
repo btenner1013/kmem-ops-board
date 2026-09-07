@@ -6,7 +6,7 @@ Reads credentials from:
   NMS_CLIENT_ID
   NMS_CLIENT_SECRET
 
-Optional local-only urllib-fallback testing override (never used by curl):
+Optional non-Windows urllib-fallback testing override (never used on Windows):
   NMS_ALLOW_INSECURE_SSL_FALLBACK=1
 
 Run:
@@ -25,6 +25,7 @@ import html
 import json
 import os
 import re
+import signal
 import ssl
 import subprocess
 import time
@@ -40,8 +41,9 @@ LOCATION = "KMEM"
 OUTPUT_FILE = "nms_kmem_mil_notams_output.json"
 
 # Production default: do not silently bypass TLS verification.
-# This legacy opt-in applies only to the no-curl urllib fallback. Windows curl
-# always uses verified TLS and fails closed on every certificate/TLS error.
+# This legacy opt-in applies only to the portable non-Windows urllib fallback.
+# Both Windows transports always use verified TLS and fail closed on certificate
+# or TLS errors.
 ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
     "NMS_ALLOW_INSECURE_SSL_FALLBACK",
     "0"
@@ -53,19 +55,33 @@ MAX_RETRIES = 2
 URLLIB_TOTAL_TIMEOUT_SECONDS = 25
 TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
-# Windows production uses the OS curl transport because urllib can remain blocked
-# inside a socket call long enough to consume the updater's five-minute child
-# budget. Every curl process has both curl-native and parent-enforced limits.
+# Windows production prefers OS curl, then pinned Windows PowerShell/HttpClient,
+# because urllib DNS/TLS calls can outlive a socket timeout. Every Windows
+# transport process has both native and parent-enforced limits.
 CURL_CONNECT_TIMEOUT_SECONDS = 8
 CURL_TOTAL_TIMEOUT_SECONDS = 25
 CURL_PROCESS_TIMEOUT_SECONDS = 30
 CURL_MAX_RETRIES = 2
-CURL_TRANSIENT_EXIT_CODES = {5, 6, 7, 18, 28, 52, 55, 56, 92, 95, 96}
+# Only availability/framing failures may cross from curl to the independently
+# verified PowerShell transport. TLS, certificate, trust-store, client-certificate,
+# and pinning failures intentionally remain terminal instead of trying a transport
+# with potentially different validation behavior.
+CURL_CROSS_TRANSPORT_EXIT_CODES = {5, 6, 7, 18, 28, 52, 55, 56, 92, 95, 96}
 CURL_HTTP_STATUS_MARKER = "__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:"
 CURL_STATUS_RE = re.compile(
     rb"(?:\r?\n)__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:([0-9]{3})\r?\n?\Z"
 )
 CURL_DIAGNOSTIC_LIMIT = 1024
+TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS = 3
+TRANSPORT_TREE_KILL_TIMEOUT_SECONDS = 5
+POWERSHELL_TOTAL_TIMEOUT_SECONDS = 25
+POWERSHELL_PROCESS_TIMEOUT_SECONDS = 30
+POWERSHELL_MAX_RETRIES = 2
+LAST_HTTP_TRANSPORT = "NOT_USED"
+
+
+class NmsTransportError(RuntimeError):
+    """A curl process/protocol failure that may use another verified transport."""
 
 BULK_CLASSIFICATION_ALIASES = {
     "DOM": "DOM",
@@ -172,31 +188,272 @@ def urllib_http_request(method, url, headers=None, body=None, timeout=45):
     raise RuntimeError("Request failed after retries.")
 
 
-def windows_curl_path():
-    """Return only the trusted Windows system curl, never a PATH shadow."""
+def windows_system_paths(*relative_parts):
+    """Return trusted System32/Sysnative candidates, never PATH/cwd matches."""
     if os.name != "nt":
-        return None
+        return []
 
     system_root = os.environ.get("SystemRoot") or os.environ.get("WINDIR")
     if not system_root or not os.path.isabs(system_root):
-        return None
+        return []
 
     system_root = os.path.abspath(system_root)
     candidates = []
     if os.environ.get("PROCESSOR_ARCHITEW6432"):
         # A 32-bit Python process uses Sysnative to bypass System32 redirection.
-        candidates.append(os.path.join(system_root, "Sysnative", "curl.exe"))
-    candidates.append(os.path.join(system_root, "System32", "curl.exe"))
+        candidates.append(os.path.join(system_root, "Sysnative", *relative_parts))
+    candidates.append(os.path.join(system_root, "System32", *relative_parts))
+    return candidates
 
-    for candidate in candidates:
+
+def first_existing_windows_system_path(*relative_parts):
+    for candidate in windows_system_paths(*relative_parts):
         if os.path.isfile(candidate):
             return candidate
     return None
 
 
-def curl_header_stdin(headers=None):
-    """Build curl's stdin header file after rejecting header injection."""
-    lines = []
+def windows_curl_path():
+    """Return only the trusted Windows system curl, never a PATH shadow."""
+    return first_existing_windows_system_path("curl.exe")
+
+
+def windows_powershell_path():
+    """Return pinned Windows PowerShell for the no-system-curl fallback."""
+    return first_existing_windows_system_path(
+        "WindowsPowerShell",
+        "v1.0",
+        "powershell.exe",
+    )
+
+
+def windows_taskkill_path():
+    """Return pinned taskkill used to terminate timed-out transport trees."""
+    return first_existing_windows_system_path("taskkill.exe")
+
+
+class WindowsTransportJob:
+    """Own a Windows Job Object that kills every assigned descendant on close."""
+
+    JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
+    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+
+    def __init__(self, process):
+        import ctypes
+        from ctypes import wintypes
+
+        class JobObjectBasicLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_longlong),
+                ("PerJobUserTimeLimit", ctypes.c_longlong),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class IoCounters(ctypes.Structure):
+            _fields_ = [
+                ("ReadOperationCount", ctypes.c_ulonglong),
+                ("WriteOperationCount", ctypes.c_ulonglong),
+                ("OtherOperationCount", ctypes.c_ulonglong),
+                ("ReadTransferCount", ctypes.c_ulonglong),
+                ("WriteTransferCount", ctypes.c_ulonglong),
+                ("OtherTransferCount", ctypes.c_ulonglong),
+            ]
+
+        class JobObjectExtendedLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", JobObjectBasicLimitInformation),
+                ("IoInfo", IoCounters),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        kernel32.SetInformationJobObject.argtypes = (
+            wintypes.HANDLE,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+        )
+        kernel32.SetInformationJobObject.restype = wintypes.BOOL
+        kernel32.AssignProcessToJobObject.argtypes = (
+            wintypes.HANDLE,
+            wintypes.HANDLE,
+        )
+        kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+        kernel32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+        kernel32.TerminateJobObject.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        kernel32.CloseHandle.restype = wintypes.BOOL
+
+        self._kernel32 = kernel32
+        self._handle = kernel32.CreateJobObjectW(None, None)
+        if not self._handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+
+        limits = JobObjectExtendedLimitInformation()
+        limits.BasicLimitInformation.LimitFlags = (
+            self.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        )
+        if not kernel32.SetInformationJobObject(
+            self._handle,
+            self.JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
+            ctypes.byref(limits),
+            ctypes.sizeof(limits),
+        ):
+            error = ctypes.WinError(ctypes.get_last_error())
+            self.close()
+            raise error
+
+        if not kernel32.AssignProcessToJobObject(
+            self._handle,
+            wintypes.HANDLE(int(process._handle)),
+        ):
+            error = ctypes.WinError(ctypes.get_last_error())
+            self.close()
+            raise error
+
+    def terminate(self):
+        """Terminate every process still assigned to the job."""
+        if not self._handle:
+            return False
+        return bool(self._kernel32.TerminateJobObject(self._handle, 1))
+
+    def close(self):
+        """Close the job; KILL_ON_JOB_CLOSE prevents orphan descendants."""
+        if self._handle:
+            self._kernel32.CloseHandle(self._handle)
+            self._handle = None
+
+
+def terminate_transport_process_tree(process, process_job=None):
+    """Boundedly terminate a transport child and every Windows descendant."""
+    if os.name == "nt":
+        job_terminated = process_job is not None and process_job.terminate()
+        taskkill_path = windows_taskkill_path() if not job_terminated else None
+        if taskkill_path and process.poll() is None:
+            killer = None
+            try:
+                killer = subprocess.Popen(
+                    [taskkill_path, "/PID", str(process.pid), "/T", "/F"],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+                killer.wait(timeout=TRANSPORT_TREE_KILL_TIMEOUT_SECONDS)
+            except (OSError, subprocess.TimeoutExpired):
+                if killer is not None:
+                    try:
+                        killer.kill()
+                    except OSError:
+                        pass
+            finally:
+                if killer is not None and killer.poll() is None:
+                    try:
+                        killer.kill()
+                    except OSError:
+                        pass
+        if process.poll() is None:
+            try:
+                process.kill()
+            except OSError:
+                pass
+        return
+
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (OSError, ProcessLookupError):
+        try:
+            process.kill()
+        except OSError:
+            pass
+
+
+def close_transport_pipes(process):
+    """Close local pipe handles so a surviving descendant cannot block return."""
+    for stream_name in ("stdin", "stdout", "stderr"):
+        stream = getattr(process, stream_name, None)
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+
+def run_bounded_transport_process(command, *, input, timeout, env):
+    """Run a byte transport with a hard deadline and bounded tree cleanup."""
+    platform_options = {}
+    if os.name == "nt":
+        platform_options["creationflags"] = (
+            getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        )
+    else:
+        platform_options["start_new_session"] = True
+
+    process = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=False,
+        env=env,
+        **platform_options,
+    )
+    process_job = None
+    if os.name == "nt":
+        try:
+            process_job = WindowsTransportJob(process)
+        except BaseException:
+            # Continuing without a trustworthy tree boundary would invalidate
+            # the updater's hard timeout, so fail closed before doing any I/O.
+            terminate_transport_process_tree(process)
+            close_transport_pipes(process)
+            raise
+
+    try:
+        stdout, stderr = process.communicate(input=input, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        terminate_transport_process_tree(process, process_job)
+        try:
+            stdout, stderr = process.communicate(
+                timeout=TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            terminate_transport_process_tree(process, process_job)
+            stdout = getattr(error, "output", None) or b""
+            stderr = getattr(error, "stderr", None) or b""
+            close_transport_pipes(process)
+        raise subprocess.TimeoutExpired(
+            command,
+            timeout,
+            output=stdout,
+            stderr=stderr,
+        ) from error
+    except BaseException:
+        terminate_transport_process_tree(process, process_job)
+        close_transport_pipes(process)
+        raise
+    finally:
+        if process_job is not None:
+            process_job.close()
+
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def validated_http_headers(headers=None):
+    """Normalize an HTTP header mapping while rejecting header injection."""
+    normalized = {}
     for name, value in (headers or {}).items():
         header_name = str(name).strip()
         header_value = str(value)
@@ -204,7 +461,16 @@ def curl_header_stdin(headers=None):
             raise ValueError("invalid HTTP header name")
         if any(character in header_value for character in ("\x00", "\r", "\n")):
             raise ValueError("invalid HTTP header value")
-        lines.append(f"{header_name}: {header_value}")
+        normalized[header_name] = header_value
+    return normalized
+
+
+def curl_header_stdin(headers=None):
+    """Build curl's stdin header file after rejecting header injection."""
+    lines = [
+        f"{name}: {value}"
+        for name, value in validated_http_headers(headers).items()
+    ]
     return (("\n".join(lines) + "\n") if lines else "").encode("utf-8")
 
 
@@ -291,24 +557,17 @@ def run_curl_attempt(curl_path, method, url, headers=None, body=None):
     """Run one bounded curl process and return transport metadata."""
     command = curl_request_command(curl_path, method, url, body)
     header_input = curl_header_stdin(headers)
-    platform_options = {}
-    if os.name == "nt":
-        platform_options["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
     child_environment = os.environ.copy()
     child_environment.pop("NMS_CLIENT_ID", None)
     child_environment.pop("NMS_CLIENT_SECRET", None)
 
     try:
-        completed = subprocess.run(
+        completed = run_bounded_transport_process(
             command,
             input=header_input,
-            capture_output=True,
             timeout=CURL_PROCESS_TIMEOUT_SECONDS,
-            check=False,
-            shell=False,
             env=child_environment,
-            **platform_options,
         )
     except subprocess.TimeoutExpired:
         return {
@@ -338,12 +597,18 @@ def curl_result_is_success(result):
     return result.get("returncode") == 0 and status is not None and 200 <= status < 300
 
 
+def curl_result_is_transport_failure(result):
+    """Separate transport/protocol failures from completed HTTP responses."""
+    status = result.get("status")
+    return_code = result.get("returncode")
+    if return_code == 0:
+        return not isinstance(status, int) or not 100 <= status <= 599
+    return return_code in CURL_CROSS_TRANSPORT_EXIT_CODES
+
+
 def curl_result_is_transient(result):
     status = result.get("status")
-    return (
-        status in TRANSIENT_HTTP_STATUS_CODES
-        or result.get("returncode") in CURL_TRANSIENT_EXIT_CODES
-    )
+    return status in TRANSIENT_HTTP_STATUS_CODES
 
 
 def curl_failure_message(result):
@@ -366,9 +631,20 @@ def curl_failure_message(result):
 def curl_http_request(curl_path, method, url, headers=None, body=None):
     """Use bounded verified-TLS Windows curl attempts and fail closed."""
     for attempt in range(1, CURL_MAX_RETRIES + 1):
-        result = run_curl_attempt(curl_path, method, url, headers, body)
+        try:
+            result = run_curl_attempt(curl_path, method, url, headers, body)
+        except OSError as error:
+            raise NmsTransportError(
+                "NMS curl request failed (process launch error): no diagnostic text"
+            ) from error
         if curl_result_is_success(result):
             return result["body"]
+
+        # A second verified Windows transport is safer and faster than retrying a
+        # curl process which could not produce a complete HTTP response. Valid
+        # HTTP errors remain owned by curl and never trigger provider replay.
+        if curl_result_is_transport_failure(result):
+            raise NmsTransportError(curl_failure_message(result))
 
         if curl_result_is_transient(result) and attempt < CURL_MAX_RETRIES:
             wait = retry_wait_seconds(attempt)
@@ -384,11 +660,242 @@ def curl_http_request(curl_path, method, url, headers=None, body=None):
     raise RuntimeError("NMS curl request failed after bounded retries.")
 
 
+POWERSHELL_HTTP_SCRIPT = r"""
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+$client = $null
+$message = $null
+$response = $null
+try {
+    Add-Type -AssemblyName System.Net.Http
+    [Net.ServicePointManager]::SecurityProtocol =
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $requestJson = [Console]::In.ReadToEnd()
+    $request = $requestJson | ConvertFrom-Json
+    $uri = [Uri]([string]$request.url)
+    if ($uri.Scheme -ne 'https') { throw 'NMS transport requires HTTPS' }
+
+    $handler = New-Object System.Net.Http.HttpClientHandler
+    $handler.AllowAutoRedirect = $false
+    $handler.CheckCertificateRevocationList = $true
+    $client = New-Object System.Net.Http.HttpClient -ArgumentList @($handler)
+    $client.Timeout = [TimeSpan]::FromSeconds(__TIMEOUT_SECONDS__)
+    $method = New-Object System.Net.Http.HttpMethod -ArgumentList @([string]$request.method)
+    $message = New-Object System.Net.Http.HttpRequestMessage -ArgumentList @($method, $uri)
+
+    if ([bool]$request.hasBody) {
+        $bodyBytes = [Convert]::FromBase64String([string]$request.bodyBase64)
+        $message.Content = New-Object System.Net.Http.ByteArrayContent -ArgumentList @(,$bodyBytes)
+    }
+
+    foreach ($property in $request.headers.PSObject.Properties) {
+        $name = [string]$property.Name
+        $value = [string]$property.Value
+        if ($name -ieq 'Content-Type') {
+            if ($null -eq $message.Content) {
+                $message.Content = New-Object System.Net.Http.ByteArrayContent -ArgumentList @(,[byte[]]@())
+            }
+            [void]$message.Content.Headers.TryAddWithoutValidation($name, $value)
+        } else {
+            [void]$message.Headers.TryAddWithoutValidation($name, $value)
+        }
+    }
+
+    $response = $client.SendAsync(
+        $message,
+        [System.Net.Http.HttpCompletionOption]::ResponseContentRead
+    ).GetAwaiter().GetResult()
+    $responseBytes = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+    $output = [Console]::OpenStandardOutput()
+    if ($responseBytes.Length -gt 0) {
+        $output.Write($responseBytes, 0, $responseBytes.Length)
+    }
+    $statusText = "`n__STATUS_MARKER__$([int]$response.StatusCode)`n"
+    $statusBytes = [Text.Encoding]::ASCII.GetBytes($statusText)
+    $output.Write($statusBytes, 0, $statusBytes.Length)
+    $output.Flush()
+} catch [System.Threading.Tasks.TaskCanceledException] {
+    [Console]::Error.WriteLine('NMS PowerShell HTTP request timed out')
+    exit 28
+} catch [System.TimeoutException] {
+    [Console]::Error.WriteLine('NMS PowerShell HTTP request timed out')
+    exit 28
+} catch {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    exit 1
+} finally {
+    if ($null -ne $response) { $response.Dispose() }
+    if ($null -ne $message) { $message.Dispose() }
+    if ($null -ne $client) { $client.Dispose() }
+}
+"""
+
+
+def powershell_http_script():
+    """Return a fixed, credential-free HttpClient script for Windows fallback."""
+    return (
+        POWERSHELL_HTTP_SCRIPT
+        .replace("__TIMEOUT_SECONDS__", str(POWERSHELL_TOTAL_TIMEOUT_SECONDS))
+        .replace("__STATUS_MARKER__", CURL_HTTP_STATUS_MARKER)
+    )
+
+
+def powershell_request_command(powershell_path):
+    """Build secret-free argv for the pinned Windows PowerShell executable."""
+    encoded_script = base64.b64encode(
+        powershell_http_script().encode("utf-16-le")
+    ).decode("ascii")
+    return [
+        powershell_path,
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-EncodedCommand",
+        encoded_script,
+    ]
+
+
+def powershell_request_stdin(method, url, headers=None, body=None):
+    """Serialize the request, including authorization, only to child stdin."""
+    normalized_method = str(method or "GET").strip().upper()
+    if not re.fullmatch(r"[A-Z]+", normalized_method):
+        raise ValueError("invalid HTTP method")
+    if not str(url).lower().startswith("https://"):
+        raise ValueError("NMS PowerShell transport requires HTTPS")
+
+    body_bytes = None
+    if body is not None:
+        body_bytes = body if isinstance(body, bytes) else str(body).encode("utf-8")
+        if body_bytes != b"grant_type=client_credentials":
+            raise ValueError("unexpected NMS PowerShell request body")
+
+    payload = {
+        "method": normalized_method,
+        "url": str(url),
+        "headers": validated_http_headers(headers),
+        "hasBody": body_bytes is not None,
+        "bodyBase64": base64.b64encode(body_bytes or b"").decode("ascii"),
+    }
+    return json.dumps(payload, separators=(",", ":")).encode("utf-8")
+
+
+def run_powershell_attempt(powershell_path, method, url, headers=None, body=None):
+    """Run one bounded verified-TLS Windows HttpClient request."""
+    command = powershell_request_command(powershell_path)
+    request_input = powershell_request_stdin(method, url, headers, body)
+    child_environment = os.environ.copy()
+    child_environment.pop("NMS_CLIENT_ID", None)
+    child_environment.pop("NMS_CLIENT_SECRET", None)
+
+    try:
+        completed = run_bounded_transport_process(
+            command,
+            input=request_input,
+            timeout=POWERSHELL_PROCESS_TIMEOUT_SECONDS,
+            env=child_environment,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "returncode": 28,
+            "status": None,
+            "body": b"",
+            "diagnostic": "PowerShell HTTP process exceeded its hard timeout",
+        }
+
+    status, response_body = split_curl_response(completed.stdout)
+    return {
+        "returncode": completed.returncode,
+        "status": status,
+        "body": response_body,
+        "diagnostic": curl_diagnostics(completed.stderr, headers),
+        "httpBodyDiagnostic": (
+            curl_http_body_diagnostic(response_body, headers)
+            if completed.returncode == 0 and status is not None
+            else ""
+        ),
+    }
+
+
+def powershell_http_request(powershell_path, method, url, headers=None, body=None):
+    """Use bounded verified-TLS Windows HttpClient attempts and fail closed."""
+    for attempt in range(1, POWERSHELL_MAX_RETRIES + 1):
+        result = run_powershell_attempt(
+            powershell_path,
+            method,
+            url,
+            headers,
+            body,
+        )
+        if curl_result_is_success(result):
+            return result["body"]
+
+        transient = (
+            result.get("status") in TRANSIENT_HTTP_STATUS_CODES
+            or result.get("returncode") == 28
+        )
+        if transient and attempt < POWERSHELL_MAX_RETRIES:
+            wait = retry_wait_seconds(attempt)
+            print(
+                "Transient NMS PowerShell HTTP failure "
+                f"(attempt {attempt}/{POWERSHELL_MAX_RETRIES}). "
+                f"Waiting {wait:.1f} sec then retrying..."
+            )
+            time.sleep(wait)
+            continue
+
+        raise RuntimeError(
+            curl_failure_message(result).replace("NMS curl", "NMS PowerShell HTTP")
+        )
+
+    raise RuntimeError("NMS PowerShell HTTP request failed after bounded retries.")
+
+
+def record_http_transport(name):
+    """Emit only a safe enum so partial timeout logs identify the chosen path."""
+    global LAST_HTTP_TRANSPORT
+    LAST_HTTP_TRANSPORT = name
+    print(f"NMS HTTP transport: {name}")
+
+
 def http_request(method, url, headers=None, body=None, timeout=45):
-    """Select bounded Windows curl, otherwise retain the urllib fallback."""
+    """Select a bounded trusted Windows transport, then portable urllib."""
     curl_path = windows_curl_path()
     if curl_path:
-        return curl_http_request(curl_path, method, url, headers, body)
+        record_http_transport("WINDOWS_CURL")
+        try:
+            return curl_http_request(curl_path, method, url, headers, body)
+        except NmsTransportError:
+            powershell_path = windows_powershell_path()
+            if not powershell_path:
+                raise
+            record_http_transport("WINDOWS_CURL_TO_POWERSHELL")
+            return powershell_http_request(
+                powershell_path,
+                method,
+                url,
+                headers,
+                body,
+            )
+
+    powershell_path = windows_powershell_path()
+    if powershell_path:
+        record_http_transport("WINDOWS_POWERSHELL")
+        return powershell_http_request(
+            powershell_path,
+            method,
+            url,
+            headers,
+            body,
+        )
+
+    if os.name == "nt":
+        record_http_transport("WINDOWS_NO_TRUSTED_TRANSPORT")
+        raise RuntimeError(
+            "NMS requires pinned System32 curl.exe or Windows PowerShell; "
+            "the urllib fallback is disabled on Windows."
+        )
+
+    record_http_transport("PORTABLE_URLLIB")
     return urllib_http_request(method, url, headers, body, timeout)
 
 
@@ -1248,6 +1755,7 @@ def build_bulk_notam_result(response, generated_z=None):
         "generatedZ": generated_z or utc_now_z(),
         "location": LOCATION,
         "source": "FAA_NMS_STAGING",
+        "httpTransport": LAST_HTTP_TRANSPORT,
         "milNotamCount": len(notams),
         "milNotamStatus": f"{len(notams)} ACTIVE" if notams else "NONE ACTIVE",
         "milNotamScrollText": "  |  ".join(
