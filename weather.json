@@ -6,12 +6,12 @@
   "atisPhonetic": "ECHO",
   "atisDisplay": "ECHO",
   "metarFetchStatus": "OK",
-  "tafFetchStatus": "USED_LAST_GOOD",
+  "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T21:54:00Z",
-  "metarAgeMinutes": 13,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-09-07T21:54:00Z",
-  "atisAgeMinutes": 13,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "E:2154Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -39,14 +39,14 @@
   "atisReportedFlow": "MIXED",
   "lastKnownGoodUsed": {
     "metar": false,
-    "taf": true,
+    "taf": false,
     "atis": false,
     "ahas": false
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-07T19:25:45Z",
-  "trendSampleCount": 18,
+  "trendReferenceTimestampZ": "2026-09-07T19:35:47Z",
+  "trendSampleCount": 17,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -125,13 +125,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "MODERATE",
+  "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-07 22:06:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-09-07 22:24:00.000",
+  "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "MODERATE",
+  "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "5778",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=22&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -155,14 +155,14 @@
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "milNotamFetchStatus": "TIMEOUT",
+  "milNotamFetchStatus": "SCRIPT_FAILED",
   "milNotamRawStatus": "Success",
   "milNotamTransport": "WINDOWS_CURL",
   "milNotamProcessBoundary": "UNKNOWN",
   "milNotamAttemptTransport": "WINDOWS_CURL_TO_PYTHON",
   "milNotamAttemptBoundary": "WINDOWS_DIRECT_BOUNDED",
-  "milNotamFailureCategory": "PARENT_TIMEOUT",
-  "milNotamAttemptZ": "2026-09-07 22:15:35Z",
+  "milNotamFailureCategory": "TRANSPORT_UNAVAILABLE",
+  "milNotamAttemptZ": "2026-09-07 22:32:07Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -282,13 +282,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 22:07Z",
+  "allFeedsUpdatedZ": "2026-09-07 22:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 22:07:19Z"
+    "lastWorkflowTimestampZ": "2026-09-07 22:25:56Z"
   }
 }
