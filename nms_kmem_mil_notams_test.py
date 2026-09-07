@@ -28,6 +28,8 @@ import re
 import signal
 import ssl
 import subprocess
+import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from urllib.parse import urlencode
@@ -66,7 +68,7 @@ CURL_MAX_RETRIES = 2
 # verified PowerShell transport. TLS, certificate, trust-store, client-certificate,
 # and pinning failures intentionally remain terminal instead of trying a transport
 # with potentially different validation behavior.
-CURL_CROSS_TRANSPORT_EXIT_CODES = {5, 6, 7, 18, 28, 52, 55, 56, 92, 95, 96}
+CURL_CROSS_TRANSPORT_EXIT_CODES = {2, 5, 6, 7, 18, 28, 52, 55, 56, 92, 95, 96}
 CURL_HTTP_STATUS_MARKER = "__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:"
 CURL_STATUS_RE = re.compile(
     rb"(?:\r?\n)__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:([0-9]{3})\r?\n?\Z"
@@ -78,10 +80,63 @@ POWERSHELL_TOTAL_TIMEOUT_SECONDS = 25
 POWERSHELL_PROCESS_TIMEOUT_SECONDS = 30
 POWERSHELL_MAX_RETRIES = 2
 LAST_HTTP_TRANSPORT = "NOT_USED"
+LAST_PROCESS_BOUNDARY = "NOT_USED"
+SAFE_FAILURE_CATEGORIES = {
+    "AUTH_HTTP",
+    "RATE_LIMIT",
+    "UPSTREAM_HTTP",
+    "TLS_SECURITY",
+    "TRANSPORT_COMPATIBILITY",
+    "TRANSPORT_UNAVAILABLE",
+    "PROCESS_LAUNCH",
+    "RESPONSE_PARSE",
+    "CONFIGURATION",
+    "OS_ERROR",
+    "UNCLASSIFIED",
+}
 
 
 class NmsTransportError(RuntimeError):
     """A curl process/protocol failure that may use another verified transport."""
+
+
+def helper_failure_category(error):
+    """Map a failed helper run to a credential-free operational category."""
+    text = str(error).casefold()
+    if isinstance(error, SystemExit):
+        return "CONFIGURATION"
+    if "http 401" in text or "http 403" in text:
+        return "AUTH_HTTP"
+    if "http 429" in text:
+        return "RATE_LIMIT"
+    if re.search(r"\bhttp 5\d\d\b", text):
+        return "UPSTREAM_HTTP"
+    if any(term in text for term in ("certificate", "ssl", "tls", "trust")):
+        return "TLS_SECURITY"
+    if "curl exit 2" in text:
+        return "TRANSPORT_COMPATIBILITY"
+    if isinstance(error, NmsTransportError):
+        return "TRANSPORT_UNAVAILABLE"
+    if any(
+        term in text
+        for term in (
+            "could not connect",
+            "failed to connect",
+            "sending the request",
+            "name or service not known",
+            "timed out",
+        )
+    ):
+        return "TRANSPORT_UNAVAILABLE"
+    if "process launch" in text:
+        return "PROCESS_LAUNCH"
+    if isinstance(error, (json.JSONDecodeError, ET.ParseError)) or any(
+        term in text for term in ("malformed xml", "no complete aixm", "incomplete page")
+    ):
+        return "RESPONSE_PARSE"
+    if isinstance(error, OSError):
+        return "OS_ERROR"
+    return "UNCLASSIFIED"
 
 BULK_CLASSIFICATION_ALIASES = {
     "DOM": "DOM",
@@ -232,6 +287,136 @@ def windows_taskkill_path():
     return first_existing_windows_system_path("taskkill.exe")
 
 
+def windows_descendant_pids(root_pid):
+    """Return a deepest-first snapshot of descendants of one Windows PID."""
+    if os.name != "nt":
+        return []
+
+    import ctypes
+    from ctypes import wintypes
+
+    class ProcessEntry32W(ctypes.Structure):
+        _fields_ = (
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ProcessID", wintypes.DWORD),
+            ("th32DefaultHeapID", ctypes.c_size_t),
+            ("th32ModuleID", wintypes.DWORD),
+            ("cntThreads", wintypes.DWORD),
+            ("th32ParentProcessID", wintypes.DWORD),
+            ("pcPriClassBase", wintypes.LONG),
+            ("dwFlags", wintypes.DWORD),
+            ("szExeFile", wintypes.WCHAR * 260),
+        )
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_snapshot = kernel32.CreateToolhelp32Snapshot
+    create_snapshot.argtypes = (wintypes.DWORD, wintypes.DWORD)
+    create_snapshot.restype = wintypes.HANDLE
+    process_first = kernel32.Process32FirstW
+    process_first.argtypes = (wintypes.HANDLE, ctypes.POINTER(ProcessEntry32W))
+    process_first.restype = wintypes.BOOL
+    process_next = kernel32.Process32NextW
+    process_next.argtypes = (wintypes.HANDLE, ctypes.POINTER(ProcessEntry32W))
+    process_next.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = (wintypes.HANDLE,)
+    close_handle.restype = wintypes.BOOL
+
+    snapshot = create_snapshot(0x00000002, 0)  # TH32CS_SNAPPROCESS
+    if snapshot == wintypes.HANDLE(-1).value:
+        return []
+
+    parents = {}
+    try:
+        entry = ProcessEntry32W()
+        entry.dwSize = ctypes.sizeof(ProcessEntry32W)
+        if not process_first(snapshot, ctypes.byref(entry)):
+            return []
+        while True:
+            parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
+            if not process_next(snapshot, ctypes.byref(entry)):
+                break
+    finally:
+        close_handle(snapshot)
+
+    depths = {int(root_pid): 0}
+    changed = True
+    while changed:
+        changed = False
+        for pid, parent_pid in parents.items():
+            if pid not in depths and parent_pid in depths:
+                depths[pid] = depths[parent_pid] + 1
+                changed = True
+    return sorted(
+        (pid for pid in depths if pid != int(root_pid)),
+        key=lambda pid: depths[pid],
+        reverse=True,
+    )
+
+
+def windows_terminate_pid(pid):
+    """Directly terminate a Windows PID when tree termination is restricted."""
+    if os.name != "nt":
+        return
+
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    open_process = kernel32.OpenProcess
+    open_process.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    open_process.restype = wintypes.HANDLE
+    terminate_process = kernel32.TerminateProcess
+    terminate_process.argtypes = (wintypes.HANDLE, wintypes.UINT)
+    terminate_process.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = (wintypes.HANDLE,)
+    close_handle.restype = wintypes.BOOL
+
+    handle = open_process(0x0001, False, int(pid))  # PROCESS_TERMINATE
+    if not handle:
+        return
+    try:
+        terminate_process(handle, 1)
+    finally:
+        close_handle(handle)
+
+
+def run_pinned_taskkill(pid):
+    """Run the trusted Windows tree terminator with a bounded wait."""
+    taskkill_path = windows_taskkill_path()
+    if not taskkill_path:
+        return
+    killer = None
+    try:
+        killer = subprocess.Popen(
+            [taskkill_path, "/PID", str(pid), "/T", "/F"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        killer.wait(timeout=TRANSPORT_TREE_KILL_TIMEOUT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired):
+        if killer is not None:
+            try:
+                killer.kill()
+            except OSError:
+                pass
+    finally:
+        if killer is not None and killer.poll() is None:
+            try:
+                killer.kill()
+            except OSError:
+                pass
+        if killer is not None:
+            try:
+                killer.wait(timeout=1)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+
+
 class WindowsTransportJob:
     """Own a Windows Job Object that kills every assigned descendant on close."""
 
@@ -338,36 +523,36 @@ class WindowsTransportJob:
 def terminate_transport_process_tree(process, process_job=None):
     """Boundedly terminate a transport child and every Windows descendant."""
     if os.name == "nt":
+        descendants = windows_descendant_pids(process.pid)
+        def refresh_descendants(values):
+            # Each fresh snapshot is already deepest-first. Put it ahead of
+            # older observations so a newly spawned leaf is never processed
+            # after its previously observed ancestor.
+            ordered = []
+            seen = set()
+            for descendant_pid in [*values, *descendants]:
+                if descendant_pid not in seen:
+                    ordered.append(descendant_pid)
+                    seen.add(descendant_pid)
+            descendants[:] = ordered
+
         job_terminated = process_job is not None and process_job.terminate()
-        taskkill_path = windows_taskkill_path() if not job_terminated else None
-        if taskkill_path and process.poll() is None:
-            killer = None
-            try:
-                killer = subprocess.Popen(
-                    [taskkill_path, "/PID", str(process.pid), "/T", "/F"],
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                )
-                killer.wait(timeout=TRANSPORT_TREE_KILL_TIMEOUT_SECONDS)
-            except (OSError, subprocess.TimeoutExpired):
-                if killer is not None:
-                    try:
-                        killer.kill()
-                    except OSError:
-                        pass
-            finally:
-                if killer is not None and killer.poll() is None:
-                    try:
-                        killer.kill()
-                    except OSError:
-                        pass
         if process.poll() is None:
             try:
                 process.kill()
             except OSError:
                 pass
+        refresh_descendants(windows_descendant_pids(process.pid))
+        if not job_terminated:
+            run_pinned_taskkill(process.pid)
+            for descendant_pid in descendants:
+                windows_terminate_pid(descendant_pid)
+            # Close the snapshot/launch race without allowing cleanup to run
+            # indefinitely in a restricted scheduled-task environment.
+            for _ in range(2):
+                refresh_descendants(windows_descendant_pids(process.pid))
+                for descendant_pid in descendants:
+                    windows_terminate_pid(descendant_pid)
         return
 
     try:
@@ -390,6 +575,29 @@ def close_transport_pipes(process):
                 pass
 
 
+def read_transport_capture(stream):
+    """Read one seekable temporary capture after the direct child has exited."""
+    stream.flush()
+    stream.seek(0)
+    return stream.read()
+
+
+def cleanup_transport_descendants(process):
+    """Remove descendants left behind after a direct fallback child exits."""
+    if os.name != "nt":
+        return
+    for descendant_pid in windows_descendant_pids(process.pid):
+        windows_terminate_pid(descendant_pid)
+
+
+def record_process_boundary(name):
+    """Record a safe process-containment enum for diagnostics/publication."""
+    global LAST_PROCESS_BOUNDARY
+    if name == "WINDOWS_DIRECT_BOUNDED" or LAST_PROCESS_BOUNDARY == "NOT_USED":
+        LAST_PROCESS_BOUNDARY = name
+    print(f"NMS process boundary: {name}")
+
+
 def run_bounded_transport_process(command, *, input, timeout, env):
     """Run a byte transport with a hard deadline and bounded tree cleanup."""
     platform_options = {}
@@ -401,54 +609,77 @@ def run_bounded_transport_process(command, *, input, timeout, env):
     else:
         platform_options["start_new_session"] = True
 
-    process = subprocess.Popen(
-        command,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=False,
-        env=env,
-        **platform_options,
-    )
-    process_job = None
-    if os.name == "nt":
-        try:
-            process_job = WindowsTransportJob(process)
-        except BaseException:
-            # Continuing without a trustworthy tree boundary would invalidate
-            # the updater's hard timeout, so fail closed before doing any I/O.
-            terminate_transport_process_tree(process)
-            close_transport_pipes(process)
-            raise
-
-    try:
-        stdout, stderr = process.communicate(input=input, timeout=timeout)
-    except subprocess.TimeoutExpired as error:
-        terminate_transport_process_tree(process, process_job)
-        try:
-            stdout, stderr = process.communicate(
-                timeout=TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            terminate_transport_process_tree(process, process_job)
-            stdout = getattr(error, "output", None) or b""
-            stderr = getattr(error, "stderr", None) or b""
-            close_transport_pipes(process)
-        raise subprocess.TimeoutExpired(
+    # Seekable files avoid subprocess pipe-reader threads. A grandchild which
+    # inherits an output handle therefore cannot make communicate()/close block
+    # beyond the direct child's hard deadline.
+    with tempfile.TemporaryFile() as stdout_capture, tempfile.TemporaryFile() as stderr_capture:
+        process = subprocess.Popen(
             command,
-            timeout,
-            output=stdout,
-            stderr=stderr,
-        ) from error
-    except BaseException:
-        terminate_transport_process_tree(process, process_job)
-        close_transport_pipes(process)
-        raise
-    finally:
-        if process_job is not None:
-            process_job.close()
+            stdin=subprocess.PIPE,
+            stdout=stdout_capture,
+            stderr=stderr_capture,
+            shell=False,
+            env=env,
+            **platform_options,
+        )
+        process_job = None
+        direct_fallback = False
+        if os.name == "nt":
+            try:
+                process_job = WindowsTransportJob(process)
+                record_process_boundary("WINDOWS_JOB_OBJECT")
+            except OSError:
+                # Task Scheduler may already place this process tree in a Job
+                # which rejects nested assignment. The child is still bounded
+                # by its native timeout, our direct deadline, pinned taskkill,
+                # and explicit descendant termination.
+                direct_fallback = True
+                record_process_boundary("WINDOWS_DIRECT_BOUNDED")
+            except BaseException:
+                terminate_transport_process_tree(process)
+                close_transport_pipes(process)
+                try:
+                    process.wait(timeout=TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS)
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+                raise
+        else:
+            record_process_boundary("POSIX_PROCESS_GROUP")
 
-    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+        try:
+            process.communicate(input=input, timeout=timeout)
+            if direct_fallback:
+                cleanup_transport_descendants(process)
+            stdout = read_transport_capture(stdout_capture)
+            stderr = read_transport_capture(stderr_capture)
+        except subprocess.TimeoutExpired as error:
+            terminate_transport_process_tree(process, process_job)
+            try:
+                process.wait(timeout=TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS)
+            except (OSError, subprocess.TimeoutExpired):
+                terminate_transport_process_tree(process, process_job)
+            stdout = read_transport_capture(stdout_capture)
+            stderr = read_transport_capture(stderr_capture)
+            close_transport_pipes(process)
+            raise subprocess.TimeoutExpired(
+                command,
+                timeout,
+                output=stdout,
+                stderr=stderr,
+            ) from error
+        except BaseException:
+            terminate_transport_process_tree(process, process_job)
+            close_transport_pipes(process)
+            try:
+                process.wait(timeout=TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            raise
+        finally:
+            if process_job is not None:
+                process_job.close()
+
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def validated_http_headers(headers=None):
@@ -1756,6 +1987,7 @@ def build_bulk_notam_result(response, generated_z=None):
         "location": LOCATION,
         "source": "FAA_NMS_STAGING",
         "httpTransport": LAST_HTTP_TRANSPORT,
+        "processBoundary": LAST_PROCESS_BOUNDARY,
         "milNotamCount": len(notams),
         "milNotamStatus": f"{len(notams)} ACTIVE" if notams else "NONE ACTIVE",
         "milNotamScrollText": "  |  ".join(
@@ -1850,4 +2082,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException as error:
+        category = helper_failure_category(error)
+        if category not in SAFE_FAILURE_CATEGORIES:
+            category = "UNCLASSIFIED"
+        print(f"NMS failure category: {category}", file=sys.stderr)
+        raise

@@ -453,6 +453,63 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             "completed-process diagnostics must stay bounded",
         )
 
+    def test_failed_nms_process_publishes_safe_current_attempt_telemetry(self):
+        previous = {
+            "milNotamCount": 1,
+            "milNotamStatus": "1 ACTIVE",
+            "milNotamUpdatedZ": "2026-09-07 11:43:27Z",
+            "milNotamRawStatus": "Success",
+            "milNotamTransport": "WINDOWS_CURL",
+            "milNotams": [{"number": "09/047", "text": "RWY CLSD"}],
+        }
+        completed = subprocess.CompletedProcess(
+            ["nms"],
+            1,
+            (
+                "NMS HTTP transport: WINDOWS_CURL\n"
+                "NMS process boundary: WINDOWS_DIRECT_BOUNDED\n"
+                "NMS HTTP transport: WINDOWS_CURL_TO_POWERSHELL\n"
+            ),
+            "NMS failure category: AUTH_HTTP\n",
+        )
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"NMS_CLIENT_ID": "test-id", "NMS_CLIENT_SECRET": "test-secret"},
+                clear=False,
+            ),
+            mock.patch.object(updater.os.path, "exists", return_value=True),
+            mock.patch.object(updater, "run_bounded_process", return_value=completed),
+            mock.patch("builtins.print"),
+        ):
+            result = updater.fetch_mil_notams(previous)
+
+        self.assertEqual(result["milNotamFetchStatus"], "SCRIPT_FAILED")
+        self.assertEqual(result["milNotamTransport"], "WINDOWS_CURL")
+        self.assertEqual(result["milNotamUpdatedZ"], "2026-09-07 11:43:27Z")
+        self.assertEqual(
+            result["milNotamAttemptTransport"],
+            "WINDOWS_CURL_TO_POWERSHELL",
+        )
+        self.assertEqual(
+            result["milNotamAttemptBoundary"],
+            "WINDOWS_DIRECT_BOUNDED",
+        )
+        self.assertEqual(result["milNotamFailureCategory"], "AUTH_HTTP")
+        self.assertRegex(result["milNotamAttemptZ"], r"^2026-09-07[ T]")
+
+    def test_nms_attempt_telemetry_rejects_untrusted_child_values(self):
+        result = updater.nms_attempt_metadata(
+            "NMS HTTP transport: CREDENTIAL_PATH_C_USERS\n"
+            "NMS process boundary: UNTRUSTED_SHELL\n",
+            "NMS failure category: SECRET_VALUE\n",
+            "HELPER_EXIT_NONZERO",
+        )
+
+        self.assertEqual(result["milNotamAttemptTransport"], "NOT_USED")
+        self.assertEqual(result["milNotamAttemptBoundary"], "NOT_USED")
+        self.assertEqual(result["milNotamFailureCategory"], "HELPER_EXIT_NONZERO")
+
     def test_successful_complete_nms_output_remains_authoritative(self):
         completed = subprocess.CompletedProcess(["nms"], 0, "complete", "")
         raw = {
@@ -460,6 +517,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             "status": "Success",
             "generatedZ": "2026-09-06 20:00:00Z",
             "httpTransport": "WINDOWS_POWERSHELL",
+            "processBoundary": "WINDOWS_DIRECT_BOUNDED",
             "milNotams": [],
             "runwayClosureNotams": [
                 {
@@ -486,6 +544,11 @@ class WeatherGeneratorContractTests(unittest.TestCase):
         self.assertEqual(result["milNotamFetchStatus"], "OK")
         self.assertEqual(result["milNotamRawStatus"], "Success")
         self.assertEqual(result["milNotamTransport"], "WINDOWS_POWERSHELL")
+        self.assertEqual(
+            result["milNotamProcessBoundary"],
+            "WINDOWS_DIRECT_BOUNDED",
+        )
+        self.assertEqual(result["milNotamFailureCategory"], "NONE")
         self.assertEqual(result["milNotamUpdatedZ"], "2026-09-06 20:00:00Z")
         self.assertEqual(result["runwayClosureNotamCount"], 1)
 
@@ -511,6 +574,25 @@ class WeatherGeneratorContractTests(unittest.TestCase):
             {**raw, "httpTransport": r"C:\\sensitive\\host-path"},
         )
         self.assertEqual(rejected["milNotamTransport"], "UNKNOWN")
+
+        for boundary in (
+            "WINDOWS_JOB_OBJECT",
+            "WINDOWS_DIRECT_BOUNDED",
+            "POSIX_PROCESS_GROUP",
+        ):
+            with self.subTest(boundary=boundary):
+                result = updater.normalize_mil_notams_output(
+                    {**raw, "processBoundary": boundary},
+                )
+                self.assertEqual(result["milNotamProcessBoundary"], boundary)
+
+        rejected_boundary = updater.normalize_mil_notams_output(
+            {**raw, "processBoundary": r"C:\\sensitive\\host-path"},
+        )
+        self.assertEqual(
+            rejected_boundary["milNotamProcessBoundary"],
+            "UNKNOWN",
+        )
 
     def test_nms_single_location_bulk_scan_contract_is_preserved(self):
         source = inspect.getsource(nms.main)
@@ -817,6 +899,22 @@ class NmsBulkLocationTests(unittest.TestCase):
 
 class NmsWindowsCurlTransportTests(unittest.TestCase):
     CURL_PATH = r"C:\Windows\System32\curl.exe"
+
+    def test_helper_failure_categories_are_safe_and_actionable(self):
+        cases = (
+            (RuntimeError("HTTP 401 unauthorized"), "AUTH_HTTP"),
+            (RuntimeError("HTTP 429 limit"), "RATE_LIMIT"),
+            (RuntimeError("HTTP 503 unavailable"), "UPSTREAM_HTTP"),
+            (RuntimeError("certificate trust failed"), "TLS_SECURITY"),
+            (nms.NmsTransportError("failed to connect"), "TRANSPORT_UNAVAILABLE"),
+            (RuntimeError("curl exit 2"), "TRANSPORT_COMPATIBILITY"),
+            (OSError("access denied"), "OS_ERROR"),
+        )
+        for error, expected in cases:
+            with self.subTest(expected=expected):
+                category = nms.helper_failure_category(error)
+                self.assertIn(category, nms.SAFE_FAILURE_CATEGORIES)
+                self.assertEqual(category, expected)
 
     def test_curl_success_uses_bounded_https_transport_and_stdin_authorization(self):
         authorization = "Bearer test-sensitive-token"
@@ -1417,6 +1515,11 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 b"missing marker",
             ),
             _curl_completed(0, 0, body=b"status zero"),
+            _curl_completed(
+                2,
+                0,
+                diagnostic=b"installed curl does not support one fixed option",
+            ),
         )
         for failure in transport_failures:
             with self.subTest(failure=type(failure).__name__):
@@ -1492,6 +1595,142 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 sleep.assert_not_called()
 
     @unittest.skipUnless(os.name == "nt", "Windows process-tree timeout coverage")
+    def test_bounded_transport_uses_safe_fallback_when_job_assignment_is_unavailable(self):
+        command = (
+            "import sys; "
+            "sys.stdout.buffer.write(b'captured stdout'); "
+            "sys.stdout.buffer.flush(); "
+            "sys.stderr.buffer.write(b'captured stderr'); "
+            "sys.stderr.buffer.flush()"
+        )
+        with mock.patch.object(
+            nms,
+            "WindowsTransportJob",
+            side_effect=OSError("simulated nested Job Object rejection"),
+        ):
+            completed = nms.run_bounded_transport_process(
+                [sys.executable, "-u", "-c", command],
+                input=b"",
+                timeout=2.0,
+                env=os.environ.copy(),
+            )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, b"captured stdout")
+        self.assertEqual(completed.stderr, b"captured stderr")
+
+    @unittest.skipUnless(os.name == "nt", "Windows output-capture coverage")
+    def test_bounded_transport_fallback_does_not_deadlock_on_full_pipe_volume(self):
+        command = (
+            "import sys; "
+            "sys.stdout.buffer.write(b'o' * 524288); "
+            "sys.stderr.buffer.write(b'e' * 524288)"
+        )
+        with mock.patch.object(
+            nms,
+            "WindowsTransportJob",
+            side_effect=OSError("simulated nested Job Object rejection"),
+        ):
+            completed = nms.run_bounded_transport_process(
+                [sys.executable, "-u", "-c", command],
+                input=b"",
+                timeout=3.0,
+                env=os.environ.copy(),
+            )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(len(completed.stdout), 524288)
+        self.assertEqual(len(completed.stderr), 524288)
+
+    @unittest.skipUnless(os.name == "nt", "Windows fallback timeout coverage")
+    def test_bounded_transport_job_failure_fallback_terminates_running_tree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sentinel = Path(directory) / "fallback-grandchild-survived.txt"
+            grandchild = (
+                "import pathlib,sys,time; time.sleep(1.0); "
+                "pathlib.Path(sys.argv[1]).write_text('survived')"
+            )
+            parent = (
+                "import subprocess,sys,time; "
+                f"subprocess.Popen([sys.executable,'-c',{grandchild!r},sys.argv[1]]); "
+                "print('grandchild started',flush=True); time.sleep(30)"
+            )
+            started = time.monotonic()
+            with (
+                mock.patch.object(
+                    nms,
+                    "WindowsTransportJob",
+                    side_effect=OSError("simulated nested Job Object rejection"),
+                ),
+                self.assertRaises(subprocess.TimeoutExpired),
+            ):
+                nms.run_bounded_transport_process(
+                    [sys.executable, "-u", "-c", parent, str(sentinel)],
+                    input=b"",
+                    timeout=0.25,
+                    env=os.environ.copy(),
+                )
+            elapsed = time.monotonic() - started
+            time.sleep(1.25)
+
+        self.assertLess(elapsed, 3.0)
+        self.assertFalse(sentinel.exists())
+
+    @unittest.skipUnless(os.name == "nt", "Windows exited-parent fallback coverage")
+    def test_bounded_transport_job_failure_fallback_cleans_tree_after_parent_exits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sentinel = Path(directory) / "fallback-exited-parent-grandchild-survived.txt"
+            grandchild = (
+                "import pathlib,sys,time; time.sleep(1.0); "
+                "pathlib.Path(sys.argv[1]).write_text('survived')"
+            )
+            parent = (
+                "import subprocess,sys; "
+                f"subprocess.Popen([sys.executable,'-c',{grandchild!r},sys.argv[1]]); "
+                "print('parent exiting',flush=True)"
+            )
+            started = time.monotonic()
+            with mock.patch.object(
+                nms,
+                "WindowsTransportJob",
+                side_effect=OSError("simulated nested Job Object rejection"),
+            ):
+                completed = nms.run_bounded_transport_process(
+                    [sys.executable, "-u", "-c", parent, str(sentinel)],
+                    input=b"",
+                    timeout=0.5,
+                    env=os.environ.copy(),
+                )
+            elapsed = time.monotonic() - started
+            time.sleep(1.25)
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertIn(b"parent exiting", completed.stdout)
+        self.assertLess(elapsed, 3.0)
+        self.assertFalse(sentinel.exists())
+
+    @unittest.skipUnless(os.name == "nt", "Windows Job Object fail-closed coverage")
+    def test_bounded_transport_does_not_swallow_non_oserror_job_failures(self):
+        command = "import time; time.sleep(30)"
+        started = time.monotonic()
+        with (
+            mock.patch.object(
+                nms,
+                "WindowsTransportJob",
+                side_effect=RuntimeError("simulated programming failure"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "programming failure"),
+        ):
+            nms.run_bounded_transport_process(
+                [sys.executable, "-u", "-c", command],
+                input=b"",
+                timeout=2.0,
+                env=os.environ.copy(),
+            )
+
+        self.assertLess(time.monotonic() - started, 3.0)
+
+    @unittest.skipUnless(os.name == "nt", "Windows process-tree timeout coverage")
     def test_bounded_transport_timeout_terminates_inherited_pipe_grandchild(self):
         with tempfile.TemporaryDirectory() as directory:
             sentinel = Path(directory) / "transport-grandchild-survived.txt"
@@ -1519,7 +1758,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertFalse(sentinel.exists())
 
     @unittest.skipUnless(os.name == "nt", "Windows exited-parent timeout coverage")
-    def test_bounded_transport_timeout_kills_grandchild_after_parent_exits(self):
+    def test_bounded_transport_cleans_grandchild_after_parent_exits(self):
         with tempfile.TemporaryDirectory() as directory:
             sentinel = Path(directory) / "exited-parent-grandchild-survived.txt"
             grandchild = (
@@ -1532,16 +1771,17 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 "print('parent exiting',flush=True)"
             )
             started = time.monotonic()
-            with self.assertRaises(subprocess.TimeoutExpired):
-                nms.run_bounded_transport_process(
-                    [sys.executable, "-u", "-c", parent, str(sentinel)],
-                    input=b"",
-                    timeout=0.15,
-                    env=os.environ.copy(),
-                )
+            completed = nms.run_bounded_transport_process(
+                [sys.executable, "-u", "-c", parent, str(sentinel)],
+                input=b"",
+                timeout=0.15,
+                env=os.environ.copy(),
+            )
             elapsed = time.monotonic() - started
             time.sleep(1.25)
 
+        self.assertEqual(completed.returncode, 0)
+        self.assertIn(b"parent exiting", completed.stdout)
         self.assertLess(elapsed, 3.0)
         self.assertFalse(sentinel.exists())
 

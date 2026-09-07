@@ -50,6 +50,45 @@ NMS_MIL_NOTAMS_SCRIPT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_test.py
 NMS_MIL_NOTAMS_OUTPUT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_output.json")
 NMS_MIL_NOTAMS_TIMEOUT_SECONDS = 300
 NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS = 8192
+NMS_SAFE_TRANSPORTS = {
+    "WINDOWS_CURL",
+    "WINDOWS_POWERSHELL",
+    "WINDOWS_CURL_TO_POWERSHELL",
+    "WINDOWS_NO_TRUSTED_TRANSPORT",
+    "PORTABLE_URLLIB",
+    "NOT_USED",
+}
+NMS_SAFE_PROCESS_BOUNDARIES = {
+    "WINDOWS_JOB_OBJECT",
+    "WINDOWS_DIRECT_BOUNDED",
+    "POSIX_PROCESS_GROUP",
+    "NOT_USED",
+}
+NMS_SAFE_FAILURE_CATEGORIES = {
+    "NONE",
+    "AUTH_HTTP",
+    "RATE_LIMIT",
+    "UPSTREAM_HTTP",
+    "TLS_SECURITY",
+    "TRANSPORT_COMPATIBILITY",
+    "TRANSPORT_UNAVAILABLE",
+    "PROCESS_LAUNCH",
+    "RESPONSE_PARSE",
+    "CONFIGURATION",
+    "OS_ERROR",
+    "UNCLASSIFIED",
+    "HELPER_EXIT_NONZERO",
+    "OUTPUT_MISSING",
+    "PARENT_TIMEOUT",
+    "PARENT_ERROR",
+    "NO_CREDENTIALS",
+    "NO_NMS_SCRIPT",
+    "NO_DATA",
+    "SCRIPT_FAILED",
+    "NO_OUTPUT_JSON",
+    "TIMEOUT",
+    "ERROR",
+}
 NOTAM_OK_MAX_AGE_MINUTES = 30
 NOTAM_WARN_MAX_AGE_MINUTES = 60
 
@@ -719,6 +758,10 @@ def load_previous_weather():
         notam_block = {key: notam_data[key] for key in MIL_NOTAM_CACHE_FIELDS}
         notam_block["milNotamTransport"] = notam_data.get(
             "milNotamTransport",
+            "UNKNOWN",
+        )
+        notam_block["milNotamProcessBoundary"] = notam_data.get(
+            "milNotamProcessBoundary",
             "UNKNOWN",
         )
         previous.update(notam_block)
@@ -4710,16 +4753,27 @@ def is_taxi_restriction_notam_text(text):
     return bool(surface_hit and restriction_hit)
 
 
+def safe_nms_failure_category(value, fallback="UNCLASSIFIED"):
+    """Return only a credential-free, allowlisted NMS failure enum."""
+    normalized = str(value or "").strip().upper()
+    if normalized in NMS_SAFE_FAILURE_CATEGORIES:
+        return normalized
+    normalized_fallback = str(fallback or "UNCLASSIFIED").strip().upper()
+    if normalized_fallback in NMS_SAFE_FAILURE_CATEGORIES:
+        return normalized_fallback
+    return "UNCLASSIFIED"
+
+
 def normalize_mil_notams_output(raw, fetch_status="OK"):
     raw = raw or {}
     transport = str(raw.get("httpTransport") or "UNKNOWN").strip().upper()
-    if transport not in {
-        "WINDOWS_CURL",
-        "WINDOWS_POWERSHELL",
-        "WINDOWS_CURL_TO_POWERSHELL",
-        "PORTABLE_URLLIB",
-    }:
+    if transport not in NMS_SAFE_TRANSPORTS:
         transport = "UNKNOWN"
+    process_boundary = str(
+        raw.get("processBoundary") or "UNKNOWN"
+    ).strip().upper()
+    if process_boundary not in NMS_SAFE_PROCESS_BOUNDARIES:
+        process_boundary = "UNKNOWN"
     inactive_numbers = collect_inactive_notam_targets(raw)
     items = raw.get("milNotams") or raw.get("items") or []
 
@@ -4787,6 +4841,13 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         "milNotamFetchStatus": fetch_status,
         "milNotamRawStatus": raw.get("status") or "UNKNOWN",
         "milNotamTransport": transport,
+        "milNotamProcessBoundary": process_boundary,
+        "milNotamAttemptTransport": transport,
+        "milNotamAttemptBoundary": process_boundary,
+        "milNotamFailureCategory": safe_nms_failure_category(
+            "NONE" if fetch_status == "OK" else fetch_status,
+        ),
+        "milNotamAttemptZ": raw.get("generatedZ") or raw.get("updated_at_z") or "--",
         "ficonNotams": ficon_notams,
         "ficonNotamCount": len(ficon_notams),
         "runwayClosureNotams": runway_closure_notams,
@@ -4798,8 +4859,38 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
     }
 
 
-def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
+def previous_mil_notams_or_default(
+    previous_data,
+    fetch_status="NO_DATA",
+    attempt_metadata=None,
+):
     previous_data = previous_data or {}
+    current_attempt = {
+        "milNotamAttemptTransport": "NOT_USED",
+        "milNotamAttemptBoundary": "NOT_USED",
+        "milNotamFailureCategory": safe_nms_failure_category(fetch_status),
+        "milNotamAttemptZ": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%SZ"
+        ),
+    }
+    current_attempt.update(attempt_metadata or {})
+    attempt_transport = str(
+        current_attempt["milNotamAttemptTransport"] or ""
+    ).strip().upper()
+    current_attempt["milNotamAttemptTransport"] = (
+        attempt_transport if attempt_transport in NMS_SAFE_TRANSPORTS else "NOT_USED"
+    )
+    attempt_boundary = str(
+        current_attempt["milNotamAttemptBoundary"] or ""
+    ).strip().upper()
+    current_attempt["milNotamAttemptBoundary"] = (
+        attempt_boundary
+        if attempt_boundary in NMS_SAFE_PROCESS_BOUNDARIES
+        else "NOT_USED"
+    )
+    current_attempt["milNotamFailureCategory"] = safe_nms_failure_category(
+        current_attempt["milNotamFailureCategory"],
+    )
 
     if "milNotams" in previous_data or "milNotamCount" in previous_data:
         previous_raw = {
@@ -4807,15 +4898,22 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
             "generatedZ": use_previous_field(previous_data, "milNotamUpdatedZ", "--"),
             "status": use_previous_field(previous_data, "milNotamRawStatus", "LAST_GOOD"),
             "httpTransport": use_previous_field(previous_data, "milNotamTransport", "UNKNOWN"),
+            "processBoundary": use_previous_field(
+                previous_data,
+                "milNotamProcessBoundary",
+                "UNKNOWN",
+            ),
             "milNotams": use_previous_field(previous_data, "milNotams", []),
             "ficonNotams": use_previous_field(previous_data, "ficonNotams", []),
             "runwayClosureNotams": use_previous_field(previous_data, "runwayClosureNotams", []),
             "constructionStatusNotams": use_previous_field(previous_data, "constructionStatusNotams", []),
             "taxiRestrictionNotams": use_previous_field(previous_data, "taxiRestrictionNotams", [])
         }
-        return normalize_mil_notams_output(previous_raw, fetch_status)
+        result = normalize_mil_notams_output(previous_raw, fetch_status)
+        result.update(current_attempt)
+        return result
 
-    return {
+    result = {
         "milNotamCount": 0,
         "milNotamStatus": "NMS NOT CHECKED",
         "milNotamSource": "FAA_NMS_STAGING",
@@ -4825,6 +4923,7 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
         "milNotamFetchStatus": fetch_status,
         "milNotamRawStatus": "NO_PREVIOUS_DATA",
         "milNotamTransport": "UNKNOWN",
+        "milNotamProcessBoundary": "UNKNOWN",
         "ficonNotams": [],
         "ficonNotamCount": 0,
         "runwayClosureNotams": [],
@@ -4833,6 +4932,50 @@ def previous_mil_notams_or_default(previous_data, fetch_status="NO_DATA"):
         "constructionStatusNotamCount": 0,
         "taxiRestrictionNotams": [],
         "taxiRestrictionNotamCount": 0
+    }
+    result.update(current_attempt)
+    return result
+
+
+def nms_attempt_metadata(stdout, stderr, failure_category):
+    """Extract only allowlisted current-attempt enums from child diagnostics."""
+    chunks = []
+    for value in (stdout, stderr):
+        if value is None:
+            continue
+        if isinstance(value, bytes):
+            chunks.append(value.decode("utf-8", errors="ignore"))
+        else:
+            chunks.append(str(value))
+    text = "\n".join(chunks)
+
+    def last_safe_marker(label, allowed):
+        values = re.findall(
+            rf"(?m)^{re.escape(label)}\s*([A-Z0-9_]+)\s*$",
+            text,
+        )
+        return values[-1] if values and values[-1] in allowed else "NOT_USED"
+
+    reported_failure = last_safe_marker(
+        "NMS failure category:",
+        NMS_SAFE_FAILURE_CATEGORIES,
+    )
+    if reported_failure == "NOT_USED":
+        reported_failure = safe_nms_failure_category(failure_category)
+
+    return {
+        "milNotamAttemptTransport": last_safe_marker(
+            "NMS HTTP transport:",
+            NMS_SAFE_TRANSPORTS,
+        ),
+        "milNotamAttemptBoundary": last_safe_marker(
+            "NMS process boundary:",
+            NMS_SAFE_PROCESS_BOUNDARIES,
+        ),
+        "milNotamFailureCategory": reported_failure,
+        "milNotamAttemptZ": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%SZ"
+        ),
     }
 
 
@@ -4916,13 +5059,29 @@ def fetch_mil_notams(previous_data):
 
         if result.returncode != 0:
             print(f"MIL NOTAMS: NMS script returned {result.returncode}; using previous data if available.")
-            return previous_mil_notams_or_default(previous_data, "SCRIPT_FAILED")
+            return previous_mil_notams_or_default(
+                previous_data,
+                "SCRIPT_FAILED",
+                nms_attempt_metadata(
+                    result.stdout,
+                    result.stderr,
+                    "HELPER_EXIT_NONZERO",
+                ),
+            )
 
         raw = load_json_file(NMS_MIL_NOTAMS_OUTPUT_PATH)
 
         if not raw:
             print("MIL NOTAMS: output JSON missing or empty; using previous data if available.")
-            return previous_mil_notams_or_default(previous_data, "NO_OUTPUT_JSON")
+            return previous_mil_notams_or_default(
+                previous_data,
+                "NO_OUTPUT_JSON",
+                nms_attempt_metadata(
+                    result.stdout,
+                    result.stderr,
+                    "OUTPUT_MISSING",
+                ),
+            )
 
         mil_data = normalize_mil_notams_output(raw, "OK")
         print("MIL NOTAMS:", mil_data["milNotamStatus"], "SOURCE:", mil_data["milNotamSource"])
@@ -4931,11 +5090,23 @@ def fetch_mil_notams(previous_data):
     except subprocess.TimeoutExpired as error:
         log_nms_timeout_diagnostics(error, (client_id, client_secret))
         print("MIL NOTAMS: NMS script timed out; using previous data if available.")
-        return previous_mil_notams_or_default(previous_data, "TIMEOUT")
+        return previous_mil_notams_or_default(
+            previous_data,
+            "TIMEOUT",
+            nms_attempt_metadata(
+                getattr(error, "stdout", None),
+                getattr(error, "stderr", None),
+                "PARENT_TIMEOUT",
+            ),
+        )
 
     except Exception as error:
         print("MIL NOTAMS: failed:", error)
-        return previous_mil_notams_or_default(previous_data, "ERROR")
+        return previous_mil_notams_or_default(
+            previous_data,
+            "ERROR",
+            nms_attempt_metadata(None, None, "PARENT_ERROR"),
+        )
 
 
 
@@ -5417,6 +5588,23 @@ def build_weather_json():
         "milNotamFetchStatus": mil_notam_data["milNotamFetchStatus"],
         "milNotamRawStatus": mil_notam_data["milNotamRawStatus"],
         "milNotamTransport": mil_notam_data.get("milNotamTransport", "UNKNOWN"),
+        "milNotamProcessBoundary": mil_notam_data.get(
+            "milNotamProcessBoundary",
+            "UNKNOWN",
+        ),
+        "milNotamAttemptTransport": mil_notam_data.get(
+            "milNotamAttemptTransport",
+            "NOT_USED",
+        ),
+        "milNotamAttemptBoundary": mil_notam_data.get(
+            "milNotamAttemptBoundary",
+            "NOT_USED",
+        ),
+        "milNotamFailureCategory": mil_notam_data.get(
+            "milNotamFailureCategory",
+            "UNKNOWN",
+        ),
+        "milNotamAttemptZ": mil_notam_data.get("milNotamAttemptZ", "--"),
         "ficonNotams": mil_notam_data.get("ficonNotams", []),
         "ficonNotamCount": mil_notam_data.get("ficonNotamCount", 0),
         "runwayClosureNotams": mil_notam_data.get("runwayClosureNotams", []),
