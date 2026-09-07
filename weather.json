@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T04:54:00Z",
-  "metarAgeMinutes": 13,
+  "metarAgeMinutes": 23,
   "atisObservedZ": "2026-09-07T04:54:00Z",
-  "atisAgeMinutes": 13,
+  "atisAgeMinutes": 23,
   "atisReportIdentity": "N:0454Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -41,7 +41,7 @@
     "metar": false,
     "taf": false,
     "atis": false,
-    "ahas": true
+    "ahas": false
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
@@ -127,15 +127,15 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-07 04:24:00.000",
+  "bwcUpdatedZ": "2026-09-07 05:18:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "SEVERE",
   "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=04&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=7&iHour=04",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=05&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=7&iHour=05",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
@@ -276,13 +276,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 05:06Z",
+  "allFeedsUpdatedZ": "2026-09-07 05:16Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 05:06:51Z"
+    "lastWorkflowTimestampZ": "2026-09-07 05:16:55Z"
   }
 }
