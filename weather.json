@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T17:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-09-07T17:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "A:1754Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -41,11 +41,11 @@
     "metar": false,
     "taf": false,
     "atis": false,
-    "ahas": false
+    "ahas": true
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-07T15:05:57Z",
+  "trendReferenceTimestampZ": "2026-09-07T15:29:22Z",
   "trendSampleCount": 20,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -98,9 +98,9 @@
   "windGustKt": null,
   "windArrow": "\u2199",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25bc",
-  "windTrendText": "DECREASING",
-  "windTrendClass": "improving",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 33,
   "dewpointC": 18,
   "tempDpDisplay": "33/18",
@@ -158,6 +158,11 @@
   "milNotamFetchStatus": "SCRIPT_FAILED",
   "milNotamRawStatus": "Success",
   "milNotamTransport": "WINDOWS_CURL",
+  "milNotamProcessBoundary": "UNKNOWN",
+  "milNotamAttemptTransport": "WINDOWS_CURL_TO_POWERSHELL",
+  "milNotamAttemptBoundary": "WINDOWS_JOB_OBJECT",
+  "milNotamFailureCategory": "TRANSPORT_COMPATIBILITY",
+  "milNotamAttemptZ": "2026-09-07 18:28:51Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -277,13 +282,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 18:05Z",
+  "allFeedsUpdatedZ": "2026-09-07 18:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 18:05:48Z"
+    "lastWorkflowTimestampZ": "2026-09-07 18:25:57Z"
   }
 }
