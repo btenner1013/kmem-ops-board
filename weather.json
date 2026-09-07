@@ -9,11 +9,11 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T20:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 42,
   "atisObservedZ": "2026-09-07T20:54:00Z",
-  "atisAgeMinutes": 22,
+  "atisAgeMinutes": 42,
   "atisReportIdentity": "D:2054Z",
-  "atisSelectedSource": "ATIS_INFO_API",
+  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,7 +25,8 @@
       "identity": "D:2054Z",
       "observedZ": "2026-09-07T20:54:00Z",
       "sources": [
-        "ATIS_INFO_API"
+        "ATIS_INFO_API",
+        "ATIS_RELAY"
       ]
     }
   ],
@@ -44,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-07T18:25:57Z",
+  "trendReferenceTimestampZ": "2026-09-07T18:36:19Z",
   "trendSampleCount": 18,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -161,7 +162,7 @@
   "milNotamAttemptTransport": "WINDOWS_CURL_TO_PYTHON",
   "milNotamAttemptBoundary": "WINDOWS_DIRECT_BOUNDED",
   "milNotamFailureCategory": "TRANSPORT_UNAVAILABLE",
-  "milNotamAttemptZ": "2026-09-07 21:20:26Z",
+  "milNotamAttemptZ": "2026-09-07 21:41:25Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -281,13 +282,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 21:15Z",
+  "allFeedsUpdatedZ": "2026-09-07 21:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 21:15:52Z"
+    "lastWorkflowTimestampZ": "2026-09-07 21:35:47Z"
   }
 }
