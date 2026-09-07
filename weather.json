@@ -6,12 +6,12 @@
   "atisPhonetic": "CHARLIE",
   "atisDisplay": "CHARLIE",
   "metarFetchStatus": "OK",
-  "tafFetchStatus": "OK",
+  "tafFetchStatus": "USED_LAST_GOOD",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T19:54:00Z",
-  "metarAgeMinutes": 2,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-09-07T19:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "C:1954Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -39,14 +39,14 @@
   "atisReportedFlow": "MIXED",
   "lastKnownGoodUsed": {
     "metar": false,
-    "taf": false,
+    "taf": true,
     "atis": false,
-    "ahas": true
+    "ahas": false
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-07T17:06:09Z",
-  "trendSampleCount": 19,
+  "trendReferenceTimestampZ": "2026-09-07T17:25:50Z",
+  "trendSampleCount": 18,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -127,15 +127,15 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-07 19:42:00.000",
+  "bwcUpdatedZ": "2026-09-07 20:18:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
-  "bwcHeight100FtAgl": "5556",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=19&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=7&iHour=19",
+  "bwcHeight100FtAgl": "5778",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=20&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=7&iHour=20",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
@@ -159,10 +159,10 @@
   "milNotamRawStatus": "Success",
   "milNotamTransport": "WINDOWS_CURL",
   "milNotamProcessBoundary": "UNKNOWN",
-  "milNotamAttemptTransport": "WINDOWS_CURL_TO_POWERSHELL",
+  "milNotamAttemptTransport": "WINDOWS_CURL_TO_PYTHON",
   "milNotamAttemptBoundary": "WINDOWS_JOB_OBJECT",
   "milNotamFailureCategory": "TRANSPORT_COMPATIBILITY",
-  "milNotamAttemptZ": "2026-09-07 20:00:19Z",
+  "milNotamAttemptZ": "2026-09-07 20:21:21Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -282,13 +282,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 19:56Z",
+  "allFeedsUpdatedZ": "2026-09-07 20:16Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 19:56:20Z"
+    "lastWorkflowTimestampZ": "2026-09-07 20:16:04Z"
   }
 }
