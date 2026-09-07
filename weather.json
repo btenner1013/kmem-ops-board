@@ -9,11 +9,11 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T16:54:00Z",
-  "metarAgeMinutes": 2,
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-09-07T16:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "Z:1654Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,8 +25,7 @@
       "identity": "Z:1654Z",
       "observedZ": "2026-09-07T16:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
-        "ATIS_RELAY"
+        "ATIS_INFO_API"
       ]
     }
   ],
@@ -45,8 +44,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-07T14:06:07Z",
-  "trendSampleCount": 20,
+  "trendReferenceTimestampZ": "2026-09-07T14:15:51Z",
+  "trendSampleCount": 19,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -98,9 +97,9 @@
   "windGustKt": 15,
   "windArrow": "\u2190",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25b2",
-  "windTrendText": "INCREASING",
-  "windTrendClass": "worsening",
+  "windTrend": "\u25ba",
+  "windTrendText": "STEADY",
+  "windTrendClass": "steady",
   "tempC": 33,
   "dewpointC": 18,
   "tempDpDisplay": "33/18",
@@ -127,15 +126,15 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-07 16:54:00.000",
+  "bwcUpdatedZ": "2026-09-07 17:06:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=16&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=7&iHour=16",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=7&hour=17&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=7&iHour=17",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
@@ -277,13 +276,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 16:55Z",
+  "allFeedsUpdatedZ": "2026-09-07 17:06Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 16:55:52Z"
+    "lastWorkflowTimestampZ": "2026-09-07 17:06:09Z"
   }
 }
