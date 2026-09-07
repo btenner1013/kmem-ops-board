@@ -9,11 +9,11 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-07T11:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 31,
   "atisObservedZ": "2026-09-07T11:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 31,
   "atisReportIdentity": "U:1154Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,8 +25,7 @@
       "identity": "U:1154Z",
       "observedZ": "2026-09-07T11:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
-        "ATIS_RELAY"
+        "ATIS_INFO_API"
       ]
     }
   ],
@@ -41,12 +40,12 @@
     "metar": false,
     "taf": false,
     "atis": false,
-    "ahas": false
+    "ahas": true
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-07T09:06:39Z",
-  "trendSampleCount": 11,
+  "trendReferenceTimestampZ": "2026-09-07T09:35:48Z",
+  "trendSampleCount": 12,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -277,13 +276,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-07 12:06Z",
+  "allFeedsUpdatedZ": "2026-09-07 12:24Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-07 12:06:12Z"
+    "lastWorkflowTimestampZ": "2026-09-07 12:24:46Z"
   }
 }
