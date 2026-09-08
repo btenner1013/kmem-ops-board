@@ -6,12 +6,12 @@
   "atisPhonetic": "NOVEMBER",
   "atisDisplay": "NOVEMBER",
   "metarFetchStatus": "OK",
-  "tafFetchStatus": "OK",
+  "tafFetchStatus": "USED_LAST_GOOD",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-08T05:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 52,
   "atisObservedZ": "2026-09-08T05:54:00Z",
-  "atisAgeMinutes": 32,
+  "atisAgeMinutes": 52,
   "atisReportIdentity": "N:0554Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -39,14 +39,14 @@
   "atisReportedFlow": "NORTH \u2191",
   "lastKnownGoodUsed": {
     "metar": false,
-    "taf": false,
+    "taf": true,
     "atis": false,
     "ahas": false
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-08T03:35:47Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-09-08T03:47:32Z",
+  "trendSampleCount": 20,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -125,13 +125,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "MODERATE",
+  "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-08 06:24:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-09-08 06:48:00.000",
+  "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "SEVERE",
-  "bwcAhasRisk": "MODERATE",
+  "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=8&hour=06&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -165,7 +165,7 @@
   "milNotamAttemptProxyRoute": "NOT_USED",
   "milNotamAttemptReason": "NOT_USED",
   "milNotamFailureCategory": "TLS_SECURITY",
-  "milNotamAttemptZ": "2026-09-08 06:28:09Z",
+  "milNotamAttemptZ": "2026-09-08 06:48:33Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -285,13 +285,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-08 06:26Z",
+  "allFeedsUpdatedZ": "2026-09-08 06:45Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-08 06:26:07Z"
+    "lastWorkflowTimestampZ": "2026-09-08 06:45:46Z"
   }
 }
