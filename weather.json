@@ -6,14 +6,14 @@
   "atisPhonetic": "LIMA",
   "atisDisplay": "LIMA",
   "metarFetchStatus": "OK",
-  "tafFetchStatus": "OK",
+  "tafFetchStatus": "USED_LAST_GOOD",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-08T03:54:00Z",
-  "metarAgeMinutes": 2,
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-09-08T03:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "L:0354Z",
-  "atisSelectedSource": "ATIS_INFO_API",
+  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,7 +25,8 @@
       "identity": "L:0354Z",
       "observedZ": "2026-09-08T03:54:00Z",
       "sources": [
-        "ATIS_INFO_API"
+        "ATIS_INFO_API",
+        "ATIS_RELAY"
       ]
     }
   ],
@@ -38,14 +39,14 @@
   "atisReportedFlow": "NORTH \u2191",
   "lastKnownGoodUsed": {
     "metar": false,
-    "taf": false,
+    "taf": true,
     "atis": false,
-    "ahas": true
+    "ahas": false
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-08T00:56:07Z",
-  "trendSampleCount": 20,
+  "trendReferenceTimestampZ": "2026-09-08T01:06:06Z",
+  "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -124,17 +125,17 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-08 03:36:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-09-08 04:06:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "SEVERE",
-  "bwcAhasRisk": "SEVERE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=8&hour=03&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=8&iHour=03",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=8&hour=04&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=8&iHour=04",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
@@ -158,13 +159,13 @@
   "milNotamRawStatus": "Success",
   "milNotamTransport": "WINDOWS_CURL",
   "milNotamProcessBoundary": "UNKNOWN",
-  "milNotamAttemptTransport": "WINDOWS_CURL_TO_POWERSHELL",
+  "milNotamAttemptTransport": "WINDOWS_CURL",
   "milNotamAttemptBoundary": "WINDOWS_JOB_OBJECT",
   "milNotamAttemptStage": "TOKEN",
-  "milNotamAttemptProxyRoute": "DIRECT",
-  "milNotamAttemptReason": "TLS_SECURITY",
+  "milNotamAttemptProxyRoute": "NOT_USED",
+  "milNotamAttemptReason": "NOT_USED",
   "milNotamFailureCategory": "TLS_SECURITY",
-  "milNotamAttemptZ": "2026-09-08 03:58:44Z",
+  "milNotamAttemptZ": "2026-09-08 04:08:09Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -284,13 +285,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-08 03:55Z",
+  "allFeedsUpdatedZ": "2026-09-08 04:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-08 03:55:57Z"
+    "lastWorkflowTimestampZ": "2026-09-08 04:05:58Z"
   }
 }
