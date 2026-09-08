@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-08T04:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 24,
   "atisObservedZ": "2026-09-08T04:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 24,
   "atisReportIdentity": "M:0454Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-08T02:06:23Z",
+  "trendReferenceTimestampZ": "2026-09-08T02:36:06Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -127,12 +127,12 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-08 05:06:00.000",
-  "bwcNexrad": "NO DATA",
+  "bwcUpdatedZ": "2026-09-08 05:18:00.000",
+  "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "SEVERE",
   "bwcAhasRisk": "SEVERE",
-  "bwcBasedOn": "NEXBAM",
+  "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=8&hour=05&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=8&iHour=05",
@@ -165,7 +165,7 @@
   "milNotamAttemptProxyRoute": "NOT_USED",
   "milNotamAttemptReason": "NOT_USED",
   "milNotamFailureCategory": "TLS_SECURITY",
-  "milNotamAttemptZ": "2026-09-08 05:08:22Z",
+  "milNotamAttemptZ": "2026-09-08 05:19:10Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -285,13 +285,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-08 05:05Z",
+  "allFeedsUpdatedZ": "2026-09-08 05:17Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-08 05:05:52Z"
+    "lastWorkflowTimestampZ": "2026-09-08 05:17:48Z"
   }
 }
