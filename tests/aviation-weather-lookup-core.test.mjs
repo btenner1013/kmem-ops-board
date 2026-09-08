@@ -587,41 +587,115 @@ test("missing or malformed KMEM history remains truthfully unavailable", async (
   assert.equal(missing.headline, "HISTORICAL ATIS UNAVAILABLE");
 });
 
-test("KMEM current ATIS reads the operational selection and honors its existing freshness flag", async () => {
+test("KMEM current lookup keeps the last validated ATIS visible without treating it as current", async () => {
   const currentData = {
     atisText: "MEM ATIS INFO C 1130Z. 22008KT 10SM SCT050 A2998. ADVS YOU HAVE INFO C.",
     atisObservedZ: "2026-08-27T11:30:00Z",
     atisLetter: "C",
+    atisReportedLetter: "C",
     atisSourceIsCurrent: true,
+    atisFetchStatus: "OK",
     atisSelectedSource: "ATIS_INFO_API+ATIS_RELAY",
   };
+  let weatherRequests = 0;
   const current = await lookupAviationWeather({
     station: "KMEM",
     product: "ATIS",
     now: NOW,
     baseUrl: "https://example.test/board/",
-    fetchImpl: async () => jsonResponse(currentData),
+    fetchImpl: async () => {
+      weatherRequests += 1;
+      return jsonResponse(currentData);
+    },
   });
   assert.equal(current.state, "success");
   assert.equal(current.reports[0].letter, "C");
+  assert.equal(current.reports[0].isCurrent, true);
+  assert.equal(current.reports[0].lastReported, false);
+  assert.equal(current.lastReported, false);
+  assert.equal(weatherRequests, 1);
 
-  const suppressed = await lookupAviationWeather({
-    station: "KMEM",
-    product: "ATIS",
-    now: NOW,
-    baseUrl: "https://example.test/board/",
-    fetchImpl: async () => jsonResponse({ ...currentData, atisSourceIsCurrent: false }),
-  });
-  assert.equal(suppressed.state, "unavailable");
-
-  const stale = await lookupAviationWeather({
+  const delayed = await lookupAviationWeather({
     station: "KMEM",
     product: "ATIS",
     now: new Date("2026-08-27T12:31:00Z"),
     baseUrl: "https://example.test/board/",
-    fetchImpl: async () => jsonResponse(currentData),
+    fetchImpl: async () => jsonResponse({
+      ...currentData,
+      atisLetter: "--",
+      atisSourceIsCurrent: false,
+      atisFetchStatus: "WARN_SOURCE",
+    }),
   });
-  assert.equal(stale.state, "unavailable");
+  assert.equal(delayed.state, "success");
+  assert.equal(delayed.lastReported, true);
+  assert.equal(delayed.reports.length, 1);
+  assert.equal(delayed.reports[0].letter, "C");
+  assert.equal(delayed.reports[0].isCurrent, false);
+  assert.equal(delayed.reports[0].lastReported, true);
+  assert.equal(delayed.reports[0].ageMinutes, 61);
+  assert.equal(delayed.reports[0].raw, currentData.atisText);
+  assert.match(delayed.detail, /LAST REPORTED KMEM ATIS — NOT OPERATIONAL-CURRENT · 61 MIN OLD/);
+
+  const stale = await lookupAviationWeather({
+    station: "KMEM",
+    product: "ATIS",
+    now: new Date("2026-08-27T14:30:00Z"),
+    baseUrl: "https://example.test/board/",
+    fetchImpl: async () => jsonResponse({
+      ...currentData,
+      atisLetter: "--",
+      atisSourceIsCurrent: false,
+      atisFetchStatus: "STALE_SOURCE",
+    }),
+  });
+  assert.equal(stale.state, "success");
+  assert.equal(stale.lastReported, true);
+  assert.equal(stale.reports[0].ageMinutes, 180);
+  assert.match(stale.detail, /3H OLD/);
+  assert.equal("arrRunways" in stale.reports[0], false);
+
+  const unavailable = await lookupAviationWeather({
+    station: "KMEM",
+    product: "ATIS",
+    now: NOW,
+    baseUrl: "https://example.test/board/",
+    fetchImpl: async () => jsonResponse({
+      atisText: "D-ATIS unavailable",
+      atisObservedZ: "",
+      atisLetter: "--",
+      atisReportedLetter: "--",
+      atisSourceIsCurrent: false,
+    }),
+  });
+  assert.equal(unavailable.state, "unavailable");
+});
+
+test("KMEM retained lookup fails closed on inconsistent report identity or source status", async () => {
+  const valid = {
+    atisText: "MEM ATIS INFO C 1130Z. 22008KT 10SM SCT050 A2998. ADVS YOU HAVE INFO C.",
+    atisObservedZ: "2026-08-27T11:30:00Z",
+    atisLetter: "C",
+    atisReportedLetter: "C",
+    atisSourceIsCurrent: true,
+    atisFetchStatus: "OK",
+  };
+  const lookup = (overrides, now = NOW) => lookupAviationWeather({
+    station: "KMEM",
+    product: "ATIS",
+    now,
+    baseUrl: "https://example.test/board/",
+    fetchImpl: async () => jsonResponse({ ...valid, ...overrides }),
+  });
+
+  assert.equal((await lookup({ atisReportedLetter: "D", atisLetter: "D" })).state, "unavailable");
+  assert.equal((await lookup({ atisObservedZ: "2026-08-27T11:31:00Z" })).state, "unavailable");
+  assert.equal((await lookup({ atisFetchStatus: "FAILED_NO_LAST_GOOD" })).state, "unavailable");
+
+  const staleFlag = await lookup({}, new Date("2026-08-27T14:30:00Z"));
+  assert.equal(staleFlag.state, "success");
+  assert.equal(staleFlag.lastReported, true);
+  assert.equal(staleFlag.reports[0].isCurrent, false);
 });
 
 test("non-KMEM current ATIS preserves same-time arrival and departure products", async () => {

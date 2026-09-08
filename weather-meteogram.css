@@ -131,7 +131,10 @@
   scrollbar-color:#22d3ee #081010;
   scrollbar-width:thin;
   touch-action:pan-x pan-y;
+  -webkit-overflow-scrolling:touch;
 }
+
+.aviation-meteogram-mobile-nav{display:none}
 
 .aviation-meteogram-sticky-time-ruler{
   position:sticky;
@@ -715,20 +718,85 @@
 @media (max-width:768px){
   .aviation-meteogram-header{align-items:flex-start;flex-direction:column;padding:9px 10px}
   .aviation-meteogram-controls{width:100%;justify-content:space-between;gap:5px}
-  .aviation-meteogram-toggle{min-height:40px;padding:5px 8px}
+  .aviation-meteogram-toggle{min-height:44px;padding:5px 8px}
   .aviation-meteogram-context{align-items:flex-start;flex-direction:column;gap:4px;padding:6px 9px}
   .aviation-meteogram-context span:last-child{text-align:left;white-space:normal}
+  .aviation-meteogram-mobile-nav{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:6px;
+    padding:6px 8px;
+    border-bottom:1px solid rgba(34,211,238,.24);
+    background:#071011;
+  }
+  .aviation-meteogram-mobile-nav-hint{
+    grid-column:1/-1;
+    color:#80b9b9;
+    font-size:.58rem;
+    font-weight:1000;
+    letter-spacing:.075em;
+    text-align:center;
+  }
+  .aviation-meteogram-mobile-nav button{
+    box-sizing:border-box;
+    min-width:0;
+    min-height:44px;
+    padding:6px 4px;
+    border:1px solid rgba(34,211,238,.55);
+    border-radius:5px;
+    background:#0c1616;
+    color:#dffbfa;
+    cursor:pointer;
+    font:1000 .68rem Arial,sans-serif;
+    letter-spacing:.035em;
+    white-space:nowrap;
+  }
+  .aviation-meteogram-mobile-nav button:active{background:rgba(34,211,238,.19)}
+  .aviation-meteogram-mobile-nav button:focus-visible{outline:3px solid #fff;outline-offset:-3px}
   .aviation-meteogram-notes{padding:6px 9px}
   .aviation-meteogram-row-title{font-size:10px}
   .aviation-meteogram-row-unit{font-size:7.5px}
+}
+
+@media (max-width:480px){
+  .aviation-meteogram-header{gap:7px;padding:7px 8px}
+  .aviation-meteogram-header h3{font-size:.94rem;letter-spacing:.055em}
+  .aviation-meteogram-header p{margin-top:2px;font-size:.57rem;line-height:1.22;letter-spacing:.045em}
+  .aviation-meteogram-controls{gap:4px}
+  .aviation-meteogram-toggle-group{min-width:0}
+  .aviation-meteogram-toggle{min-width:38px;padding-inline:6px}
+  .aviation-meteogram-context{gap:3px;padding:5px 7px;font-size:.58rem;line-height:1.25}
 }
 
 @media (min-width:769px) and (max-width:950px) and (max-height:520px) and (orientation:landscape){
   .aviation-meteogram-header{align-items:center;flex-direction:row;padding:6px 9px}
   .aviation-meteogram-header p{display:none}
   .aviation-meteogram-controls{width:auto}
-  .aviation-meteogram-toggle{min-height:32px;padding:4px 7px}
+  .aviation-meteogram-toggle{min-height:36px;padding:4px 7px}
   .aviation-meteogram-context{align-items:center;flex-direction:row;padding:4px 8px}
+  .aviation-meteogram-mobile-nav{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:6px;
+    padding:4px 8px;
+    border-bottom:1px solid rgba(34,211,238,.24);
+    background:#071011;
+  }
+  .aviation-meteogram-mobile-nav-hint{display:none}
+  .aviation-meteogram-mobile-nav button{
+    box-sizing:border-box;
+    min-width:0;
+    min-height:40px;
+    padding:4px;
+    border:1px solid rgba(34,211,238,.55);
+    border-radius:5px;
+    background:#0c1616;
+    color:#dffbfa;
+    cursor:pointer;
+    font:1000 .68rem Arial,sans-serif;
+    letter-spacing:.035em;
+    white-space:nowrap;
+  }
   .aviation-meteogram-notes{padding:4px 8px}
 }
 
@@ -746,6 +814,8 @@
     border-color:#000!important;
   }
   body.aviation-lookup-printing .aviation-meteogram-controls{display:none!important}
+  body.aviation-lookup-printing .aviation-meteogram-mobile-nav{display:none!important}
+  body.aviation-meteogram-printing .aviation-meteogram-mobile-nav{display:none!important}
   body.aviation-lookup-printing .aviation-meteogram-wind-tooltip{display:none!important}
   body.aviation-lookup-printing .aviation-meteogram-scroll{overflow:visible!important}
   body.aviation-lookup-printing .aviation-meteogram-sticky-labels{display:none!important}

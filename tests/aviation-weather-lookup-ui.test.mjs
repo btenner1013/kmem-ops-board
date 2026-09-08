@@ -10,9 +10,11 @@ import {
   applyLookupDialogState,
   fetchCurrentTafSnapshot,
   fetchNwsMeteogramSupplement,
+  formatAtisAge,
   formatReportIdentity,
   formatZulu,
   getAtisGuruReference,
+  renderResultCards,
   renderAtisGuruReference,
   toggleDecodedReport,
 } from "../aviation-weather-lookup.js";
@@ -30,7 +32,7 @@ const atisUnavailable = (station) => ({
 
 function fakeElement(tagName) {
   const attributes = new Map();
-  return {
+  const element = {
     tagName: String(tagName).toUpperCase(),
     className: "",
     textContent: "",
@@ -40,6 +42,15 @@ function fakeElement(tagName) {
     setAttribute(name, value) { attributes.set(name, String(value)); },
     getAttribute(name) { return attributes.get(name) || null; },
   };
+  element.classList = {
+    add(...names) {
+      const classes = new Set(element.className.split(/\s+/).filter(Boolean));
+      names.forEach((name) => classes.add(name));
+      element.className = [...classes].join(" ");
+    },
+    contains(name) { return element.className.split(/\s+/).includes(name); },
+  };
+  return element;
 }
 
 test("the board creates the exact Aviation Weather Lookup quick-link button", () => {
@@ -89,7 +100,7 @@ test("decoder control expands and collapses without replacing the raw report", (
   assert.equal(attributes.get("aria-expanded"), "false");
   assert.equal(toggle.textContent, "DECODE");
   assert.equal(panel.hidden, true);
-  assert.match(lookupJs, /card\.append\(meta, rawLabel, raw\)[\s\S]*card\.append\(controls, decodePanel\)/);
+  assert.match(lookupJs, /card\.appendChild\(meta\)[\s\S]*card\.append\(rawLabel, raw\)[\s\S]*card\.append\(controls, decodePanel\)/);
 });
 
 test("same-origin current TAF snapshot is schema-checked, cache-busted, and station-filtered", async () => {
@@ -526,6 +537,35 @@ test("result cards keep providers internal and show UTC plus station-local time"
   assert.match(lookupJs, /aviation-lookup-result-local/);
 });
 
+test("last-reported KMEM ATIS carries an immediately adjacent not-current warning", () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { createElement: fakeElement };
+  try {
+    const container = fakeElement("div");
+    renderResultCards(container, [{
+      product: "ATIS",
+      station: "KMEM",
+      timestamp: "2026-08-27T11:30:00Z",
+      letter: "C",
+      raw: "MEM ATIS INFO C 1130Z. 22008KT 10SM SCT050 A2998.",
+      lastReported: true,
+      isCurrent: false,
+      ageMinutes: 61,
+    }]);
+    const card = container.children[0];
+    assert.equal(card.classList.contains("aviation-lookup-result-last-reported"), true);
+    const warning = card.children.find((child) => child.className === "aviation-lookup-last-reported-warning");
+    assert.ok(warning);
+    assert.equal(warning.textContent, "LAST REPORTED ATIS · NOT OPERATIONAL-CURRENT · 61 MIN OLD");
+    assert.match(lookupCss, /\.aviation-lookup-result-last-reported\{border-left-color:var\(--warning/);
+    assert.match(lookupCss, /\.aviation-lookup-result-last-reported \.aviation-lookup-result-meta strong\{color:var\(--warning/);
+    assert.equal(formatAtisAge(180), "3H OLD");
+    assert.match(lookupJs, /response\.lastReported[\s\S]*?LAST REPORTED[\s\S]*?response\.partialFailures \|\| response\.lastReported \? "warning" : "success"/);
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
 test("dialog visibility helper opens, closes, and restores focus", () => {
   const attributes = new Map();
   const toggles = [];
@@ -596,6 +636,10 @@ test("print layout is black-and-white lookup-only output", () => {
   assert.match(lookupCss, /color:#000!important/);
   assert.match(lookupCss, /break-inside:avoid-page/);
   assert.match(lookupCss, /aviation-lookup-result-controls\{display:none!important\}/);
+  assert.match(
+    lookupCss,
+    /body\.aviation-lookup-printing \.aviation-lookup-last-reported-warning\{[\s\S]*?border:2px solid #000!important;[\s\S]*?background:#fff!important;[\s\S]*?color:#000!important;/,
+  );
   assert.doesNotMatch(lookupCss, /@media print[\s\S]*#radarImg/);
 });
 

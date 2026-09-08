@@ -1331,22 +1331,41 @@ async function fetchKmemAtis({ station, now, fetchImpl, baseUrl, signal }) {
   const data = await fetchJson(fetchImpl, operationalWeatherUrl(baseUrl, now), signal);
   const raw = String(data?.atisText || "").trim();
   const timestamp = asDate(data?.atisObservedZ);
-  const letter = String(data?.atisLetter || "").trim().toUpperCase();
+  const letter = String(data?.atisReportedLetter || data?.atisLetter || "").trim().toUpperCase();
+  const status = String(data?.atisFetchStatus || "").trim().toUpperCase();
+  const header = archivedAtisHeader(raw, station);
+  const timestampHhmm = timestamp
+    ? `${String(timestamp.getUTCHours()).padStart(2, "0")}${String(timestamp.getUTCMinutes()).padStart(2, "0")}`
+    : "";
   const ageMinutes = timestamp ? (asDate(now).getTime() - timestamp.getTime()) / 60000 : Number.POSITIVE_INFINITY;
   if (
     !raw ||
     !timestamp ||
     ageMinutes < -15 ||
-    ageMinutes > ATIS_CURRENT_LIMIT_MINUTES ||
-    data?.atisSourceIsCurrent !== true ||
-    !/^[A-Z]$/.test(letter)
+    !/^[A-Z]$/.test(letter) ||
+    !header ||
+    header.letter !== letter ||
+    header.time !== timestampHhmm ||
+    !archivedAtisBodyUsable(raw, letter) ||
+    status.includes("FAILED") ||
+    status.includes("TIME_UNKNOWN")
   ) {
     return {
       reports: [],
       unavailable: true,
-      detail: "The operational KMEM ATIS is unavailable or suppressed by its existing freshness gate.",
+      detail: "No valid retained KMEM ATIS report is available.",
     };
   }
+  const roundedAgeMinutes = Math.max(0, Math.round(ageMinutes));
+  const isCurrent = (
+    data?.atisSourceIsCurrent === true &&
+    ageMinutes < ATIS_CURRENT_LIMIT_MINUTES &&
+    (status === "OK" || status === "USED_LAST_GOOD")
+  );
+  const lastReported = !isCurrent;
+  const ageDetail = roundedAgeMinutes < 120
+    ? `${roundedAgeMinutes} MIN OLD`
+    : `${Math.floor(roundedAgeMinutes / 60)}H${roundedAgeMinutes % 60 ? ` ${roundedAgeMinutes % 60}M` : ""} OLD`;
   return {
     reports: [{
       product: "ATIS",
@@ -1355,7 +1374,14 @@ async function fetchKmemAtis({ station, now, fetchImpl, baseUrl, signal }) {
       letter,
       raw,
       source: String(data.atisSelectedSource || "KMEM operational feed"),
+      isCurrent,
+      lastReported,
+      ageMinutes: roundedAgeMinutes,
     }],
+    lastReported,
+    detail: lastReported
+      ? `LAST REPORTED KMEM ATIS — NOT OPERATIONAL-CURRENT · ${ageDetail}. No newer validated broadcast is available; verify before operational use.`
+      : "",
   };
 }
 
@@ -1428,7 +1454,7 @@ export async function lookupAviationWeather({
       if (response.unavailable) return result("unavailable", "SOURCE UNAVAILABLE", response.detail);
       const reports = filterAndSortReports(response.reports, null, nowDate);
       return reports.length
-        ? result("success", "", "", reports)
+        ? result("success", "", response.detail || "", reports, { lastReported: response.lastReported === true })
         : result("empty", "NO REPORTS FOUND", "No valid current ATIS report was returned.");
     }
 

@@ -249,7 +249,12 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 
 .summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:clamp(1px, 0.4vh, 8px); align-items:center; }
 .flight-category{ font-size:clamp(1.6rem,5.5vh,8.5rem); font-weight:bold; letter-spacing:2px; line-height:.92; }
-.atis-letter{ font-size:clamp(1.2rem,3.8vh,6.0rem); font-weight:bold; text-align:right; color:white; line-height:1; white-space:nowrap; }
+.atis-letter{ font-size:clamp(1.2rem,3.8vh,6.0rem); font-weight:bold; text-align:right; color:white; line-height:1; white-space:nowrap; display:flex; flex-direction:column; align-items:flex-end; min-width:0; }
+.atis-letter-value{display:block;max-width:100%}
+.atis-letter-status{display:block;max-width:100%;margin-top:2px;color:var(--warning);font-size:clamp(.62rem,1.05vh,1.3rem);line-height:1.08;letter-spacing:.055em;white-space:normal;text-wrap:balance}
+.atis-letter-last-reported .atis-letter-value{color:var(--warning)}
+.atis-letter-last-reported-stale .atis-letter-value,
+.atis-letter-last-reported-stale .atis-letter-status{color:var(--closed)}
 
 .details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
 .ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
@@ -523,7 +528,7 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
   .clock{ font-size:clamp(2.7rem,12vw,4.2rem) !important; }
   .label{ font-size:clamp(.95rem,4vw,1.2rem); }
   .summary-grid{ grid-template-columns:1fr; }
-  .atis-letter{ text-align:left; }
+  .atis-letter{ text-align:left; align-items:flex-start; }
   .details-grid, .ops-grid{ grid-template-columns:1fr; }
   .detail-label,.ops-label,.trend-label{ font-size:.78rem; }
   .detail-value,.ops-value,.trend-value{ font-size:1.02rem; }
@@ -540,7 +545,7 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
   .clock{ font-size:min(var(--clock-px),8.8vw,42px) !important; }
   .label,.title{ font-size:clamp(.72rem,2.2vw,.95rem) !important; }
   .summary-grid{ grid-template-columns:.55fr 1.45fr !important; }
-  .atis-letter{ text-align:right !important; }
+  .atis-letter{ text-align:right !important; align-items:flex-end !important; }
   .details-grid{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
   .ops-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
   .detail-label,.ops-label,.trend-label{ font-size:clamp(.55rem,1.85vw,.68rem) !important; }
@@ -832,7 +837,7 @@ body.getac-preset .board-qr-label-phase66 { display: block !important; }
   .reference-only-label{ font-size:.64em !important; white-space:normal !important; text-align:left !important; line-height:1.05 !important; overflow-wrap:anywhere !important; }
   .summary-grid{ grid-template-columns:1fr !important; gap:3px !important; margin-bottom:0 !important; }
   .flight-category{ font-size:clamp(2rem,14vw,3.2rem) !important; line-height:.9 !important; }
-  .atis-letter{ font-size:clamp(1.15rem,6vw,1.8rem) !important; text-align:left !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  .atis-letter{ font-size:clamp(1.15rem,6vw,1.8rem) !important; text-align:left !important; align-items:flex-start !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   .details-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:4px !important; margin-bottom:0 !important; }
   .ops-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:4px !important; margin-bottom:0 !important; }
   .summary-grid,.details-grid,.ops-grid,.status-grid{ width:100% !important; max-width:100% !important; min-width:0 !important; }
@@ -1164,7 +1169,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 
       <div class="summary-grid">
         <div id="category" class="flight-category">--</div>
-        <div id="atisLetter" class="atis-letter">ATIS: --</div>
+        <div id="atisLetter" class="atis-letter" role="status" aria-live="polite" aria-atomic="true"><span class="atis-letter-value">ATIS: --</span></div>
       </div>
 
       <div class="details-grid">
@@ -1837,9 +1842,121 @@ function setTempDpDisplay(data){
   el.title=`Temp/Dewpoint ${display} | Temp trend: ${data.tempTrendText||""} | Dew point trend: ${data.dewpointTrendText||""}`;
 }
 
+function atisPhoneticForLetter(value){
+  const letter=String(value||"").trim().toUpperCase();
+  const words=[
+    "ALFA","BRAVO","CHARLIE","DELTA","ECHO","FOXTROT","GOLF","HOTEL","INDIA",
+    "JULIETT","KILO","LIMA","MIKE","NOVEMBER","OSCAR","PAPA","QUEBEC","ROMEO",
+    "SIERRA","TANGO","UNIFORM","VICTOR","WHISKEY","X-RAY","YANKEE","ZULU"
+  ];
+  return /^[A-Z]$/.test(letter)?words[letter.charCodeAt(0)-65]||"":"";
+}
+
+function compactAtisAge(value){
+  if(value===null||value===undefined||value==="")return "AGE UNKNOWN";
+  const numeric=Number(value);
+  if(!Number.isFinite(numeric)||numeric<0)return "AGE UNKNOWN";
+  const minutes=Math.max(0,Math.round(numeric));
+  if(minutes<120)return `${minutes} MIN OLD`;
+  const hours=Math.floor(minutes/60);
+  const remainder=minutes%60;
+  return remainder?`${hours}H ${remainder}M OLD`:`${hours}H OLD`;
+}
+
+function atisIdentityInReport(data){
+  const text=String(data?.atisText||"").trim().toUpperCase();
+  if(isBadText(text,["D-ATIS UNAVAILABLE","UNAVAILABLE","ERROR","FAILED"]))return null;
+  const textMatch=text.match(/\bATIS\s+INFO(?:RMATION)?\s+([A-Z])\D{0,12}(\d{4})Z\b/)
+    ||text.match(/\bINFO(?:RMATION)?\s+([A-Z])\D{0,12}(\d{4})Z\b/);
+  const textLetter=textMatch?.[1]||"";
+  const textTime=textMatch?.[2]||"";
+  const identityMatch=String(data?.atisReportIdentity||"").trim().toUpperCase().match(/^([A-Z]):(\d{4})Z(?:\b|$)/);
+  const identityLetter=identityMatch?.[1]||"";
+  const identityTime=identityMatch?.[2]||"";
+  if(!textLetter&&!identityLetter)return null;
+  if(textLetter&&identityLetter&&(textLetter!==identityLetter||textTime!==identityTime))return null;
+  return {letter:textLetter||identityLetter,time:textTime||identityTime};
+}
+
+function validatedAtisAgeMinutes(data,reportTime){
+  const observed=parseUpdatedZ(String(data?.atisObservedZ||""));
+  if(!observed)return null;
+  const observedTime=`${String(observed.getUTCHours()).padStart(2,"0")}${String(observed.getUTCMinutes()).padStart(2,"0")}`;
+  if(!reportTime||observedTime!==reportTime)return null;
+  const age=(getBoardNowMs()-observed.getTime())/60000;
+  if(!Number.isFinite(age)||age< -15)return null;
+  return Math.max(0,Math.round(age));
+}
+
+function atisDisplayState(data){
+  const currentLetter=String(data?.atisLetter||"").trim().toUpperCase();
+  const reportedLetter=String(data?.atisReportedLetter||"").trim().toUpperCase();
+  const reportIdentity=atisIdentityInReport(data);
+  const reportLetter=reportIdentity?.letter||"";
+  const status=String(data?.atisFetchStatus||"").toUpperCase();
+  const ageMinutes=validatedAtisAgeMinutes(data,reportIdentity?.time);
+  const reportIsUsable=Boolean(
+    reportLetter&&
+    /^[A-Z]$/.test(reportedLetter)&&
+    reportedLetter===reportLetter&&
+    ageMinutes!==null&&
+    !status.includes("FAILED")&&
+    !status.includes("TIME_UNKNOWN")
+  );
+  const currentPhonetic=reportIsUsable&&currentLetter===reportLetter?atisPhoneticForLetter(currentLetter):"";
+  const retainedPhonetic=reportIsUsable?atisPhoneticForLetter(reportLetter):"";
+  const sourceIsCurrent=(
+    data?.atisSourceIsCurrent===true&&
+    Boolean(currentPhonetic)&&
+    ageMinutes<60&&
+    (status==="OK"||status==="USED_LAST_GOOD")
+  );
+  const display=sourceIsCurrent?currentPhonetic:retainedPhonetic;
+  if(!display){
+    return {display:"--",mode:"unavailable",cue:"",ageLabel:"AGE UNKNOWN"};
+  }
+  if(sourceIsCurrent){
+    return {display,mode:"current",cue:"",ageLabel:compactAtisAge(ageMinutes)};
+  }
+  const stale=status.includes("STALE")||ageMinutes>=90;
+  const ageLabel=compactAtisAge(ageMinutes);
+  return {
+    display,
+    mode:stale?"last-reported-stale":"last-reported",
+    cue:`LAST REPORTED · NOT OPERATIONAL-CURRENT · ${stale?"STALE · ":""}${ageLabel}`,
+    ageLabel,
+  };
+}
+
 function setAtisDisplay(data){
-  const display=data.atisDisplay||data.atisPhonetic||data.atisLetter||"--";
-  document.getElementById("atisLetter").textContent="ATIS: "+display;
+  const el=document.getElementById("atisLetter");
+  if(!el)return;
+  const state=atisDisplayState(data||{});
+  const description=state.mode==="current"
+    ? `Current ATIS ${state.display}`
+    : state.mode==="unavailable"
+      ? "No valid ATIS report retained"
+      : `Last reported ATIS ${state.display}; ${state.cue.toLowerCase()}. Operational ATIS fields remain suppressed.`;
+  const signature=[state.mode,state.display,state.cue,description].join("|");
+  if(el.dataset.presentationSignature===signature)return;
+  el.className=`atis-letter atis-letter-${state.mode}`;
+  el.textContent="";
+
+  const value=document.createElement("span");
+  value.className="atis-letter-value";
+  value.textContent=`ATIS: ${state.display}`;
+  el.appendChild(value);
+
+  if(state.cue){
+    const cue=document.createElement("span");
+    cue.className="atis-letter-status";
+    cue.textContent=state.cue;
+    el.appendChild(cue);
+  }
+
+  el.setAttribute("aria-label",description);
+  el.title=description;
+  el.dataset.presentationSignature=signature;
 }
 
 function setClosedRunwayDisplay(value){

@@ -94,6 +94,34 @@ class AtisHistoryMergeTests(unittest.TestCase):
         self.assertEqual(second.archive["records"][0]["firstSeenZ"], "2026-08-28T00:00:00Z")
         self.assertFalse(second.changed)
 
+    def test_repeated_last_reported_broadcast_is_not_duplicated_after_freshness_boundaries(self):
+        first = history.merge_atis_history(
+            {}, [live_candidate()], now_z=NOW, validator=operational_validator
+        )
+
+        warned_now = datetime(2026, 8, 28, 0, 55, tzinfo=UTC)
+        warned = history.merge_atis_history(
+            first.archive,
+            [live_candidate(first_seen="2026-08-28T00:55:00Z")],
+            now_z=warned_now,
+            validator=operational_validator,
+        )
+        stale_now = datetime(2026, 8, 28, 1, 25, tzinfo=UTC)
+        stale = history.merge_atis_history(
+            warned.archive,
+            [live_candidate(first_seen="2026-08-28T01:25:00Z")],
+            now_z=stale_now,
+            validator=operational_validator,
+        )
+
+        self.assertEqual(len(warned.archive["records"]), 1)
+        self.assertEqual(warned.appended, 0)
+        self.assertFalse(warned.changed)
+        self.assertEqual(len(stale.archive["records"]), 1)
+        self.assertEqual(stale.appended, 0)
+        self.assertFalse(stale.changed)
+        self.assertEqual(stale.archive["records"][0]["firstSeenZ"], "2026-08-28T00:00:00Z")
+
     def test_same_broadcast_from_two_providers_dedupes_and_merges_sources(self):
         first_raw = report()
         second_raw = first_raw.replace("MEM ATIS INFO", "KMEM ATIS INFORMATION")

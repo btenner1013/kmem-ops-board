@@ -48,6 +48,16 @@ export function formatZulu(timestamp) {
     : "TIME UNKNOWN";
 }
 
+export function formatAtisAge(ageMinutes) {
+  const numeric = Number(ageMinutes);
+  if (!Number.isFinite(numeric) || numeric < 0) return "";
+  const minutes = Math.max(0, Math.round(numeric));
+  if (minutes < 120) return `${minutes} MIN OLD`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder ? `${hours}H ${remainder}M OLD` : `${hours}H OLD`;
+}
+
 export function getAtisGuruReference({ station, product, range, response } = {}) {
   const icao = normalizeIcao(station);
   const reports = Array.isArray(response?.reports) ? response.reports : [];
@@ -302,7 +312,17 @@ export function renderResultCards(container, reports) {
     raw.className = "aviation-lookup-raw";
     raw.textContent = report.displayText || report.raw;
 
-    card.append(meta, rawLabel, raw);
+    card.appendChild(meta);
+    if (report.lastReported === true) {
+      card.classList.add("aviation-lookup-result-last-reported");
+      const warning = document.createElement("div");
+      warning.className = "aviation-lookup-last-reported-warning";
+      const ageLabel = formatAtisAge(report.ageMinutes);
+      const age = ageLabel ? ` · ${ageLabel}` : "";
+      warning.textContent = `LAST REPORTED ATIS · NOT OPERATIONAL-CURRENT${age}`;
+      card.appendChild(warning);
+    }
+    card.append(rawLabel, raw);
 
     const decoded = decodedReport(report);
     if (decoded) {
@@ -720,9 +740,11 @@ export function initializeAviationWeatherLookup(doc = document) {
       }
       setStatus(
         status,
-        `${count} ${count === 1 ? "REPORT" : "REPORTS"}`,
+        response.lastReported
+          ? `${count} LAST REPORTED ${count === 1 ? "ATIS" : "REPORTS"}`
+          : `${count} ${count === 1 ? "REPORT" : "REPORTS"}`,
         response.detail,
-        response.partialFailures ? "warning" : "success",
+        response.partialFailures || response.lastReported ? "warning" : "success",
       );
       currentReports = response.reports;
       printButton.disabled = false;

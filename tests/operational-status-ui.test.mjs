@@ -30,6 +30,37 @@ vm.runInContext(
   context,
 );
 
+const ATIS_NOW_MS = Date.parse("2026-09-08T22:00:00Z");
+const atisDisplayContext = vm.createContext({
+  getBoardNowMs: () => ATIS_NOW_MS,
+  parseUpdatedZ: (value) => {
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date : null;
+  },
+  isBadText: (value, badWords) => {
+    const text = String(value || "").toUpperCase();
+    return !text.trim() || badWords.some((word) => text.includes(word));
+  },
+});
+vm.runInContext(
+  `${sourceBetween("function atisPhoneticForLetter", "function setClosedRunwayDisplay")}` +
+    "globalThis.atisDisplayState=atisDisplayState;",
+  atisDisplayContext,
+);
+
+function retainedAtisFixture(ageMinutes, overrides = {}) {
+  const observed = new Date(ATIS_NOW_MS - ageMinutes * 60_000);
+  const hhmm = `${String(observed.getUTCHours()).padStart(2, "0")}${String(observed.getUTCMinutes()).padStart(2, "0")}`;
+  return {
+    atisText: `MEM ATIS INFO G ${hhmm}Z. 29004KT 10SM SCT065 38/18 A3004. ADVS YOU HAVE INFO G`,
+    atisObservedZ: observed.toISOString(),
+    atisReportIdentity: `G:${hhmm}Z`,
+    atisAgeMinutes: ageMinutes,
+    atisReportedLetter: "G",
+    ...overrides,
+  };
+}
+
 const NOTAM_NOW_MS = Date.parse("2026-08-28T12:00:00Z");
 const notamContext = vm.createContext({
   getBoardNowMs: () => NOTAM_NOW_MS,
@@ -253,4 +284,86 @@ test("live BWC keeps source time visible and delegates age updates to the board 
   assert.match(indexHtml, /\.bwc-age\{[^}]*white-space:normal;[^}]*overflow:visible;[^}]*overflow-wrap:anywhere/);
   assert.doesNotMatch(indexHtml, /\.bwc-age\{[^}]*white-space:nowrap;[^}]*overflow:hidden/);
   assert.match(indexHtml, /\.ops-box\.bwc-ops-box\{min-height:[^}]*!important/);
+});
+
+test("main board keeps a validated last-reported ATIS visible across warning and stale boundaries", () => {
+  assert.deepEqual(
+    { ...atisDisplayContext.atisDisplayState(retainedAtisFixture(59, {
+      atisLetter: "G",
+      atisSourceIsCurrent: true,
+      atisFetchStatus: "OK",
+    })) },
+    { display: "GOLF", mode: "current", cue: "", ageLabel: "59 MIN OLD" },
+  );
+
+  const warned = atisDisplayContext.atisDisplayState(retainedAtisFixture(60, {
+    atisLetter: "--",
+    atisDisplay: "--",
+    atisReportedPhonetic: "GOLF",
+    atisSourceIsCurrent: false,
+    atisFetchStatus: "WARN_SOURCE",
+  }));
+  assert.deepEqual(
+    { ...warned },
+    {
+      display: "GOLF",
+      mode: "last-reported",
+      cue: "LAST REPORTED · NOT OPERATIONAL-CURRENT · 60 MIN OLD",
+      ageLabel: "60 MIN OLD",
+    },
+  );
+
+  const stale = atisDisplayContext.atisDisplayState(retainedAtisFixture(180, {
+    atisLetter: "--",
+    atisSourceIsCurrent: false,
+    atisFetchStatus: "STALE_SOURCE",
+  }));
+  assert.deepEqual(
+    { ...stale },
+    {
+      display: "GOLF",
+      mode: "last-reported-stale",
+      cue: "LAST REPORTED · NOT OPERATIONAL-CURRENT · STALE · 3H OLD",
+      ageLabel: "3H OLD",
+    },
+  );
+});
+
+test("main board does not fabricate ATIS when no validated report is retained", () => {
+  assert.deepEqual(
+    { ...atisDisplayContext.atisDisplayState({
+      atisLetter: "--",
+      atisReportedLetter: "--",
+      atisSourceIsCurrent: false,
+      atisFetchStatus: "FAILED_NO_LAST_GOOD",
+      atisAgeMinutes: null,
+    }) },
+    { display: "--", mode: "unavailable", cue: "", ageLabel: "AGE UNKNOWN" },
+  );
+  assert.match(indexHtml, /cue\.className="atis-letter-status"/);
+  assert.match(indexHtml, /Operational ATIS fields remain suppressed/);
+});
+
+test("main board fails closed for inconsistent retained ATIS identity, timestamp, and current flags", () => {
+  const unavailable = { display: "--", mode: "unavailable", cue: "", ageLabel: "AGE UNKNOWN" };
+  for (const data of [
+    retainedAtisFixture(20, { atisText: "D-ATIS unavailable", atisLetter: "G", atisSourceIsCurrent: true, atisFetchStatus: "OK" }),
+    retainedAtisFixture(20, { atisObservedZ: "", atisLetter: "G", atisSourceIsCurrent: true, atisFetchStatus: "OK" }),
+    retainedAtisFixture(20, { atisReportedLetter: "H", atisLetter: "H", atisSourceIsCurrent: true, atisFetchStatus: "OK" }),
+    retainedAtisFixture(20, { atisLetter: "G", atisSourceIsCurrent: true, atisFetchStatus: "FAILED_NO_LAST_GOOD" }),
+  ]) {
+    assert.deepEqual({ ...atisDisplayContext.atisDisplayState(data) }, unavailable);
+  }
+
+  assert.equal(
+    atisDisplayContext.atisDisplayState(retainedAtisFixture(180, {
+      atisLetter: "G",
+      atisSourceIsCurrent: true,
+      atisFetchStatus: "OK",
+    })).mode,
+    "last-reported-stale",
+    "an inconsistent current flag cannot bypass the 60-minute gate",
+  );
+  assert.match(indexHtml, /presentationSignature===signature\)return/);
+  assert.match(indexHtml, /role="status" aria-live="polite" aria-atomic="true"/);
 });

@@ -22,6 +22,8 @@ import {
   meteogramForecastSourceState,
   meteogramGustLabelMask,
   meteogramLightningGeometry,
+  meteogramMobileNavigationAnchor,
+  meteogramMobileNavigationScrollLeft,
   meteogramRowLabelDescriptors,
   meteogramRowLabelLayout,
   meteogramSubtitleText,
@@ -932,7 +934,7 @@ test("responsive layout keeps minimum chart width inside its own scroller", () =
   assert.match(lookupCss, /@media \(max-width:768px\)\{[\s\S]*\.aviation-lookup-products\{grid-template-columns:repeat\(2,minmax\(max-content,1fr\)\)/);
   assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:1050px\)\{[\s\S]*grid-template-areas:[\s\S]*"station products"[\s\S]*"range submit"/);
   assert.match(lookupCss, /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
-  assert.match(meteogramCss, /@media \(max-width:768px\)\{[\s\S]*\.aviation-meteogram-toggle\{min-height:40px/);
+  assert.match(meteogramCss, /@media \(max-width:768px\)\{[\s\S]*\.aviation-meteogram-toggle\{min-height:44px/);
   assert.match(meteogramCss, /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)/);
   assert.match(meteogramCss, /\.aviation-meteogram-stage\{[\s\S]*position:relative/);
   assert.match(meteogramCss, /\.aviation-meteogram-sticky-labels\{[\s\S]*position:sticky;[\s\S]*left:0/);
@@ -1351,9 +1353,12 @@ test("row-label width follows measured visible content with bounded wrapping ins
     compact: true,
     measureText: narrowMeasure,
   });
-  assert.equal(narrow.minimumWidth, 140);
-  assert.equal(narrow.maximumWidth, 168);
-  assert.equal(narrow.width, 168, "the clamp leaves a usable portion of the timeline visible");
+  assert.equal(narrow.minimumWidth, 112);
+  assert.equal(narrow.maximumWidth, 112);
+  assert.equal(narrow.width, 112, "compact text-only labels reserve most of the phone for actual timeline data");
+  assert.equal(narrow.textX, 9);
+  assert.equal(narrow.rightPadding, 7);
+  assert.ok(narrow.rows.every((row) => row.showIcon === false), "decorative row icons yield to readable phone data width");
   const wind = narrow.rows.find(({ key }) => key === "wind");
   assert.ok(wind.unitLines.length > 1, "the overlong wind subtitle wraps at the viewport clamp");
   assert.equal(wind.unitLines.join(" "), "DOWNWIND ARROW · MPH");
@@ -2612,6 +2617,87 @@ test("meteogram dimensions remain finite and internally scrollable at every requ
     assert.ok(dimensions.xPositions.every((x) => x >= dimensions.labelWidth && x <= dimensions.width));
     if (viewport <= 844) assert.ok(dimensions.width > viewport, "dense mobile/tablet timeline scrolls inside its region");
   }
+});
+
+test("phone label geometry preserves a meaningful live timeline viewport after real modal padding", () => {
+  const timeline = Array.from({ length: 25 }, (_, index) => manualMeteogramPoint({
+    observedZ: new Date(Date.UTC(2026, 8, 1, index)).toISOString(),
+  }));
+  for (const [outerWidth, scrollerWidth, minimumVisible] of [
+    [320, 298, 128],
+    [390, 368, 178],
+  ]) {
+    const labelLayout = meteogramRowLabelLayout(
+      { timeMode: "LOCAL", temperatureUnit: "F", windUnit: "MPH" },
+      scrollerWidth,
+      { hasForecast: true, compact: true, measureText: (text) => String(text).length * 7.5 },
+    );
+    const dimensions = meteogramDimensions(timeline, Math.max(320, scrollerWidth), { labelWidth: labelLayout.width });
+    const visibleTimelineWidth = scrollerWidth - dimensions.plotLeft;
+    assert.ok(visibleTimelineWidth >= minimumVisible, `${outerWidth}px phone retains at least ${minimumVisible}px of live timeline`);
+    assert.equal(dimensions.axisWidth, 58, "operational numeric/altitude axis remains intact");
+    for (const row of labelLayout.rows) {
+      for (const line of [...row.titleLines, ...row.unitLines]) {
+        assert.ok(String(line).length * 7.5 <= labelLayout.maximumTextWidth, `${row.key} wraps within the compact description gutter`);
+      }
+      const requiredHeight = row.titleLines.length * 12 + 8 + row.unitLines.length * 10;
+      assert.ok(requiredHeight <= row.bottom - row.top, `${row.key} compact label remains vertically contained`);
+    }
+  }
+});
+
+test("mobile timeline buttons pan one visible data window and return to the shared NOW coordinate", () => {
+  const geometry = {
+    currentScrollLeft: 500,
+    scrollWidth: 3200,
+    clientWidth: 368,
+    plotLeft: 183,
+    dividerX: 1400,
+  };
+  assert.equal(meteogramMobileNavigationScrollLeft("earlier", geometry), 315);
+  assert.equal(meteogramMobileNavigationScrollLeft("later", geometry), 685);
+  assert.equal(meteogramMobileNavigationScrollLeft("now", geometry), 1124.5);
+  assert.equal(meteogramMobileNavigationScrollLeft("earlier", { ...geometry, currentScrollLeft: 20 }), 0);
+  assert.equal(meteogramMobileNavigationScrollLeft("later", { ...geometry, currentScrollLeft: 2820 }), 2832);
+  assert.equal(meteogramMobileNavigationScrollLeft("now", { ...geometry, dividerX: null }), 500);
+  assert.deepEqual(
+    meteogramMobileNavigationAnchor({
+      dividerZ: "2026-09-01T06:00:00Z",
+      observations: [{ observedZ: "2026-09-01T05:54:00Z" }],
+    }),
+    { label: "NOW", time: "2026-09-01T06:00:00Z" },
+  );
+  assert.deepEqual(
+    meteogramMobileNavigationAnchor({
+      dividerZ: null,
+      forecasts: [],
+      observations: [
+        { observedZ: "2026-09-01T04:54:00Z" },
+        { observedZ: "2026-09-01T05:54:00Z" },
+      ],
+    }),
+    { label: "LATEST", time: "2026-09-01T05:54:00Z" },
+    "observed-only views provide an explicit bounded LATEST jump instead of a silent NOW no-op",
+  );
+  assert.match(meteogramJs, /mobileNavigationHint\.textContent = "SWIPE TIMELINE ↔ OR JUMP"/);
+  assert.match(meteogramJs, /\["earlier", "← EARLIER"\][\s\S]*\["now", mobileNavigationAnchor\.label\][\s\S]*\["later", "LATER →"\]/);
+  assert.match(meteogramJs, /scroller\.scrollLeft = meteogramMobileNavigationScrollLeft/);
+  assert.match(meteogramJs, /plotLeft: dimensions\.plotLeft/);
+  assert.doesNotMatch(meteogramJs, /data-meteogram-pan[\s\S]{0,500}(?:fetch\(|draw\(\))/i, "mobile navigation changes only scroll position");
+});
+
+test("mobile meteogram controls expose touch-sized navigation without changing desktop or print layout", () => {
+  assert.match(meteogramCss, /\.aviation-meteogram-mobile-nav\{display:none\}/);
+  assert.match(meteogramCss, /@media \(max-width:768px\)[\s\S]*\.aviation-meteogram-mobile-nav\{[\s\S]*display:grid/);
+  assert.match(meteogramCss, /\.aviation-meteogram-mobile-nav button\{[\s\S]*min-height:44px/);
+  assert.match(
+    meteogramCss,
+    /@media \(min-width:769px\) and \(max-width:950px\) and \(max-height:520px\) and \(orientation:landscape\)\{[\s\S]*?\.aviation-meteogram-mobile-nav\{[\s\S]*?display:grid;[\s\S]*?\.aviation-meteogram-mobile-nav button\{[\s\S]*?min-height:40px/,
+  );
+  assert.match(meteogramCss, /body\.aviation-meteogram-printing \.aviation-meteogram-mobile-nav\{display:none!important\}/);
+  assert.match(meteogramCss, /-webkit-overflow-scrolling:touch/);
+  assert.doesNotMatch(meteogramCss, /\.aviation-meteogram-scroll\{[^}]*overflow-x:hidden/);
+  assert.match(lookupCss, /@media \(max-width:480px\)\{[\s\S]*\.aviation-lookup-panel-meteogram \.aviation-lookup-results\{padding:4px 5px 8px\}/);
 });
 
 test("the meteogram remains isolated from BWC and updater ownership logic", () => {

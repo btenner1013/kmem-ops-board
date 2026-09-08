@@ -40,6 +40,11 @@ const ROW_LABEL_TEXT_X = 45;
 const ROW_LABEL_RIGHT_PADDING = 18;
 const ROW_LABEL_MAX_WIDTH = 280;
 const ROW_LABEL_MAX_VIEWPORT_RATIO = 0.52;
+const COMPACT_ROW_LABEL_TEXT_X = 9;
+const COMPACT_ROW_LABEL_RIGHT_PADDING = 7;
+const COMPACT_ROW_LABEL_MIN_WIDTH = 112;
+const COMPACT_ROW_LABEL_MAX_WIDTH = 132;
+const COMPACT_ROW_LABEL_MAX_VIEWPORT_RATIO = 0.34;
 
 function escapeMarkup(value) {
   return String(value ?? "")
@@ -308,11 +313,18 @@ export function meteogramRowLabelLayout(settings = {}, availableWidth = 1100, {
   measureText = null,
 } = {}) {
   const safeAvailableWidth = Math.max(1, Number(availableWidth) || 1100);
-  const minimumWidth = compact ? 140 : 154;
-  const maximumWidth = Math.min(
-    ROW_LABEL_MAX_WIDTH,
-    Math.max(minimumWidth, 168, Math.floor(safeAvailableWidth * ROW_LABEL_MAX_VIEWPORT_RATIO)),
-  );
+  const textX = compact ? COMPACT_ROW_LABEL_TEXT_X : ROW_LABEL_TEXT_X;
+  const rightPadding = compact ? COMPACT_ROW_LABEL_RIGHT_PADDING : ROW_LABEL_RIGHT_PADDING;
+  const minimumWidth = compact ? COMPACT_ROW_LABEL_MIN_WIDTH : 154;
+  const maximumWidth = compact
+    ? Math.min(
+      COMPACT_ROW_LABEL_MAX_WIDTH,
+      Math.max(minimumWidth, Math.floor(safeAvailableWidth * COMPACT_ROW_LABEL_MAX_VIEWPORT_RATIO)),
+    )
+    : Math.min(
+      ROW_LABEL_MAX_WIDTH,
+      Math.max(minimumWidth, 168, Math.floor(safeAvailableWidth * ROW_LABEL_MAX_VIEWPORT_RATIO)),
+    );
   const requestedMeasure = typeof measureText === "function"
     ? measureText
     : (text, kind) => fallbackRowLabelTextWidth(text, kind, compact);
@@ -338,11 +350,13 @@ export function meteogramRowLabelLayout(settings = {}, availableWidth = 1100, {
     maximum,
     measure(candidate.text, candidate.kind),
   ), 0);
-  const preferredWidth = Math.ceil(ROW_LABEL_TEXT_X + longestTextWidth + ROW_LABEL_RIGHT_PADDING);
+  const preferredWidth = Math.ceil(textX + longestTextWidth + rightPadding);
   const width = clamp(preferredWidth, minimumWidth, maximumWidth);
-  const maximumTextWidth = Math.max(1, width - ROW_LABEL_TEXT_X - ROW_LABEL_RIGHT_PADDING);
+  const maximumTextWidth = Math.max(1, width - textX - rightPadding);
   const rows = descriptors.map((descriptor) => ({
     ...descriptor,
+    textX,
+    showIcon: !compact,
     titleLines: wrapRowLabelText(descriptor.title, maximumTextWidth, measure, "title"),
     unitLines: wrapRowLabelText(descriptor.unit, maximumTextWidth, measure, "unit"),
   }));
@@ -352,6 +366,8 @@ export function meteogramRowLabelLayout(settings = {}, availableWidth = 1100, {
     preferredWidth,
     maximumWidth,
     maximumTextWidth,
+    textX,
+    rightPadding,
     compact,
     rows,
   };
@@ -388,7 +404,18 @@ function createMeteogramRowLabelMeasurer(doc) {
   return { element, measureText };
 }
 
-function rowLabel({ key, top, bottom, icon, title, unit, titleLines = [title], unitLines = [unit] }) {
+function rowLabel({
+  key,
+  top,
+  bottom,
+  icon,
+  title,
+  unit,
+  textX = ROW_LABEL_TEXT_X,
+  showIcon = true,
+  titleLines = [title],
+  unitLines = [unit],
+}) {
   const middle = (top + bottom) / 2;
   const wrapped = titleLines.length > 1 || unitLines.length > 1;
   const titleLineHeight = 12;
@@ -398,14 +425,14 @@ function rowLabel({ key, top, bottom, icon, title, unit, titleLines = [title], u
   const unitY = wrapped ? wrappedBlockTop + titleLines.length * titleLineHeight + 15 : middle + 13;
   const titleMarkup = titleLines.length <= 1
     ? escapeMarkup(titleLines[0] || title)
-    : titleLines.map((line, index) => `<tspan x="${ROW_LABEL_TEXT_X}" dy="${index ? titleLineHeight : 0}">${escapeMarkup(line)}</tspan>`).join("");
+    : titleLines.map((line, index) => `<tspan x="${textX}" dy="${index ? titleLineHeight : 0}">${escapeMarkup(line)}</tspan>`).join("");
   const unitMarkup = unitLines.length <= 1
     ? escapeMarkup(unitLines[0] || unit)
-    : unitLines.map((line, index) => `<tspan x="${ROW_LABEL_TEXT_X}" dy="${index ? unitLineHeight : 0}">${escapeMarkup(line)}</tspan>`).join("");
+    : unitLines.map((line, index) => `<tspan x="${textX}" dy="${index ? unitLineHeight : 0}">${escapeMarkup(line)}</tspan>`).join("");
   return `<g class="aviation-meteogram-row-label" data-row-key="${key}" data-row-top="${top}" data-row-bottom="${bottom}" data-row-wrapped="${wrapped}">
-    <text class="aviation-meteogram-row-icon" x="15" y="${(middle - 2).toFixed(1)}">${escapeMarkup(icon)}</text>
-    <text class="aviation-meteogram-row-title" x="${ROW_LABEL_TEXT_X}" y="${titleY.toFixed(1)}" aria-label="${escapeMarkup(title)}" data-line-count="${titleLines.length}">${titleMarkup}</text>
-    <text class="aviation-meteogram-row-unit" x="${ROW_LABEL_TEXT_X}" y="${unitY.toFixed(1)}" aria-label="${escapeMarkup(unit)}" data-line-count="${unitLines.length}">${unitMarkup}</text>
+    ${showIcon ? `<text class="aviation-meteogram-row-icon" x="15" y="${(middle - 2).toFixed(1)}">${escapeMarkup(icon)}</text>` : ""}
+    <text class="aviation-meteogram-row-title" x="${textX}" y="${titleY.toFixed(1)}" aria-label="${escapeMarkup(title)}" data-line-count="${titleLines.length}">${titleMarkup}</text>
+    <text class="aviation-meteogram-row-unit" x="${textX}" y="${unitY.toFixed(1)}" aria-label="${escapeMarkup(unit)}" data-line-count="${unitLines.length}">${unitMarkup}</text>
   </g>`;
 }
 
@@ -489,6 +516,39 @@ export function meteogramDimensions(timelineOrCount, viewportWidth, {
     width,
     height: METEOGRAM_ROWS.snow.bottom,
   };
+}
+
+export function meteogramMobileNavigationScrollLeft(action, {
+  currentScrollLeft = 0,
+  scrollWidth = 0,
+  clientWidth = 0,
+  plotLeft = 0,
+  dividerX = null,
+} = {}) {
+  const current = Math.max(0, Number(currentScrollLeft) || 0);
+  const viewport = Math.max(0, Number(clientWidth) || 0);
+  const maximum = Math.max(0, (Number(scrollWidth) || 0) - viewport);
+  const visibleTimelineWidth = Math.max(80, viewport - Math.max(0, Number(plotLeft) || 0));
+  const normalizedAction = String(action || "").toLowerCase();
+  if (normalizedAction === "earlier") return clamp(current - visibleTimelineWidth, 0, maximum);
+  if (normalizedAction === "later") return clamp(current + visibleTimelineWidth, 0, maximum);
+  if (normalizedAction === "now") {
+    if (dividerX === null || dividerX === undefined || dividerX === "") return current;
+    const target = Number(dividerX);
+    if (!Number.isFinite(target)) return current;
+    return clamp(target - Math.max(0, Number(plotLeft) || 0) - visibleTimelineWidth / 2, 0, maximum);
+  }
+  return clamp(current, 0, maximum);
+}
+
+export function meteogramMobileNavigationAnchor(model = {}) {
+  const dividerTime = model?.dividerZ || model?.forecasts?.[0]?.validZ || "";
+  if (Number.isFinite(Date.parse(dividerTime))) return { label: "NOW", time: dividerTime };
+  const latestObservation = (Array.isArray(model?.observations) ? model.observations : [])
+    .map(timelineTime)
+    .filter((value) => Number.isFinite(Date.parse(value)))
+    .sort((left, right) => Date.parse(right) - Date.parse(left))[0] || null;
+  return { label: "LATEST", time: latestObservation };
 }
 
 function rowLabelsMarkup(settings, hasForecast = false, labelLayout = null) {
@@ -2345,8 +2405,30 @@ export function renderAviationMeteogram(container, reports, {
   legend.innerHTML = `<i class="aviation-meteogram-key aviation-meteogram-key-observed"></i>OBSERVED <i class="aviation-meteogram-key aviation-meteogram-key-forecast"></i>FORECAST (${escapeMarkup(forecastSources.label)}) <i class="aviation-meteogram-key aviation-meteogram-key-temp"></i>TEMP <i class="aviation-meteogram-key aviation-meteogram-key-dew"></i>DEW`;
   context.append(range, legend);
 
+  const mobileNavigation = doc.createElement("nav");
+  mobileNavigation.className = "aviation-meteogram-mobile-nav";
+  mobileNavigation.setAttribute("aria-label", "Meteogram timeline navigation");
+  const mobileNavigationHint = doc.createElement("span");
+  mobileNavigationHint.className = "aviation-meteogram-mobile-nav-hint";
+  mobileNavigationHint.textContent = "SWIPE TIMELINE ↔ OR JUMP";
+  const mobileNavigationAnchor = meteogramMobileNavigationAnchor(model);
+  const mobileNavigationButtons = [
+    ["earlier", "← EARLIER"],
+    ["now", mobileNavigationAnchor.label],
+    ["later", "LATER →"],
+  ].map(([action, label]) => {
+    const button = doc.createElement("button");
+    button.type = "button";
+    button.dataset.meteogramPan = action;
+    button.setAttribute("aria-controls", "aviationMeteogramTimeline");
+    button.textContent = label;
+    return button;
+  });
+  mobileNavigation.append(mobileNavigationHint, ...mobileNavigationButtons);
+
   const scroller = doc.createElement("div");
   scroller.className = "aviation-meteogram-scroll";
+  scroller.id = "aviationMeteogramTimeline";
   scroller.tabIndex = 0;
   scroller.setAttribute("role", "region");
   scroller.setAttribute("aria-label", `${model.station} meteogram shared timeline; horizontally scroll for observed history and ${forecastSources.label} forecast`);
@@ -2404,7 +2486,7 @@ export function renderAviationMeteogram(container, reports, {
     revisions.textContent = `${model.revisedBuckets} SAME-TIME REVISED BUCKET${model.revisedBuckets === 1 ? "" : "S"} COLLAPSED`;
     notes.appendChild(revisions);
   }
-  section.append(header, context, scroller, dataDetails, notes);
+  section.append(header, context, mobileNavigation, scroller, dataDetails, notes);
   if (labelMeasurer.element) section.appendChild(labelMeasurer.element);
   container.append(stickyTimeRuler, section);
 
@@ -2547,6 +2629,24 @@ export function renderAviationMeteogram(container, reports, {
     settings[setting] = button.dataset.meteogramValue;
     draw();
   });
+  for (const button of mobileNavigationButtons) {
+    button.addEventListener("click", () => {
+      const dimensions = latestDimensions;
+      if (!dimensions) return;
+      const anchorTime = mobileNavigationAnchor.time;
+      const dividerX = Number.isFinite(Date.parse(anchorTime))
+        ? dimensions.xForTime(anchorTime)
+        : null;
+      scroller.scrollLeft = meteogramMobileNavigationScrollLeft(button.dataset.meteogramPan, {
+        currentScrollLeft: scroller.scrollLeft,
+        scrollWidth: scroller.scrollWidth,
+        clientWidth: scroller.clientWidth,
+        plotLeft: dimensions.plotLeft,
+        dividerX,
+      });
+      updateStickyTimeRuler();
+    });
+  }
   scroller.addEventListener("pointerover", (event) => {
     if (windTooltipPinned) return;
     const sample = event.target.closest?.("[data-wind-speed-sample]");
