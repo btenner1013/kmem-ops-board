@@ -1,6 +1,6 @@
 {
   "metar": "METAR KMEM 080454Z 08011KT 10SM CLR 28/18 A3003 RMK AO2 SLP162 T02780183 $",
-  "taf": "TAF KMEM 080256Z 0803/0906 07009KT P6SM SKC \n  FM080800 10006KT P6SM SKC \n  FM081400 19007KT P6SM SKC \n  FM090100 16007KT P6SM FEW080",
+  "taf": "TAF KMEM 080520Z 0806/0912 09008KT P6SM SKC \n  FM080800 10006KT P6SM SKC \n  FM081500 18006KT P6SM SKC \n  FM090100 16008KT P6SM FEW080",
   "atisText": "MEM ATIS INFO M 0454Z. 08011KT 10SM CLR 28/18 A3003 (THREE ZERO ZERO THREE) RMK AO2 SLP162 T02780183. SIMUL VISUAL APCHS IN USE RY 36L, 36R. DEPG RWYS 36C. NOTICE TO AIRMEN. ILS RWY 27 OTS, RY 18R, 27 REILS OTS, RY 36C PAPI OTS, FREQ 121.0 OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO M",
   "atisLetter": "M",
   "atisPhonetic": "MIKE",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-08T04:54:00Z",
-  "metarAgeMinutes": 24,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-09-08T04:54:00Z",
-  "atisAgeMinutes": 24,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "M:0454Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -46,7 +46,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-09-08T02:36:06Z",
-  "trendSampleCount": 21,
+  "trendSampleCount": 20,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -127,7 +127,7 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-08 05:18:00.000",
+  "bwcUpdatedZ": "2026-09-08 05:24:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "SEVERE",
@@ -165,7 +165,7 @@
   "milNotamAttemptProxyRoute": "NOT_USED",
   "milNotamAttemptReason": "NOT_USED",
   "milNotamFailureCategory": "TLS_SECURITY",
-  "milNotamAttemptZ": "2026-09-08 05:19:10Z",
+  "milNotamAttemptZ": "2026-09-08 05:27:21Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -285,13 +285,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-09-08 05:17Z",
+  "allFeedsUpdatedZ": "2026-09-08 05:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-08 05:17:48Z"
+    "lastWorkflowTimestampZ": "2026-09-08 05:25:47Z"
   }
 }
