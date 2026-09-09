@@ -617,7 +617,8 @@
 .aviation-meteogram-atmosphere-freezing path{fill:#9ee9f3;stroke:#e9fdff;stroke-width:.7;opacity:.82}
 .aviation-meteogram-atmosphere-lightning{fill:#ffd24a;stroke:#fff0a0;stroke-width:.75;filter:drop-shadow(0 0 4px rgba(255,205,57,.55))}
 .aviation-meteogram-atmosphere-vicinity{opacity:.72}
-.aviation-meteogram-atmosphere-conditional{opacity:.68}
+.aviation-meteogram-atmosphere-conditional>:not(.aviation-meteogram-atmosphere-lightning){opacity:.68}
+.aviation-meteogram-atmosphere-conditional>.aviation-meteogram-atmosphere-lightning{opacity:1}
 .aviation-meteogram-atmosphere-showers .aviation-meteogram-atmosphere-precip line{stroke-dasharray:5 3}
 .aviation-meteogram-atmosphere-conditional .aviation-meteogram-atmosphere-precip line,
 .aviation-meteogram-atmosphere-conditional .aviation-meteogram-atmosphere-snow path{stroke-dasharray:2 3}

@@ -34,6 +34,11 @@ const CLOUD_LABEL_TAG_MAX_WIDTH = 132;
 const CLOUD_LABEL_TAG_GAP = 5;
 const WEATHER_OVERLAY_ZONE_TOP = METEOGRAM_ROWS.clouds.bottom - 26;
 const WEATHER_OVERLAY_ZONE_BOTTOM = METEOGRAM_ROWS.clouds.bottom - 10;
+const LIGHTNING_PATH_LEFT = -3;
+const LIGHTNING_PATH_RIGHT = 11;
+const LIGHTNING_PATH_HEIGHT = 24;
+const LIGHTNING_LABEL_CLEARANCE = 3;
+const CLOUD_LABEL_TAG_HALF_HEIGHT = 7;
 export const METEOGRAM_DATA_AXIS_WIDTH = 58;
 export const METEOGRAM_CLOUD_AXIS_WIDTH = METEOGRAM_DATA_AXIS_WIDTH;
 const ROW_LABEL_TEXT_X = 45;
@@ -1690,7 +1695,7 @@ export function meteogramWeatherSceneDefinition(observation = {}) {
 }
 
 export function meteogramLightningGeometry(observation = {}, maximumFt = 10000) {
-  const pathHeight = 40;
+  const pathHeight = LIGHTNING_PATH_HEIGHT;
   const genericStartY = METEOGRAM_ROWS.clouds.top + 72;
   const reportedCbLayers = cloudLayersForObservation(observation)
     .filter((layer) => String(layer?.convective || "").toUpperCase() === "CB")
@@ -1707,10 +1712,15 @@ export function meteogramLightningGeometry(observation = {}, maximumFt = 10000) 
   }
   const baseFt = Math.min(...reportedCbLayers);
   const baseY = meteogramCloudBaseY(baseFt, maximumFt);
-  const latestStartY = METEOGRAM_ROWS.clouds.bottom - 18 - pathHeight;
-  const startY = Math.min(baseY - 12, latestStartY);
+  const latestStartY = METEOGRAM_ROWS.clouds.bottom - 20 - pathHeight;
+  const firstClearY = baseY + CLOUD_LABEL_TAG_HALF_HEIGHT + LIGHTNING_LABEL_CLEARANCE;
+  const fitsBelowBaseLabel = firstClearY <= latestStartY;
+  const startY = fitsBelowBaseLabel
+    ? firstClearY
+    : Math.min(baseY - 12, latestStartY);
   return {
     anchor: "reported-cb-base",
+    placement: fitsBelowBaseLabel ? "below-cloud-base-label" : "crosses-cloud-base",
     baseFt,
     baseY,
     startY,
@@ -1718,7 +1728,159 @@ export function meteogramLightningGeometry(observation = {}, maximumFt = 10000) 
   };
 }
 
-function atmosphericPhenomenonMarkup(phenomenon, width, { lightningGeometry = null } = {}) {
+export function meteogramLightningLabelOffset(labelLayout = [], {
+  columnX = 0,
+  availableWidth = CLOUD_FORM_SCENE_WIDTH,
+  lightningGeometry = null,
+  horizontalShift = 0,
+} = {}) {
+  const geometry = lightningGeometry || meteogramLightningGeometry();
+  const width = Math.max(20, Number(availableWidth) || CLOUD_FORM_SCENE_WIDTH);
+  const shift = Number(horizontalShift) || 0;
+  const minimumOffset = Math.ceil((-width / 2) - shift - LIGHTNING_PATH_LEFT + LIGHTNING_LABEL_CLEARANCE);
+  const maximumOffset = Math.floor((width / 2) - shift - LIGHTNING_PATH_RIGHT - LIGHTNING_LABEL_CLEARANCE);
+  if (minimumOffset > maximumOffset) return 0;
+
+  const obstacles = (Array.isArray(labelLayout) ? labelLayout : []).flatMap((label) => {
+    const labelX = Number(label?.labelX);
+    const labelY = Number(label?.labelY);
+    const tagWidth = Number(label?.tagWidth);
+    if (!label?.visible || !Number.isFinite(labelX) || !Number.isFinite(labelY) || !Number.isFinite(tagWidth)) return [];
+    const top = labelY - CLOUD_LABEL_TAG_HALF_HEIGHT;
+    const bottom = labelY + CLOUD_LABEL_TAG_HALF_HEIGHT;
+    if (bottom <= geometry.startY || top >= geometry.tipY) return [];
+    return [{
+      left: labelX - Number(columnX) - tagWidth / 2 - LIGHTNING_LABEL_CLEARANCE,
+      right: labelX - Number(columnX) + tagWidth / 2 + LIGHTNING_LABEL_CLEARANCE,
+      top,
+      bottom,
+    }];
+  });
+  if (!obstacles.length) return 0;
+
+  let bestOffset = clamp(0, minimumOffset, maximumOffset);
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (let offset = minimumOffset; offset <= maximumOffset; offset += 1) {
+    const left = shift + offset + LIGHTNING_PATH_LEFT;
+    const right = shift + offset + LIGHTNING_PATH_RIGHT;
+    const overlapArea = obstacles.reduce((total, obstacle) => {
+      const overlapWidth = Math.max(0, Math.min(right, obstacle.right) - Math.max(left, obstacle.left));
+      const overlapHeight = Math.max(0, Math.min(geometry.tipY, obstacle.bottom) - Math.max(geometry.startY, obstacle.top));
+      return total + overlapWidth * overlapHeight;
+    }, 0);
+    const score = overlapArea * 1000 + Math.abs(offset);
+    if (score < bestScore) {
+      bestScore = score;
+      bestOffset = offset;
+    }
+  }
+  return bestOffset;
+}
+
+export function meteogramLightningLabelStartY(labelLayout = [], {
+  columnX = 0,
+  lightningGeometry = null,
+  horizontalShift = 0,
+  offsetX = 0,
+} = {}) {
+  const geometry = lightningGeometry || meteogramLightningGeometry();
+  const pathHeight = Math.max(1, Number(geometry.tipY) - Number(geometry.startY) || LIGHTNING_PATH_HEIGHT);
+  const minimumStartY = METEOGRAM_ROWS.clouds.top + 8;
+  const maximumStartY = METEOGRAM_ROWS.clouds.bottom - 20 - pathHeight;
+  const preferredStartY = clamp(Number(geometry.startY), minimumStartY, maximumStartY);
+  const shift = Number(horizontalShift) || 0;
+  const offset = Number(offsetX) || 0;
+  const lightningLeft = shift + offset + LIGHTNING_PATH_LEFT;
+  const lightningRight = shift + offset + LIGHTNING_PATH_RIGHT;
+  const obstacles = (Array.isArray(labelLayout) ? labelLayout : []).flatMap((label) => {
+    const labelX = Number(label?.labelX);
+    const labelY = Number(label?.labelY);
+    const tagWidth = Number(label?.tagWidth);
+    if (!label?.visible || !Number.isFinite(labelX) || !Number.isFinite(labelY) || !Number.isFinite(tagWidth)) return [];
+    const left = labelX - Number(columnX) - tagWidth / 2;
+    const right = labelX - Number(columnX) + tagWidth / 2;
+    if (right + LIGHTNING_LABEL_CLEARANCE <= lightningLeft || left - LIGHTNING_LABEL_CLEARANCE >= lightningRight) return [];
+    return [{
+      top: labelY - CLOUD_LABEL_TAG_HALF_HEIGHT - LIGHTNING_LABEL_CLEARANCE,
+      bottom: labelY + CLOUD_LABEL_TAG_HALF_HEIGHT + LIGHTNING_LABEL_CLEARANCE,
+    }];
+  });
+  if (!obstacles.length) return preferredStartY;
+
+  const candidates = [preferredStartY, minimumStartY, maximumStartY];
+  obstacles.forEach((obstacle) => {
+    candidates.push(obstacle.bottom, obstacle.top - pathHeight);
+  });
+  const validCandidates = [...new Set(candidates
+    .map((candidate) => clamp(candidate, minimumStartY, maximumStartY).toFixed(3)))]
+    .map(Number)
+    .filter((candidate) => obstacles.every((obstacle) => (
+      candidate + pathHeight <= obstacle.top || candidate >= obstacle.bottom
+    )));
+  if (!validCandidates.length) return preferredStartY;
+
+  const prefersBelowBase = geometry.baseY !== null
+    && geometry.baseY !== undefined
+    && Number.isFinite(Number(geometry.baseY));
+  validCandidates.sort((left, right) => {
+    const leftAbovePenalty = prefersBelowBase && left < preferredStartY ? 1 : 0;
+    const rightAbovePenalty = prefersBelowBase && right < preferredStartY ? 1 : 0;
+    return leftAbovePenalty - rightAbovePenalty
+      || Math.abs(left - preferredStartY) - Math.abs(right - preferredStartY)
+      || left - right;
+  });
+  return validCandidates[0];
+}
+
+export function meteogramLightningLabelPlacement(labelLayout = [], {
+  columnX = 0,
+  availableWidth = CLOUD_FORM_SCENE_WIDTH,
+  lightningGeometry = null,
+  horizontalShift = 0,
+} = {}) {
+  const source = lightningGeometry || meteogramLightningGeometry();
+  const geometry = { ...source };
+  let offsetX = meteogramLightningLabelOffset(labelLayout, {
+    columnX,
+    availableWidth,
+    lightningGeometry: geometry,
+    horizontalShift,
+  });
+  let startY = meteogramLightningLabelStartY(labelLayout, {
+    columnX,
+    lightningGeometry: geometry,
+    horizontalShift,
+    offsetX,
+  });
+  geometry.startY = startY;
+  geometry.tipY = startY + LIGHTNING_PATH_HEIGHT;
+
+  // Re-center after a vertical move when the final tag geometry no longer blocks the bolt.
+  offsetX = meteogramLightningLabelOffset(labelLayout, {
+    columnX,
+    availableWidth,
+    lightningGeometry: geometry,
+    horizontalShift,
+  });
+  startY = meteogramLightningLabelStartY(labelLayout, {
+    columnX,
+    lightningGeometry: geometry,
+    horizontalShift,
+    offsetX,
+  });
+  geometry.startY = startY;
+  geometry.tipY = startY + LIGHTNING_PATH_HEIGHT;
+  geometry.offsetX = offsetX;
+  if (startY > Number(source.startY) + 0.1) geometry.placement = "below-cloud-labels";
+  else if (startY < Number(source.startY) - 0.1) geometry.placement = "above-cloud-labels";
+  return geometry;
+}
+
+function atmosphericPhenomenonMarkup(phenomenon, width, {
+  lightningGeometry = null,
+  labelLayout = [],
+  columnX = 0,
+} = {}) {
   const safeWidth = Math.max(20, Number(width) || 20);
   const localized = phenomenon.showers || phenomenon.vicinity;
   const span = safeWidth * (localized ? 0.44 : 0.76);
@@ -1767,19 +1929,32 @@ function atmosphericPhenomenonMarkup(phenomenon, width, { lightningGeometry = nu
   const ice = phenomenon.freezing
     ? `<g class="aviation-meteogram-atmosphere-freezing" aria-hidden="true"><path d="M${(shift - 16).toFixed(1)} ${WEATHER_OVERLAY_ZONE_BOTTOM - 3}l4-4 4 4-4 4Z M${(shift + 9).toFixed(1)} ${WEATHER_OVERLAY_ZONE_TOP + 3}l4-4 4 4-4 4Z"/></g>`
     : "";
-  const lightning = lightningGeometry || meteogramLightningGeometry();
+  const lightning = phenomenon.thunder
+    ? meteogramLightningLabelPlacement(labelLayout, {
+      columnX,
+      availableWidth: safeWidth,
+      lightningGeometry: lightningGeometry || meteogramLightningGeometry(),
+      horizontalShift: shift,
+    })
+    : (lightningGeometry || meteogramLightningGeometry());
   const lightningBaseAttributes = Number.isFinite(lightning.baseY)
     ? ` data-lightning-base-ft="${lightning.baseFt}" data-lightning-base-y="${lightning.baseY.toFixed(1)}"`
     : "";
+  const lightningOffsetX = Number.isFinite(Number(lightning.offsetX)) ? Number(lightning.offsetX) : 0;
+  const lightningLeft = shift + lightningOffsetX + LIGHTNING_PATH_LEFT;
+  const lightningRight = shift + lightningOffsetX + LIGHTNING_PATH_RIGHT;
   const thunder = phenomenon.thunder
-    ? `<path class="aviation-meteogram-atmosphere-lightning" data-weather-lightning="reported-thunder" data-lightning-anchor="${lightning.anchor}" data-lightning-start-y="${lightning.startY.toFixed(1)}" data-lightning-tip-y="${lightning.tipY.toFixed(1)}"${lightningBaseAttributes} aria-hidden="true" d="M${(shift + 4).toFixed(1)} ${lightning.startY.toFixed(1)}l-10 21h8l-5 19 18-26h-9l8-12Z"/>`
+    ? `<path class="aviation-meteogram-atmosphere-lightning" data-weather-lightning="reported-thunder" data-lightning-anchor="${lightning.anchor}" data-lightning-placement="${lightning.placement || "generic-atmosphere"}" data-lightning-offset-x="${lightningOffsetX.toFixed(1)}" data-lightning-left="${lightningLeft.toFixed(1)}" data-lightning-right="${lightningRight.toFixed(1)}" data-lightning-start-y="${lightning.startY.toFixed(1)}" data-lightning-tip-y="${lightning.tipY.toFixed(1)}" data-lightning-path-height="${LIGHTNING_PATH_HEIGHT}"${lightningBaseAttributes} aria-hidden="true" d="M${(shift + lightningOffsetX + 4).toFixed(1)} ${lightning.startY.toFixed(1)}l-7 13h5l-4 11 13-17h-6l5-6Z"/>`
     : "";
   return `<g class="aviation-meteogram-atmosphere-phenomenon${phenomenon.vicinity ? " aviation-meteogram-atmosphere-vicinity" : ""}${phenomenon.showers ? " aviation-meteogram-atmosphere-showers" : ""}${phenomenon.conditional ? " aviation-meteogram-atmosphere-conditional" : ""}" data-weather-code="${escapeMarkup(phenomenon.code)}" data-weather-density="${phenomenon.density}" data-weather-provenance="${escapeMarkup(phenomenon.provenance)}" data-weather-zone-top="${WEATHER_OVERLAY_ZONE_TOP}" data-weather-zone-bottom="${WEATHER_OVERLAY_ZONE_BOTTOM}" aria-hidden="true">
     ${obscuration}${rain}${drizzle}${snow}${pellets}${ice}${thunder}
   </g>`;
 }
 
-function atmosphericWeatherMarkup(observation, width, cloudMaximumFt = 10000) {
+function atmosphericWeatherMarkup(observation, width, cloudMaximumFt = 10000, {
+  labelLayout = [],
+  columnX = 0,
+} = {}) {
   const scene = meteogramWeatherSceneDefinition(observation);
   if (!scene.codes.length) return "";
   const lightningGeometry = scene.thunder
@@ -1787,7 +1962,7 @@ function atmosphericWeatherMarkup(observation, width, cloudMaximumFt = 10000) {
     : null;
   const accessible = `${scene.groups.map((group) => `${group.provenance}: ${group.phenomena.map((phenomenon) => phenomenon.meaning).join(", ")}`).join("; ")} · qualitative weather illustration; no precipitation amount or producing cloud layer is inferred`;
   return `<g class="aviation-meteogram-atmosphere" data-weather-codes="${escapeMarkup(scene.codes.join(" "))}" data-weather-density="${scene.density}" role="img" aria-label="${escapeMarkup(accessible)}">
-    <title>${escapeMarkup(accessible)}</title>${scene.phenomena.map((phenomenon) => atmosphericPhenomenonMarkup(phenomenon, width, { lightningGeometry })).join("")}
+    <title>${escapeMarkup(accessible)}</title>${scene.phenomena.map((phenomenon) => atmosphericPhenomenonMarkup(phenomenon, width, { lightningGeometry, labelLayout, columnX })).join("")}
   </g>`;
 }
 
@@ -2172,7 +2347,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
       ? `<text class="aviation-meteogram-cloud-unknown" x="${textX.toFixed(1)}" y="${rows.clouds.top + 16}">${escapeMarkup(unknownLayers.map((layer) => `${layer.conditionalLabel ? `${layer.conditionalLabel} ` : ""}${layer.raw || `${layer.cover}///`}`).join(" · "))} BASE UNKNOWN</text>`
       : "";
     const forecastClass = isForecast(observation) ? " aviation-meteogram-cloud-forecast" : "";
-    cloudArtworkMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-art-x="${artX.toFixed(1)}" data-cloud-art-offset-x="${(artX - x).toFixed(1)}" transform="translate(${artX.toFixed(1)} 0)">${skyStatusMarkup(observation, availableWidth)}${artLayers.join("")}${atmosphericWeatherMarkup(observation, availableWidth, cloudScale.maximumFt)}</g>`);
+    cloudArtworkMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-art-x="${artX.toFixed(1)}" data-cloud-art-offset-x="${(artX - x).toFixed(1)}" transform="translate(${artX.toFixed(1)} 0)">${skyStatusMarkup(observation, availableWidth)}${artLayers.join("")}${atmosphericWeatherMarkup(observation, availableWidth, cloudScale.maximumFt, { labelLayout, columnX: artX })}</g>`);
     cloudTextMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-text-x="${textX.toFixed(1)}">
       ${textLayers.join("")}${unknownMarkup}
       ${cloudColumnLabelMask[index] ? `<text class="aviation-meteogram-ceiling-value" x="${textX.toFixed(1)}" y="${rows.clouds.bottom - 9}">${escapeMarkup(ceilingText)}</text>` : ""}

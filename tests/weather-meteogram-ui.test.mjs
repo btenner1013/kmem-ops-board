@@ -1940,13 +1940,20 @@ test("cloud morphology, convective development, and weather overlays remain sema
   const expectedCbBaseY = meteogramCloudBaseY(3000, convectiveScale);
   const lightning = meteogramLightningGeometry(convective[2], convectiveScale);
   assert.equal(lightning.anchor, "reported-cb-base");
+  assert.equal(lightning.placement, "below-cloud-base-label");
   assert.equal(lightning.baseFt, 3000);
   assert.equal(lightning.baseY, expectedCbBaseY, "lightning uses the exact reported CB base geometry");
-  assert.ok(lightning.startY < lightning.baseY, "lightning begins inside the lower cloud body");
-  assert.ok(lightning.tipY > lightning.baseY, "lightning emerges below the cloud base");
+  assert.ok(lightning.startY > lightning.baseY, "the recognizable bolt begins beneath the exact cloud-base label");
+  assert.ok(lightning.startY - lightning.baseY >= 9, "the bolt clears the opaque base-label tag instead of hiding behind it");
   assert.ok(lightning.tipY <= 818, "lightning remains above the protected CIG summary area");
-  assert.match(convectiveSvg, new RegExp(`data-lightning-anchor="reported-cb-base" data-lightning-start-y="${lightning.startY.toFixed(1).replace(".", "\\.")}" data-lightning-tip-y="${lightning.tipY.toFixed(1).replace(".", "\\.")}" data-lightning-base-ft="3000" data-lightning-base-y="${expectedCbBaseY.toFixed(1).replace(".", "\\.")}"`));
-  assert.match(convectiveSvg, new RegExp(`d="M[^ ]+ ${lightning.startY.toFixed(1).replace(".", "\\.")}l-10 21h8l-5 19 18-26h-9l8-12Z"`), "rendered bolt path uses the tested start geometry");
+  const convectiveLightningPath = convectiveSvg.match(/<path class="aviation-meteogram-atmosphere-lightning"[^>]*\/>/)?.[0] || "";
+  assert.match(convectiveLightningPath, /data-lightning-anchor="reported-cb-base"/);
+  assert.match(convectiveLightningPath, /data-lightning-placement="below-cloud-(?:base-label|labels)"/);
+  assert.match(convectiveLightningPath, new RegExp(`data-lightning-start-y="${lightning.startY.toFixed(1).replace(".", "\\.")}"`));
+  assert.match(convectiveLightningPath, new RegExp(`data-lightning-tip-y="${lightning.tipY.toFixed(1).replace(".", "\\.")}"`));
+  assert.match(convectiveLightningPath, /data-lightning-base-ft="3000"/);
+  assert.match(convectiveLightningPath, new RegExp(`data-lightning-base-y="${expectedCbBaseY.toFixed(1).replace(".", "\\.")}"`));
+  assert.match(convectiveSvg, new RegExp(`d="M[^ ]+ ${lightning.startY.toFixed(1).replace(".", "\\.")}l-7 13h5l-4 11 13-17h-6l5-6Z"`), "rendered bolt path uses the tested compact below-cloud geometry");
   assert.doesNotMatch(buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("SCT025TCU")]), { timeMode: "Z" }), /data-weather-lightning=/, "TCU alone never fabricates lightning");
   assert.doesNotMatch(buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("BKN030CB")]), { timeMode: "Z" }), /data-weather-lightning=/, "CB alone never fabricates lightning");
   const genericThunderSvg = buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("BKN030", ["TSRA"])]), { timeMode: "Z" });
@@ -1956,8 +1963,8 @@ test("cloud morphology, convective development, and weather overlays remain sema
   const cbMarkerIndex = convectiveSvg.indexOf("data-cloud-base-marker=\"BKN030CB\"");
   const cbLabelIndex = convectiveSvg.indexOf("data-cloud-label=\"BKN030CB\"");
   const cloudAxisIndex = convectiveSvg.indexOf("aviation-meteogram-cloud-axis");
-  assert.ok(lightningIndex >= 0 && lightningIndex < cbMarkerIndex && cbMarkerIndex < cloudAxisIndex, "base marker and protected axis paint above lightning");
-  assert.ok(lightningIndex < cbLabelIndex && cbLabelIndex < cloudAxisIndex, "cloud token paints above lightning");
+  assert.ok(lightningIndex >= 0 && cbMarkerIndex >= 0 && cbLabelIndex >= 0, "lightning and its CB annotations are all rendered");
+  assert.ok(Math.max(lightningIndex, cbMarkerIndex, cbLabelIndex) < cloudAxisIndex, "the protected cloud axis remains the final cloud-row overlay");
   assert.match(convectiveSvg, /CUMULONIMBUS REPORTED[\s\S]*CLOUD TOP NOT REPORTED/);
 
   for (const [code, density] of [["-RA", 1], ["RA", 2], ["+RA", 3]]) {
@@ -1984,6 +1991,269 @@ test("cloud morphology, convective development, and weather overlays remain sema
   }
   const accessible = buildMeteogramAccessibleTableMarkup(manualMeteogramModel([cloudPoint("BKN030CB", ["TSRA"])]), { timeMode: "Z" });
   assert.match(accessible, /BROKEN CLOUD BASE 3,000 FT AGL · CUMULONIMBUS REPORTED · CLOUD TOP NOT REPORTED/);
+});
+
+test("live PROB30 TSRA bolts remain visible beneath BKN050CB labels on the 25,000-foot cloud scale", () => {
+  const tafRaw = "TAF KMEM 091722Z 0918/1024 19006KT P6SM SCT060 BKN070 FM100100 18006KT P6SM SKC FM101600 23008KT P6SM FEW050 FM102100 34007KT P6SM BKN060 PROB30 1021/1024 5SM -TSRA BKN050CB";
+  const model = buildMeteogramModel([
+    meteogramReport({
+      timestamp: "2026-09-09T17:54:00Z",
+      raw: "METAR KMEM 091754Z 18006KT P6SM FEW250 30/20 A3000",
+    }),
+  ], {
+    station: "KMEM",
+    tafReports: [{
+      station: "KMEM",
+      timestamp: "2026-09-09T17:22:00Z",
+      product: "TAF",
+      raw: tafRaw,
+      source: "Exact live PROB30 regression fixture",
+    }],
+    now: new Date("2026-09-09T18:05:00Z"),
+  });
+  const settings = { timeMode: "Z", temperatureUnit: "C", windUnit: "KT" };
+  const viewportWidth = 1000;
+  const labelLayout = meteogramRowLabelLayout(settings, viewportWidth, { hasForecast: true });
+  const dimensions = meteogramDimensions(model.timeline, viewportWidth, { labelWidth: labelLayout.width });
+  const svg = buildMeteogramSvgMarkup(model, settings, { viewportWidth, labelLayout });
+  const cloudScale = meteogramCloudScaleDefinition(model.timeline);
+  assert.equal(model.taf.issuanceZ, "2026-09-09T17:22:00.000Z");
+  assert.equal(cloudScale.maximumFt, 25000);
+
+  const numberAttribute = (markup, name) => Number(markup.match(new RegExp(`${name}="(-?[\\d.]+)"`))?.[1]);
+  const clipMatch = svg.match(/<clipPath id="aviationMeteogramCloudArtworkClip"><rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"\/><\/clipPath>/);
+  assert.ok(clipMatch, "the cloud artwork clip is present");
+  const cloudClip = {
+    left: Number(clipMatch[1]),
+    top: Number(clipMatch[2]),
+    right: Number(clipMatch[1]) + Number(clipMatch[3]),
+    bottom: Number(clipMatch[2]) + Number(clipMatch[4]),
+  };
+
+  const labelTags = [...svg.matchAll(/<rect class="aviation-meteogram-cloud-layer-label-tag[^"]*" x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*\/>/g)].map((match) => {
+    const groupStart = svg.lastIndexOf('<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text', match.index);
+    const groupTag = svg.slice(groupStart, svg.indexOf(">", groupStart) + 1);
+    return {
+      timeX: numberAttribute(groupTag, "data-cloud-time-x"),
+      left: Number(match[1]),
+      top: Number(match[2]),
+      right: Number(match[1]) + Number(match[3]),
+      bottom: Number(match[2]) + Number(match[4]),
+    };
+  });
+  assert.ok(labelTags.length, "the rendered cloud layer labels expose their actual collision geometry");
+
+  const lightningPaths = [...svg.matchAll(/<path class="aviation-meteogram-atmosphere-lightning"[^>]*\/>/g)].map((match) => {
+    const groupStart = svg.lastIndexOf('<g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork', match.index);
+    const groupTag = svg.slice(groupStart, svg.indexOf(">", groupStart) + 1);
+    const phenomenonStart = svg.lastIndexOf('<g class="aviation-meteogram-atmosphere-phenomenon', match.index);
+    const phenomenonTag = svg.slice(phenomenonStart, svg.indexOf(">", phenomenonStart) + 1);
+    const artX = numberAttribute(groupTag, "data-cloud-art-x");
+    const translate = match[0].match(/\btransform="translate\((-?[\d.]+)(?:[ ,]+(-?[\d.]+))?\)"/);
+    const translateX = Number(translate?.[1] || 0);
+    const translateY = Number(translate?.[2] || 0);
+    const startY = numberAttribute(match[0], "data-lightning-start-y") + translateY;
+    const tipY = numberAttribute(match[0], "data-lightning-tip-y") + translateY;
+    const localLeft = numberAttribute(match[0], "data-lightning-left");
+    const localRight = numberAttribute(match[0], "data-lightning-right");
+    return {
+      timeX: numberAttribute(groupTag, "data-cloud-time-x"),
+      phenomenonTag,
+      anchor: match[0].match(/data-lightning-anchor="([^"]+)"/)?.[1],
+      placement: match[0].match(/data-lightning-placement="([^"]+)"/)?.[1],
+      offsetX: numberAttribute(match[0], "data-lightning-offset-x"),
+      baseFt: numberAttribute(match[0], "data-lightning-base-ft"),
+      baseY: numberAttribute(match[0], "data-lightning-base-y") + translateY,
+      pathHeight: numberAttribute(match[0], "data-lightning-path-height"),
+      left: artX + translateX + localLeft,
+      right: artX + translateX + localRight,
+      top: startY,
+      bottom: tipY,
+    };
+  });
+
+  assert.equal(lightningPaths.length, 3, "the half-open 21-24Z PROB30 interval renders exactly three hourly bolts");
+  const expectedTimes = [
+    "2026-09-10T21:00:00.000Z",
+    "2026-09-10T22:00:00.000Z",
+    "2026-09-10T23:00:00.000Z",
+  ];
+  const renderedTimes = lightningPaths.map(({ timeX }) => {
+    const index = dimensions.xPositions.findIndex((x) => Math.abs(x - timeX) < 0.11);
+    assert.notEqual(index, -1, `lightning x=${timeX} belongs to an exact timeline bucket`);
+    return model.timeline[index].validZ || model.timeline[index].observedZ;
+  });
+  assert.deepEqual(renderedTimes, expectedTimes);
+
+  const expectedBaseY = meteogramCloudBaseY(5000, 25000);
+  for (const [index, bolt] of lightningPaths.entries()) {
+    const label = `${expectedTimes[index].slice(11, 13)}Z bolt`;
+    assert.match(bolt.phenomenonTag, /aviation-meteogram-atmosphere-conditional/);
+    assert.match(bolt.phenomenonTag, /data-weather-code="-TSRA"/);
+    assert.match(bolt.phenomenonTag, /data-weather-provenance="P30"/);
+    assert.equal(bolt.anchor, "reported-cb-base", `${label} remains tied to the reported CB layer`);
+    assert.equal(bolt.placement, "below-cloud-labels", `${label} clears the final collision-shifted label geometry`);
+    assert.equal(bolt.baseFt, 5000);
+    assert.ok(Math.abs(bolt.baseY - expectedBaseY) < 0.11);
+    assert.ok(bolt.top > bolt.baseY, `${label} visibly emerges beneath the reported CB base and its label`);
+    assert.ok(Number.isFinite(bolt.offsetX), `${label} exposes its collision-aware horizontal placement`);
+    assert.equal(bolt.pathHeight, 24, `${label} uses the compact recognizable bolt that fits above the CIG summary`);
+
+    const sameColumnTags = labelTags.filter((tag) => Math.abs(tag.timeX - bolt.timeX) < 0.11);
+    assert.ok(sameColumnTags.length, `${label} exercises the opaque P30 BKN050CB label from production`);
+    for (const tag of sameColumnTags) {
+      assert.ok(
+        bolt.bottom <= tag.top || bolt.top >= tag.bottom || bolt.right <= tag.left || bolt.left >= tag.right,
+        `${label} recognizable body ${JSON.stringify(bolt)} must not intersect same-column cloud-label tag ${JSON.stringify(tag)}`,
+      );
+    }
+    assert.ok(bolt.left >= cloudClip.left && bolt.right <= cloudClip.right, `${label} remains horizontally inside the artwork clip`);
+    assert.ok(bolt.top >= cloudClip.top && bolt.bottom <= cloudClip.bottom, `${label} remains vertically inside the artwork clip`);
+  }
+
+  assert.doesNotMatch(
+    meteogramCss,
+    /\.aviation-meteogram-atmosphere-conditional\s*\{[^}]*\bopacity\s*:\s*(?:0?\.)?[0-9]+/,
+    "conditional probability must not reduce opacity on the parent that contains lightning",
+  );
+  assert.match(
+    meteogramCss,
+    /\.aviation-meteogram-atmosphere-conditional\s*>?\s*:not\(\.aviation-meteogram-atmosphere-lightning\)\s*\{[^}]*\bopacity\s*:\s*(?:0?\.)[0-9]+/,
+    "non-lightning conditional weather artwork retains a reduced-opacity treatment",
+  );
+});
+
+test("low-base CB and generic thunder bolts remain measurable, collision-free, and truthful at 10,000- and 25,000-foot scales", () => {
+  const layer = (raw) => {
+    const match = raw.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
+    assert.ok(match, `valid deterministic cloud token ${raw}`);
+    return { cover: match[1], heightFt: Number(match[2]) * 100, convective: match[3] || "", raw };
+  };
+  const point = (raw, weatherCodes, observedZ) => {
+    const cloudLayer = layer(raw);
+    return manualMeteogramPoint({
+      observedZ,
+      raw: `METAR KMEM TEST ${weatherCodes.join(" ")} ${raw}`,
+      clouds: {
+        layers: [cloudLayer],
+        clear: false,
+        cavok: false,
+        ceilingFt: ["BKN", "OVC", "VV"].includes(cloudLayer.cover) ? cloudLayer.heightFt : null,
+        display: raw,
+      },
+      weatherCodes,
+    });
+  };
+  const numberAttribute = (markup, name) => {
+    const match = markup.match(new RegExp(`${name}="(-?[\\d.]+)"`));
+    return match ? Number(match[1]) : null;
+  };
+  const render = ({ raw, code, force25k = false, viewportWidth }) => {
+    const timeline = [point(raw, [code], "2026-09-01T00:00:00.000Z")];
+    if (force25k) timeline.push(point("FEW250", [], "2026-09-01T01:00:00.000Z"));
+    const model = manualMeteogramModel(timeline);
+    const settings = { timeMode: "Z", temperatureUnit: "C", windUnit: "KT" };
+    const labelLayout = meteogramRowLabelLayout(settings, viewportWidth, { hasForecast: false });
+    const svg = buildMeteogramSvgMarkup(model, settings, { viewportWidth, labelLayout });
+    const maximumFt = meteogramCloudScaleDefinition(timeline).maximumFt;
+    const pathMatch = svg.match(/<path class="aviation-meteogram-atmosphere-lightning"[^>]*\/>/);
+    assert.ok(pathMatch, `${raw} ${code} renders one explicit-thunder lightning bolt`);
+    assert.equal((svg.match(/data-weather-lightning="reported-thunder"/g) || []).length, 1);
+    const path = pathMatch[0];
+    const artworkGroupStart = svg.lastIndexOf('<g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork', pathMatch.index);
+    const artworkGroup = svg.slice(artworkGroupStart, svg.indexOf(">", artworkGroupStart) + 1);
+    const timeX = numberAttribute(artworkGroup, "data-cloud-time-x");
+    const artX = numberAttribute(artworkGroup, "data-cloud-art-x");
+    const bolt = {
+      anchor: path.match(/data-lightning-anchor="([^"]+)"/)?.[1],
+      placement: path.match(/data-lightning-placement="([^"]+)"/)?.[1],
+      baseFt: numberAttribute(path, "data-lightning-base-ft"),
+      baseY: numberAttribute(path, "data-lightning-base-y"),
+      left: artX + numberAttribute(path, "data-lightning-left"),
+      right: artX + numberAttribute(path, "data-lightning-right"),
+      top: numberAttribute(path, "data-lightning-start-y"),
+      bottom: numberAttribute(path, "data-lightning-tip-y"),
+      height: numberAttribute(path, "data-lightning-path-height"),
+    };
+    const tags = [...svg.matchAll(/<rect class="aviation-meteogram-cloud-layer-label-tag[^"]*" x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*\/>/g)].flatMap((match) => {
+      const textGroupStart = svg.lastIndexOf('<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text', match.index);
+      const textGroup = svg.slice(textGroupStart, svg.indexOf(">", textGroupStart) + 1);
+      if (Math.abs(numberAttribute(textGroup, "data-cloud-time-x") - timeX) > 0.11) return [];
+      return [{
+        left: Number(match[1]),
+        top: Number(match[2]),
+        right: Number(match[1]) + Number(match[3]),
+        bottom: Number(match[2]) + Number(match[4]),
+      }];
+    });
+    const clipMatch = svg.match(/<clipPath id="aviationMeteogramCloudArtworkClip"><rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"\/><\/clipPath>/);
+    assert.ok(clipMatch);
+    const clip = {
+      left: Number(clipMatch[1]),
+      top: Number(clipMatch[2]),
+      right: Number(clipMatch[1]) + Number(clipMatch[3]),
+      bottom: Number(clipMatch[2]) + Number(clipMatch[4]),
+    };
+    return { svg, maximumFt, path, bolt, tags, clip };
+  };
+  const doesNotIntersect = (left, right) => (
+    left.bottom <= right.top || left.top >= right.bottom || left.right <= right.left || left.left >= right.right
+  );
+  const assertVisible = (scenario, label) => {
+    assert.equal(scenario.bolt.height, 24, `${label} retains a recognizable compact bolt body`);
+    assert.equal(scenario.bolt.bottom - scenario.bolt.top, scenario.bolt.height, `${label} exposes truthful vertical geometry`);
+    assert.ok(scenario.bolt.left < scenario.bolt.right && scenario.bolt.top < scenario.bolt.bottom, `${label} has nonzero geometry`);
+    assert.ok(scenario.bolt.left >= scenario.clip.left && scenario.bolt.right <= scenario.clip.right, `${label} remains inside the cloud artwork clip horizontally`);
+    assert.ok(scenario.bolt.top >= scenario.clip.top && scenario.bolt.bottom <= scenario.clip.bottom, `${label} remains inside the cloud artwork clip vertically`);
+    assert.ok(scenario.tags.length, `${label} includes a same-column opaque cloud label collision obstacle`);
+    for (const tag of scenario.tags) assert.ok(doesNotIntersect(scenario.bolt, tag), `${label} bolt must not be masked by label ${JSON.stringify(tag)}`);
+  };
+
+  for (const fixture of [
+    { force25k: false, viewportWidth: 390, expectedMaximumFt: 10000 },
+    { force25k: true, viewportWidth: 1000, expectedMaximumFt: 25000 },
+  ]) {
+    const lowCb = render({ raw: "BKN005CB", code: "TSRA", ...fixture });
+    const label = `BKN005CB TSRA on ${fixture.expectedMaximumFt / 1000}K scale at ${fixture.viewportWidth}px`;
+    assert.equal(lowCb.maximumFt, fixture.expectedMaximumFt);
+    assert.equal(lowCb.bolt.anchor, "reported-cb-base");
+    assert.equal(lowCb.bolt.baseFt, 500);
+    assert.ok(Math.abs(lowCb.bolt.baseY - meteogramCloudBaseY(500, fixture.expectedMaximumFt)) < 0.11);
+    assert.ok(lowCb.bolt.bottom > lowCb.bolt.baseY, `${label} visibly extends out beneath the reported cloud base`);
+    assertVisible(lowCb, label);
+
+    for (const code of ["TS", "VCTS"]) {
+      const generic = render({ raw: "BKN030", code, ...fixture });
+      const genericLabel = `BKN030 ${code} on ${fixture.expectedMaximumFt / 1000}K scale at ${fixture.viewportWidth}px`;
+      assert.equal(generic.maximumFt, fixture.expectedMaximumFt);
+      assert.equal(generic.bolt.anchor, "generic-atmosphere", `${genericLabel} never invents a CB-base association`);
+      assert.equal(generic.bolt.baseFt, null);
+      assert.equal(generic.bolt.baseY, null);
+      assert.doesNotMatch(generic.path, /data-lightning-base-(?:ft|y)=/);
+      if (code === "VCTS") assert.match(generic.svg, /aviation-meteogram-atmosphere-vicinity/);
+      assertVisible(generic, genericLabel);
+    }
+  }
+
+  for (const maximumFixture of [
+    [manualMeteogramPoint({
+      clouds: { layers: [layer("BKN005CB")], clear: false, cavok: false, ceilingFt: 500, display: "BKN005CB" },
+      weatherCodes: [],
+    })],
+    [
+      manualMeteogramPoint({
+        clouds: { layers: [layer("BKN005CB")], clear: false, cavok: false, ceilingFt: 500, display: "BKN005CB" },
+        weatherCodes: [],
+      }),
+      point("FEW250", [], "2026-09-01T01:00:00.000Z"),
+    ],
+  ]) {
+    assert.doesNotMatch(
+      buildMeteogramSvgMarkup(manualMeteogramModel(maximumFixture), { timeMode: "Z" }),
+      /data-weather-lightning=/,
+      "CB morphology without an explicit TS/VCTS/TSRA code never fabricates lightning",
+    );
+  }
 });
 
 test("mixed, vicinity, and conditional weather retain independent intensity and provenance", () => {
