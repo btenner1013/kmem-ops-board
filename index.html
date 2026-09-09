@@ -256,7 +256,8 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .atis-letter-last-reported-stale .atis-letter-value,
 .atis-letter-last-reported-stale .atis-letter-status{color:var(--closed)}
 
-.ops-box.atis-runway-box{min-height:clamp(42px,5.4vh,78px)}
+.ops-box.atis-runway-box,
+.ops-box.atis-flow-box{min-height:clamp(42px,5.4vh,78px)}
 .atis-runway-display{overflow:visible;text-overflow:clip;overflow-wrap:normal}
 .atis-runway-value{display:block;max-width:100%;white-space:normal}
 .atis-runway-cue{display:block;max-width:100%;margin-top:3px;font-size:clamp(.48rem,.82vh,.88rem);font-weight:900;line-height:1.08;letter-spacing:.035em;white-space:normal;overflow-wrap:normal;text-wrap:balance}
@@ -264,6 +265,13 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .atis-runway-last-reported .atis-runway-cue{color:var(--warning)}
 .atis-runway-last-reported-stale .atis-runway-value,
 .atis-runway-last-reported-stale .atis-runway-cue{color:var(--closed)}
+.atis-flow-display{overflow:visible!important;text-overflow:clip!important;overflow-wrap:normal!important}
+.atis-flow-value{display:block;max-width:100%;white-space:normal}
+.atis-flow-cue{display:block;max-width:100%;margin-top:3px;font-size:clamp(.48rem,.82vh,.88rem);font-weight:900;line-height:1.08;letter-spacing:.035em;white-space:normal;overflow-wrap:normal;text-wrap:balance}
+.atis-flow-last-reported .atis-flow-value,
+.atis-flow-last-reported .atis-flow-cue{color:var(--warning)}
+.atis-flow-last-reported-stale .atis-flow-value,
+.atis-flow-last-reported-stale .atis-flow-cue{color:var(--closed)}
 
 .details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
 .ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
@@ -1070,53 +1078,79 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
     <header class="host-health-header">
       <div class="host-health-heading">
         <h2 id="hostHealthTitle" class="host-health-title">🫀 HOST HEALTH</h2>
-        <p id="hostHealthDisclaimer" class="host-health-disclaimer">READ-ONLY TELEMETRY · NO FAILOVER CONTROLS</p>
+        <p id="hostHealthDisclaimer" class="host-health-disclaimer">WHO IS UPDATING THE BOARD?</p>
       </div>
       <button id="hostHealthCloseButton" class="host-health-close" type="button" aria-label="Close Host Health">×</button>
     </header>
     <div id="hostHealthStatus" class="host-health-status" role="status" aria-live="polite"><strong>READY</strong></div>
     <div class="host-health-body">
-      <div class="host-health-current-grid host-health-overview" aria-label="Current publishing health">
-        <section id="hostHealthActivePublisher" class="host-health-current-card" aria-label="Active publisher"></section>
-        <section id="hostHealthBoardDelivery" class="host-health-current-card" aria-label="Board delivery health"></section>
+      <section id="hostHealthOperatorSummary" class="host-health-operator-summary" aria-label="Board status at a glance"></section>
+      <div class="host-health-host-snapshot" aria-label="PRIMARY and BACKUP status at a glance">
+        <section id="hostHealthPrimarySummary" class="host-health-snapshot-card" aria-label="PRIMARY summary"></section>
+        <section id="hostHealthBackupSummary" class="host-health-snapshot-card" aria-label="BACKUP summary"></section>
       </div>
-      <div class="host-health-host-grid" aria-label="Updater host health">
-        <section id="hostHealthPrimary" class="host-health-host-card" aria-label="PRIMARY host health"></section>
-        <section id="hostHealthBackup" class="host-health-host-card" aria-label="BACKUP host health"></section>
-        <section id="hostHealthLease" class="host-health-card host-health-lease" aria-label="Publisher lease status"></section>
-      </div>
-      <div class="host-health-control-bar host-health-controls">
-        <div class="host-health-range-options" role="group" aria-label="Host Health history time range">
-          <button class="host-health-option" type="button" data-host-health-range="24h" aria-pressed="true">24 HR</button>
-          <button class="host-health-option" type="button" data-host-health-range="7d" aria-pressed="false">7 DAYS</button>
-          <button class="host-health-option" type="button" data-host-health-range="30d" aria-pressed="false">30 DAYS</button>
-          <button class="host-health-option" type="button" data-host-health-range="90d" aria-pressed="false">90 DAYS</button>
-          <button class="host-health-option" type="button" data-host-health-range="365d" aria-pressed="false">1 YEAR</button>
-        </div>
-        <div class="host-health-time-options" role="group" aria-label="Host Health display time zone">
-          <button class="host-health-option" type="button" data-host-health-time="Z" aria-pressed="true">Z</button>
-          <button class="host-health-option" type="button" data-host-health-time="LOCAL" aria-pressed="false">LOCAL</button>
-        </div>
-      </div>
-      <section class="host-health-chart-shell" aria-labelledby="hostHealthTimelineTitle">
-        <div class="host-health-chart-toolbar">
-          <h3 id="hostHealthTimelineTitle" class="host-health-chart-heading host-health-section-title">ROLLING HOST HISTORY</h3>
-          <div class="host-health-zoom-controls" role="group" aria-label="Host Health timeline zoom">
-            <button id="hostHealthZoomOut" class="host-health-zoom-button" type="button" aria-label="Zoom out Host Health timeline" aria-controls="hostHealthChart" disabled>&minus;</button>
-            <button id="hostHealthZoomIn" class="host-health-zoom-button" type="button" aria-label="Zoom in Host Health timeline" aria-controls="hostHealthChart" disabled>+</button>
-            <button id="hostHealthZoomReset" class="host-health-zoom-button host-health-zoom-reset" type="button" aria-controls="hostHealthChart" disabled>RESET</button>
+      <section id="hostHealthLastSwitch" class="host-health-last-switch" aria-label="Last automatic host switch"></section>
+
+      <details id="hostHealthHistorySection" class="host-health-disclosure">
+        <summary>
+          <span>HISTORY &amp; FAILOVERS</span>
+          <small>Timeline and important changes</small>
+        </summary>
+        <div class="host-health-disclosure-body">
+          <div class="host-health-control-bar host-health-controls">
+            <div class="host-health-range-options" role="group" aria-label="Host Health history time range">
+              <button class="host-health-option" type="button" data-host-health-range="24h" aria-pressed="true">24 HR</button>
+              <button class="host-health-option" type="button" data-host-health-range="7d" aria-pressed="false">7 DAYS</button>
+              <button class="host-health-option" type="button" data-host-health-range="30d" aria-pressed="false">30 DAYS</button>
+              <button class="host-health-option" type="button" data-host-health-range="90d" aria-pressed="false">90 DAYS</button>
+              <button class="host-health-option" type="button" data-host-health-range="365d" aria-pressed="false">1 YEAR</button>
+            </div>
+            <div class="host-health-time-options" role="group" aria-label="Host Health display time zone">
+              <button class="host-health-option" type="button" data-host-health-time="Z" aria-pressed="true">Z</button>
+              <button class="host-health-option" type="button" data-host-health-time="LOCAL" aria-pressed="false">LOCAL</button>
+            </div>
           </div>
-          <span id="hostHealthZoomStatus" class="host-health-zoom-status">FULL RANGE</span>
+          <section class="host-health-chart-shell" aria-labelledby="hostHealthTimelineTitle">
+            <div class="host-health-chart-toolbar">
+              <h3 id="hostHealthTimelineTitle" class="host-health-chart-heading host-health-section-title">HOST TIMELINE</h3>
+              <div class="host-health-zoom-controls" role="group" aria-label="Host Health timeline zoom">
+                <button id="hostHealthZoomOut" class="host-health-zoom-button" type="button" aria-label="Zoom out Host Health timeline" aria-controls="hostHealthChart" disabled>&minus;</button>
+                <button id="hostHealthZoomIn" class="host-health-zoom-button" type="button" aria-label="Zoom in Host Health timeline" aria-controls="hostHealthChart" disabled>+</button>
+                <button id="hostHealthZoomReset" class="host-health-zoom-button host-health-zoom-reset" type="button" aria-controls="hostHealthChart" disabled>RESET</button>
+              </div>
+              <span id="hostHealthZoomStatus" class="host-health-zoom-status">FULL RANGE</span>
+            </div>
+            <div id="hostHealthChart" class="host-health-chart" role="region" aria-label="PRIMARY, BACKUP, publisher, and board delivery timeline">
+              <div id="hostHealthTooltip" class="host-health-tooltip" role="tooltip" hidden></div>
+            </div>
+          </section>
+          <section id="hostHealthImportantEvents" class="host-health-important-events" aria-label="Important Host Health events"></section>
         </div>
-        <div id="hostHealthChart" class="host-health-chart" role="region" aria-label="PRIMARY, BACKUP, publisher, and board delivery timeline">
-          <div id="hostHealthTooltip" class="host-health-tooltip" role="tooltip" hidden></div>
+      </details>
+
+      <details id="hostHealthTechnicalSection" class="host-health-disclosure host-health-technical-disclosure">
+        <summary>
+          <span>TECHNICAL DETAILS</span>
+          <small>Lease, exact timestamps, reliability calculations, and complete event log</small>
+        </summary>
+        <div class="host-health-disclosure-body">
+          <p class="host-health-read-only-note">READ ONLY · THIS PAGE CANNOT CHANGE PUBLISHER OR FAILOVER</p>
+          <div class="host-health-current-grid host-health-overview" aria-label="Detailed publishing health">
+            <section id="hostHealthActivePublisher" class="host-health-current-card" aria-label="Active publisher details"></section>
+            <section id="hostHealthBoardDelivery" class="host-health-current-card" aria-label="Board delivery details"></section>
+          </div>
+          <div class="host-health-host-grid" aria-label="Detailed updater host health">
+            <section id="hostHealthPrimary" class="host-health-host-card" aria-label="PRIMARY host health details"></section>
+            <section id="hostHealthBackup" class="host-health-host-card" aria-label="BACKUP host health details"></section>
+            <section id="hostHealthLease" class="host-health-card host-health-lease" aria-label="Publisher lease details"></section>
+          </div>
+          <div class="host-health-lower-grid">
+            <section id="hostHealthMetrics" class="host-health-metrics" aria-label="Selected-range reliability calculations"></section>
+            <section id="hostHealthArchive" class="host-health-archive" aria-label="Host Health archive availability"></section>
+          </div>
+          <section id="hostHealthEvents" class="host-health-events" aria-label="Complete Host Health event log"></section>
         </div>
-      </section>
-      <div class="host-health-lower-grid">
-        <section id="hostHealthMetrics" class="host-health-metrics" aria-label="Selected-range reliability summary"></section>
-        <section id="hostHealthArchive" class="host-health-archive" aria-label="Host Health archive availability"></section>
-      </div>
-      <section id="hostHealthEvents" class="host-health-events" aria-label="Host Health event log"></section>
+      </details>
     </div>
   </section>
 </div>
@@ -1274,9 +1308,9 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
       </div>
 
       <div class="ops-grid">
-        <div class="ops-box">
+        <div class="ops-box atis-flow-box">
           <div class="ops-label">FLOW</div>
-          <div id="flow" class="ops-value">--</div>
+          <div id="flow" class="ops-value atis-flow-display" role="status" aria-live="polite" aria-atomic="true">--</div>
         </div>
         <div class="ops-box">
           <div class="ops-label">WIND</div>
@@ -2044,6 +2078,65 @@ function setAtisRunwayDisplay(id,data,currentField,reportedField,kind){
   if(state.cue){
     const cue=document.createElement("span");
     cue.className="atis-runway-cue";
+    cue.textContent=state.cue;
+    el.appendChild(cue);
+  }
+
+  el.setAttribute("aria-label",description);
+  el.title=description;
+  el.dataset.presentationSignature=signature;
+}
+
+function normalizeAtisFlowDisplay(value){
+  const text=String(value??"").trim().toUpperCase().replace(/\s+/g," ");
+  if(text==="MIXED")return text;
+  const match=text.match(/^(NORTH|SOUTH|EAST|WEST)\s*([↑↓←→])$/);
+  if(!match)return "--";
+  const expected={NORTH:"↑",SOUTH:"↓",EAST:"→",WEST:"←"};
+  return expected[match[1]]===match[2]?`${match[1]} ${match[2]}`:"--";
+}
+
+function atisFlowDisplayState(data){
+  const atisState=atisDisplayState(data||{});
+  if(atisState.mode==="current"){
+    const value=normalizeAtisFlowDisplay(data?.flow);
+    return {value,mode:value==="--"?"unavailable":"current",cue:"",atis:atisState.display};
+  }
+  if(atisState.mode==="last-reported"||atisState.mode==="last-reported-stale"){
+    const value=normalizeAtisFlowDisplay(data?.atisReportedFlow);
+    if(value==="--")return {value:"--",mode:"unavailable",cue:"",atis:atisState.display};
+    return {
+      value,
+      mode:atisState.mode,
+      cue:`${atisState.display} · LAST RPTD · NOT CURRENT`,
+      atis:atisState.display,
+    };
+  }
+  return {value:"--",mode:"unavailable",cue:"",atis:"--"};
+}
+
+function setAtisFlowDisplay(data){
+  const el=document.getElementById("flow");
+  if(!el)return;
+  const state=atisFlowDisplayState(data||{});
+  const description=state.mode==="current"
+    ? `Current ATIS ${state.atis} flow ${state.value}`
+    : state.mode==="unavailable"
+      ? "No validated ATIS flow information available"
+      : `Last reported ATIS ${state.atis} flow ${state.value}; not operational-current`;
+  const signature=[state.value,state.mode,state.cue,description].join("|");
+  if(el.dataset.presentationSignature===signature)return;
+  el.className=`ops-value atis-flow-display atis-flow-${state.mode}`;
+  el.textContent="";
+
+  const value=document.createElement("span");
+  value.className="atis-flow-value";
+  value.innerHTML=formatFlowHtml(state.value);
+  el.appendChild(value);
+
+  if(state.cue){
+    const cue=document.createElement("span");
+    cue.className="atis-flow-cue";
     cue.textContent=state.cue;
     el.appendChild(cue);
   }
@@ -3105,7 +3198,7 @@ function updateDetails(data){
 
   setClosedRunwayDisplay(data.closedRunways);
 
-  document.getElementById("flow").innerHTML=formatFlowHtml(data.flow||"--");
+  setAtisFlowDisplay(data);
   setWindDisplay(data);
   setTempDpDisplay(data);
 
@@ -3237,7 +3330,7 @@ async function loadWeatherJson({resetCountdown=true}={}){
     setAtisRunwayDisplay("arrRwy",{},"arrRunways","atisReportedArrRunways","arrival");
     setAtisRunwayDisplay("depRwy",{},"depRunways","atisReportedDepRunways","departure");
     document.getElementById("closedRwy").textContent="--";
-    document.getElementById("flow").textContent="--";
+    setAtisFlowDisplay({});
     if(document.getElementById("wind"))document.getElementById("wind").textContent="--";
     if(document.getElementById("tempDp"))document.getElementById("tempDp").textContent="--";
 
@@ -3370,7 +3463,7 @@ function phase45PolishOpsText(){
   }
 
   const flow=document.getElementById("flow");
-  if(flow && !flow.querySelector(".flow-arrow")){
+  if(flow && !flow.dataset.presentationSignature && !flow.querySelector(".flow-arrow")){
     flow.innerHTML=flow.textContent.replace(/([↑↓←→↗↘↙↖])/g,'<span class="flow-arrow">$1</span>');
   }
 }

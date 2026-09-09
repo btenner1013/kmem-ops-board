@@ -115,6 +115,7 @@ body.host-health-dialog-open{overflow:hidden}
 }
 .host-health-status-partial-telemetry{color:var(--host-health-amber)}
 .host-health-status-error{color:var(--host-health-red)}
+.host-health-status[hidden]{display:none!important}
 
 .host-health-body{
   min-width:0;
@@ -123,6 +124,90 @@ body.host-health-dialog-open{overflow:hidden}
   padding:10px 14px 16px;
   scrollbar-gutter:stable;
 }
+
+.host-health-operator-summary{
+  box-sizing:border-box;
+  padding:clamp(14px,2.2vw,24px);
+  border:1px solid #2b4a3d;
+  border-left:6px solid #9aa7a5;
+  border-radius:6px;
+  background:linear-gradient(115deg,#07130e,#050b08 72%);
+}
+.host-health-operator-ok{border-left-color:var(--host-health-green)}
+.host-health-operator-warning{border-left-color:var(--host-health-amber)}
+.host-health-operator-alert{border-left-color:var(--host-health-red)}
+.host-health-operator-state{display:flex;align-items:center;gap:clamp(12px,2vw,20px)}
+.host-health-operator-icon{flex:0 0 auto;font-size:clamp(1.6rem,4vw,2.7rem);line-height:1}
+.host-health-operator-headline{margin:0;color:#f3faf6;font:800 clamp(1.1rem,2.7vw,1.8rem)/1.1 Consolas,"Lucida Console",monospace;letter-spacing:.025em}
+.host-health-operator-message{margin:6px 0 0;color:#c8d5cf;font:600 clamp(.78rem,1.5vw,.96rem)/1.35 "Segoe UI",Arial,sans-serif}
+.host-health-operator-update{margin:14px 0 0;padding-top:10px;color:var(--host-health-cyan);border-top:1px solid #234237;font-size:.76rem;font-weight:800;letter-spacing:.035em}
+
+.host-health-host-snapshot{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:8px;
+}
+.host-health-snapshot-card{
+  min-width:0;
+  box-sizing:border-box;
+  padding:12px;
+  border:1px solid #273c34;
+  border-radius:5px;
+  background:#050c09;
+}
+.host-health-snapshot-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.host-health-snapshot-title{color:#edf6f1;font-size:.9rem;letter-spacing:.05em}
+.host-health-snapshot-state{text-align:right;font-size:.75rem;font-weight:800}
+.host-health-snapshot-role{margin:8px 0 0;color:var(--host-health-cyan);font-size:.68rem;font-weight:800;line-height:1.35}
+.host-health-snapshot-time{margin:5px 0 0;color:#97a9a2;font-size:.64rem;line-height:1.35}
+
+.host-health-last-switch{
+  display:grid;
+  grid-template-columns:max-content minmax(0,1fr);
+  gap:8px 18px;
+  align-items:center;
+  box-sizing:border-box;
+  margin-top:8px;
+  padding:11px 12px;
+  border:1px solid #29463a;
+  border-radius:5px;
+  background:#07100c;
+}
+.host-health-last-switch-label{color:var(--host-health-cyan);font-size:.7rem;letter-spacing:.045em}
+.host-health-last-switch-copy{color:#d6e1dc;font:600 .76rem/1.4 "Segoe UI",Arial,sans-serif}
+
+.host-health-disclosure{
+  min-width:0;
+  box-sizing:border-box;
+  margin-top:10px;
+  border:1px solid #315043;
+  border-radius:5px;
+  background:#040a07;
+}
+.host-health-disclosure>summary{
+  display:grid;
+  grid-template-columns:max-content minmax(0,1fr) max-content;
+  gap:8px 16px;
+  align-items:center;
+  min-height:48px;
+  box-sizing:border-box;
+  padding:10px 12px;
+  color:#e5efea;
+  cursor:pointer;
+  list-style:none;
+  font-size:.8rem;
+  font-weight:800;
+  letter-spacing:.045em;
+}
+.host-health-disclosure>summary::-webkit-details-marker{display:none}
+.host-health-disclosure>summary small{min-width:0;color:#8fa29a;font:600 .72rem/1.3 "Segoe UI",Arial,sans-serif;letter-spacing:0}
+.host-health-disclosure>summary::after{content:"SHOW +";color:var(--host-health-green);font-size:.68rem;white-space:nowrap}
+.host-health-disclosure[open]>summary{border-bottom:1px solid #1a382c}
+.host-health-disclosure[open]>summary::after{content:"HIDE −"}
+.host-health-disclosure>summary:hover,.host-health-disclosure>summary:focus-visible{background:#0a1711;outline:2px solid var(--host-health-cyan);outline-offset:1px}
+.host-health-disclosure-body{min-width:0;padding:0 10px 10px}
+.host-health-read-only-note{margin:10px 0 0;color:#8fa29a;font-size:.62rem;font-weight:800;letter-spacing:.04em}
 
 .host-health-overview,.host-health-current-grid{
   display:grid;
@@ -247,10 +332,26 @@ body.host-health-dialog-open{overflow:hidden}
 .host-health-event-inferred{grid-column:2/-1;color:var(--host-health-amber);font-size:.58rem}
 .host-health-empty{display:grid;place-items:center;min-height:235px;padding:16px;color:#9aaba4;text-align:center;font-size:.72rem}
 
+.host-health-important-events{
+  min-width:0;
+  box-sizing:border-box;
+  margin-top:8px;
+  padding:10px;
+  border:1px solid #273c34;
+  border-radius:4px;
+  background:#050c09;
+}
+.host-health-important-list{display:grid;gap:6px;margin:8px 0 0;padding:0;list-style:none}
+.host-health-important-item{display:grid;grid-template-columns:minmax(150px,max-content) minmax(0,1fr);gap:10px;padding:9px;border-left:3px solid var(--host-health-cyan);background:#08130e}
+.host-health-important-time{color:var(--host-health-cyan);font-size:.68rem}
+.host-health-important-name{display:block;color:#edf6f1;font-size:.72rem}
+.host-health-important-copy{display:block;margin-top:3px;color:#afbeb8;font:600 .73rem/1.35 "Segoe UI",Arial,sans-serif}
+
 @media(max-width:850px){
   .host-health-overlay{padding:5px}
   .host-health-panel{max-height:calc(100dvh - 10px)}
   .host-health-overview,.host-health-current-grid,.host-health-host-grid{grid-template-columns:1fr}
+  .host-health-host-snapshot{grid-template-columns:1fr}
   .host-health-host-grid{gap:6px}
   .host-health-card{padding:8px}
   .host-health-value-row{grid-template-columns:minmax(110px,.9fr) minmax(0,1.5fr)}
@@ -268,6 +369,15 @@ body.host-health-dialog-open{overflow:hidden}
   .host-health-option{min-width:0;padding:7px 4px}
   .host-health-status{padding-inline:9px}
   .host-health-body{padding:7px 9px 12px;scrollbar-gutter:auto}
+  .host-health-operator-summary{padding:13px 11px}
+  .host-health-operator-state{align-items:flex-start;gap:9px}
+  .host-health-operator-icon{font-size:1.45rem}
+  .host-health-operator-headline{font-size:1rem}
+  .host-health-last-switch{grid-template-columns:1fr;gap:4px}
+  .host-health-disclosure>summary{grid-template-columns:minmax(0,1fr) max-content;gap:3px 8px}
+  .host-health-disclosure>summary small{grid-column:1/-1;grid-row:2}
+  .host-health-disclosure>summary::after{grid-column:2;grid-row:1}
+  .host-health-disclosure-body{padding-inline:7px}
   .host-health-card-heading{align-items:center}
   .host-health-value-row{grid-template-columns:minmax(0,1fr);gap:1px}
   .host-health-value{text-align:left}
@@ -275,6 +385,7 @@ body.host-health-dialog-open{overflow:hidden}
   .host-health-chart-heading{flex:1 1 100%}
   .host-health-zoom-status{flex:1 1 auto;align-self:center}
   .host-health-event-item{grid-template-columns:1fr}
+  .host-health-important-item{grid-template-columns:1fr;gap:4px}
   .host-health-event-reason,.host-health-event-inferred{grid-column:auto}
 }
 
@@ -289,6 +400,14 @@ body.host-health-dialog-open{overflow:hidden}
   .host-health-body{padding:6px 9px 9px}
   .host-health-overview,.host-health-current-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .host-health-host-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .host-health-host-snapshot{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .host-health-operator-summary{padding:10px 12px}
+  .host-health-operator-icon{font-size:1.5rem}
+  .host-health-operator-headline{font-size:1rem}
+  .host-health-operator-message{font-size:.76rem}
+  .host-health-operator-update{margin-top:7px;padding-top:7px;font-size:.66rem}
+  .host-health-snapshot-card{padding:8px 10px}
+  .host-health-last-switch{padding:8px 10px}
   .host-health-value-row{grid-template-columns:minmax(86px,.85fr) minmax(0,1.35fr);font-size:.6rem}
   .host-health-chart{min-height:215px}.host-health-svg{min-height:215px}
 }

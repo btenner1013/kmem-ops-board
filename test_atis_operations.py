@@ -529,6 +529,7 @@ class AtisOperationsTests(unittest.TestCase):
             self.assertEqual(ops["reportedLetter"], "Z")
             self.assertEqual(ops["reportedArrRunways"], "27")
             self.assertEqual(ops["reportedDepRunways"], "18R / 18C / 18L / 27")
+            self.assertEqual(ops["reportedFlow"], "MIXED")
 
     def test_current_atis_drives_display_ops(self):
         ops = u.parse_atis_operations(FULL_ZULU_ATIS, "OK")

@@ -6,9 +6,15 @@ import {
   applyHostHealthDialogState,
   createHostHealthLoader,
   hostHealthChartInteractionMode,
+  hostHealthFocusableElements,
+  hostHealthLastSwitchPresentation,
+  hostHealthOperatorEventPresentation,
+  hostHealthOperatorSummary,
   hostHealthStatePresentation,
   renderHostHealthChart,
+  renderOperatorHostCard,
   selectHostHealthEventLogItems,
+  selectHostHealthOperatorEvents,
 } from "../host-health.js";
 import { buildHostHealthTimeline, getHostHealthRange } from "../host-health-core.js";
 
@@ -69,14 +75,119 @@ function history() {
 test("🫀 quick link and complete accessible modal are integrated without an operational control surface", () => {
   assert.match(indexHtml, /hostHealth\.id="hostHealthButton"[\s\S]*?hostHealth\.title="Host Health"[\s\S]*?hostHealth\.textContent="🫀"/);
   for (const id of [
-    "hostHealthOverlay", "hostHealthPanel", "hostHealthCloseButton", "hostHealthStatus", "hostHealthActivePublisher",
+    "hostHealthOverlay", "hostHealthPanel", "hostHealthCloseButton", "hostHealthStatus", "hostHealthOperatorSummary",
+    "hostHealthPrimarySummary", "hostHealthBackupSummary", "hostHealthLastSwitch", "hostHealthImportantEvents",
+    "hostHealthHistorySection", "hostHealthTechnicalSection", "hostHealthActivePublisher",
     "hostHealthBoardDelivery", "hostHealthPrimary", "hostHealthBackup", "hostHealthLease", "hostHealthChart",
     "hostHealthTooltip", "hostHealthZoomOut", "hostHealthZoomIn", "hostHealthZoomReset", "hostHealthZoomStatus",
     "hostHealthMetrics", "hostHealthEvents", "hostHealthArchive",
   ]) assert.match(indexHtml, new RegExp(`id="${id}"`), id);
-  assert.match(indexHtml, /READ-ONLY TELEMETRY · NO FAILOVER CONTROLS/);
+  assert.match(indexHtml, /WHO IS UPDATING THE BOARD\?/);
+  assert.match(indexHtml, /READ ONLY · THIS PAGE CANNOT CHANGE PUBLISHER OR FAILOVER/);
   assert.match(indexHtml, /role="dialog" aria-modal="true"/);
   assert.doesNotMatch(indexHtml.slice(indexHtml.indexOf('id="hostHealthOverlay"'), indexHtml.indexOf('id="aviationWeatherLookupOverlay"')), /Force PRIMARY|Force BACKUP|Acquire lease|Release lease|Restart updater|Reset heartbeat/i);
+});
+
+test("default view is operator-first while history and engineering telemetry are collapsed", () => {
+  assert.match(indexHtml, /<details id="hostHealthHistorySection" class="host-health-disclosure">/);
+  assert.match(indexHtml, /<details id="hostHealthTechnicalSection" class="host-health-disclosure host-health-technical-disclosure">/);
+  assert.doesNotMatch(indexHtml, /<details[^>]+hostHealth(?:History|Technical)Section[^>]+open/);
+  const defaultSurface = indexHtml.slice(indexHtml.indexOf('id="hostHealthOperatorSummary"'), indexHtml.indexOf('id="hostHealthHistorySection"'));
+  assert.match(defaultSurface, /hostHealthPrimarySummary/);
+  assert.match(defaultSurface, /hostHealthBackupSummary/);
+  assert.match(defaultSurface, /hostHealthLastSwitch/);
+  assert.doesNotMatch(defaultSurface, /SOURCE SHA|LEASE|RELIABILITY|EVENT LOG/);
+  const technicalSurface = indexHtml.slice(indexHtml.indexOf('id="hostHealthTechnicalSection"'), indexHtml.indexOf('id="aviationWeatherLookupOverlay"'));
+  assert.match(technicalSurface, /hostHealthLease/);
+  assert.match(technicalSurface, /hostHealthMetrics/);
+  assert.match(technicalSurface, /hostHealthEvents/);
+  const operatorRenderer = source.slice(source.indexOf("function renderOperatorSummary"), source.indexOf("function renderPublisherCard"));
+  assert.match(operatorRenderer, /BOARD IS UP TO DATE|STANDING BY/);
+  assert.doesNotMatch(operatorRenderer, /SOURCE SHA|ACTIVE OWNER|HEALTH REASON|LAST ERROR/);
+  assert.match(source, /querySelectorAll\("summary,button:not\(\[disabled\]\)/);
+  assert.match(source, /item\.tagName === "SUMMARY"[\s\S]*details:not\(\[open\]\)/);
+});
+
+test("plain-language operator verdict prioritizes board delivery over preferred host role", () => {
+  assert.deepEqual(hostHealthOperatorSummary({ boardDelivery: "CONTINUOUS", publisher: "PRIMARY" }), {
+    tone: "ok", icon: "🟢", headline: "BOARD IS UP TO DATE", publisher: "PRIMARY",
+    message: "PRIMARY is updating the board. BACKUP is standing by.",
+  });
+  assert.deepEqual(hostHealthOperatorSummary({ boardDelivery: "CONTINUOUS", publisher: "BACKUP" }), {
+    tone: "ok", icon: "🟢", headline: "BOARD IS UP TO DATE", publisher: "BACKUP",
+    message: "BACKUP is keeping the board updated while PRIMARY is not publishing.",
+  });
+  assert.equal(hostHealthOperatorSummary({ boardDelivery: "DELAYED", publisher: "BACKUP" }).headline, "BOARD UPDATE IS RUNNING LATE");
+  assert.equal(hostHealthOperatorSummary({ boardDelivery: "DELAYED", publisher: "BACKUP" }).message,
+    "BACKUP is the active updater, but its latest board update is late.");
+  assert.equal(hostHealthOperatorSummary({ boardDelivery: "GAP", publisher: "UNKNOWN" }).headline, "BOARD HAS NOT UPDATED RECENTLY");
+  assert.equal(hostHealthOperatorSummary({ boardDelivery: "GAP", publisher: "PRIMARY" }).message,
+    "No recent board update has been received. Last known publisher: PRIMARY.");
+  assert.equal(hostHealthOperatorSummary({ boardDelivery: "UNKNOWN", publisher: "UNKNOWN" }).headline, "BOARD STATUS IS UNKNOWN");
+});
+
+test("important activity removes cadence chatter without hiding operational incidents", () => {
+  const events = [
+    ["BACKUP_DELAYED", 1], ["BACKUP_DELAY_RECOVERED", 2], ["BOARD_DELAYED", 3], ["BOARD_DELAY_RECOVERED", 4],
+    ["ACTIVE_BACKUP", 5], ["LEASE_ACQUIRED", 6], ["PRIMARY_STALE", 7], ["BOARD_PUBLISH_GAP", 8],
+    ["BACKUP_TAKEOVER", 9], ["BOARD_PUBLISH_RECOVERED", 10], ["PRIMARY_RECOVERED", 11], ["PRIMARY_HANDOFF", 12],
+  ].map(([eventType, minute]) => ({ eventType, timestampMs: minute * 60_000 }));
+  assert.deepEqual(selectHostHealthOperatorEvents(events).map((event) => event.eventType), [
+    "PRIMARY_HANDOFF", "PRIMARY_RECOVERED", "BOARD_PUBLISH_RECOVERED", "BACKUP_TAKEOVER", "BOARD_PUBLISH_GAP", "PRIMARY_STALE",
+  ]);
+  assert.equal(selectHostHealthOperatorEvents(events, 3).length, 3);
+  assert.deepEqual(hostHealthOperatorEventPresentation({ eventType: "PRIMARY_STALE" }), {
+    label: "PRIMARY STOPPED CHECKING IN", description: "PRIMARY exceeded the automatic failover timeout.",
+  });
+});
+
+test("important activity retains actionable host failures and dedupes a matching handoff completion", () => {
+  const importantTypes = [
+    "PRIMARY_ERROR", "PRIMARY_UNAVAILABLE", "BACKUP_STALE", "BACKUP_ERROR", "BACKUP_UNAVAILABLE", "BACKUP_RECOVERED",
+    "PRIMARY_HANDOFF_FAILED", "PRIMARY_HANDOFF_INCOMPLETE",
+  ];
+  const events = importantTypes.map((eventType, index) => ({ eventType, timestampMs: (index + 1) * 60_000 }));
+  events.push({ eventType: "PRIMARY_HANDOFF", timestampMs: 20 * 60_000 });
+  events.push({ eventType: "PRIMARY_HANDOFF_COMPLETE", timestampMs: 21 * 60_000 });
+  const selected = selectHostHealthOperatorEvents(events, 20);
+  assert.ok(importantTypes.every((type) => selected.some((event) => event.eventType === type)));
+  assert.ok(selected.some((event) => event.eventType === "PRIMARY_HANDOFF"));
+  assert.ok(!selected.some((event) => event.eventType === "PRIMARY_HANDOFF_COMPLETE"));
+  assert.equal(selectHostHealthOperatorEvents([{ eventType: "PRIMARY_HANDOFF_COMPLETE", timestampMs: 1 }])[0].eventType,
+    "PRIMARY_HANDOFF_COMPLETE");
+});
+
+test("visible switch summary translates takeover and return into direct operator language", () => {
+  assert.deepEqual(hostHealthLastSwitchPresentation(null), {
+    label: "LAST AUTOMATIC SWITCH", lead: "No takeover or return has been recorded yet.", hasTime: false,
+  });
+  assert.deepEqual(hostHealthLastSwitchPresentation({ eventType: "BACKUP_TAKEOVER" }), {
+    label: "BACKUP TOOK OVER AUTOMATICALLY", lead: "PRIMARY stopped checking in; BACKUP began updating at", hasTime: true,
+  });
+  assert.equal(hostHealthLastSwitchPresentation({ eventType: "PRIMARY_HANDOFF" }).label, "PRIMARY RESUMED AUTOMATICALLY");
+});
+
+test("unobserved inactive BACKUP is presented as standby without engineering fields or an alarming UNKNOWN label", () => {
+  const doc = new FakeDocument();
+  const parent = new FakeNode("section");
+  renderOperatorHostCard(doc, parent, {
+    role: "BACKUP", roleState: "STANDBY · NOT CURRENTLY OBSERVED", health: "UNKNOWN", observed: false,
+    heartbeatUtc: "2026-09-09T11:23:00Z", heartbeatAgeMinutes: 73,
+  }, { publisher: "PRIMARY" }, "Z");
+  assert.match(parent.textContent, /BACKUP⚪ STANDBYSTANDING BY/);
+  assert.match(parent.textContent, /CHECKED WHEN IT TAKES OVER/);
+  assert.match(parent.textContent, /LAST ACTIVE UPDATE · 73 MIN AGO/);
+  assert.doesNotMatch(parent.textContent, /UNKNOWN|SOURCE SHA|LEASE|TASK|LAST ERROR|HEALTH REASON/);
+});
+
+test("focus trap exposes closed disclosure summaries but not their hidden controls", () => {
+  const closedDetails = {};
+  const close = { hidden: false, tagName: "BUTTON", closest: () => null };
+  const historySummary = { hidden: false, tagName: "SUMMARY", closest: () => closedDetails };
+  const technicalSummary = { hidden: false, tagName: "SUMMARY", closest: () => closedDetails };
+  const hiddenRangeButton = { hidden: false, tagName: "BUTTON", closest: () => closedDetails };
+  const panel = { querySelectorAll: () => [close, historySummary, hiddenRangeButton, technicalSummary] };
+  assert.deepEqual(hostHealthFocusableElements(panel), [close, historySummary, technicalSummary]);
 });
 
 test("all ranges, Z/LOCAL toggle, module, stylesheet, and dedicated test command are present", () => {
@@ -97,7 +208,7 @@ test("health icon semantics are based on health, never preferred host role", () 
   assert.doesNotMatch(css, /host-primary[^}]*green|host-backup[^}]*yellow/i);
 });
 
-test("top publisher card surfaces the latest recorded failover or handoff without operational controls", () => {
+test("collapsed technical publisher card retains exact failover or handoff evidence", () => {
   assert.match(source, /LAST FAILOVER \/ HANDOFF/);
   assert.match(source, /latestPublisherTransition\.eventType/);
   assert.match(source, /NO RECORDED EVENT/);
@@ -136,6 +247,9 @@ test("three telemetry resources load independently with cache bypass and history
   assert.equal(result.lease.state, "RELEASED");
   assert.equal(calls.length, 3);
   assert.ok(calls.every((call) => call.url.includes("?_") && call.options.cache === "no-store"));
+  assert.ok(calls.every((call) => (call.options.method || "GET") === "GET"));
+  assert.deepEqual(calls.map((call) => new URL(call.url).pathname.split("/").at(-1)).sort(),
+    ["host_health_history.json", "host_status.json", "updater_lease.json"]);
 });
 
 test("a throwing malformed history document cannot suppress valid live host and lease reads", async () => {
@@ -318,6 +432,14 @@ test("responsive CSS contains every required narrow/display layout without docum
   assert.doesNotMatch(css, /width\s*:\s*100vw/);
   assert.doesNotMatch(css, /(?:html|body|\.host-health-overlay|\.host-health-panel)\s*\{[^}]*overflow-x\s*:\s*hidden/);
   assert.match(css, /#hostHealthButton\{[^}]*padding:0[^}]*appearance:none[^}]*cursor:pointer/);
+  assert.match(css, /\.host-health-host-snapshot\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /@media\(max-width:850px\)[\s\S]*\.host-health-host-snapshot\{grid-template-columns:1fr\}/);
+  assert.match(css, /\.host-health-disclosure>summary::after\{content:"SHOW \+"/);
+  assert.match(css, /\.host-health-disclosure>summary\{[^}]*min-height:48px[^}]*cursor:pointer/);
+  assert.match(css, /\.host-health-disclosure>summary:hover,[^}]*focus-visible/);
+  assert.match(css, /@media\(max-width:500px\)[\s\S]*\.host-health-operator-summary\{padding:13px 11px\}/);
+  assert.match(css, /@media\(max-width:500px\)[\s\S]*\.host-health-important-item\{grid-template-columns:1fr/);
+  assert.match(css, /\.host-health-body\{[^}]*overflow:auto/);
 });
 
 test("implementation is strictly telemetry-only and cannot mutate updater/failover state", () => {
@@ -329,5 +451,4 @@ test("implementation is strictly telemetry-only and cannot mutate updater/failov
   assert.match(source, /fetchJson\(fetchImpl[\s\S]*cache: "no-store"/);
   assert.match(source, /telemetryTimer = view\.setInterval/);
   assert.match(source, /pendingLoad = \{[^}]*resetDomain/);
-  assert.match(source, /FAILED \/ INCOMPLETE HANDOFFS[\s\S]*NOT MEASURED/);
 });

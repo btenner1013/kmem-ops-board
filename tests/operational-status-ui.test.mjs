@@ -46,6 +46,7 @@ vm.runInContext(
   `${sourceBetween("function atisPhoneticForLetter", "function setClosedRunwayDisplay")}` +
     "globalThis.atisDisplayState=atisDisplayState;" +
     "globalThis.atisRunwayDisplayState=atisRunwayDisplayState;" +
+    "globalThis.atisFlowDisplayState=atisFlowDisplayState;" +
     "globalThis.atisCatchupNeeded=atisCatchupNeeded;",
   atisDisplayContext,
 );
@@ -383,6 +384,7 @@ test("validated last-reported Lima keeps its runway evidence visible without pro
     depRunways: "--",
     atisReportedArrRunways: "18L / 18R",
     atisReportedDepRunways: "18C",
+    atisReportedFlow: "SOUTH ↓",
   });
 
   assert.deepEqual(
@@ -408,9 +410,80 @@ test("validated last-reported Lima keeps its runway evidence visible without pro
   assert.match(updateSource, /setAtisRunwayDisplay\("arrRwy",data,"arrRunways","atisReportedArrRunways","arrival"\)/);
   assert.match(updateSource, /setAtisRunwayDisplay\("depRwy",data,"depRunways","atisReportedDepRunways","departure"\)/);
   assert.match(updateSource, /setClosedRunwayDisplay\(data\.closedRunways\)/);
-  assert.match(updateSource, /formatFlowHtml\(data\.flow\|\|"--"\)/);
+  assert.match(updateSource, /setAtisFlowDisplay\(data\)/);
   assert.match(indexHtml, /\.atis-runway-display\{overflow:visible;text-overflow:clip;overflow-wrap:normal\}/);
   assert.match(indexHtml, /\.atis-runway-cue\{[^}]*white-space:normal;[^}]*text-wrap:balance/);
+});
+
+test("FLOW retains validated last-reported ATIS context without becoming operational-current", () => {
+  const current = retainedAtisFixture(59, {
+    atisLetter: "G",
+    atisSourceIsCurrent: true,
+    atisFetchStatus: "OK",
+    flow: "NORTH ↑",
+    atisReportedFlow: "SOUTH ↓",
+  });
+  assert.deepEqual(
+    { ...atisDisplayContext.atisFlowDisplayState(current) },
+    { value: "NORTH ↑", mode: "current", cue: "", atis: "GOLF" },
+    "a current ATIS uses only the operational flow field",
+  );
+
+  const warned = retainedAtisFixture(67, {
+    atisLetter: "--",
+    atisSourceIsCurrent: false,
+    atisFetchStatus: "WARN_SOURCE",
+    flow: "--",
+    atisReportedFlow: "SOUTH ↓",
+  });
+  assert.deepEqual(
+    { ...atisDisplayContext.atisFlowDisplayState(warned) },
+    {
+      value: "SOUTH ↓",
+      mode: "last-reported",
+      cue: "GOLF · LAST RPTD · NOT CURRENT",
+      atis: "GOLF",
+    },
+  );
+
+  const stale = retainedAtisFixture(180, {
+    atisLetter: "--",
+    atisSourceIsCurrent: false,
+    atisFetchStatus: "STALE_SOURCE",
+    flow: "--",
+    atisReportedFlow: "MIXED",
+  });
+  assert.deepEqual(
+    { ...atisDisplayContext.atisFlowDisplayState(stale) },
+    {
+      value: "MIXED",
+      mode: "last-reported-stale",
+      cue: "GOLF · LAST RPTD · NOT CURRENT",
+      atis: "GOLF",
+    },
+  );
+});
+
+test("FLOW fails closed when retained ATIS evidence or the reported flow is invalid", () => {
+  const invalidFixtures = [
+    retainedAtisFixture(67, { atisObservedZ: "", atisReportedFlow: "SOUTH ↓" }),
+    retainedAtisFixture(67, { atisReportedLetter: "H", atisReportedFlow: "SOUTH ↓" }),
+    retainedAtisFixture(67, { atisFetchStatus: "FAILED_NO_LAST_GOOD", atisReportedFlow: "SOUTH ↓" }),
+    retainedAtisFixture(67, { atisFetchStatus: "SOURCE_TIME_UNKNOWN", atisReportedFlow: "SOUTH ↓" }),
+    retainedAtisFixture(67, { atisReportedFlow: "--" }),
+    retainedAtisFixture(67, { atisReportedFlow: "SOUTHBOUND" }),
+    retainedAtisFixture(67, { atisReportedFlow: "SOUTH ↑" }),
+  ];
+  for (const fixture of invalidFixtures) {
+    assert.deepEqual(
+      { ...atisDisplayContext.atisFlowDisplayState(fixture) },
+      { value: "--", mode: "unavailable", cue: "", atis: fixture.atisReportedFlow === "--" || /SOUTHBOUND|SOUTH ↑/.test(fixture.atisReportedFlow || "") ? "GOLF" : "--" },
+    );
+  }
+
+  assert.match(indexHtml, /id="flow" class="ops-value atis-flow-display" role="status" aria-live="polite" aria-atomic="true"/);
+  assert.match(indexHtml, /\.atis-flow-cue\{[^}]*white-space:normal;[^}]*text-wrap:balance/);
+  assert.match(indexHtml, /flow && !flow\.dataset\.presentationSignature && !flow\.querySelector\("\.flow-arrow"\)/);
 });
 
 test("current Mike wins runway display while stale or malformed retained evidence fails closed", () => {

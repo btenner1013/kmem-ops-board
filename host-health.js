@@ -25,6 +25,40 @@ const TRACK_STATE_LABELS = Object.freeze({
   HEALTHY: "HEALTHY", CONTINUOUS: "CONTINUOUS", DELAYED: "DELAYED", STALE: "STALE", GAP: "GAP", ERROR: "ERROR", UNAVAILABLE: "UNAVAILABLE",
   PRIMARY: "PRIMARY", BACKUP: "BACKUP", UNKNOWN: "UNKNOWN",
 });
+const OPERATOR_EVENT_TYPES = new Set([
+  "BACKUP_TAKEOVER",
+  "PRIMARY_HANDOFF",
+  "PRIMARY_HANDOFF_COMPLETE",
+  "PRIMARY_HANDOFF_FAILED",
+  "PRIMARY_HANDOFF_INCOMPLETE",
+  "PRIMARY_STALE",
+  "PRIMARY_ERROR",
+  "PRIMARY_UNAVAILABLE",
+  "PRIMARY_RECOVERED",
+  "BACKUP_STALE",
+  "BACKUP_ERROR",
+  "BACKUP_UNAVAILABLE",
+  "BACKUP_RECOVERED",
+  "BOARD_PUBLISH_GAP",
+  "BOARD_PUBLISH_RECOVERED",
+]);
+const OPERATOR_EVENT_COPY = Object.freeze({
+  BACKUP_TAKEOVER: ["BACKUP TOOK OVER", "PRIMARY stopped checking in, so BACKUP began updating the board."],
+  PRIMARY_HANDOFF: ["PRIMARY RESUMED", "PRIMARY returned and automatically resumed board updates."],
+  PRIMARY_HANDOFF_COMPLETE: ["PRIMARY RESUMED", "PRIMARY returned and automatically resumed board updates."],
+  PRIMARY_HANDOFF_FAILED: ["PRIMARY RETURN INCOMPLETE", "The automatic return to PRIMARY did not complete."],
+  PRIMARY_HANDOFF_INCOMPLETE: ["PRIMARY RETURN INCOMPLETE", "The automatic return to PRIMARY did not complete."],
+  PRIMARY_STALE: ["PRIMARY STOPPED CHECKING IN", "PRIMARY exceeded the automatic failover timeout."],
+  PRIMARY_ERROR: ["PRIMARY ERROR", "PRIMARY reported an updater error."],
+  PRIMARY_UNAVAILABLE: ["PRIMARY UNAVAILABLE", "PRIMARY could not be observed."],
+  PRIMARY_RECOVERED: ["PRIMARY RECOVERED", "PRIMARY began checking in again."],
+  BACKUP_STALE: ["BACKUP STOPPED CHECKING IN", "BACKUP exceeded the health timeout while it was being observed."],
+  BACKUP_ERROR: ["BACKUP ERROR", "BACKUP reported an updater error."],
+  BACKUP_UNAVAILABLE: ["BACKUP UNAVAILABLE", "BACKUP could not be observed."],
+  BACKUP_RECOVERED: ["BACKUP RECOVERED", "BACKUP began checking in again."],
+  BOARD_PUBLISH_GAP: ["BOARD UPDATES PAUSED", "The board did not receive a fresh update during this period."],
+  BOARD_PUBLISH_RECOVERED: ["BOARD UPDATES RESUMED", "Fresh board updates resumed."],
+});
 
 function clear(node) {
   while (node?.firstChild) node.removeChild(node.firstChild);
@@ -66,6 +100,69 @@ export function hostHealthStatePresentation(state) {
     icon: HEALTH_ICONS[normalized] || "⚪",
     className: `host-health-state-${normalized.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
   };
+}
+
+/** Plain-language status used by the default operator view. */
+export function hostHealthOperatorSummary(current = {}) {
+  const delivery = String(current.boardDelivery || "UNKNOWN").toUpperCase();
+  const publisher = ["PRIMARY", "BACKUP"].includes(String(current.publisher).toUpperCase())
+    ? String(current.publisher).toUpperCase() : "UNKNOWN";
+  const copy = delivery === "CONTINUOUS"
+    ? { tone: "ok", icon: "🟢", headline: "BOARD IS UP TO DATE" }
+    : delivery === "DELAYED"
+      ? { tone: "warning", icon: "🟡", headline: "BOARD UPDATE IS RUNNING LATE" }
+      : delivery === "GAP"
+        ? { tone: "alert", icon: "🔴", headline: "BOARD HAS NOT UPDATED RECENTLY" }
+        : { tone: "unknown", icon: "⚪", headline: "BOARD STATUS IS UNKNOWN" };
+  let message;
+  if (delivery === "CONTINUOUS") {
+    message = publisher === "PRIMARY"
+      ? "PRIMARY is updating the board. BACKUP is standing by."
+      : publisher === "BACKUP"
+        ? "BACKUP is keeping the board updated while PRIMARY is not publishing."
+        : "The board is current, but the active publisher is not identified.";
+  } else if (delivery === "DELAYED") {
+    message = publisher === "UNKNOWN"
+      ? "The latest board update is late, and no active publisher is confirmed."
+      : `${publisher} is the active updater, but its latest board update is late.`;
+  } else if (delivery === "GAP") {
+    message = publisher === "UNKNOWN"
+      ? "No recent board update has been received."
+      : `No recent board update has been received. Last known publisher: ${publisher}.`;
+  } else message = "The current publisher and board freshness could not be verified.";
+  return { ...copy, publisher, message };
+}
+
+export function selectHostHealthOperatorEvents(events, limit = 8) {
+  const safeLimit = Math.max(1, Math.floor(Number(limit) || 8));
+  return (Array.isArray(events) ? events : [])
+    .filter((event) => OPERATOR_EVENT_TYPES.has(String(event?.eventType || "").toUpperCase()))
+    .sort((left, right) => right.timestampMs - left.timestampMs)
+    .filter((event, index, entries) => {
+      if (event.eventType !== "PRIMARY_HANDOFF_COMPLETE") return true;
+      return !entries.some((candidate, candidateIndex) => candidateIndex !== index
+        && candidate.eventType === "PRIMARY_HANDOFF"
+        && Math.abs(candidate.timestampMs - event.timestampMs) <= 5 * 60_000);
+    })
+    .slice(0, safeLimit);
+}
+
+export function hostHealthOperatorEventPresentation(event = {}) {
+  const type = String(event.eventType || "").toUpperCase();
+  const [label, description] = OPERATOR_EVENT_COPY[type] || [readableTelemetry(type), readableTelemetry(event.reason)];
+  return { label, description };
+}
+
+export function hostHealthLastSwitchPresentation(transition) {
+  if (!transition) return {
+    label: "LAST AUTOMATIC SWITCH",
+    lead: "No takeover or return has been recorded yet.",
+    hasTime: false,
+  };
+  const primaryReturn = ["PRIMARY_HANDOFF", "PRIMARY_HANDOFF_COMPLETE"].includes(transition.eventType);
+  return primaryReturn
+    ? { label: "PRIMARY RESUMED AUTOMATICALLY", lead: "Switched back from BACKUP at", hasTime: true }
+    : { label: "BACKUP TOOK OVER AUTOMATICALLY", lead: "PRIMARY stopped checking in; BACKUP began updating at", hasTime: true };
 }
 
 export function hostHealthChartInteractionMode(domain) {
@@ -144,6 +241,57 @@ function renderStateHeading(doc, parent, label, state) {
   appendText(doc, heading, "strong", label, "host-health-card-title");
   appendText(doc, heading, "span", `${presentation.icon} ${presentation.state}`, `host-health-state ${presentation.className}`);
   parent.appendChild(heading);
+}
+
+function renderOperatorSummary(doc, parent, current, basis) {
+  clear(parent);
+  const summary = hostHealthOperatorSummary(current);
+  parent.className = `host-health-operator-summary host-health-operator-${summary.tone}`;
+  const state = doc.createElement("div");
+  state.className = "host-health-operator-state";
+  appendText(doc, state, "span", summary.icon, "host-health-operator-icon");
+  const copy = doc.createElement("div");
+  appendText(doc, copy, "h3", summary.headline, "host-health-operator-headline");
+  appendText(doc, copy, "p", summary.message, "host-health-operator-message");
+  state.appendChild(copy);
+  parent.appendChild(state);
+  appendText(doc, parent, "p", current.lastSuccessfulPublishUtc
+    ? `LAST BOARD UPDATE · ${safeAge(current.publishAgeMinutes)} · ${formatHostHealthTime(current.lastSuccessfulPublishUtc, basis)}`
+    : "LAST BOARD UPDATE · UNKNOWN", "host-health-operator-update");
+}
+
+export function renderOperatorHostCard(doc, parent, host, current, basis) {
+  clear(parent);
+  const isActive = host.role === current.publisher;
+  const presentation = hostHealthStatePresentation(host.health);
+  const isUnobservedStandby = !isActive && (!host.observed || host.health === "UNKNOWN");
+  const badge = isUnobservedStandby ? "⚪ STANDBY"
+    : isActive ? `${presentation.icon} ACTIVE · ${presentation.state}`
+      : `${presentation.icon} STANDBY · ${presentation.state}`;
+  const heading = doc.createElement("div");
+  heading.className = "host-health-snapshot-heading";
+  appendText(doc, heading, "strong", host.role, "host-health-snapshot-title");
+  appendText(doc, heading, "span", badge, `host-health-snapshot-state ${presentation.className}`);
+  parent.appendChild(heading);
+  appendText(doc, parent, "p", isActive
+    ? host.health === "HEALTHY" ? "UPDATING THE BOARD NOW" : `ACTIVE UPDATER · ${presentation.state}`
+    : isUnobservedStandby
+      ? "STANDING BY · CHECKED WHEN IT TAKES OVER"
+      : host.health === "HEALTHY" ? "READY IF NEEDED" : "NOT PUBLISHING", "host-health-snapshot-role");
+  const checkInLabel = isUnobservedStandby ? "LAST ACTIVE UPDATE" : "LAST CHECK-IN";
+  appendText(doc, parent, "p", host.heartbeatUtc
+    ? `${checkInLabel} · ${safeAge(host.heartbeatAgeMinutes)} · ${formatHostHealthTime(host.heartbeatUtc, basis)}`
+    : `${checkInLabel} · UNKNOWN`, "host-health-snapshot-time");
+}
+
+function renderLastSwitch(doc, parent, current, basis) {
+  clear(parent);
+  const transition = current.latestPublisherTransition;
+  const presentation = hostHealthLastSwitchPresentation(transition);
+  appendText(doc, parent, "strong", presentation.label, "host-health-last-switch-label");
+  appendText(doc, parent, "span", presentation.hasTime
+    ? `${presentation.lead} ${formatHostHealthTime(transition.timestampMs, basis)}.`
+    : presentation.lead, "host-health-last-switch-copy");
 }
 
 function renderPublisherCard(doc, parent, current, basis) {
@@ -494,6 +642,31 @@ function renderEvents(doc, parent, events, basis) {
   parent.appendChild(list);
 }
 
+function renderImportantEvents(doc, parent, events, basis) {
+  clear(parent);
+  appendText(doc, parent, "h3", "IMPORTANT CHANGES", "host-health-section-heading");
+  const selected = selectHostHealthOperatorEvents(events);
+  if (!selected.length) {
+    appendText(doc, parent, "p", "No takeover, return, or board interruption is recorded in this range.", "host-health-empty-copy");
+    return;
+  }
+  const list = doc.createElement("ol");
+  list.className = "host-health-important-list";
+  for (const event of selected) {
+    const { label, description } = hostHealthOperatorEventPresentation(event);
+    const item = doc.createElement("li");
+    item.className = "host-health-important-item";
+    appendText(doc, item, "time", formatHostHealthTime(event.timestampMs, basis), "host-health-important-time")
+      .setAttribute("datetime", event.timestampUtc);
+    const copy = doc.createElement("div");
+    appendText(doc, copy, "strong", label, "host-health-important-name");
+    appendText(doc, copy, "span", description, "host-health-important-copy");
+    item.appendChild(copy);
+    list.appendChild(item);
+  }
+  parent.appendChild(list);
+}
+
 function updateSelectionButtons(buttons, dataKey, selected, activeClass) {
   for (const button of buttons) {
     const active = button.dataset[dataKey] === selected;
@@ -502,8 +675,10 @@ function updateSelectionButtons(buttons, dataKey, selected, activeClass) {
   }
 }
 
-function focusableElements(panel) {
-  return [...panel.querySelectorAll("button:not([disabled]),[href],[tabindex]:not([tabindex='-1'])")].filter((item) => !item.hidden);
+export function hostHealthFocusableElements(panel) {
+  return [...panel.querySelectorAll("summary,button:not([disabled]),[href],[tabindex]:not([tabindex='-1'])")]
+    .filter((item) => !item.hidden
+      && (item.tagName === "SUMMARY" || !item.closest?.("details:not([open])")));
 }
 
 export function initializeHostHealth(doc = document) {
@@ -511,6 +686,11 @@ export function initializeHostHealth(doc = document) {
   const panel = doc.getElementById("hostHealthPanel");
   const closeButton = doc.getElementById("hostHealthCloseButton");
   const status = doc.getElementById("hostHealthStatus");
+  const operatorSummary = doc.getElementById("hostHealthOperatorSummary");
+  const primarySummary = doc.getElementById("hostHealthPrimarySummary");
+  const backupSummary = doc.getElementById("hostHealthBackupSummary");
+  const lastSwitch = doc.getElementById("hostHealthLastSwitch");
+  const importantEvents = doc.getElementById("hostHealthImportantEvents");
   const publisherCard = doc.getElementById("hostHealthActivePublisher");
   const deliveryCard = doc.getElementById("hostHealthBoardDelivery");
   const primaryCard = doc.getElementById("hostHealthPrimary");
@@ -527,7 +707,8 @@ export function initializeHostHealth(doc = document) {
   const archive = doc.getElementById("hostHealthArchive");
   const rangeButtons = [...doc.querySelectorAll("[data-host-health-range]")];
   const timeButtons = [...doc.querySelectorAll("[data-host-health-time]")];
-  if (!overlay || !panel || !closeButton || !status || !publisherCard || !deliveryCard || !primaryCard || !backupCard
+  if (!overlay || !panel || !closeButton || !status || !operatorSummary || !primarySummary || !backupSummary
+      || !lastSwitch || !importantEvents || !publisherCard || !deliveryCard || !primaryCard || !backupCard
       || !leaseCard || !chart || !zoomOut || !zoomIn || !zoomReset || !zoomStatus || !metrics || !events || !archive
       || !rangeButtons.length || !timeButtons.length) return null;
 
@@ -551,6 +732,7 @@ export function initializeHostHealth(doc = document) {
     const stateClass = String(state || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     status.className = `host-health-status host-health-status-${stateClass}`;
     status.textContent = detail ? `${state} · ${detail}` : state;
+    status.hidden = state === "HOST HEALTH READY";
   }
 
   function updateZoomControls() {
@@ -577,7 +759,10 @@ export function initializeHostHealth(doc = document) {
       startMs: timeDomain.startMs,
       endMs: timeDomain.endMs,
     }, currentNowMs(view), { currentEvidence: currentSnapshot });
-    renderHostHealthChart(doc, chart, tooltip, timelineResult, { basis });
+    const operatorTimeline = timelineResult.ok
+      ? { ...timelineResult.value, events: selectHostHealthOperatorEvents(timelineResult.value.events, 80) }
+      : timelineResult;
+    renderHostHealthChart(doc, chart, tooltip, operatorTimeline, { basis });
     updateZoomControls();
   }
 
@@ -586,6 +771,10 @@ export function initializeHostHealth(doc = document) {
     const fallbackHistory = loaded?.history || normalizeHostHealthHistory({ schemaVersion: 1 }).value;
     const current = deriveHostHealthCurrent(fallbackHistory, loaded?.hostStatus || {}, loaded?.lease || {}, nowMs);
     currentSnapshot = current;
+    renderOperatorSummary(doc, operatorSummary, current, basis);
+    renderOperatorHostCard(doc, primarySummary, current.hosts.PRIMARY, current, basis);
+    renderOperatorHostCard(doc, backupSummary, current.hosts.BACKUP, current, basis);
+    renderLastSwitch(doc, lastSwitch, current, basis);
     renderPublisherCard(doc, publisherCard, current, basis);
     renderDeliveryCard(doc, deliveryCard, current, basis);
     renderHostCard(doc, primaryCard, current.hosts.PRIMARY, basis);
@@ -609,6 +798,7 @@ export function initializeHostHealth(doc = document) {
       const metricResult = calculateHostHealthMetrics(masterTimeline);
       if (metricResult.ok) renderMetrics(doc, metrics, metricResult.value, masterRange.label);
       else clear(metrics);
+      renderImportantEvents(doc, importantEvents, masterTimeline?.events || [], basis);
       renderEvents(doc, events, masterTimeline?.events || [], basis);
       renderTimelineViewport();
     } else {
@@ -618,6 +808,8 @@ export function initializeHostHealth(doc = document) {
       appendText(doc, metrics, "p", "RELIABILITY METRICS REQUIRE THE HISTORY ARCHIVE", "host-health-empty-copy");
       clear(events);
       appendText(doc, events, "p", "EVENT HISTORY UNAVAILABLE", "host-health-empty-copy");
+      clear(importantEvents);
+      appendText(doc, importantEvents, "p", "IMPORTANT CHANGES ARE UNAVAILABLE", "host-health-empty-copy");
       renderTimelineViewport();
     }
     const failures = [loaded?.hostStatusError && "LIVE HOST", loaded?.leaseError && "LEASE", loaded?.historyError && "HISTORY"].filter(Boolean);
@@ -768,7 +960,7 @@ export function initializeHostHealth(doc = document) {
   overlay.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { event.preventDefault(); close(); return; }
     if (event.key !== "Tab") return;
-    const focusable = focusableElements(panel);
+    const focusable = hostHealthFocusableElements(panel);
     if (!focusable.length) return;
     if (event.shiftKey && doc.activeElement === focusable[0]) { event.preventDefault(); focusable.at(-1).focus(); }
     else if (!event.shiftKey && doc.activeElement === focusable.at(-1)) { event.preventDefault(); focusable[0].focus(); }
