@@ -103,12 +103,17 @@ manual_alert.json                  Manual alert/default state file
 weather.json                       Current board data pushed to GitHub Pages
 bwc_history.json                   Rolling live USAHAS AHAS-risk archive (generated after first valid observation)
 host_status.json                   Generic updater heartbeat/status
+host_health_history.json           Rolling read-only host, publisher, and board-delivery telemetry archive
 updater_lease.json                 Remote PRIMARY/BACKUP ownership lease
 update_weather_local.py            Generation-only weather engine
 bwc_history.py                     BWC/AHAS archive merge, retention, and atomic-write logic
 bwc-history-core.js                Pure browser timeline, statistics, age, and SVG calculations
 bwc-history.js                     Main-board BWC history modal and live-age controller
 bwc-history.css                    Responsive BWC history presentation
+host_health_history.py             Host-health interval/event archive and retention logic
+host-health-core.js                Pure Host Health normalization, timeline, and reliability calculations
+host-health.js                     Read-only Host Health modal controller and SVG timeline
+host-health.css                    Responsive Host Health modal presentation
 kmem_updater.py                    Safe sync/lease/heartbeat coordinator
 updater_git.py                     Fast-forward-only Git and local lock helpers
 nms_kmem_mil_notams_test.py        FAA NMS staging pull/export helper

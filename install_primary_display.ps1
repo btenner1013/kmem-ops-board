@@ -72,6 +72,7 @@ $requiredFiles = @(
     $hiddenUpdateVbs,
     $hiddenUpdatePowerShell,
     (Join-Path $projectDir "kmem_updater.py"),
+    (Join-Path $projectDir "host_health_history.py"),
     (Join-Path $projectDir "updater_git.py"),
     (Join-Path $projectDir "host_status.json"),
     (Join-Path $projectDir "nms_credentials_local.bat")

@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
+from host_health_history import DEFAULT_MAX_SERIALIZED_BYTES
 from kmem_updater import (
     BACKUP_HANDOFF_MINUTES,
     BackupObservation,
@@ -859,6 +860,9 @@ class RemoteLeaseTests(GitFixture):
         self.assertEqual(repo.status_lines(), [])
         status = json.loads((self.primary / "host_status.json").read_text(encoding="utf-8"))
         lease = json.loads((self.primary / "updater_lease.json").read_text(encoding="utf-8"))
+        host_health = json.loads(
+            (self.primary / "host_health_history.json").read_text(encoding="utf-8")
+        )
         self.assertEqual(status["activeRole"], "PRIMARY")
         self.assertEqual(status["updateStatus"], "OK")
         self.assertEqual(status["runningSha"], status["originMainSha"])
@@ -867,9 +871,127 @@ class RemoteLeaseTests(GitFixture):
         self.assertEqual(status["shaObservedPhase"], "PRE_LEASE_CODE_SYNC")
         self.assertNotEqual(status["publishBaseSha"], status["runningCodeSha"])
         self.assertEqual(lease["state"], "RELEASED")
+        self.assertEqual(host_health["current"]["publisher"]["role"], "PRIMARY")
+        self.assertEqual(host_health["current"]["lease"]["state"], "RELEASED")
+        self.assertIsNone(host_health["current"]["lease"]["activeOwner"])
         messages = run_git(self.primary, "log", "-2", "--format=%s").stdout
         self.assertIn("KMEM updater lease PRIMARY", messages)
         self.assertIn("KMEM weather update", messages)
+
+    def test_host_health_failure_never_blocks_weather_status_or_lease_publication(self):
+        repo = GitRepository(self.primary, fetch_attempts=1)
+        coordinator = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW,
+            python_executable=sys.executable,
+        )
+        with mock.patch(
+            "kmem_updater.update_host_health_history",
+            side_effect=RuntimeError("simulated non-critical telemetry failure"),
+        ):
+            self.assertEqual(coordinator.run_once(), 0)
+
+        repo.fetch()
+        self.assertEqual(repo.sha("HEAD"), repo.sha("origin/main"))
+        self.assertEqual(repo.read_json("origin/main", "host_status.json")["updateStatus"], "OK")
+        self.assertEqual(repo.read_json("origin/main", "updater_lease.json")["state"], "RELEASED")
+        self.assertIsNotNone(repo.read_json("origin/main", "weather.json"))
+        self.assertNotEqual(
+            run_git(self.primary, "show", "origin/main:host_health_history.json", check=False).returncode,
+            0,
+        )
+
+    def test_unavailable_host_health_helper_never_blocks_owned_publication(self):
+        repo = GitRepository(self.primary, fetch_attempts=1)
+        coordinator = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW,
+            python_executable=sys.executable,
+        )
+        with mock.patch("kmem_updater.update_host_health_history", None):
+            self.assertEqual(coordinator.run_once(), 0)
+
+        repo.fetch()
+        self.assertEqual(repo.sha("HEAD"), repo.sha("origin/main"))
+        self.assertEqual(repo.read_json("origin/main", "host_status.json")["updateStatus"], "OK")
+        self.assertEqual(repo.read_json("origin/main", "updater_lease.json")["state"], "RELEASED")
+        self.assertIsNotNone(repo.read_json("origin/main", "weather.json"))
+        self.assertNotEqual(
+            run_git(self.primary, "show", "origin/main:host_health_history.json", check=False).returncode,
+            0,
+        )
+
+    def test_oversized_host_health_candidate_is_skipped_before_write(self):
+        repo = GitRepository(self.primary, fetch_attempts=1)
+        coordinator = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW,
+            python_executable=sys.executable,
+        )
+        oversized = {
+            "schemaVersion": 1,
+            "intervals": [],
+            "events": [],
+            "dailySummaries": [],
+            "padding": "x" * (DEFAULT_MAX_SERIALIZED_BYTES + 1),
+        }
+        with mock.patch(
+            "kmem_updater.update_host_health_history",
+            return_value=oversized,
+        ):
+            self.assertEqual(coordinator.run_once(), 0)
+
+        repo.fetch()
+        self.assertEqual(repo.read_json("origin/main", "host_status.json")["updateStatus"], "OK")
+        self.assertEqual(repo.read_json("origin/main", "updater_lease.json")["state"], "RELEASED")
+        self.assertIsNotNone(repo.read_json("origin/main", "weather.json"))
+        self.assertNotEqual(
+            run_git(self.primary, "show", "origin/main:host_health_history.json", check=False).returncode,
+            0,
+        )
+
+    def test_oversized_existing_host_health_archive_is_rejected_before_parse(self):
+        oversized_content = json.dumps(
+            {
+                "schemaVersion": 1,
+                "padding": "x" * (DEFAULT_MAX_SERIALIZED_BYTES + 1),
+            }
+        ) + "\n"
+        self.push_writer_change("host_health_history.json", oversized_content)
+        repo = GitRepository(self.primary, fetch_attempts=1)
+        self.assertTrue(repo.sync().advanced)
+        coordinator = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW,
+            python_executable=sys.executable,
+        )
+        original_read_json = ScratchClone.read_json
+
+        def bounded_spy(instance, ref, relative_path):
+            if relative_path == "host_health_history.json":
+                self.fail("oversized host-health archive was parsed")
+            return original_read_json(instance, ref, relative_path)
+
+        with mock.patch.object(
+            ScratchClone,
+            "read_json",
+            autospec=True,
+            side_effect=bounded_spy,
+        ):
+            self.assertEqual(coordinator.run_once(), 0)
+
+        repo.fetch()
+        self.assertEqual(repo.read_json("origin/main", "host_status.json")["updateStatus"], "OK")
+        self.assertEqual(repo.read_json("origin/main", "updater_lease.json")["state"], "RELEASED")
+        self.assertIsNotNone(repo.read_json("origin/main", "weather.json"))
 
     def test_generator_timeout_returns_stable_error_without_publishing_output(self):
         repo = GitRepository(self.primary, fetch_attempts=1)
@@ -1655,6 +1777,7 @@ class StaticSafetyTests(unittest.TestCase):
                 "atis_history.json",
                 "bwc_history.json",
                 "taf_current.json",
+                "host_health_history.json",
                 "host_status.json",
                 "updater_lease.json",
             },

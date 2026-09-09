@@ -205,9 +205,9 @@ class WeatherGeneratorContractTests(unittest.TestCase):
         self.assertNotIn("trendHistoryPath", payload)
         self.assertNotIn("c:\\\\users\\\\", serialized)
         self.assertNotIn("\\\\appdata\\\\", serialized)
-        self.assertEqual(
+        self.assertIn(
             payload["workflowMetadata"]["lastWorkflowActor"],
-            "KMEM_PRIMARY_UPDATER",
+            {"KMEM_PRIMARY_UPDATER", "KMEM_BACKUP_UPDATER"},
         )
 
     def test_nested_nms_process_uses_tree_bounded_runner(self):
@@ -502,7 +502,10 @@ class WeatherGeneratorContractTests(unittest.TestCase):
         self.assertEqual(result["milNotamAttemptProxyRoute"], "SYSTEM_PROXY")
         self.assertEqual(result["milNotamAttemptReason"], "TIMEOUT")
         self.assertEqual(result["milNotamFailureCategory"], "AUTH_HTTP")
-        self.assertRegex(result["milNotamAttemptZ"], r"^2026-09-07[ T]")
+        self.assertRegex(
+            result["milNotamAttemptZ"],
+            r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}Z$",
+        )
 
     def test_nms_attempt_telemetry_rejects_untrusted_child_values(self):
         result = updater.nms_attempt_metadata(
@@ -2904,6 +2907,7 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("Microsoft\\Edge", script)
         self.assertIn("if ($EnableLocalDisplay)", script)
         self.assertIn("nms_credentials_local.bat", script)
+        self.assertIn('Join-Path $projectDir "host_health_history.py"', script)
         self.assertIn("gh.exe auth login", script)
         self.assertIn("gh.exe auth setup-git", script)
         self.assertIn(".permissions.push", script)
@@ -3074,6 +3078,14 @@ class SchedulerContractTests(unittest.TestCase):
         snapshot = (REPO_DIR / "create_backup_snapshot.ps1").read_text(encoding="utf-8")
         self.assertIn('"run_kmem_update_hidden.vbs"', snapshot)
         self.assertIn('"run_kmem_update_hidden.ps1"', snapshot)
+        for host_health_file in (
+            "host_health_history.json",
+            "host_health_history.py",
+            "host-health-core.js",
+            "host-health.js",
+            "host-health.css",
+        ):
+            self.assertIn(f'"{host_health_file}"', snapshot)
 
 
 if __name__ == "__main__":

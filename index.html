@@ -985,6 +985,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 <link rel="stylesheet" href="./aviation-weather-lookup.css">
 <link rel="stylesheet" href="./weather-meteogram.css">
 <link rel="stylesheet" href="./bwc-history.css">
+<link rel="stylesheet" href="./host-health.css">
 </head>
 
 <body>
@@ -1060,6 +1061,62 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
         </div>
         <div id="bwcHistorySummaryContent" class="bwc-history-summary-content" role="region" tabindex="0" aria-label="Daily BWC history summary table" aria-describedby="bwcHistorySummaryContext"></div>
       </section>
+    </div>
+  </section>
+</div>
+
+<div id="hostHealthOverlay" class="host-health-overlay" hidden aria-hidden="true">
+  <section id="hostHealthPanel" class="host-health-panel" role="dialog" aria-modal="true" aria-labelledby="hostHealthTitle" aria-describedby="hostHealthDisclaimer">
+    <header class="host-health-header">
+      <div class="host-health-heading">
+        <h2 id="hostHealthTitle" class="host-health-title">🫀 HOST HEALTH</h2>
+        <p id="hostHealthDisclaimer" class="host-health-disclaimer">READ-ONLY TELEMETRY · NO FAILOVER CONTROLS</p>
+      </div>
+      <button id="hostHealthCloseButton" class="host-health-close" type="button" aria-label="Close Host Health">×</button>
+    </header>
+    <div id="hostHealthStatus" class="host-health-status" role="status" aria-live="polite"><strong>READY</strong></div>
+    <div class="host-health-body">
+      <div class="host-health-current-grid host-health-overview" aria-label="Current publishing health">
+        <section id="hostHealthActivePublisher" class="host-health-current-card" aria-label="Active publisher"></section>
+        <section id="hostHealthBoardDelivery" class="host-health-current-card" aria-label="Board delivery health"></section>
+      </div>
+      <div class="host-health-host-grid" aria-label="Updater host health">
+        <section id="hostHealthPrimary" class="host-health-host-card" aria-label="PRIMARY host health"></section>
+        <section id="hostHealthBackup" class="host-health-host-card" aria-label="BACKUP host health"></section>
+        <section id="hostHealthLease" class="host-health-card host-health-lease" aria-label="Publisher lease status"></section>
+      </div>
+      <div class="host-health-control-bar host-health-controls">
+        <div class="host-health-range-options" role="group" aria-label="Host Health history time range">
+          <button class="host-health-option" type="button" data-host-health-range="24h" aria-pressed="true">24 HR</button>
+          <button class="host-health-option" type="button" data-host-health-range="7d" aria-pressed="false">7 DAYS</button>
+          <button class="host-health-option" type="button" data-host-health-range="30d" aria-pressed="false">30 DAYS</button>
+          <button class="host-health-option" type="button" data-host-health-range="90d" aria-pressed="false">90 DAYS</button>
+          <button class="host-health-option" type="button" data-host-health-range="365d" aria-pressed="false">1 YEAR</button>
+        </div>
+        <div class="host-health-time-options" role="group" aria-label="Host Health display time zone">
+          <button class="host-health-option" type="button" data-host-health-time="Z" aria-pressed="true">Z</button>
+          <button class="host-health-option" type="button" data-host-health-time="LOCAL" aria-pressed="false">LOCAL</button>
+        </div>
+      </div>
+      <section class="host-health-chart-shell" aria-labelledby="hostHealthTimelineTitle">
+        <div class="host-health-chart-toolbar">
+          <h3 id="hostHealthTimelineTitle" class="host-health-chart-heading host-health-section-title">ROLLING HOST HISTORY</h3>
+          <div class="host-health-zoom-controls" role="group" aria-label="Host Health timeline zoom">
+            <button id="hostHealthZoomOut" class="host-health-zoom-button" type="button" aria-label="Zoom out Host Health timeline" aria-controls="hostHealthChart" disabled>&minus;</button>
+            <button id="hostHealthZoomIn" class="host-health-zoom-button" type="button" aria-label="Zoom in Host Health timeline" aria-controls="hostHealthChart" disabled>+</button>
+            <button id="hostHealthZoomReset" class="host-health-zoom-button host-health-zoom-reset" type="button" aria-controls="hostHealthChart" disabled>RESET</button>
+          </div>
+          <span id="hostHealthZoomStatus" class="host-health-zoom-status">FULL RANGE</span>
+        </div>
+        <div id="hostHealthChart" class="host-health-chart" role="region" aria-label="PRIMARY, BACKUP, publisher, and board delivery timeline">
+          <div id="hostHealthTooltip" class="host-health-tooltip" role="tooltip" hidden></div>
+        </div>
+      </section>
+      <div class="host-health-lower-grid">
+        <section id="hostHealthMetrics" class="host-health-metrics" aria-label="Selected-range reliability summary"></section>
+        <section id="hostHealthArchive" class="host-health-archive" aria-label="Host Health archive availability"></section>
+      </div>
+      <section id="hostHealthEvents" class="host-health-events" aria-label="Host Health event log"></section>
     </div>
   </section>
 </div>
@@ -3636,11 +3693,20 @@ setInterval(phase45PolishOpsText,1000);
     flightPlan.setAttribute("aria-label","Open Flight Plan Tool");
     flightPlan.textContent="🌐";
 
+    const hostHealth=document.createElement("button");
+    hostHealth.id="hostHealthButton";
+    hostHealth.className="board-quick-link-phase66";
+    hostHealth.type="button";
+    hostHealth.title="Host Health";
+    hostHealth.setAttribute("aria-label","Host Health");
+    hostHealth.textContent="🫀";
+
     wrap.appendChild(hazard);
     wrap.appendChild(bwcHistory);
     wrap.appendChild(aviationWeather);
     wrap.appendChild(flightPlan);
     wrap.appendChild(display);
+    wrap.appendChild(hostHealth);
     target.appendChild(wrap);
   }
 
@@ -3728,6 +3794,7 @@ setInterval(phase45PolishOpsText,1000);
 
 <script type="module" src="./bwc-history.js"></script>
 <script type="module" src="./aviation-weather-lookup.js"></script>
+<script type="module" src="./host-health.js"></script>
 
 </body>
 </html>

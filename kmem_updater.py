@@ -20,6 +20,26 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Callable, Optional
 
+try:
+    # Host-health telemetry is deliberately optional at runtime.  A missing or
+    # damaged telemetry helper must not prevent the operational updater from
+    # publishing weather, status, or the released lease.
+    from host_health_history import (
+        DEFAULT_MAX_SERIALIZED_BYTES,
+        DEFAULT_MAX_STORED_ROWS,
+        update_host_health_history,
+        validate_host_health_storage_budget,
+    )
+except Exception as host_health_import_error:  # pragma: no cover - unavailable module path
+    DEFAULT_MAX_SERIALIZED_BYTES = 0
+    DEFAULT_MAX_STORED_ROWS = 0
+    update_host_health_history = None
+    validate_host_health_storage_budget = None
+    HOST_HEALTH_IMPORT_ERROR = (
+        f"{type(host_health_import_error).__name__}: {host_health_import_error}"
+    )
+else:
+    HOST_HEALTH_IMPORT_ERROR = None
 from updater_git import (
     CANONICAL_REPOSITORY,
     GitRepository,
@@ -37,6 +57,8 @@ REPO_DIR = Path(__file__).resolve().parent
 ROLES = {"PRIMARY", "BACKUP"}
 HOST_HEALTHY_MINUTES = 15
 HOST_FAILOVER_MINUTES = 25
+# Telemetry-only board-delivery gap threshold; never used for ownership.
+BOARD_PUBLISH_GAP_MINUTES = 30
 LEASE_MINUTES = 20
 BACKUP_HANDOFF_MINUTES = 12
 BACKUP_HANDOFF_MAX_WAIT_SECONDS = 3 * 60
@@ -49,12 +71,14 @@ RESTART_AFTER_SYNC_EXIT = 75
 REQUIRED_OWNED_CYCLE_SKIPPED_EXIT = 76
 STATUS_FILE = "host_status.json"
 LEASE_FILE = "updater_lease.json"
+HOST_HEALTH_HISTORY_FILE = "host_health_history.json"
 GENERATED_FILES = (
     "weather.json",
     "radar.gif",
     "atis_history.json",
     "bwc_history.json",
     "taf_current.json",
+    HOST_HEALTH_HISTORY_FILE,
     STATUS_FILE,
     LEASE_FILE,
 )
@@ -83,6 +107,36 @@ def utc_now() -> datetime:
 
 def format_utc(value: datetime) -> str:
     return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def read_host_health_archive_bounded(scratch: ScratchClone) -> Optional[dict]:
+    """Load optional telemetry only after a cheap Git-blob size check."""
+
+    object_name = f"HEAD:{HOST_HEALTH_HISTORY_FILE}"
+    exists = scratch.run(["cat-file", "-e", object_name], check=False)
+    if exists.returncode != 0:
+        return None
+    size_result = scratch.run(["cat-file", "-s", object_name], check=False)
+    try:
+        serialized_bytes = int(size_result.stdout.strip()) if size_result.returncode == 0 else -1
+    except (TypeError, ValueError):
+        serialized_bytes = -1
+    if serialized_bytes < 0:
+        raise RuntimeError("unable to measure existing host-health archive")
+    if serialized_bytes > DEFAULT_MAX_SERIALIZED_BYTES:
+        raise RuntimeError(
+            "existing host-health archive exceeds pre-read safety budget "
+            f"({serialized_bytes} > {DEFAULT_MAX_SERIALIZED_BYTES})"
+        )
+    archive = scratch.read_json("HEAD", HOST_HEALTH_HISTORY_FILE)
+    if archive is None:
+        raise RuntimeError("existing host-health archive is not valid JSON")
+    validate_host_health_storage_budget(
+        archive,
+        max_serialized_bytes=DEFAULT_MAX_SERIALIZED_BYTES,
+        max_rows=DEFAULT_MAX_STORED_ROWS,
+    )
+    return archive
 
 
 def parse_utc(value) -> Optional[datetime]:
@@ -1065,20 +1119,45 @@ class UpdaterCoordinator:
                 ownership.scratch = scratch
 
             previous_status = scratch.read_json("HEAD", STATUS_FILE)
-            scratch.write_json(LEASE_FILE, released_lease(ownership.lease, now))
-            scratch.write_json(
-                STATUS_FILE,
-                self._status_payload(
-                    run_started=run_started,
-                    completed=now,
-                    code_sha=ownership.code_sha,
-                    origin_sha=ownership.code_sha,
-                    publish_base_sha=expected_sha,
-                    generation_ok=generation_ok,
-                    error_code=error_code,
-                    previous_status=previous_status,
-                ),
+            released = released_lease(ownership.lease, now)
+            current_status = self._status_payload(
+                run_started=run_started,
+                completed=now,
+                code_sha=ownership.code_sha,
+                origin_sha=ownership.code_sha,
+                publish_base_sha=expected_sha,
+                generation_ok=generation_ok,
+                error_code=error_code,
+                previous_status=previous_status,
             )
+            scratch.write_json(LEASE_FILE, released)
+            scratch.write_json(STATUS_FILE, current_status)
+
+            # Host-health history is telemetry only.  It is derived after the
+            # owned cycle has produced its final status and released lease, and
+            # any archive error is isolated from weather/status publication.
+            try:
+                if not callable(update_host_health_history) or not callable(
+                    validate_host_health_storage_budget
+                ):
+                    raise RuntimeError(
+                        "host-health telemetry helper unavailable"
+                        + (f": {HOST_HEALTH_IMPORT_ERROR}" if HOST_HEALTH_IMPORT_ERROR else "")
+                    )
+                host_health_history = update_host_health_history(
+                    read_host_health_archive_bounded(scratch),
+                    previous_status=previous_status,
+                    current_status=current_status,
+                    lease=released,
+                    now_z=now,
+                    healthy_minutes=HOST_HEALTHY_MINUTES,
+                    failover_minutes=HOST_FAILOVER_MINUTES,
+                    board_gap_minutes=BOARD_PUBLISH_GAP_MINUTES,
+                )
+                validate_host_health_storage_budget(host_health_history)
+                scratch.write_json(HOST_HEALTH_HISTORY_FILE, host_health_history)
+            except Exception as error:  # telemetry must never block weather
+                LOGGER.warning("HOST HEALTH telemetry update skipped: %s", error)
 
             changed = scratch.status_paths()
             unexpected = changed.difference(GENERATED_FILES)
