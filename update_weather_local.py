@@ -387,14 +387,24 @@ def _atis_candidates_from_json(data, metadata=None):
     return candidates
 
 
-def fetch_atis_info_api_candidates(icao="KMEM", metadata=None):
+def _atis_cache_busted_url(url, cache_buster=None):
+    if cache_buster is None:
+        return url
+    separator = "&" if "?" in url else "?"
+    return f"{url}{separator}_={urllib.parse.quote(str(cache_buster), safe='')}"
+
+
+def fetch_atis_info_api_candidates(icao="KMEM", metadata=None, cache_buster=None):
     """Fetch all parseable reports from structured D-ATIS API sources.
 
     A provider can briefly return more than one report or regress to an older
     cached report.  Returning all candidates lets the caller compare the ATIS
     header timestamps instead of accepting the first parseable string.
     """
-    candidates = [template.format(icao=icao) for template in ATIS_JSON_API_URL_TEMPLATES]
+    candidates = [
+        _atis_cache_busted_url(template.format(icao=icao), cache_buster)
+        for template in ATIS_JSON_API_URL_TEMPLATES
+    ]
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
@@ -447,7 +457,12 @@ def fetch_atis_info_api_candidates(icao="KMEM", metadata=None):
 
 def fetch_atis_info_api(icao="KMEM", now_z=None):
     """Compatibility wrapper returning the newest structured API report."""
-    return choose_latest_atis_report(fetch_atis_info_api_candidates(icao), now_z, default="")
+    cache_buster = int(now_z.timestamp()) if now_z else int(time.time())
+    return choose_latest_atis_report(
+        fetch_atis_info_api_candidates(icao, cache_buster=cache_buster),
+        now_z,
+        default="",
+    )
 
 
 def fetch_current_atis(
@@ -485,7 +500,12 @@ def fetch_current_atis(
 
     try:
         api_metadata = {}
-        api_reports = fetch_atis_info_api_candidates("KMEM", metadata=api_metadata)
+        request_now_z = now_z or datetime.now(timezone.utc)
+        api_reports = fetch_atis_info_api_candidates(
+            "KMEM",
+            metadata=api_metadata,
+            cache_buster=int(request_now_z.timestamp()),
+        )
     except Exception as err:
         # Each provider family is independent. A timeout or parser failure in one
         # must not prevent a current report from the other family from winning.

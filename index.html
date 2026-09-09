@@ -256,6 +256,15 @@ body.getac-preset .mil-notam-placeholder .mil-notam-crawl {
 .atis-letter-last-reported-stale .atis-letter-value,
 .atis-letter-last-reported-stale .atis-letter-status{color:var(--closed)}
 
+.ops-box.atis-runway-box{min-height:clamp(42px,5.4vh,78px)}
+.atis-runway-display{overflow:visible;text-overflow:clip;overflow-wrap:normal}
+.atis-runway-value{display:block;max-width:100%;white-space:normal}
+.atis-runway-cue{display:block;max-width:100%;margin-top:3px;font-size:clamp(.48rem,.82vh,.88rem);font-weight:900;line-height:1.08;letter-spacing:.035em;white-space:normal;overflow-wrap:normal;text-wrap:balance}
+.atis-runway-last-reported .atis-runway-value,
+.atis-runway-last-reported .atis-runway-cue{color:var(--warning)}
+.atis-runway-last-reported-stale .atis-runway-value,
+.atis-runway-last-reported-stale .atis-runway-cue{color:var(--closed)}
+
 .details-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
 .ops-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
 .status-grid{ display:grid; grid-template-columns:1fr; gap:clamp(1px, 0.35vw, 8px); margin-bottom:clamp(1px, 0.4vh, 6px); }
@@ -413,6 +422,7 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
   .radar-panel{ min-height:55vh; }
   .details-grid{ grid-template-columns:repeat(2,1fr); }
   .ops-grid{ grid-template-columns:repeat(2,1fr); }
+  .ops-box.atis-runway-box{min-height:72px}
   .status-grid{ grid-template-columns:1fr; }
   .footer{ grid-template-columns:1fr; row-gap:4px; text-align:center; }
   .footer-left, .footer-center, .footer-right{ text-align:center; white-space:normal; }
@@ -1192,13 +1202,13 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
       </div>
 
       <div class="ops-grid">
-        <div class="ops-box">
+        <div class="ops-box atis-runway-box">
           <div class="ops-label">ARR RWY</div>
-          <div id="arrRwy" class="ops-value">--</div>
+          <div id="arrRwy" class="ops-value atis-runway-display" role="status" aria-live="polite" aria-atomic="true">--</div>
         </div>
-        <div class="ops-box">
+        <div class="ops-box atis-runway-box">
           <div class="ops-label">DEP RWY</div>
-          <div id="depRwy" class="ops-value">--</div>
+          <div id="depRwy" class="ops-value atis-runway-display" role="status" aria-live="polite" aria-atomic="true">--</div>
         </div>
         <div class="ops-box">
           <div class="ops-label">RWY CLSD</div>
@@ -1928,6 +1938,72 @@ function atisDisplayState(data){
   };
 }
 
+function normalizeAtisRunwayDisplay(value){
+  const text=String(value??"").trim().toUpperCase();
+  if(!text||text==="--"||text==="UNKNOWN"||text==="NONE")return "--";
+  const runway="(?:0?[1-9]|[12][0-9]|3[0-6])[LCR]?";
+  if(!new RegExp(`^${runway}(?:\\s*\\/\\s*${runway})*$`).test(text))return "--";
+  return text.replace(/\s*\/\s*/g," / ");
+}
+
+function atisRunwayDisplayState(data,currentField,reportedField){
+  const atisState=atisDisplayState(data||{});
+  if(atisState.mode==="current"){
+    const value=normalizeAtisRunwayDisplay(data?.[currentField]);
+    return {value,mode:value==="--"?"unavailable":"current",cue:"",atis:atisState.display};
+  }
+  if(atisState.mode==="last-reported"||atisState.mode==="last-reported-stale"){
+    const value=normalizeAtisRunwayDisplay(data?.[reportedField]);
+    if(value==="--")return {value:"--",mode:"unavailable",cue:"",atis:atisState.display};
+    return {
+      value,
+      mode:atisState.mode,
+      cue:`${atisState.display} · LAST RPTD · NOT CURRENT`,
+      atis:atisState.display,
+    };
+  }
+  return {value:"--",mode:"unavailable",cue:"",atis:"--"};
+}
+
+function setAtisRunwayDisplay(id,data,currentField,reportedField,kind){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const state=atisRunwayDisplayState(data||{},currentField,reportedField);
+  const description=state.mode==="current"
+    ? `Current ATIS ${state.atis} ${kind} runways ${state.value}`
+    : state.mode==="unavailable"
+      ? `No validated ATIS ${kind} runway information available`
+      : `Last reported ATIS ${state.atis} ${kind} runways ${state.value}; not operational-current`;
+  const signature=[state.value,state.mode,state.cue,description].join("|");
+  if(el.dataset.presentationSignature===signature)return;
+  el.className=`ops-value atis-runway-display atis-runway-${state.mode}`;
+  el.textContent="";
+
+  const value=document.createElement("span");
+  value.className="atis-runway-value";
+  value.textContent=state.value;
+  el.appendChild(value);
+
+  if(state.cue){
+    const cue=document.createElement("span");
+    cue.className="atis-runway-cue";
+    cue.textContent=state.cue;
+    el.appendChild(cue);
+  }
+
+  el.setAttribute("aria-label",description);
+  el.title=description;
+  el.dataset.presentationSignature=signature;
+}
+
+function atisCatchupNeeded(data){
+  const state=atisDisplayState(data||{});
+  if(state.mode!=="current")return true;
+  const identity=atisIdentityInReport(data||{});
+  const ageMinutes=validatedAtisAgeMinutes(data||{},identity?.time);
+  return ageMinutes!==null&&ageMinutes>=50;
+}
+
 function setAtisDisplay(data){
   const el=document.getElementById("atisLetter");
   if(!el)return;
@@ -1936,9 +2012,13 @@ function setAtisDisplay(data){
     ? `Current ATIS ${state.display}`
     : state.mode==="unavailable"
       ? "No valid ATIS report retained"
-      : `Last reported ATIS ${state.display}; ${state.cue.toLowerCase()}. Operational ATIS fields remain suppressed.`;
-  const signature=[state.mode,state.display,state.cue,description].join("|");
-  if(el.dataset.presentationSignature===signature)return;
+      : `Last reported ATIS ${state.display}; not operational-current. Operational ATIS fields remain suppressed.`;
+  const signature=[state.mode,state.display,description].join("|");
+  if(el.dataset.presentationSignature===signature){
+    const cue=el.querySelector(".atis-letter-status");
+    if(cue&&cue.textContent!==state.cue)cue.textContent=state.cue;
+    return;
+  }
   el.className=`atis-letter atis-letter-${state.mode}`;
   el.textContent="";
 
@@ -1950,6 +2030,7 @@ function setAtisDisplay(data){
   if(state.cue){
     const cue=document.createElement("span");
     cue.className="atis-letter-status";
+    cue.setAttribute("aria-hidden","true");
     cue.textContent=state.cue;
     el.appendChild(cue);
   }
@@ -2962,8 +3043,8 @@ function updateDetails(data){
 
   setMetarAge(metar);
 
-  document.getElementById("arrRwy").textContent=data.arrRunways||"--";
-  document.getElementById("depRwy").textContent=data.depRunways||"--";
+  setAtisRunwayDisplay("arrRwy",data,"arrRunways","atisReportedArrRunways","arrival");
+  setAtisRunwayDisplay("depRwy",data,"depRunways","atisReportedDepRunways","departure");
 
   setClosedRunwayDisplay(data.closedRunways);
 
@@ -3045,11 +3126,16 @@ document.addEventListener("DOMContentLoaded",function(){
   }
 });
 
-async function loadWeatherJson(){
+async function loadWeatherJson({resetCountdown=true}={}){
   if(weatherFetchInFlight)return false;
   weatherFetchInFlight=true;
+  weatherFetchResetsCountdown=resetCountdown;
+  const controller=typeof AbortController==="function"?new AbortController():null;
+  const timeoutId=controller?setTimeout(()=>controller.abort(),WEATHER_FETCH_TIMEOUT_MS):null;
   try{
-    const response=await fetch("weather.json?t="+new Date().getTime(),{cache:"no-store"});
+    const options={cache:"no-store"};
+    if(controller)options.signal=controller.signal;
+    const response=await fetch("weather.json?t="+new Date().getTime(),options);
     if(!response.ok)throw new Error("Unable to load weather.json");
 
     updateClockOffsetFromResponse(response);
@@ -3073,7 +3159,7 @@ async function loadWeatherJson(){
     document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);
     updateStaleWarning(updatedZ);
     updateSourceHealth(data,updatedZ);
-    refreshRemaining=WEATHER_REFRESH_SECONDS;
+    if(resetCountdown)refreshRemaining=WEATHER_REFRESH_SECONDS;
     return true;
   }catch(e){
     console.error("weather.json load/render failed",e);
@@ -3091,8 +3177,8 @@ async function loadWeatherJson(){
     document.getElementById("ceiling").textContent="--";
     document.getElementById("visibility").textContent="--";
     document.getElementById("metarAge").textContent="--";
-    document.getElementById("arrRwy").textContent="--";
-    document.getElementById("depRwy").textContent="--";
+    setAtisRunwayDisplay("arrRwy",{},"arrRunways","atisReportedArrRunways","arrival");
+    setAtisRunwayDisplay("depRwy",{},"depRunways","atisReportedDepRunways","departure");
     document.getElementById("closedRwy").textContent="--";
     document.getElementById("flow").textContent="--";
     if(document.getElementById("wind"))document.getElementById("wind").textContent="--";
@@ -3113,7 +3199,13 @@ async function loadWeatherJson(){
     health.innerHTML='FEEDS: <span class="feed-token feed-bad">weather.json BAD</span>';
     return false;
   }finally{
+    if(timeoutId!==null)clearTimeout(timeoutId);
     weatherFetchInFlight=false;
+    weatherFetchResetsCountdown=false;
+    if(fullRefreshPending){
+      fullRefreshPending=false;
+      queueMicrotask(refreshActiveData);
+    }
   }
 }
 
@@ -3134,8 +3226,12 @@ async function loadHostStatus(){
 }
 
 const WEATHER_REFRESH_SECONDS=300;
+const ATIS_CATCHUP_SECONDS=60;
+const WEATHER_FETCH_TIMEOUT_MS=15000;
 let refreshRemaining=WEATHER_REFRESH_SECONDS;
 let weatherFetchInFlight=false;
+let weatherFetchResetsCountdown=false;
+let fullRefreshPending=false;
 
 function formatCountdown(seconds){
   const s=Math.max(0,seconds);
@@ -3147,7 +3243,11 @@ function formatCountdown(seconds){
 function updateRefreshCountdown(){
   const el=document.getElementById("refreshCountdown");
   if(el) el.textContent=weatherFetchInFlight ? "FETCH" : formatCountdown(refreshRemaining);
-  if(weatherFetchInFlight)return;
+  if(weatherFetchInFlight){
+    if(refreshRemaining>0)refreshRemaining--;
+    if(refreshRemaining<=0&&!weatherFetchResetsCountdown)fullRefreshPending=true;
+    return;
+  }
   if(refreshRemaining<=0){
     refreshRemaining=0;
     refreshActiveData();
@@ -3183,6 +3283,11 @@ refreshActiveData();
 updateRefreshCountdown();
 
 setInterval(updateRefreshCountdown,1000);
+setInterval(()=>{
+  if(!document.hidden&&atisCatchupNeeded(window.kmemWeatherData||{})){
+    loadWeatherJson({resetCountdown:false});
+  }
+},ATIS_CATCHUP_SECONDS*1000);
 setInterval(updateClock,1000);
 setInterval(checkClockWatchdog,30000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refreshActiveData(); });

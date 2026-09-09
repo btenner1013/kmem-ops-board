@@ -44,7 +44,9 @@ const atisDisplayContext = vm.createContext({
 });
 vm.runInContext(
   `${sourceBetween("function atisPhoneticForLetter", "function setClosedRunwayDisplay")}` +
-    "globalThis.atisDisplayState=atisDisplayState;",
+    "globalThis.atisDisplayState=atisDisplayState;" +
+    "globalThis.atisRunwayDisplayState=atisRunwayDisplayState;" +
+    "globalThis.atisCatchupNeeded=atisCatchupNeeded;",
   atisDisplayContext,
 );
 
@@ -366,4 +368,119 @@ test("main board fails closed for inconsistent retained ATIS identity, timestamp
   );
   assert.match(indexHtml, /presentationSignature===signature\)return/);
   assert.match(indexHtml, /role="status" aria-live="polite" aria-atomic="true"/);
+});
+
+test("validated last-reported Lima keeps its runway evidence visible without promoting operational fields", () => {
+  const lima = retainedAtisFixture(67, {
+    atisText: "MEM ATIS INFO L 2053Z. 15010KT 10SM CLR 32/21 A3008. SIMUL VISUAL APCHS IN USE RY 18L, 18R. DEPG RWYS 18C. ADVS YOU HAVE INFO L",
+    atisObservedZ: "2026-09-08T20:53:00Z",
+    atisReportIdentity: "L:2053Z",
+    atisReportedLetter: "L",
+    atisLetter: "--",
+    atisSourceIsCurrent: false,
+    atisFetchStatus: "WARN_SOURCE",
+    arrRunways: "--",
+    depRunways: "--",
+    atisReportedArrRunways: "18L / 18R",
+    atisReportedDepRunways: "18C",
+  });
+
+  assert.deepEqual(
+    { ...atisDisplayContext.atisRunwayDisplayState(lima, "arrRunways", "atisReportedArrRunways") },
+    {
+      value: "18L / 18R",
+      mode: "last-reported",
+      cue: "LIMA · LAST RPTD · NOT CURRENT",
+      atis: "LIMA",
+    },
+  );
+  assert.deepEqual(
+    { ...atisDisplayContext.atisRunwayDisplayState(lima, "depRunways", "atisReportedDepRunways") },
+    {
+      value: "18C",
+      mode: "last-reported",
+      cue: "LIMA · LAST RPTD · NOT CURRENT",
+      atis: "LIMA",
+    },
+  );
+
+  const updateSource = sourceBetween("function updateDetails", "function fitRawWeatherFontSize");
+  assert.match(updateSource, /setAtisRunwayDisplay\("arrRwy",data,"arrRunways","atisReportedArrRunways","arrival"\)/);
+  assert.match(updateSource, /setAtisRunwayDisplay\("depRwy",data,"depRunways","atisReportedDepRunways","departure"\)/);
+  assert.match(updateSource, /setClosedRunwayDisplay\(data\.closedRunways\)/);
+  assert.match(updateSource, /formatFlowHtml\(data\.flow\|\|"--"\)/);
+  assert.match(indexHtml, /\.atis-runway-display\{overflow:visible;text-overflow:clip;overflow-wrap:normal\}/);
+  assert.match(indexHtml, /\.atis-runway-cue\{[^}]*white-space:normal;[^}]*text-wrap:balance/);
+});
+
+test("current Mike wins runway display while stale or malformed retained evidence fails closed", () => {
+  const mike = retainedAtisFixture(12, {
+    atisText: "MEM ATIS INFO M 2148Z. 15010KT 10SM CLR 32/21 A3008. SIMUL VISUAL APCHS IN USE RY 18L, 18R. DEPG RWYS 18C. ADVS YOU HAVE INFO M",
+    atisObservedZ: "2026-09-08T21:48:00Z",
+    atisReportIdentity: "M:2148Z",
+    atisReportedLetter: "M",
+    atisLetter: "M",
+    atisSourceIsCurrent: true,
+    atisFetchStatus: "OK",
+    arrRunways: "18L / 18R",
+    depRunways: "18C",
+    atisReportedArrRunways: "27",
+    atisReportedDepRunways: "27",
+  });
+  assert.deepEqual(
+    { ...atisDisplayContext.atisRunwayDisplayState(mike, "arrRunways", "atisReportedArrRunways") },
+    { value: "18L / 18R", mode: "current", cue: "", atis: "MIKE" },
+  );
+
+  const stale = retainedAtisFixture(180, {
+    atisLetter: "--",
+    atisSourceIsCurrent: false,
+    atisFetchStatus: "STALE_SOURCE",
+    atisReportedArrRunways: "18L / 18R",
+  });
+  assert.equal(
+    atisDisplayContext.atisRunwayDisplayState(stale, "arrRunways", "atisReportedArrRunways").mode,
+    "last-reported-stale",
+  );
+
+  for (const invalid of [
+    retainedAtisFixture(67, { atisObservedZ: "", atisReportedArrRunways: "18L / 18R" }),
+    retainedAtisFixture(67, { atisReportedLetter: "H", atisReportedArrRunways: "18L / 18R" }),
+    retainedAtisFixture(67, { atisFetchStatus: "FAILED_NO_LAST_GOOD", atisReportedArrRunways: "18L / 18R" }),
+    retainedAtisFixture(67, { atisReportedArrRunways: "--" }),
+    retainedAtisFixture(67, { atisReportedArrRunways: "RUNWAY EIGHTEEN LEFT" }),
+  ]) {
+    const state = atisDisplayContext.atisRunwayDisplayState(invalid, "arrRunways", "atisReportedArrRunways");
+    assert.equal(state.value, "--");
+    assert.equal(state.mode, "unavailable");
+    assert.equal(state.cue, "");
+  }
+});
+
+test("ATIS catch-up polling starts near the freshness boundary without changing the full-board cadence", () => {
+  assert.equal(atisDisplayContext.atisCatchupNeeded(retainedAtisFixture(49, {
+    atisLetter: "G",
+    atisSourceIsCurrent: true,
+    atisFetchStatus: "OK",
+  })), false);
+  assert.equal(atisDisplayContext.atisCatchupNeeded(retainedAtisFixture(50, {
+    atisLetter: "G",
+    atisSourceIsCurrent: true,
+    atisFetchStatus: "OK",
+  })), true);
+  assert.equal(atisDisplayContext.atisCatchupNeeded(retainedAtisFixture(67, {
+    atisLetter: "--",
+    atisSourceIsCurrent: false,
+    atisFetchStatus: "WARN_SOURCE",
+  })), true);
+  assert.match(indexHtml, /const WEATHER_REFRESH_SECONDS=300;/);
+  assert.match(indexHtml, /const ATIS_CATCHUP_SECONDS=60;/);
+  assert.match(indexHtml, /const WEATHER_FETCH_TIMEOUT_MS=15000;/);
+  assert.match(indexHtml, /loadWeatherJson\(\{resetCountdown:false\}\)/);
+  assert.match(indexHtml, /if\(resetCountdown\)refreshRemaining=WEATHER_REFRESH_SECONDS/);
+  assert.match(indexHtml, /if\(refreshRemaining<=0&&!weatherFetchResetsCountdown\)fullRefreshPending=true/);
+  assert.match(indexHtml, /if\(fullRefreshPending\)\{[\s\S]*queueMicrotask\(refreshActiveData\)/);
+  assert.match(indexHtml, /setTimeout\(\(\)=>controller\.abort\(\),WEATHER_FETCH_TIMEOUT_MS\)/);
+  assert.match(indexHtml, /cue\.setAttribute\("aria-hidden","true"\)/);
+  assert.match(indexHtml, /const signature=\[state\.mode,state\.display,description\]\.join\("\|"\)/);
 });

@@ -159,7 +159,8 @@ class AtisOperationsTests(unittest.TestCase):
         arrival = u.extract_atis_text(atis("S", "0954Z"))
         live_candidates = []
 
-        def api_candidates(_icao, metadata=None):
+        def api_candidates(_icao, metadata=None, cache_buster=None):
+            self.assertEqual(cache_buster, int(self.now.timestamp()))
             metadata.setdefault(arrival, set()).add("ARR")
             return [arrival]
 
@@ -212,6 +213,34 @@ class AtisOperationsTests(unittest.TestCase):
                 "https://atis.info/api/{icao}",
                 "https://datis.clowd.io/api/{icao}",
             ),
+        )
+
+    def test_structured_atis_endpoints_receive_a_per_run_cache_buster(self):
+        self.assertEqual(
+            u._atis_cache_busted_url("https://atis.info/api/KMEM", 1787288280),
+            "https://atis.info/api/KMEM?_=1787288280",
+        )
+        self.assertEqual(
+            u._atis_cache_busted_url("https://example.test/api?station=KMEM", 1787288280),
+            "https://example.test/api?station=KMEM&_=1787288280",
+        )
+
+        current = atis("A", "0954Z", "18C")
+        with mock.patch.object(
+            u,
+            "fetch_atis_info_api_candidates",
+            return_value=[current],
+        ) as api_fetch:
+            with mock.patch.object(u, "fetch_url", return_value=current):
+                selected = u.fetch_current_atis(
+                    ["https://relay.test/current"],
+                    self.now,
+                )
+
+        self.assertEqual(u.parse_atis_letter(selected), "A")
+        self.assertEqual(
+            api_fetch.call_args.kwargs["cache_buster"],
+            int(self.now.timestamp()),
         )
 
     def test_known_header_time_beats_unknown_notice_time(self):
