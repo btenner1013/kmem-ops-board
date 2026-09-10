@@ -23,6 +23,20 @@ FULL_ZULU_ATIS = (
     "ADVS YOU HAVE INFO Z."
 )
 
+INCIDENT_DELTA_ATIS = (
+    "MEM ATIS INFO D 1054Z. 20008KT 10SM CLR 27/20 A3002 "
+    "(THREE ZERO ZERO TWO) RMK AO2 SLP162 T02670200. "
+    "SIMUL VISUAL APCHS IN USE RY 18L, 18R, 27. "
+    "SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. "
+    "ILS RWY 27 OTS, RY 18R REILS OTS, RY 36C PAPI OTS, FREQ 119.7 OTS. "
+    "BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. "
+    "HAZD WX INFO FOR MEM AREA AVBL FM FSS. "
+    "READBACK ALL RWY HOLD SHORT INSTRUCTIONS. "
+    "CONSOLIDATED WAKE TURBULENCE STANDARDS IN EFFECT. 222' CRANE IS DOWN. "
+    "AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. "
+    "ADVS YOU HAVE INFO D."
+)
+
 
 def atis(letter, time_z, runway="27"):
     return (
@@ -53,6 +67,31 @@ class AtisOperationsTests(unittest.TestCase):
             "MIXED",
         )
         self.assertEqual(u.parse_closed_runways(FULL_ZULU_ATIS), "NONE")
+
+    def test_incident_delta_1054_beats_bravo_and_keeps_exact_runways(self):
+        now = datetime(2026, 9, 10, 11, 0, tzinfo=timezone.utc)
+        bravo = atis("B", "0954Z")
+
+        self.assertTrue(u.is_good_atis(INCIDENT_DELTA_ATIS))
+        self.assertEqual(u.atis_report_identity(INCIDENT_DELTA_ATIS), "D:1054Z")
+        self.assertEqual(
+            u.parse_atis_datetime_utc(INCIDENT_DELTA_ATIS, now),
+            datetime(2026, 9, 10, 10, 54, tzinfo=timezone.utc),
+        )
+        self.assertEqual(u.parse_arr_runways(INCIDENT_DELTA_ATIS), "18L / 18R / 27")
+        self.assertEqual(u.parse_dep_runways(INCIDENT_DELTA_ATIS), "18R / 18C / 18L")
+        self.assertEqual(
+            u.determine_flow(
+                u.parse_arr_runways(INCIDENT_DELTA_ATIS),
+                u.parse_dep_runways(INCIDENT_DELTA_ATIS),
+            ),
+            "MIXED",
+        )
+        for candidates in ([bravo, INCIDENT_DELTA_ATIS], [INCIDENT_DELTA_ATIS, bravo]):
+            selected = u.choose_latest_atis_report(candidates, now)
+            self.assertEqual(u.atis_report_identity(selected), "D:1054Z")
+            self.assertEqual(u.parse_arr_runways(selected), "18L / 18R / 27")
+            self.assertEqual(u.parse_dep_runways(selected), "18R / 18C / 18L")
 
     def test_newest_report_wins_regardless_of_source_order(self):
         old_zulu = atis("Z", "0854Z")

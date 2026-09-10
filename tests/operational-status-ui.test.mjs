@@ -47,8 +47,33 @@ vm.runInContext(
     "globalThis.atisDisplayState=atisDisplayState;" +
     "globalThis.atisRunwayDisplayState=atisRunwayDisplayState;" +
     "globalThis.atisFlowDisplayState=atisFlowDisplayState;" +
-    "globalThis.atisCatchupNeeded=atisCatchupNeeded;",
+    "globalThis.atisCatchupNeeded=atisCatchupNeeded;" +
+    "globalThis.productionRawWeatherUrl=productionRawWeatherUrl;" +
+    "globalThis.selectAtisCatchupSnapshot=selectAtisCatchupSnapshot;",
   atisDisplayContext,
+);
+
+const ATIS_DELIVERY_NOW_MS = Date.parse("2026-09-10T11:00:00Z");
+const atisDeliveryContext = vm.createContext({
+  getBoardNowMs: () => ATIS_DELIVERY_NOW_MS,
+  parseUpdatedZ: (value) => {
+    const normalized = String(value || "").replace(
+      /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})Z$/,
+      "$1T$2:00Z",
+    );
+    const date = new Date(normalized);
+    return Number.isFinite(date.getTime()) ? date : null;
+  },
+  isBadText: (value, badWords) => {
+    const text = String(value || "").toUpperCase();
+    return !text.trim() || badWords.some((word) => text.includes(word));
+  },
+});
+vm.runInContext(
+  `${sourceBetween("function atisPhoneticForLetter", "function setClosedRunwayDisplay")}` +
+    "globalThis.productionRawWeatherUrl=productionRawWeatherUrl;" +
+    "globalThis.selectAtisCatchupSnapshot=selectAtisCatchupSnapshot;",
+  atisDeliveryContext,
 );
 
 function retainedAtisFixture(ageMinutes, overrides = {}) {
@@ -60,6 +85,35 @@ function retainedAtisFixture(ageMinutes, overrides = {}) {
     atisReportIdentity: `G:${hhmm}Z`,
     atisAgeMinutes: ageMinutes,
     atisReportedLetter: "G",
+    ...overrides,
+  };
+}
+
+function atisDeliverySnapshot({
+  letter,
+  reportTime,
+  observedZ,
+  updatedZ,
+  metar,
+  arrRunways,
+  depRunways,
+  flow,
+  overrides = {},
+}) {
+  return {
+    metar,
+    taf: "TAF KMEM 101120Z 1012/1118 20008KT P6SM FEW250",
+    allFeedsUpdatedZ: updatedZ,
+    atisText: `MEM ATIS INFO ${letter} ${reportTime}Z. 20008KT 10SM CLR 27/20 A3002. SIMUL VISUAL APCHS IN USE RY ${arrRunways.replaceAll(" / ", ", ")}. SIMUL DEPS IN USE RY ${depRunways.replaceAll(" / ", " ")}. ADVS YOU HAVE INFO ${letter}.`,
+    atisObservedZ: observedZ,
+    atisReportIdentity: `${letter}:${reportTime}Z`,
+    atisReportedLetter: letter,
+    atisLetter: letter,
+    atisSourceIsCurrent: true,
+    atisFetchStatus: "OK",
+    arrRunways,
+    depRunways,
+    flow,
     ...overrides,
   };
 }
@@ -556,4 +610,137 @@ test("ATIS catch-up polling starts near the freshness boundary without changing 
   assert.match(indexHtml, /setTimeout\(\(\)=>controller\.abort\(\),WEATHER_FETCH_TIMEOUT_MS\)/);
   assert.match(indexHtml, /cue\.setAttribute\("aria-hidden","true"\)/);
   assert.match(indexHtml, /const signature=\[state\.mode,state\.display,description\]\.join\("\|"\)/);
+});
+
+test("production ATIS delivery catch-up is limited to the deployed KMEM board", () => {
+  assert.equal(
+    atisDeliveryContext.productionRawWeatherUrl(
+      { hostname: "btenner1013.github.io", pathname: "/kmem-ops-board/" },
+      12345,
+    ),
+    "https://raw.githubusercontent.com/btenner1013/kmem-ops-board/main/weather.json?t=12345",
+  );
+  assert.equal(
+    atisDeliveryContext.productionRawWeatherUrl(
+      { hostname: "btenner1013.github.io", pathname: "/another-project/" },
+      12345,
+    ),
+    "",
+  );
+  assert.equal(
+    atisDeliveryContext.productionRawWeatherUrl(
+      { hostname: "localhost", pathname: "/kmem-ops-board/" },
+      12345,
+    ),
+    "",
+  );
+});
+
+test("production replay selects the newer coherent Delta snapshot over delayed Pages Bravo", () => {
+  const pagesBravo = atisDeliverySnapshot({
+    letter: "B",
+    reportTime: "0954",
+    observedZ: "2026-09-10T09:54:00Z",
+    updatedZ: "2026-09-10 10:45Z",
+    metar: "PAGES BRAVO SNAPSHOT",
+    arrRunways: "27",
+    depRunways: "18R / 18C / 18L / 27",
+    flow: "MIXED",
+  });
+  const rawDelta = atisDeliverySnapshot({
+    letter: "D",
+    reportTime: "1054",
+    observedZ: "2026-09-10T10:54:00Z",
+    updatedZ: "2026-09-10 10:55Z",
+    metar: "RAW DELTA SNAPSHOT",
+    arrRunways: "18L / 18R / 27",
+    depRunways: "18R / 18C / 18L",
+    flow: "MIXED",
+  });
+
+  const selected = atisDeliveryContext.selectAtisCatchupSnapshot(pagesBravo, rawDelta);
+  assert.strictEqual(selected, rawDelta);
+  assert.equal(selected.metar, "RAW DELTA SNAPSHOT");
+  assert.equal(selected.arrRunways, "18L / 18R / 27");
+  assert.equal(selected.depRunways, "18R / 18C / 18L");
+  assert.equal(selected.flow, "MIXED");
+});
+
+test("ATIS delivery catch-up rejects duplicate, older, invalid, stale, and incoherent candidates", () => {
+  const currentDelta = atisDeliverySnapshot({
+    letter: "D",
+    reportTime: "1054",
+    observedZ: "2026-09-10T10:54:00Z",
+    updatedZ: "2026-09-10 10:55Z",
+    metar: "CURRENT DELTA",
+    arrRunways: "18L / 18R / 27",
+    depRunways: "18R / 18C / 18L",
+    flow: "MIXED",
+  });
+  const common = {
+    arrRunways: "18L / 18R / 27",
+    depRunways: "18R / 18C / 18L",
+    flow: "MIXED",
+  };
+  const candidates = [
+    { ...currentDelta, metar: "DUPLICATE DELTA", allFeedsUpdatedZ: "2026-09-10 11:05Z" },
+    atisDeliverySnapshot({
+      ...common,
+      letter: "C",
+      reportTime: "1024",
+      observedZ: "2026-09-10T10:24:00Z",
+      updatedZ: "2026-09-10 11:05Z",
+      metar: "OLDER CHARLIE",
+    }),
+    atisDeliverySnapshot({
+      ...common,
+      letter: "E",
+      reportTime: "1104",
+      observedZ: "2026-09-10T11:04:00Z",
+      updatedZ: "2026-09-10 11:05Z",
+      metar: "MISMATCHED ECHO",
+      overrides: { atisReportIdentity: "F:1104Z" },
+    }),
+    atisDeliverySnapshot({
+      ...common,
+      letter: "E",
+      reportTime: "1104",
+      observedZ: "2026-09-10T11:04:00Z",
+      updatedZ: "2026-09-10 11:05Z",
+      metar: "NONCURRENT ECHO",
+      overrides: { atisSourceIsCurrent: false },
+    }),
+    atisDeliverySnapshot({
+      ...common,
+      letter: "E",
+      reportTime: "1104",
+      observedZ: "2026-09-10T11:04:00Z",
+      updatedZ: "2026-09-10 10:45Z",
+      metar: "OLDER GENERATED SNAPSHOT",
+    }),
+    null,
+  ];
+
+  for (const candidate of candidates) {
+    assert.strictEqual(
+      atisDeliveryContext.selectAtisCatchupSnapshot(currentDelta, candidate),
+      currentDelta,
+    );
+  }
+});
+
+test("raw-main ATIS catch-up is background-only, noncritical, and compares against latest displayed data", () => {
+  const loaderSource = sourceBetween("async function loadRawAtisCatchup", "async function loadWeatherJson");
+  const pageLoaderSource = sourceBetween("async function loadWeatherJson", "async function loadHostStatus");
+  assert.match(loaderSource, /selectAtisCatchupSnapshot\(window\.kmemWeatherData\|\|\{\},candidate\)/);
+  assert.match(loaderSource, /applyWeatherSnapshot\(candidate,\{resetCountdown:false\}\)/);
+  assert.match(loaderSource, /catch\(_error\)\{\s*return false;/);
+  assert.doesNotMatch(loaderSource, /feedHealth|updateClockOffsetFromResponse|refreshRemaining\s*=/);
+  assert.ok(
+    pageLoaderSource.indexOf("applyWeatherSnapshot(data,{response,resetCountdown})") <
+      pageLoaderSource.indexOf("queueMicrotask(loadRawAtisCatchup)"),
+    "same-origin Pages snapshot must render before optional raw-main catch-up",
+  );
+  assert.match(indexHtml, /const RAW_ATIS_FETCH_TIMEOUT_MS=5000;/);
+  assert.match(indexHtml, /let rawAtisFetchInFlight=false;/);
 });

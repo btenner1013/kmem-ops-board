@@ -2154,6 +2154,43 @@ function atisCatchupNeeded(data){
   return ageMinutes!==null&&ageMinutes>=50;
 }
 
+const PRODUCTION_RAW_WEATHER_URL="https://raw.githubusercontent.com/btenner1013/kmem-ops-board/main/weather.json";
+
+function weatherSnapshotTimeMs(data){
+  const updated=parseUpdatedZ(String(data?.allFeedsUpdatedZ||data?.lastUpdatedZ||""));
+  return updated?updated.getTime():null;
+}
+
+function validatedAtisObservedMs(data){
+  const identity=atisIdentityInReport(data||{});
+  const observed=parseUpdatedZ(String(data?.atisObservedZ||""));
+  if(!identity||!observed)return null;
+  const observedTime=`${String(observed.getUTCHours()).padStart(2,"0")}${String(observed.getUTCMinutes()).padStart(2,"0")}`;
+  return observedTime===identity.time?observed.getTime():null;
+}
+
+function selectAtisCatchupSnapshot(current,candidate){
+  if(!candidate||typeof candidate!=="object")return current;
+  if(!String(candidate.metar||"").trim()||!String(candidate.taf||"").trim())return current;
+  if(atisDisplayState(candidate).mode!=="current")return current;
+
+  const candidateAtisMs=validatedAtisObservedMs(candidate);
+  const currentAtisMs=validatedAtisObservedMs(current||{});
+  if(candidateAtisMs===null||(currentAtisMs!==null&&candidateAtisMs<=currentAtisMs))return current;
+
+  const candidateSnapshotMs=weatherSnapshotTimeMs(candidate);
+  const currentSnapshotMs=weatherSnapshotTimeMs(current||{});
+  if(candidateSnapshotMs===null||(currentSnapshotMs!==null&&candidateSnapshotMs<currentSnapshotMs))return current;
+  return candidate;
+}
+
+function productionRawWeatherUrl(runtimeLocation,cacheKey){
+  const hostname=String(runtimeLocation?.hostname||"").trim().toLowerCase();
+  const pathname=String(runtimeLocation?.pathname||"");
+  if(hostname!=="btenner1013.github.io"||!/^\/kmem-ops-board(?:\/|$)/i.test(pathname))return "";
+  return `${PRODUCTION_RAW_WEATHER_URL}?t=${encodeURIComponent(String(cacheKey??Date.now()))}`;
+}
+
 function setAtisDisplay(data){
   const el=document.getElementById("atisLetter");
   if(!el)return;
@@ -3276,6 +3313,56 @@ document.addEventListener("DOMContentLoaded",function(){
   }
 });
 
+function applyWeatherSnapshot(data,{response=null,resetCountdown=true}={}){
+  if(response){
+    updateClockOffsetFromResponse(response);
+    updateClock();
+  }
+
+  const metar=data.metar||"METAR unavailable";
+  const taf=data.taf||"TAF unavailable";
+  const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";
+
+  document.getElementById("weather").textContent=formatRawWeatherText(metar,taf,data);
+
+  window.kmemWeatherData=data;
+  if(window.kmemRenderLightningClosureOverlay) window.kmemRenderLightningClosureOverlay();
+
+  setCategoryDisplay(determineFlightCategoryFromData(data,metar));
+  updateDetails(data);
+  window.kmemRefreshBwcHistoryCurrent?.();
+  scheduleRawWeatherFit();
+
+  document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);
+  updateStaleWarning(updatedZ);
+  updateSourceHealth(data,updatedZ);
+  if(resetCountdown)refreshRemaining=WEATHER_REFRESH_SECONDS;
+}
+
+async function loadRawAtisCatchup(){
+  const url=productionRawWeatherUrl(window.location,Date.now());
+  if(!url||rawAtisFetchInFlight)return false;
+  rawAtisFetchInFlight=true;
+  const controller=typeof AbortController==="function"?new AbortController():null;
+  const timeoutId=controller?setTimeout(()=>controller.abort(),RAW_ATIS_FETCH_TIMEOUT_MS):null;
+  try{
+    const options={cache:"no-store"};
+    if(controller)options.signal=controller.signal;
+    const response=await fetch(url,options);
+    if(!response.ok)return false;
+    const candidate=await response.json();
+    const selected=selectAtisCatchupSnapshot(window.kmemWeatherData||{},candidate);
+    if(selected!==candidate)return false;
+    applyWeatherSnapshot(candidate,{resetCountdown:false});
+    return true;
+  }catch(_error){
+    return false;
+  }finally{
+    if(timeoutId!==null)clearTimeout(timeoutId);
+    rawAtisFetchInFlight=false;
+  }
+}
+
 async function loadWeatherJson({resetCountdown=true}={}){
   if(weatherFetchInFlight)return false;
   weatherFetchInFlight=true;
@@ -3287,29 +3374,9 @@ async function loadWeatherJson({resetCountdown=true}={}){
     if(controller)options.signal=controller.signal;
     const response=await fetch("weather.json?t="+new Date().getTime(),options);
     if(!response.ok)throw new Error("Unable to load weather.json");
-
-    updateClockOffsetFromResponse(response);
-    updateClock();
-
     const data=await response.json();
-    const metar=data.metar||"METAR unavailable";
-    const taf=data.taf||"TAF unavailable";
-    const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";
-
-    document.getElementById("weather").textContent=formatRawWeatherText(metar,taf,data);
-
-    window.kmemWeatherData=data;
-    if(window.kmemRenderLightningClosureOverlay) window.kmemRenderLightningClosureOverlay();
-
-    setCategoryDisplay(determineFlightCategoryFromData(data,metar));
-    updateDetails(data);
-    window.kmemRefreshBwcHistoryCurrent?.();
-    scheduleRawWeatherFit();
-
-    document.getElementById("dataUpdated").textContent=formatZuluTime(updatedZ);
-    updateStaleWarning(updatedZ);
-    updateSourceHealth(data,updatedZ);
-    if(resetCountdown)refreshRemaining=WEATHER_REFRESH_SECONDS;
+    applyWeatherSnapshot(data,{response,resetCountdown});
+    queueMicrotask(loadRawAtisCatchup);
     return true;
   }catch(e){
     console.error("weather.json load/render failed",e);
@@ -3378,9 +3445,11 @@ async function loadHostStatus(){
 const WEATHER_REFRESH_SECONDS=300;
 const ATIS_CATCHUP_SECONDS=60;
 const WEATHER_FETCH_TIMEOUT_MS=15000;
+const RAW_ATIS_FETCH_TIMEOUT_MS=5000;
 let refreshRemaining=WEATHER_REFRESH_SECONDS;
 let weatherFetchInFlight=false;
 let weatherFetchResetsCountdown=false;
+let rawAtisFetchInFlight=false;
 let fullRefreshPending=false;
 
 function formatCountdown(seconds){
