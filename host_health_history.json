@@ -8,7 +8,7 @@
   "retentionBoundaryGap": null,
   "archiveStartedUtc": "2026-09-09T05:35:56Z",
   "coverageStartUtc": "2026-09-09T05:35:56Z",
-  "updatedUtc": "2026-09-10T12:46:20Z",
+  "updatedUtc": "2026-09-10T12:55:58Z",
   "partialHistory": true,
   "thresholds": {
     "healthyMinutes": 15,
@@ -21,22 +21,22 @@
       "healthState": "HEALTHY",
       "roleState": "ACTIVE_PUBLISHER",
       "reason": "HEARTBEAT_CURRENT",
-      "heartbeatAgeMinutes": 0.006,
+      "heartbeatAgeMinutes": 0.003,
       "lastObservedHealthState": "HEALTHY",
-      "lastHeartbeatUtc": "2026-09-10T12:46:20Z",
-      "lastSuccessfulUpdaterRunUtc": "2026-09-10T12:46:20Z",
-      "lastSuccessfulPushUtc": "2026-09-10T12:46:20Z",
-      "lastKnownSourceSha": "0c143bc2bddac65c21e0d481c821bca52e26e631",
+      "lastHeartbeatUtc": "2026-09-10T12:55:58Z",
+      "lastSuccessfulUpdaterRunUtc": "2026-09-10T12:55:58Z",
+      "lastSuccessfulPushUtc": "2026-09-10T12:55:58Z",
+      "lastKnownSourceSha": "e1b349e78a9b37acfa87e76601d1f6470db76d15",
       "lastError": null,
       "taskState": "UNKNOWN",
-      "evidenceUpdatedUtc": "2026-09-10T12:46:20Z"
+      "evidenceUpdatedUtc": "2026-09-10T12:55:58Z"
     },
     "BACKUP": {
       "role": "BACKUP",
       "healthState": "UNKNOWN",
       "roleState": "STANDBY_NOT_OBSERVED",
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "heartbeatAgeMinutes": 763.222,
+      "heartbeatAgeMinutes": 772.853,
       "lastObservedHealthState": "HEALTHY",
       "lastHeartbeatUtc": "2026-09-10T00:03:07Z",
       "lastSuccessfulUpdaterRunUtc": "2026-09-10T00:03:07Z",
@@ -52,26 +52,26 @@
       "role": "PRIMARY",
       "sinceUtc": "2026-09-10T00:15:35Z",
       "sinceTimestampBasis": "LEASE_ACQUIRED_UTC",
-      "lastSuccessfulPublishUtc": "2026-09-10T12:46:20Z",
-      "lastSuccessfulPushUtc": "2026-09-10T12:46:20Z",
+      "lastSuccessfulPublishUtc": "2026-09-10T12:55:58Z",
+      "lastSuccessfulPushUtc": "2026-09-10T12:55:58Z",
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "rootCauseKnown": false
     },
     "boardDelivery": {
       "state": "CONTINUOUS",
-      "lastSuccessfulPublishUtc": "2026-09-10T12:46:20Z",
+      "lastSuccessfulPublishUtc": "2026-09-10T12:55:58Z",
       "publisher": "PRIMARY",
-      "ageMinutes": 0.006,
+      "ageMinutes": 0.003,
       "reason": "BOARD_PUBLISH_CURRENT"
     },
     "lease": {
       "state": "RELEASED",
       "activeOwner": null,
       "lastOwner": "PRIMARY",
-      "acquiredUtc": "2026-09-10T12:45:36Z",
-      "expiresUtc": "2026-09-10T12:46:20Z",
-      "releasedUtc": "2026-09-10T12:46:20Z",
-      "observedUtc": "2026-09-10T12:46:20Z"
+      "acquiredUtc": "2026-09-10T12:55:36Z",
+      "expiresUtc": "2026-09-10T12:55:58Z",
+      "releasedUtc": "2026-09-10T12:55:58Z",
+      "observedUtc": "2026-09-10T12:55:58Z"
     }
   },
   "intervals": [
