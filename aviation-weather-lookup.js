@@ -26,6 +26,9 @@ const NWS_KMEM_POINT = Object.freeze({ latitude: 35.0424, longitude: -89.9767 })
 const NWS_KMEM_POINT_URL = `https://api.weather.gov/points/${NWS_KMEM_POINT.latitude},${NWS_KMEM_POINT.longitude}`;
 const NWS_KMEM_STATION_URL = "https://api.weather.gov/stations/KMEM";
 const NWS_GRID_PATH_PATTERN = /^\/gridpoints\/[A-Z0-9]{3}\/\d+,\d+$/;
+const GFS_PRESSURE_API_URL = "https://api.open-meteo.com/v1/gfs";
+const GFS_PRESSURE_MODEL = "gfs_seamless";
+const GFS_PRESSURE_SOURCE = "NOAA GFS / HRRR via Open-Meteo";
 const ATIS_GURU_REFERENCE_BASE_URL = "https://atis.guru/atis/";
 const ATIS_GURU_REFERENCE_LABEL = "ATIS.guru reference ↗";
 const ATIS_GURU_REFERENCE_WARNING = "External reference only — currentness not validated";
@@ -258,6 +261,45 @@ export async function fetchNwsMeteogramSupplement({
     throw new Error("NWS grid response failed identity, validity, or field validation");
   }
   return envelope;
+}
+
+export async function fetchGfsMeteogramPressureForecast({
+  station,
+  signal,
+  fetchImpl = fetch,
+  fetchedAt = () => new Date(),
+} = {}) {
+  const requestedStation = normalizeIcao(station);
+  if (requestedStation !== "KMEM") return null;
+  const url = new URL(GFS_PRESSURE_API_URL);
+  url.searchParams.set("latitude", String(NWS_KMEM_POINT.latitude));
+  url.searchParams.set("longitude", String(NWS_KMEM_POINT.longitude));
+  url.searchParams.set("hourly", "pressure_msl");
+  url.searchParams.set("forecast_hours", "48");
+  url.searchParams.set("timezone", "UTC");
+  url.searchParams.set("models", GFS_PRESSURE_MODEL);
+  const response = await fetchImpl(url.toString(), {
+    cache: "no-store",
+    signal,
+    headers: { Accept: "application/json" },
+  });
+  if (!response?.ok) throw new Error(`GFS pressure HTTP ${response?.status || "ERROR"}`);
+  const payload = await response.json();
+  if (!payload || Array.isArray(payload) || typeof payload !== "object") {
+    throw new Error("GFS pressure response is malformed");
+  }
+  const fetchedDate = fetchedAt();
+  const fetchedZ = fetchedDate instanceof Date ? fetchedDate.toISOString() : new Date(fetchedDate).toISOString();
+  return {
+    product: "OPEN_METEO_GFS_MSLP",
+    station: requestedStation,
+    source: GFS_PRESSURE_SOURCE,
+    sourceUrl: url.toString(),
+    fetchedZ,
+    point: { ...NWS_KMEM_POINT },
+    model: GFS_PRESSURE_MODEL,
+    payload,
+  };
 }
 
 export function toggleDecodedReport(toggle, panel) {
@@ -676,10 +718,18 @@ export function initializeAviationWeatherLookup(doc = document) {
         fetchImpl: view.fetch.bind(view),
       }).catch(() => null)
       : Promise.resolve(null);
-    const [response, tafResponse, supplementalForecast] = await Promise.all([
+    const pressureForecastPromise = product === "METEOGRAM" && station === "KMEM"
+      ? fetchGfsMeteogramPressureForecast({
+        station,
+        signal: controller.signal,
+        fetchImpl: view.fetch.bind(view),
+      }).catch(() => null)
+      : Promise.resolve(null);
+    const [response, tafResponse, supplementalForecast, pressureForecast] = await Promise.all([
       responsePromise,
       tafResponsePromise,
       supplementalForecastPromise,
+      pressureForecastPromise,
     ]);
     clearTimeout(timeout);
     if (currentRequest !== requestNumber) return;
@@ -696,6 +746,7 @@ export function initializeAviationWeatherLookup(doc = document) {
           rangeLabel,
           tafReports: tafResponse?.state === "success" ? tafResponse.reports : [],
           supplementalForecast,
+          pressureForecast,
           now: lookupNow,
           doc,
           view,
@@ -707,13 +758,18 @@ export function initializeAviationWeatherLookup(doc = document) {
         }
         const forecastSources = meteogramForecastSourceState(activeMeteogram.model);
         const normalizedSupplementAvailable = forecastSources.hasNws;
+        const pressureDetail = forecastSources.hasGfsPressure
+          ? "Predictive pressure is NOAA GFS / HRRR mean sea-level pressure (MSLP) via Open-Meteo; it is shown separately from observed METAR altimeter settings."
+          : "Predictive pressure is unavailable and remains missing.";
         const futureDetail = forecastSources.hasTaf && forecastSources.hasNws
-          ? "The future side combines current valid TAF aviation fields with separately sourced NWS grid supplemental fields; TEMPO/PROB remain conditional and uncoded values stay missing."
+          ? `The future side combines current valid TAF aviation fields with separately sourced NWS grid supplemental fields; TEMPO/PROB remain conditional and uncoded values stay missing. ${pressureDetail}`
           : forecastSources.hasTaf
-            ? "The future side uses current valid TAF aviation fields; NWS supplemental fields are unavailable and remain missing."
+            ? `The future side uses current valid TAF aviation fields; NWS supplemental fields are unavailable and remain missing. ${pressureDetail}`
             : forecastSources.hasNws
-              ? "Current TAF aviation fields are unavailable or not safely plotted; only separately sourced NWS grid supplemental fields are shown where valid."
-              : activeMeteogram.model.taf?.warning
+              ? `Current TAF aviation fields are unavailable or not safely plotted; only separately sourced NWS grid supplemental fields are shown where valid. ${pressureDetail}`
+              : forecastSources.hasGfsPressure
+                ? "Current TAF aviation fields and NWS supplemental fields are unavailable or not safely plotted; only separately labeled NOAA GFS / HRRR MSLP guidance is shown where valid."
+                : activeMeteogram.model.taf?.warning
                 || "No current forecast fields are safely available; exact METAR/SPECI history remains displayed.";
         setStatus(
           status,

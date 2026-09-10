@@ -1,6 +1,7 @@
 import { formatMeteogramTime } from "./weather-meteogram-core.js";
 import {
   buildMeteogramSvgMarkup,
+  meteogramForecastSourceState,
   meteogramRowLabelLayout,
   meteogramSelectedRangeScales,
 } from "./weather-meteogram.js";
@@ -372,8 +373,10 @@ export function buildMeteogramPrintPlan({ model = {}, settings = {}, range, rang
   const selectedHasForecast = selectedModel.forecasts.length > 0
     || selectedModel.forecastPrecipitationIntervals.length > 0
     || selectedModel.forecastSnowfallIntervals.length > 0;
+  const selectedHasGfsPressure = meteogramForecastSourceState(selectedModel).hasGfsPressure;
   const labelLayout = meteogramRowLabelLayout(normalizedSettings, PRINT_VIEWBOX_WIDTH, {
     hasForecast: selectedHasForecast,
+    hasGfsPressure: selectedHasGfsPressure,
     compact: false,
   });
   const pages = pageRanges.map((pageRange, index) => {
@@ -407,6 +410,7 @@ export function buildMeteogramPrintPlan({ model = {}, settings = {}, range, rang
     range,
     rangeLabel,
     scaleOverrides,
+    hasGfsPressure: selectedHasGfsPressure,
     pages,
     coverageText: range.singleObservation
       ? `ONE EXACT OBSERVATION AVAILABLE AT ${endpointText(range.coverage.startZ, normalizedSettings, model.station)} · SURROUNDING PRINT SPACE CONTAINS NO IMPLIED DATA`
@@ -426,6 +430,7 @@ export function buildMeteogramPrintPagesMarkup(plan = {}) {
     </header>
     <div class="aviation-meteogram-print-page-context"><span>${escapeMarkup(plan.rangeLabel)}</span><span>OBSERVED — SOLID/STRONG · FORECAST — SHADED/REDUCED · SUSTAINED SOLID · GUST DASHED</span></div>
     <p class="aviation-meteogram-print-coverage">${escapeMarkup(plan.coverageText)}</p>
+    ${plan.hasGfsPressure ? '<p class="aviation-meteogram-print-pressure-source">PRESSURE FORECAST · NOAA GFS / HRRR MEAN SEA-LEVEL PRESSURE (MSLP) VIA <a href="https://open-meteo.com/">OPEN-METEO.COM</a> · NOT AN ALTIMETER SETTING</p>' : ""}
     <p class="aviation-meteogram-print-interval-note">† PRECIP/SNOW AMOUNT IS THE FULL UNSPLIT SOURCE-INTERVAL TOTAL; A BAR CONTINUED ACROSS A PAGE EDGE IS NOT A SECOND TOTAL.</p>
     <div class="aviation-meteogram-print-chart">${page.svg || `<div class="aviation-meteogram-print-no-data">NO DATA IN THIS INTERVAL</div>`}</div>
   </article>`).join("");

@@ -114,13 +114,40 @@ function forecastBucketHasNws(value) {
   );
 }
 
+function forecastBucketHasGfsPressure(value) {
+  return isForecast(value)
+    && value?.fieldProvenance?.pressure?.product === "OPEN_METEO_GFS_MSLP"
+    && value?.pressureReference === "MSLP";
+}
+
+function forecastBucketUsesGfsPressure(value) {
+  return forecastBucketHasGfsPressure(value);
+}
+
+function forecastBucketExpectsGfsPressure(value) {
+  return isForecast(value) && Boolean(
+    value?.pressureForecastExpected
+    || forecastBucketHasGfsPressure(value),
+  );
+}
+
 function forecastBucketSourceLabel(value) {
+  const sources = [];
   const hasTaf = forecastBucketHasTaf(value);
   const hasNws = forecastBucketHasNws(value);
-  if (hasTaf && hasNws) return "TAF / NWS";
+  if (hasTaf) sources.push("TAF");
+  if (hasNws) sources.push(hasTaf ? "NWS" : "NWS GRID");
+  if (forecastBucketUsesGfsPressure(value)) sources.push("NOAA MSLP");
+  return sources.length ? sources.join(" / ") : "FORECAST";
+}
+
+function forecastBucketVisualSourceLabel(value) {
+  const hasTaf = forecastBucketHasTaf(value);
+  const hasNws = forecastBucketHasNws(value);
+  if (hasTaf && hasNws) return "TAF/NWS";
   if (hasTaf) return "TAF";
   if (hasNws) return "NWS GRID";
-  return "FORECAST";
+  return forecastBucketUsesGfsPressure(value) ? "MSLP" : "FORECAST";
 }
 
 export function meteogramForecastSourceState(model = {}) {
@@ -129,25 +156,40 @@ export function meteogramForecastSourceState(model = {}) {
   const hasNws = forecasts.some(forecastBucketHasNws)
     || [model.forecastPrecipitationIntervals, model.forecastSnowfallIntervals]
       .some((values) => Array.isArray(values) && values.length > 0);
+  const hasGfsPressure = forecasts.some(forecastBucketUsesGfsPressure);
+  const labels = [];
+  if (hasTaf) labels.push("TAF");
+  if (hasNws) labels.push(hasTaf ? "NWS" : "NWS GRID");
+  if (hasGfsPressure) labels.push("NOAA MSLP");
   return {
     hasTaf,
     hasNws,
-    label: hasTaf && hasNws ? "TAF / NWS" : hasTaf ? "TAF" : hasNws ? "NWS GRID" : "FORECAST",
+    hasGfsPressure,
+    label: labels.length ? labels.join(" / ") : "FORECAST",
   };
 }
 
 export function meteogramSubtitleText(model = {}) {
   const forecastSources = meteogramForecastSourceState(model);
+  const pressureSuffix = forecastSources.hasGfsPressure ? " + NOAA GFS / HRRR MSLP GUIDANCE" : "";
   if (Array.isArray(model.forecasts) && model.forecasts.length) {
     if (forecastSources.hasTaf && forecastSources.hasNws) {
-      return "UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + CURRENT TAF + NWS GRID SUPPLEMENT";
+      return `UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + CURRENT TAF + NWS GRID SUPPLEMENT${pressureSuffix}`;
     }
     if (forecastSources.hasTaf) {
-      return "UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + CURRENT TAF";
+      return `UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + CURRENT TAF${pressureSuffix}`;
+    }
+    if (forecastSources.hasNws) {
+      return model.taf?.warning
+        ? `UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + NWS GRID SUPPLEMENT${pressureSuffix} · CURRENT TAF AVIATION FIELDS UNAVAILABLE OR NOT SAFELY PLOTTED`
+        : `UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + NWS GRID SUPPLEMENT${pressureSuffix} · CURRENT TAF UNAVAILABLE`;
+    }
+    if (forecastSources.hasGfsPressure) {
+      return "UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + NOAA GFS / HRRR MSLP GUIDANCE · CURRENT TAF / NWS AVIATION FORECAST FIELDS UNAVAILABLE";
     }
     return model.taf?.warning
-      ? "UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + NWS GRID SUPPLEMENT · CURRENT TAF AVIATION FIELDS UNAVAILABLE OR NOT SAFELY PLOTTED"
-      : "UNIFIED WEATHER TIMELINE · EXACT METAR / SPECI HISTORY + NWS GRID SUPPLEMENT · CURRENT TAF UNAVAILABLE";
+      ? "UNIFIED OBSERVED WEATHER TIMELINE · METAR / SPECI · CURRENT TAF NOT SAFELY PLOTTED"
+      : "UNIFIED OBSERVED WEATHER TIMELINE · METAR / SPECI · CURRENT TAF UNAVAILABLE";
   }
   return model.taf?.warning
     ? "UNIFIED OBSERVED WEATHER TIMELINE · METAR / SPECI · CURRENT TAF NOT SAFELY PLOTTED"
@@ -185,7 +227,7 @@ export function meteogramWindArrowRotation(directionFromDeg) {
   return ((value + 180) % 360 + 360) % 360;
 }
 
-function pathSegments(points, observations, maximumGapMs = MAX_CONNECTOR_GAP_MS) {
+function pathSegments(points, observations, maximumGapMs = MAX_CONNECTOR_GAP_MS, breakBetween = null) {
   const segments = [];
   let current = [];
   for (let index = 0; index < points.length; index += 1) {
@@ -196,7 +238,10 @@ function pathSegments(points, observations, maximumGapMs = MAX_CONNECTOR_GAP_MS)
     const gap = index && Number.isFinite(previousTime) && Number.isFinite(currentTime)
       ? currentTime - previousTime
       : 0;
-    if (!point || kindChanged || gap > maximumGapMs) {
+    const semanticBreak = index && typeof breakBetween === "function"
+      ? breakBetween(observations[index - 1], observations[index])
+      : false;
+    if (!point || kindChanged || gap > maximumGapMs || semanticBreak) {
       if (current.length) segments.push(current);
       current = point ? [point] : [];
       continue;
@@ -207,8 +252,8 @@ function pathSegments(points, observations, maximumGapMs = MAX_CONNECTOR_GAP_MS)
   return segments;
 }
 
-function pathMarkup(points, className, observations, minimumPoints = 1) {
-  return pathSegments(points, observations)
+function pathMarkup(points, className, observations, minimumPoints = 1, breakBetween = null) {
+  return pathSegments(points, observations, MAX_CONNECTOR_GAP_MS, breakBetween)
     .filter((segment) => segment.length >= minimumPoints)
     .map((segment) => {
       const d = segment.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
@@ -290,7 +335,7 @@ function wrapRowLabelText(text, maximumWidth, measureText, kind) {
   return lines;
 }
 
-export function meteogramRowLabelDescriptors(settings = {}, hasForecast = false) {
+export function meteogramRowLabelDescriptors(settings = {}, hasForecast = false, hasGfsPressure = false) {
   const rows = METEOGRAM_ROWS;
   const timeMode = String(settings.timeMode || "Z").toUpperCase() === "LOCAL" ? "LOCAL" : "Z";
   const temperatureUnit = String(settings.temperatureUnit || "C").toUpperCase() === "F" ? "F" : "C";
@@ -304,7 +349,7 @@ export function meteogramRowLabelDescriptors(settings = {}, hasForecast = false)
     { key: "dewLine", ...rows.dewLine, icon: "↗", title: "DEW POINT LINE", unit: `SHARED °${temperatureUnit} SCALE` },
     { key: "wind", ...rows.wind, icon: "↗", title: "WIND", unit: `DOWNWIND ARROW · ${windUnit}` },
     { key: "windSpeed", ...rows.windSpeed, icon: "≈", title: "WIND SPEED / GUST", unit: `SOLID SUSTAINED · GUST WHISKER · ${windUnit}` },
-    { key: "pressure", ...rows.pressure, icon: "◌", title: "PRESSURE", unit: "IN HG" },
+    { key: "pressure", ...rows.pressure, icon: "◌", title: "PRESSURE", unit: hasGfsPressure ? "OBS ALTIMETER · FCST MSLP · IN HG" : "ALTIMETER · IN HG" },
     { key: "clouds", ...rows.clouds, icon: "☁", title: "CLOUDS / CIG", unit: "FT AGL" },
     { key: "visibility", ...rows.visibility, icon: "◉", title: "VISIBILITY", unit: "SM / REPORTED" },
     { key: "precip", ...rows.precip, icon: "◒", title: "PRECIP (IN)", unit: "INTERVAL TOTAL" },
@@ -314,6 +359,7 @@ export function meteogramRowLabelDescriptors(settings = {}, hasForecast = false)
 
 export function meteogramRowLabelLayout(settings = {}, availableWidth = 1100, {
   hasForecast = false,
+  hasGfsPressure = false,
   compact = Number(availableWidth) <= 768,
   measureText = null,
 } = {}) {
@@ -339,12 +385,12 @@ export function meteogramRowLabelLayout(settings = {}, availableWidth = 1100, {
       ? measured
       : fallbackRowLabelTextWidth(text, kind, compact);
   };
-  const descriptors = meteogramRowLabelDescriptors(settings, hasForecast);
+  const descriptors = meteogramRowLabelDescriptors(settings, hasForecast, hasGfsPressure);
   const sizingTextCandidates = new Map();
   for (const timeMode of ["Z", "LOCAL"]) {
     for (const temperatureUnit of ["C", "F"]) {
       for (const windUnit of ["KT", "MPH"]) {
-        for (const descriptor of meteogramRowLabelDescriptors({ timeMode, temperatureUnit, windUnit }, hasForecast)) {
+        for (const descriptor of meteogramRowLabelDescriptors({ timeMode, temperatureUnit, windUnit }, hasForecast, hasGfsPressure)) {
           sizingTextCandidates.set(`title:${descriptor.title}`, { text: descriptor.title, kind: "title" });
           sizingTextCandidates.set(`unit:${descriptor.unit}`, { text: descriptor.unit, kind: "unit" });
         }
@@ -556,8 +602,8 @@ export function meteogramMobileNavigationAnchor(model = {}) {
   return { label: "LATEST", time: latestObservation };
 }
 
-function rowLabelsMarkup(settings, hasForecast = false, labelLayout = null) {
-  const layout = labelLayout || meteogramRowLabelLayout(settings, 1100, { hasForecast });
+function rowLabelsMarkup(settings, hasForecast = false, labelLayout = null, hasGfsPressure = false) {
+  const layout = labelLayout || meteogramRowLabelLayout(settings, 1100, { hasForecast, hasGfsPressure });
   return layout.rows.map(rowLabel).join("");
 }
 
@@ -581,6 +627,7 @@ export function buildMeteogramStickyLabelsMarkup(
   labelLayout = null,
   windSpeedGeometry = null,
   cloudScale = null,
+  hasGfsPressure = false,
 ) {
   const stickyWidth = dimensions.plotLeft;
   const horizontalLines = Object.values(METEOGRAM_ROWS).map((row) => `<line class="aviation-meteogram-grid-line" x1="0" y1="${row.bottom}" x2="${stickyWidth}" y2="${row.bottom}"/>`).join("");
@@ -596,7 +643,7 @@ export function buildMeteogramStickyLabelsMarkup(
     ${horizontalLines}
     <line class="aviation-meteogram-description-divider" x1="${dimensions.labelWidth}" y1="0" x2="${dimensions.labelWidth}" y2="${dimensions.height}"/>
     <line class="aviation-meteogram-label-divider" x1="${stickyWidth - 1}" y1="0" x2="${stickyWidth - 1}" y2="${dimensions.height}"/>
-    ${rowLabelsMarkup(settings, hasForecast, labelLayout)}
+    ${rowLabelsMarkup(settings, hasForecast, labelLayout, hasGfsPressure)}
     ${windAxisMarkup}
     ${cloudAltitudeAxisMarkup(cloudScale, dimensions.labelWidth, { sticky: true, axisWidth: dimensions.axisWidth })}
   </svg>`;
@@ -983,6 +1030,44 @@ function visibilityLabel(observation) {
   return `${qualifier}${fixed(observation.visibilitySm, observation.visibilitySm < 3 ? 1 : 0)}`;
 }
 
+function pressureReferenceKey(observation) {
+  return String(
+    observation?.pressureReference
+    || observation?.fieldProvenance?.pressure?.pressureReference
+    || "UNKNOWN",
+  ).toUpperCase();
+}
+
+function pressureReferenceChanged(previous, current) {
+  return pressureReferenceKey(previous) !== pressureReferenceKey(current);
+}
+
+function pressureReferenceLabel(observation) {
+  const reference = String(observation?.pressureReference || "").toUpperCase();
+  if (reference === "MSLP") return "NOAA GFS / HRRR MEAN SEA-LEVEL PRESSURE (MSLP) · NOT AN ALTIMETER SETTING";
+  if (reference === "QNH") return "QNH";
+  if (reference === "ALTIMETER" || !isForecast(observation)) return "METAR ALTIMETER SETTING";
+  return "PRESSURE REFERENCE NOT IDENTIFIED";
+}
+
+function pressureAccessibleText(observation) {
+  if (observation?.pressureInHg === null || observation?.pressureInHg === undefined) return "—";
+  return `${fixed(observation.pressureInHg, 2)} inHg · ${pressureReferenceLabel(observation)}`;
+}
+
+function pressureProvenanceText(observation, station = "KMEM") {
+  const provenance = observation?.fieldProvenance?.pressure;
+  if (!provenance) return "";
+  const parts = [
+    `Pressure source ${provenance.source || "NOAA GFS / HRRR via Open-Meteo"}`,
+    provenance.model ? `model ${provenance.model}` : "",
+    provenance.validStartZ && provenance.validEndZ
+      ? `valid ${compactIntervalLabel(provenance.validStartZ, provenance.validEndZ, station)}`
+      : "",
+  ];
+  return parts.filter(Boolean).join(" · ");
+}
+
 function columnTitle(observation, settings) {
   const time = formatMeteogramTime(timelineTime(observation), { mode: settings.timeMode, station: observation.station });
   const direction = windDirectionLabel(observation);
@@ -993,6 +1078,7 @@ function columnTitle(observation, settings) {
     `${isForecast(observation) ? "FORECAST" : observation.reportType} ${displayTime}`,
     `Temperature ${formatTemperature(observation.temperatureC, settings.temperatureUnit)} / Dew point ${formatTemperature(observation.dewPointC, settings.temperatureUnit)}`,
     `Wind ${direction} ${formatWind(observation.windSpeedKt, settings.windUnit)} ${settings.windUnit} · Gust ${observation.windGustKt === null || observation.windGustKt === undefined ? "—" : `${formatWind(observation.windGustKt, settings.windUnit)} ${settings.windUnit}`}`,
+    `Pressure ${pressureAccessibleText(observation)}`,
     `Visibility ${observation.visibilityDisplay}`,
     `Clouds ${observation.clouds.display}`,
     observation.weatherCodes.length ? `Weather ${observation.weatherCodes.join(" ")}` : "Weather code not reported",
@@ -1006,10 +1092,20 @@ function columnTitle(observation, settings) {
     if (hasTaf && forecastOverlays(observation).length) base.push(`Forecast overlays ${conditionalSummary(observation, settings)}`);
     if (observation.fieldProvenance?.temperature) base.push(`Temperature source ${observation.fieldProvenance.temperature.source}`);
     if (observation.fieldProvenance?.dewPoint) base.push(`Dew point source ${observation.fieldProvenance.dewPoint.source}`);
+    if (observation.fieldProvenance?.pressure) base.push(pressureProvenanceText(observation, observation.station));
+    if (
+      forecastBucketExpectsGfsPressure(observation)
+      && !observation.fieldProvenance?.pressure
+      && (observation.pressureInHg === null || observation.pressureInHg === undefined)
+    ) {
+      base.push("NOAA model MSLP is missing at this exact valid time; no pressure was inferred");
+    }
     if (!observation.fieldProvenance?.dewPoint) {
       base.push(hasNws
         ? "Dew point unavailable; NWS grid value is missing for this valid time"
-        : "Dew point unavailable; TAF does not provide hourly dew point");
+        : hasTaf
+          ? "Dew point unavailable; TAF does not provide hourly dew point"
+          : "Dew point unavailable; no hourly dew-point source is represented in this forecast bucket");
     }
     if (hasTaf && observation.temperatureExtrema?.length) {
       base.push(`Separate TAF extrema ${observation.temperatureExtrema.map((extreme) => `${extreme.type} ${formatTemperature(extreme.valueC, settings.temperatureUnit)}`).join(", ")}`);
@@ -1078,12 +1174,20 @@ export function buildMeteogramAccessibleTableMarkup(model, settings = {}) {
     const temperatureSemantics = extremaSemantics ? `${temperature} · Separate TAF extrema: ${extremaSemantics}` : temperature;
     const temperatureProvenance = observation.fieldProvenance?.temperature;
     const dewPointProvenance = observation.fieldProvenance?.dewPoint;
+    const pressureProvenance = observation.fieldProvenance?.pressure;
     const observedPrecip = !isForecast(observation) ? exactObservedInterval(observation, "PRECIP") : null;
     const observedSnowIncrease = !isForecast(observation) ? exactObservedInterval(observation, "SNOW") : null;
     const provenance = [
       `Source ${observation.source || (isForecast(observation) ? forecastBucketSourceLabel(observation) : "METAR/SPECI")}`,
       temperatureProvenance ? `Temperature ${temperatureProvenance.product === "NWS_GRID" ? "NWS grid" : "TAF"}; valid ${compactIntervalLabel(temperatureProvenance.validStartZ, temperatureProvenance.validEndZ, model.station)}` : "",
       dewPointProvenance ? `Dew point NWS grid; valid ${compactIntervalLabel(dewPointProvenance.validStartZ, dewPointProvenance.validEndZ, model.station)}` : "",
+      pressureProvenance ? pressureProvenanceText(observation, model.station) : "",
+      isForecast(observation)
+        && forecastBucketExpectsGfsPressure(observation)
+        && !pressureProvenance
+        && (observation.pressureInHg === null || observation.pressureInHg === undefined)
+        ? "NOAA model MSLP is missing at this exact valid time; no pressure was inferred"
+        : "",
       overlays ? `Non-prevailing/transition ${overlays}` : "",
       isForecast(observation) && forecastHasTaf ? "Aviation fields from current TAF" : "",
       isForecast(observation) && forecastHasNws ? "Supplemental fields identify NWS grid provenance" : "",
@@ -1100,7 +1204,7 @@ export function buildMeteogramAccessibleTableMarkup(model, settings = {}) {
       <td>${escapeMarkup(temperatureSemantics)}</td>
       <td>${escapeMarkup(formatTemperature(observation.dewPointC, normalizedSettings.temperatureUnit))}</td>
       <td>${escapeMarkup(wind)}</td>
-      <td>${escapeMarkup(observation.pressureInHg === null || observation.pressureInHg === undefined ? "—" : `${fixed(observation.pressureInHg, 2)} inHg`)}</td>
+      <td>${escapeMarkup(pressureAccessibleText(observation))}</td>
       <td>${escapeMarkup(`${observation.clouds?.display || "—"} · ${ceilingLabel(observation.clouds)} · ${cloudAccessibleText(observation.clouds)}`)}</td>
       <td>${escapeMarkup(observation.visibilityDisplay || "—")}</td>
       <td>${escapeMarkup(observedPrecip ? intervalAccessibleValue(observedPrecip, model.station) : "—")}</td>
@@ -1302,13 +1406,17 @@ function validScaleRange(value) {
     : null;
 }
 
+function pressureScaleMinimumSpan(timeline) {
+  return (timeline || []).some(forecastBucketUsesGfsPressure) ? 0.30 : 0.08;
+}
+
 export function meteogramSelectedRangeScales(model = {}, settings = {}) {
   const timeline = Array.isArray(model?.timeline) && model.timeline.length
     ? model.timeline
     : Array.isArray(model?.observations) ? model.observations : [];
   const normalizedSettings = normalizedMeteogramSettings(settings, model);
   const pressureRange = usableRange(timeline.map((observation) => observation.pressureInHg), {
-    minimumSpan: 0.08,
+    minimumSpan: pressureScaleMinimumSpan(timeline),
     padding: 0.18,
   });
   const visibilityRange = usableRange(timeline.map((observation) => observation.visibilitySm), {
@@ -2079,8 +2187,10 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   const hasForecastIntervals = [model?.forecastPrecipitationIntervals, model?.forecastSnowfallIntervals]
     .some((values) => Array.isArray(values) && values.length > 0);
   const hasForecast = observedCount < timeline.length || hasForecastIntervals;
+  const forecastSources = meteogramForecastSourceState(model);
   const labelLayout = requestedLabelLayout || meteogramRowLabelLayout(normalizedSettings, viewportWidth, {
     hasForecast,
+    hasGfsPressure: forecastSources.hasGfsPressure,
     compact: Number(viewportWidth) <= 768,
   });
   const dimensions = meteogramDimensions(timeline, viewportWidth, {
@@ -2098,7 +2208,6 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   const xAt = (index) => xPositions[index];
   const cellWidthAt = (index) => Math.max(0, cellBounds[index].right - cellBounds[index].left);
   const visualLabelMask = meteogramVisualLabelMask(timeline, xPositions);
-  const forecastSources = meteogramForecastSourceState(model);
   const dividerTime = model.dividerZ || timeline[observedCount]?.validZ;
   const dividerTimestamp = Date.parse(dividerTime);
   const dividerX = hasForecast
@@ -2122,7 +2231,10 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   const gustLabelMask = meteogramGustLabelMask(windSpeedGeometry.gustPoints);
 
   const pressureRange = validScaleRange(scaleOverrides?.pressureRange)
-    || usableRange(timeline.map((observation) => observation.pressureInHg), { minimumSpan: 0.08, padding: 0.18 });
+    || usableRange(timeline.map((observation) => observation.pressureInHg), {
+      minimumSpan: pressureScaleMinimumSpan(timeline),
+      padding: 0.18,
+    });
   const pressurePoints = timeline.map((observation, index) => {
     const y = scaledY(observation.pressureInHg, pressureRange, rows.pressure.top + 34, rows.pressure.bottom - 12);
     return y === null ? null : { x: xAt(index), y };
@@ -2190,7 +2302,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     return `<g class="aviation-meteogram-observation${isForecast(observation) ? " aviation-meteogram-forecast-column" : ""}" transform="translate(${xAt(index).toFixed(1)} 0)">
     <title>${escapeMarkup(columnTitle(observation, normalizedSettings))}</title>
     <rect class="aviation-meteogram-column-hover" x="${(bounds.left - xAt(index)).toFixed(1)}" y="0" width="${cellWidthAt(index).toFixed(1)}" height="${height}"/>
-    ${visualLabelMask[index] ? `${isForecast(observation) ? `<text class="aviation-meteogram-forecast-tag" x="0" y="65">${observation.becoming?.length ? "BECMG" : escapeMarkup(forecastBucketSourceLabel(observation))}</text>` : ""}
+    ${visualLabelMask[index] ? `${isForecast(observation) ? `<text class="aviation-meteogram-forecast-tag" x="0" y="65">${observation.becoming?.length ? "BECMG" : escapeMarkup(forecastBucketVisualSourceLabel(observation))}</text>` : ""}
     ${weatherIconMarkup(observation, weatherCategory, model.station)}
     <text class="aviation-meteogram-weather-code" x="0" y="109">${escapeMarkup(weatherColumnLabel(observation))}</text>` : ""}
   </g>`;
@@ -2265,7 +2377,17 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     ${windSpeedMarkersMarkup}
   </g>`;
 
-  const pressureValuesMarkup = timeline.map((observation, index) => visualLabelMask[index] ? `<text class="aviation-meteogram-pressure-value${isForecast(observation) ? " aviation-meteogram-value-forecast" : ""}" x="${xAt(index).toFixed(1)}" y="${rows.pressure.top + 23}">${escapeMarkup(observation.pressureInHg === null ? "—" : fixed(observation.pressureInHg, 2))}</text>` : "").join("");
+  const firstGfsPressureIndex = timeline.findIndex((observation, index) => (
+    forecastBucketHasGfsPressure(observation) && visualLabelMask[index]
+  ));
+  const pressureValuesMarkup = timeline.map((observation, index) => {
+    if (!visualLabelMask[index]) return "";
+    const referenceTag = index === firstGfsPressureIndex
+      ? `<text class="aviation-meteogram-pressure-reference" x="${xAt(index).toFixed(1)}" y="${rows.pressure.top + 12}">FCST MSLP</text>`
+      : "";
+    const valueY = firstGfsPressureIndex >= 0 ? rows.pressure.top + 27 : rows.pressure.top + 23;
+    return `${referenceTag}<text class="aviation-meteogram-pressure-value${isForecast(observation) ? " aviation-meteogram-value-forecast" : ""}" x="${xAt(index).toFixed(1)}" y="${valueY}">${escapeMarkup(observation.pressureInHg === null ? "—" : fixed(observation.pressureInHg, 2))}</text>`;
+  }).join("");
 
   const cloudScale = meteogramCloudScaleDefinition(timeline, {
     maximumFt: scaleOverrides?.cloudMaximumFt,
@@ -2463,7 +2585,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
 
   return `<svg class="aviation-meteogram-svg${printMode ? " aviation-meteogram-svg-print" : ""}" xmlns="${SVG_NS}" width="${width.toFixed(1)}" height="${height}" viewBox="0 0 ${width.toFixed(1)} ${height}" data-label-width="${labelWidth}" data-axis-width="${axisWidth}" data-plot-left="${plotLeft}" data-cloud-axis-width="${METEOGRAM_CLOUD_AXIS_WIDTH}" role="img" aria-labelledby="${idPrefix}SvgTitle ${idPrefix}SvgDescription">
     <title id="${idPrefix}SvgTitle">${escapeMarkup(model.station)} aviation weather meteogram</title>
-    <desc id="${idPrefix}SvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Sustained wind and reported gusts use one shared zero-based speed scale. Reported gusts use a distinct cap; when sustained wind is available, a whisker connects the sustained and gust values. Adjacent gust-bearing buckets use a dashed connection; missing gusts are not inferred. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase. Missing values are not inferred.${escapeMarkup(solarDescription)}</desc>
+    <desc id="${idPrefix}SvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Sustained wind and reported gusts use one shared zero-based speed scale. Reported gusts use a distinct cap; when sustained wind is available, a whisker connects the sustained and gust values. Adjacent gust-bearing buckets use a dashed connection; missing gusts are not inferred. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase.${forecastSources.hasGfsPressure ? " Observed pressure is the METAR altimeter setting; the separate dashed forecast is NOAA model mean sea-level pressure via Open-Meteo and is not an altimeter setting. No line joins the two references across NOW." : ""} Missing values are not inferred.${escapeMarkup(solarDescription)}</desc>
     ${definitions}
     <rect class="aviation-meteogram-background" width="${width.toFixed(1)}" height="${height}"/>
     ${forecastBackground}
@@ -2481,8 +2603,8 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     ${forecastTemperatureMarkers}
     <g class="aviation-meteogram-wind-row" clip-path="url(#${idPrefix}WindClip)">${windMarkup}</g>
     <g class="aviation-meteogram-wind-speed-row" clip-path="url(#${idPrefix}WindSpeedClip)">${windSpeedSeriesMarkup}</g>
-    ${pathMarkup(observedPoints(pressurePoints), "aviation-meteogram-pressure-line", timeline)}
-    ${pathMarkup(forecastPoints(pressurePoints), "aviation-meteogram-pressure-line aviation-meteogram-line-forecast", timeline)}
+    ${pathMarkup(observedPoints(pressurePoints), "aviation-meteogram-pressure-line", timeline, 1, pressureReferenceChanged)}
+    ${pathMarkup(forecastPoints(pressurePoints), "aviation-meteogram-pressure-line aviation-meteogram-line-forecast", timeline, 1, pressureReferenceChanged)}
     ${pressureValuesMarkup}${cloudTickGridMarkup}
     <g class="aviation-meteogram-cloud-row aviation-meteogram-cloud-artwork-row" clip-path="url(#${idPrefix}CloudArtworkClip)">${cloudArtworkMarkup.join("")}</g>
     <g class="aviation-meteogram-cloud-row aviation-meteogram-cloud-text-row" clip-path="url(#${idPrefix}CloudTextClip)">${cloudTextMarkup.join("")}</g>
@@ -2516,13 +2638,14 @@ export function renderAviationMeteogram(container, reports, {
   rangeLabel = "Past 24 hours",
   tafReports = [],
   supplementalForecast = null,
+  pressureForecast = null,
   now = new Date(),
   doc = container?.ownerDocument || document,
   view = doc?.defaultView || window,
   initialViewState = null,
 } = {}) {
   if (!container || !doc) return null;
-  const model = buildMeteogramModel(reports, { station, tafReports, supplementalForecast, now });
+  const model = buildMeteogramModel(reports, { station, tafReports, supplementalForecast, pressureForecast, now });
   if (!model.observations.length) return null;
 
   const defaultSettings = {
@@ -2628,13 +2751,20 @@ export function renderAviationMeteogram(container, reports, {
   const notes = doc.createElement("footer");
   notes.className = "aviation-meteogram-notes";
   const truth = doc.createElement("span");
-  truth.textContent = model.forecasts.length
+  const forecastTruth = model.forecasts.length
     ? forecastSources.hasTaf && forecastSources.hasNws
       ? "OBSERVED = EXACT METAR/SPECI · AVIATION FIELDS = CURRENT TAF · TEMP/DP/QPF/SNOW = NWS GRID · NOW DIVIDER · TEMPO/PROB REMAIN CONDITIONAL · MISSING VALUES SHOWN AS —"
       : forecastSources.hasTaf
         ? "OBSERVED = EXACT METAR/SPECI · AVIATION FIELDS = CURRENT TAF · NOW DIVIDER · TEMPO/PROB REMAIN CONDITIONAL · MISSING VALUES SHOWN AS —"
-        : "OBSERVED = EXACT METAR/SPECI · FORECAST FIELDS = NWS GRID ONLY · CURRENT TAF UNAVAILABLE OR NOT SAFELY PLOTTED · NOW DIVIDER · MISSING VALUES SHOWN AS —"
+        : forecastSources.hasNws
+          ? "OBSERVED = EXACT METAR/SPECI · FORECAST FIELDS = NWS GRID ONLY · CURRENT TAF UNAVAILABLE OR NOT SAFELY PLOTTED · NOW DIVIDER · MISSING VALUES SHOWN AS —"
+          : forecastSources.hasGfsPressure
+            ? "OBSERVED = EXACT METAR/SPECI · PRESSURE FORECAST ONLY · CURRENT TAF / NWS AVIATION FORECAST FIELDS UNAVAILABLE · NOW DIVIDER · MISSING VALUES SHOWN AS —"
+            : "OBSERVED = EXACT METAR/SPECI · FORECAST VALUES UNAVAILABLE · MISSING VALUES SHOWN AS —"
     : "OBSERVED REPORTS ONLY · STRAIGHT CONNECTORS · GAPS OVER 2.5 HR DISCONNECTED · MISSING VALUES SHOWN AS —";
+  truth.textContent = forecastSources.hasGfsPressure
+    ? `${forecastTruth} · PRESSURE FCST = NOAA GFS / HRRR MSLP VIA OPEN-METEO · MSLP IS NOT AN ALTIMETER SETTING`
+    : forecastTruth;
   const precip = doc.createElement("span");
   precip.textContent = model.forecasts.length
     ? "PRECIP (IN) = NWS SIX-HOUR LIQUID-EQUIVALENT TOTAL · SNOW (IN) = NWS SIX-HOUR FORECAST SNOWFALL · OBS SNINCR = SNOW-DEPTH INCREASE DURING PAST HOUR · POP IS NOT AMOUNT · TX/TN ARE SEPARATE TAF EXTREMA"
@@ -2655,6 +2785,17 @@ export function renderAviationMeteogram(container, reports, {
     const supplementalSource = doc.createElement("span");
     supplementalSource.textContent = `SUPPLEMENTAL SOURCE ${model.supplemental.source} · NWS GRID ${model.supplemental.grid?.id || "—"}/${model.supplemental.grid?.x ?? "—"},${model.supplemental.grid?.y ?? "—"} · UPDATED ${model.supplemental.updateZ || "—"} · QPF/SNOW TOTALS REMAIN ON SOURCE INTERVALS`;
     notes.appendChild(supplementalSource);
+  }
+  if (model.pressureForecast && forecastSources.hasGfsPressure) {
+    const pressureSource = doc.createElement("span");
+    pressureSource.appendChild(doc.createTextNode(`PRESSURE FORECAST SOURCE ${model.pressureForecast.source} · MODEL ${model.pressureForecast.model || "—"} · FETCHED ${model.pressureForecast.fetchedZ || "—"} · MODEL CYCLE NOT EXPOSED BY SOURCE · HOURLY INSTANTANEOUS MSLP · NOT AN ALTIMETER SETTING · `));
+    const attribution = doc.createElement("a");
+    attribution.href = "https://open-meteo.com/";
+    attribution.target = "_blank";
+    attribution.rel = "noopener noreferrer";
+    attribution.textContent = "WEATHER DATA BY OPEN-METEO.COM";
+    pressureSource.appendChild(attribution);
+    notes.appendChild(pressureSource);
   }
   if (model.revisedBuckets) {
     const revisions = doc.createElement("span");
@@ -2713,6 +2854,7 @@ export function renderAviationMeteogram(container, reports, {
     const compact = view.matchMedia?.("(max-width: 768px)")?.matches ?? Number(view.innerWidth || availableWidth) <= 768;
     const labelLayout = meteogramRowLabelLayout(displaySettings, availableWidth, {
       hasForecast: model.forecasts.length > 0,
+      hasGfsPressure: forecastSources.hasGfsPressure,
       compact,
       measureText: labelMeasurer.measureText,
     });
@@ -2726,7 +2868,7 @@ export function renderAviationMeteogram(container, reports, {
     const svg = buildMeteogramSvgMarkup(model, settings, { viewportWidth, labelLayout });
     activeWindTooltipSample = null;
     windTooltipPinned = false;
-    scroller.innerHTML = `<div class="aviation-meteogram-stage" style="width:${dimensions.width}px;height:${dimensions.height}px">${svg}${buildMeteogramStickyLabelsMarkup(displaySettings, dimensions, model.forecasts.length > 0, labelLayout, windSpeedGeometry, cloudScale)}<div id="aviationMeteogramWindTooltip" class="aviation-meteogram-wind-tooltip" role="tooltip" hidden></div></div>`;
+    scroller.innerHTML = `<div class="aviation-meteogram-stage" style="width:${dimensions.width}px;height:${dimensions.height}px">${svg}${buildMeteogramStickyLabelsMarkup(displaySettings, dimensions, model.forecasts.length > 0, labelLayout, windSpeedGeometry, cloudScale, forecastSources.hasGfsPressure)}<div id="aviationMeteogramWindTooltip" class="aviation-meteogram-wind-tooltip" role="tooltip" hidden></div></div>`;
     stickyTimeRuler.innerHTML = buildMeteogramStickyTimeRulerMarkup(model, displaySettings, dimensions);
     dataTableScroller.innerHTML = buildMeteogramAccessibleTableMarkup(model, settings);
     updateToggleState();

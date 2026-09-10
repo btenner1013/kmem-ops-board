@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { lookupAviationWeather } from "../aviation-weather-lookup-core.js";
+import { fetchGfsMeteogramPressureForecast } from "../aviation-weather-lookup.js";
 import { buildMeteogramModel, meteogramLookupRequest } from "../weather-meteogram-core.js";
 import { meteogramSolarEvents, meteogramSolarPhase } from "../weather-meteogram-solar.js";
 import {
@@ -26,6 +27,7 @@ import {
   meteogramMobileNavigationScrollLeft,
   meteogramRowLabelDescriptors,
   meteogramRowLabelLayout,
+  meteogramSelectedRangeScales,
   meteogramSubtitleText,
   meteogramTemperatureGeometry,
   meteogramWeatherVisualCategory,
@@ -425,6 +427,79 @@ function nwsGridEnvelope() {
   };
 }
 
+function gfsPressurePayload({
+  times = ["2026-09-01T04:00", "2026-09-01T05:00", "2026-09-01T06:00"],
+  pressures = [1013.8, null, 1012.4],
+} = {}) {
+  return {
+    latitude: 35,
+    longitude: -90,
+    generationtime_ms: 0.12,
+    utc_offset_seconds: 0,
+    timezone: "GMT",
+    timezone_abbreviation: "GMT",
+    elevation: 86,
+    hourly_units: { time: "iso8601", pressure_msl: "hPa" },
+    hourly: { time: times, pressure_msl: pressures },
+  };
+}
+
+function gfsPressureEnvelope({ times, pressures } = {}) {
+  return {
+    product: "OPEN_METEO_GFS_MSLP",
+    station: "KMEM",
+    source: "NOAA GFS / HRRR via Open-Meteo",
+    sourceUrl: "https://api.open-meteo.com/v1/gfs?latitude=35.0424&longitude=-89.9767&hourly=pressure_msl&forecast_hours=48&timezone=UTC&models=gfs_seamless",
+    fetchedZ: "2026-09-01T03:16:00.000Z",
+    point: { latitude: 35.0424, longitude: -89.9767 },
+    model: "gfs_seamless",
+    payload: gfsPressurePayload({ times, pressures }),
+  };
+}
+
+function manualGfsPressurePoint({
+  validZ,
+  validEndZ,
+  pressureInHg,
+  source = "NOAA GFS / HRRR via Open-Meteo",
+} = {}) {
+  const pressure = pressureInHg === null || pressureInHg === undefined
+    ? null
+    : {
+      product: "OPEN_METEO_GFS_MSLP",
+      source,
+      sourceUrl: "https://api.open-meteo.com/v1/gfs?hourly=pressure_msl&models=gfs_seamless&timezone=UTC",
+      fetchedZ: "2026-09-01T03:16:00.000Z",
+      updateZ: null,
+      model: "gfs_seamless",
+      validStartZ: validZ,
+      validEndZ,
+      pressureReference: "MSLP",
+      sampleSemantics: "INSTANTANEOUS",
+    };
+  return manualMeteogramPoint({
+    observedZ: validZ,
+    validZ,
+    kind: "FORECAST",
+    reportType: "GFS MSLP",
+    source,
+    raw: "",
+    tafIssuanceZ: null,
+    pressureOnly: true,
+    pressureInHg,
+    pressureReference: pressure ? "MSLP" : null,
+    temperatureC: null,
+    dewPointC: null,
+    windDirectionDeg: null,
+    windSpeedKt: null,
+    visibilitySm: null,
+    visibilityDisplay: "—",
+    clouds: { layers: [], clear: false, cavok: false, ceilingFt: null, display: "—" },
+    weather: { icon: "·", label: "AVIATION WX UNAVAILABLE" },
+    fieldProvenance: { temperature: null, dewPoint: null, pressure },
+  });
+}
+
 function manualMeteogramPoint(overrides = {}) {
   return {
     station: "KMEM",
@@ -441,6 +516,7 @@ function manualMeteogramPoint(overrides = {}) {
     windSpeedKt: 12,
     windGustKt: null,
     pressureInHg: 30,
+    pressureReference: "ALTIMETER",
     visibilitySm: 10,
     visibilityQualifier: "",
     visibilityDisplay: "10 SM",
@@ -456,7 +532,7 @@ function manualMeteogramPoint(overrides = {}) {
     conditional: [],
     becoming: [],
     temperatureExtrema: [],
-    fieldProvenance: { temperature: null, dewPoint: null },
+    fieldProvenance: { temperature: null, dewPoint: null, pressure: null },
     ...overrides,
   };
 }
@@ -473,6 +549,7 @@ function manualMeteogramModel(timeline, overrides = {}) {
     dividerZ: forecasts[0]?.validZ || null,
     taf: null,
     supplemental: null,
+    pressureForecast: null,
     observedSources: ["Manual fixture"],
     observedPrecipitationIntervals: [],
     observedSnowDepthIncreaseIntervals: [],
@@ -589,6 +666,63 @@ test("meteogram aliases to the established METAR history pipeline without a new 
   assert.match(lookupJs, /product: meteogramRequest\?\.product \|\| product/);
 });
 
+test("predictive-pressure fetch uses the bounded KMEM NOAA GFS MSLP request and returns a provenance envelope", async () => {
+  const payload = gfsPressurePayload();
+  const calls = [];
+  const signal = { aborted: false };
+  const result = await fetchGfsMeteogramPressureForecast({
+    station: "kmem",
+    signal,
+    fetchedAt: () => new Date("2026-09-01T03:16:00Z"),
+    fetchImpl: async (input, options) => {
+      calls.push({ input: String(input), options });
+      return { ok: true, status: 200, async json() { return payload; } };
+    },
+  });
+
+  assert.equal(calls.length, 1);
+  const requestUrl = new URL(calls[0].input);
+  assert.equal(requestUrl.origin, "https://api.open-meteo.com");
+  assert.equal(requestUrl.pathname, "/v1/gfs");
+  assert.equal(requestUrl.searchParams.get("latitude"), "35.0424");
+  assert.equal(requestUrl.searchParams.get("longitude"), "-89.9767");
+  assert.equal(requestUrl.searchParams.get("hourly"), "pressure_msl");
+  assert.equal(requestUrl.searchParams.get("forecast_hours"), "48");
+  assert.equal(requestUrl.searchParams.get("timezone"), "UTC");
+  assert.equal(requestUrl.searchParams.get("models"), "gfs_seamless");
+  assert.equal(calls[0].options.cache, "no-store");
+  assert.equal(calls[0].options.signal, signal);
+  assert.deepEqual(calls[0].options.headers, { Accept: "application/json" });
+  assert.deepEqual(result, {
+    product: "OPEN_METEO_GFS_MSLP",
+    station: "KMEM",
+    source: "NOAA GFS / HRRR via Open-Meteo",
+    sourceUrl: calls[0].input,
+    fetchedZ: "2026-09-01T03:16:00.000Z",
+    point: { latitude: 35.0424, longitude: -89.9767 },
+    model: "gfs_seamless",
+    payload,
+  });
+});
+
+test("predictive-pressure fetch is KMEM-only and rejects HTTP or malformed responses", async () => {
+  let calls = 0;
+  assert.equal(await fetchGfsMeteogramPressureForecast({
+    station: "KATL",
+    fetchImpl: async () => { calls += 1; },
+  }), null);
+  assert.equal(calls, 0, "an unsupported station cannot contact the KMEM-specific model point");
+
+  await assert.rejects(fetchGfsMeteogramPressureForecast({
+    station: "KMEM",
+    fetchImpl: async () => ({ ok: false, status: 503 }),
+  }), /GFS pressure HTTP 503/);
+  await assert.rejects(fetchGfsMeteogramPressureForecast({
+    station: "KMEM",
+    fetchImpl: async () => ({ ok: true, status: 200, async json() { return []; } }),
+  }), /GFS pressure response is malformed/);
+});
+
 test("meteogram concurrently reuses the existing current TAF path and refreshes only while active", () => {
   assert.match(lookupJs, /const responsePromise = lookupAviationWeather\(lookupOptions\)/);
   assert.match(lookupJs, /product === "METEOGRAM"[\s\S]*lookupAviationWeather\(\{ \.\.\.lookupOptions, product: "TAF", range: "recent" \}\)/);
@@ -597,6 +731,47 @@ test("meteogram concurrently reuses the existing current TAF path and refreshes 
   assert.match(lookupJs, /if \(overlay\.hidden \|\| product !== "METEOGRAM"\) return;[\s\S]*await runLookup\(\{ preserveMeteogramView: true \}\)/);
   assert.match(lookupJs, /stopMeteogramRefresh\(\);[\s\S]*applyLookupDialogState/);
   assert.doesNotMatch(lookupJs, /weather[_-]forecast\.json|meteogram[_-](?:api|history)\.json/i);
+});
+
+test("predictive-pressure provider failure is nonfatal to the observed and TAF meteogram", async () => {
+  const clock = new FakeClock();
+  const lookupHarness = createDeferredLookupHarness();
+  const dom = createLookupDom(clock);
+  const directRequests = [];
+  dom.doc.defaultView.fetch = async (input) => {
+    const url = String(input);
+    directRequests.push(url);
+    if (url.startsWith("https://api.open-meteo.com/v1/gfs?")) {
+      throw new Error("deterministic pressure provider outage");
+    }
+    throw new Error("deterministic supplemental provider outage");
+  };
+  const renders = [];
+  const module = await loadLookupController({
+    doc: dom.doc,
+    lookupAviationWeather: lookupHarness.lookup,
+    renderAviationMeteogram(_container, reports, options) {
+      renders.push({ reports, options });
+      return {
+        model: { observations: reports, forecasts: options.tafReports, taf: {} },
+        destroy() {},
+      };
+    },
+  });
+  const controller = module.initializeAviationWeatherLookup(dom.doc);
+  dom.overlay.hidden = false;
+  controller.setProduct("METEOGRAM");
+  const request = controller.runLookup();
+  lookupHarness.calls[0].task.resolve(successResponse("METAR"));
+  lookupHarness.calls[1].task.resolve(successResponse("TAF"));
+  await request;
+
+  assert.ok(directRequests.some((url) => url.startsWith("https://api.open-meteo.com/v1/gfs?")));
+  assert.equal(renders.length, 1, "pressure failure cannot suppress the rest of the meteogram");
+  assert.equal(renders[0].options.pressureForecast, null);
+  assert.equal(renders[0].reports[0].product, "METAR");
+  assert.equal(renders[0].options.tafReports[0].product, "TAF");
+  controller.close();
 });
 
 test("meteogram refresh timer is singular, replaceable, and cancelled by product change or close", async () => {
@@ -870,7 +1045,12 @@ test("NWS-only forecast buckets and TAF-unavailable states never masquerade as c
       supplementalForecast: nwsGridEnvelope(),
       now: new Date("2026-09-01T03:15:00Z"),
     });
-    assert.deepEqual(meteogramForecastSourceState(model), { hasTaf: false, hasNws: true, label: "NWS GRID" });
+    assert.deepEqual(meteogramForecastSourceState(model), {
+      hasTaf: false,
+      hasNws: true,
+      hasGfsPressure: false,
+      label: "NWS GRID",
+    });
     assert.ok(model.taf?.warning, `${token} should retain the unsafe/unusable TAF warning`);
     assert.match(meteogramSubtitleText(model), /CURRENT TAF AVIATION FIELDS UNAVAILABLE OR NOT SAFELY PLOTTED/);
     const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" });
@@ -892,11 +1072,252 @@ test("NWS-only forecast buckets and TAF-unavailable states never masquerade as c
     supplementalForecast: nwsGridEnvelope(),
     now: new Date("2026-09-01T03:15:00Z"),
   });
-  assert.deepEqual(meteogramForecastSourceState(shortTafModel), { hasTaf: true, hasNws: true, label: "TAF / NWS" });
+  assert.deepEqual(meteogramForecastSourceState(shortTafModel), {
+    hasTaf: true,
+    hasNws: true,
+    hasGfsPressure: false,
+    label: "TAF / NWS",
+  });
   const nwsTail = shortTafModel.forecasts.find((bucket) => bucket.validZ === "2026-09-01T08:00:00.000Z");
   assert.equal(nwsTail.supplementalOnly, true);
   assert.equal(nwsTail.tafIssuanceZ, null);
   assert.match(buildMeteogramAccessibleTableMarkup(shortTafModel, { timeMode: "Z" }), /NWS GRID forecast/);
+});
+
+test("forecast MSLP is a separate dashed pressure series with exact provenance, truthful gaps, and no altimeter seam", () => {
+  const timeline = [
+    manualMeteogramPoint({
+      observedZ: "2026-09-01T02:54:00.000Z",
+      pressureInHg: 30,
+      pressureReference: "ALTIMETER",
+    }),
+    manualGfsPressurePoint({
+      validZ: "2026-09-01T04:00:00.000Z",
+      validEndZ: "2026-09-01T05:00:00.000Z",
+      pressureInHg: 29.94,
+    }),
+    manualGfsPressurePoint({
+      validZ: "2026-09-01T05:00:00.000Z",
+      validEndZ: "2026-09-01T06:00:00.000Z",
+      pressureInHg: 29.91,
+    }),
+    manualGfsPressurePoint({
+      validZ: "2026-09-01T06:00:00.000Z",
+      validEndZ: "2026-09-01T07:00:00.000Z",
+      pressureInHg: null,
+    }),
+    manualGfsPressurePoint({
+      validZ: "2026-09-01T07:00:00.000Z",
+      validEndZ: "2026-09-01T08:00:00.000Z",
+      pressureInHg: 29.88,
+    }),
+    manualGfsPressurePoint({
+      validZ: "2026-09-01T08:00:00.000Z",
+      validEndZ: "2026-09-01T09:00:00.000Z",
+      pressureInHg: 29.86,
+    }),
+  ];
+  const model = manualMeteogramModel(timeline, {
+    pressureForecast: {
+      product: "OPEN_METEO_GFS_MSLP",
+      source: "NOAA GFS / HRRR via Open-Meteo",
+      sourceUrl: "https://api.open-meteo.com/v1/gfs?hourly=pressure_msl",
+      model: "gfs_seamless",
+      fetchedZ: "2026-09-01T03:16:00.000Z",
+    },
+  });
+  assert.deepEqual(meteogramForecastSourceState(model), {
+    hasTaf: false,
+    hasNws: false,
+    hasGfsPressure: true,
+    label: "NOAA MSLP",
+  });
+  assert.match(meteogramSubtitleText(model), /NOAA GFS \/ HRRR MSLP GUIDANCE/);
+
+  const labelLayout = meteogramRowLabelLayout(
+    { timeMode: "Z", temperatureUnit: "C", windUnit: "KT" },
+    1200,
+    { hasForecast: true, hasGfsPressure: true },
+  );
+  assert.equal(labelLayout.rows.find(({ key }) => key === "pressure").unit, "OBS ALTIMETER · FCST MSLP · IN HG");
+  const dimensions = meteogramDimensions(timeline, 1200, { labelWidth: labelLayout.width });
+  const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" }, { viewportWidth: 1200, labelLayout });
+  assert.match(svg, /aria-label="OBS ALTIMETER · FCST MSLP · IN HG"/);
+  assert.match(svg, /aviation-meteogram-pressure-reference[^>]*>FCST MSLP<\/text>/);
+  assert.match(meteogramCss, /\.aviation-meteogram-line-forecast\{stroke-dasharray:5 4;opacity:\.72\}/);
+
+  const pressurePaths = [...svg.matchAll(/<path class="aviation-meteogram-pressure-line( aviation-meteogram-line-forecast)?" d="([^"]+)"\/>/g)]
+    .map((match) => ({ forecast: Boolean(match[1]), d: match[2] }));
+  assert.equal(pressurePaths.filter(({ forecast }) => !forecast).length, 1, "observed altimeter remains its own series");
+  const forecastPaths = pressurePaths.filter(({ forecast }) => forecast);
+  assert.equal(forecastPaths.length, 2, "the null source hour splits the predictive pressure path");
+  const expectedForecastXs = [1, 2, 4, 5].map((index) => dimensions.xPositions[index].toFixed(1));
+  for (const x of expectedForecastXs) {
+    assert.ok(forecastPaths.some(({ d }) => new RegExp(`(?:M|L)${x.replace(".", "\\.")} `).test(d)), `forecast pressure reuses shared x=${x}`);
+  }
+  const missingX = dimensions.xPositions[3].toFixed(1);
+  assert.ok(forecastPaths.every(({ d }) => !new RegExp(`(?:M|L)${missingX.replace(".", "\\.")} `).test(d)), "missing MSLP is not plotted or interpolated");
+  assert.doesNotMatch(svg, /aviation-meteogram-pressure-line[^"<]*aviation-meteogram-line-seam/, "different pressure references never connect across NOW");
+  const dividerX = Number(svg.match(/aviation-meteogram-now-divider" x1="([\d.]+)"/)?.[1]);
+  assert.ok(Math.abs(dividerX - dimensions.xForTime(timeline[1].validZ)) <= 0.1, "MSLP uses the same NOW/timeline mapping as every other row");
+
+  const table = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z" });
+  assert.match(svg, /Pressure 29\.94 inHg · NOAA GFS \/ HRRR MEAN SEA-LEVEL PRESSURE \(MSLP\) · NOT AN ALTIMETER SETTING/);
+  assert.match(svg, /Pressure source NOAA GFS \/ HRRR via Open-Meteo · model gfs_seamless · valid/);
+  assert.match(table, /29\.94 inHg · NOAA GFS \/ HRRR MEAN SEA-LEVEL PRESSURE \(MSLP\) · NOT AN ALTIMETER SETTING/);
+  assert.match(table, /Pressure source NOAA GFS \/ HRRR via Open-Meteo · model gfs_seamless · valid 0400Z–0500Z/);
+  assert.match(table, /NOAA MSLP forecast/);
+  assert.match(table, /01 SEP 0600Z[\s\S]*?<td>—<\/td>/, "the accessible pressure cell also exposes the missing source hour");
+  assert.match(svg, /Dew point unavailable; no hourly dew-point source is represented in this forecast bucket/);
+  assert.doesNotMatch(svg, /Dew point unavailable; TAF does not provide hourly dew point/);
+  assert.match(meteogramJs, /WEATHER DATA BY OPEN-METEO\.COM/, "the required provider attribution remains visible with predictive pressure");
+  assert.match(meteogramJs, /attribution\.href = "https:\/\/open-meteo\.com\/"/);
+  assert.match(meteogramJs, /MODEL CYCLE NOT EXPOSED BY SOURCE/, "fetch time is not mislabeled as the unavailable model-cycle time");
+
+  const scales = meteogramSelectedRangeScales(model, { timeMode: "Z" });
+  assert.ok(scales.pressureRange.maximum - scales.pressureRange.minimum >= 0.30, "mixed altimeter/MSLP display cannot exaggerate tiny changes");
+});
+
+test("TAF QNH and NOAA MSLP never share a path and overridden model samples do not claim plotted MSLP", () => {
+  const tafBase = {
+    station: "KMEM",
+    timestamp: "2026-09-01T02:00:00Z",
+    product: "TAF",
+    validTimeFrom: "2026-09-01T03:00:00Z",
+    source: "Deterministic TAF fixture",
+  };
+  const mixedModel = buildMeteogramModel([meteogramReport()], {
+    station: "KMEM",
+    tafReports: [{
+      ...tafBase,
+      validTimeTo: "2026-09-01T05:00:00Z",
+      raw: "TAF KMEM 010200Z 0103/0105 18008KT P6SM SCT050 QNH3001INS",
+    }],
+    pressureForecast: gfsPressureEnvelope({
+      times: ["2026-09-01T04:00", "2026-09-01T05:00", "2026-09-01T06:00"],
+      pressures: [1013.8, 1012.8, 1011.8],
+    }),
+    now: new Date("2026-09-01T03:15:00Z"),
+  });
+  const qnhBucket = mixedModel.forecasts.find((bucket) => bucket.validZ === "2026-09-01T04:00:00.000Z");
+  const mslpBucket = mixedModel.forecasts.find((bucket) => bucket.validZ === "2026-09-01T05:00:00.000Z");
+  assert.equal(qnhBucket.pressureReference, "QNH");
+  assert.equal(qnhBucket.fieldProvenance.pressure.product, "TAF");
+  assert.equal(qnhBucket.pressureForecastValue.product, "OPEN_METEO_GFS_MSLP", "the unused sample remains diagnostic only");
+  assert.equal(mslpBucket.pressureReference, "MSLP");
+  const mixedLabelLayout = meteogramRowLabelLayout({ timeMode: "Z" }, 1200, { hasForecast: true, hasGfsPressure: true });
+  const mixedDimensions = meteogramDimensions(mixedModel.timeline, 1200, { labelWidth: mixedLabelLayout.width });
+  const mixedSvg = buildMeteogramSvgMarkup(mixedModel, { timeMode: "Z" }, { viewportWidth: 1200, labelLayout: mixedLabelLayout });
+  const forecastPressurePaths = [...mixedSvg.matchAll(/<path class="aviation-meteogram-pressure-line aviation-meteogram-line-forecast" d="([^"]+)"\/>/g)]
+    .map((match) => match[1]);
+  assert.equal(forecastPressurePaths.length, 2, "a pressure-reference change starts a new forecast path");
+  const qnhX = mixedDimensions.xPositions[mixedModel.timeline.indexOf(qnhBucket)].toFixed(1);
+  const mslpX = mixedDimensions.xPositions[mixedModel.timeline.indexOf(mslpBucket)].toFixed(1);
+  const containsX = (path, value) => new RegExp(`(?:M|L)${value.replace(".", "\\.")} `).test(path);
+  assert.ok(forecastPressurePaths.every((path) => !(containsX(path, qnhX) && containsX(path, mslpX))), "neither path crosses the QNH/MSLP boundary");
+  const qnhTable = buildMeteogramAccessibleTableMarkup(mixedModel, { timeMode: "Z" });
+  const qnhRow = qnhTable.match(/<tr>[\s\S]*?<th scope="row">01 SEP 0400Z<\/th>[\s\S]*?<\/tr>/)?.[0] || "";
+  assert.match(qnhRow, /30\.01 inHg · QNH/);
+  assert.doesNotMatch(qnhRow, /NOAA MSLP forecast/, "an overridden model sample is not presented as the plotted source");
+
+  const qnhOnlyModel = buildMeteogramModel([meteogramReport()], {
+    station: "KMEM",
+    tafReports: [{
+      ...tafBase,
+      validTimeTo: "2026-09-01T07:00:00Z",
+      raw: "TAF KMEM 010200Z 0103/0107 18008KT P6SM SCT050 QNH3001INS",
+    }],
+    pressureForecast: gfsPressureEnvelope({
+      times: ["2026-09-01T04:00", "2026-09-01T05:00", "2026-09-01T06:00"],
+      pressures: [1013.8, 1012.8, 1011.8],
+    }),
+    now: new Date("2026-09-01T03:15:00Z"),
+  });
+  assert.equal(meteogramForecastSourceState(qnhOnlyModel).hasGfsPressure, false, "unused NOAA samples do not make live state claim MSLP is plotted");
+  const range = resolveMeteogramPrintRange({ choice: "current", model: qnhOnlyModel, settings: { timeMode: "Z" } });
+  const plan = buildMeteogramPrintPlan({ model: qnhOnlyModel, settings: { timeMode: "Z" }, range });
+  assert.equal(plan.hasGfsPressure, false, "print uses the same actual-plotted-source classification as live rendering");
+  assert.doesNotMatch(plan.pages.map((page) => page.svg).join(""), /FCST MSLP/);
+  assert.doesNotMatch(buildMeteogramPrintPagesMarkup(plan), /aviation-meteogram-print-pressure-source/);
+});
+
+test("a null NOAA MSLP hour inside a real TAF bucket breaks pressure and discloses the gap", () => {
+  const model = buildMeteogramModel([meteogramReport()], {
+    station: "KMEM",
+    tafReports: [{
+      station: "KMEM",
+      timestamp: "2026-09-01T02:00:00Z",
+      product: "TAF",
+      validTimeFrom: "2026-09-01T03:00:00Z",
+      validTimeTo: "2026-09-01T07:00:00Z",
+      raw: "TAF KMEM 010200Z 0103/0107 18008KT P6SM SCT050",
+      source: "Deterministic TAF fixture",
+    }],
+    pressureForecast: gfsPressureEnvelope({
+      times: ["2026-09-01T04:00", "2026-09-01T05:00", "2026-09-01T06:00"],
+      pressures: [1013.8, null, 1011.8],
+    }),
+    now: new Date("2026-09-01T03:15:00Z"),
+  });
+  const gap = model.forecasts.find((bucket) => bucket.validZ === "2026-09-01T05:00:00.000Z");
+  assert.ok(gap.tafIssuanceZ);
+  assert.equal(gap.pressureOnly, undefined);
+  assert.equal(gap.pressureForecastExpected, true);
+  assert.equal(gap.pressureForecastValue, null);
+  assert.equal(gap.pressureInHg, null);
+  const labelLayout = meteogramRowLabelLayout({ timeMode: "Z" }, 1200, { hasForecast: true, hasGfsPressure: true });
+  const dimensions = meteogramDimensions(model.timeline, 1200, { labelWidth: labelLayout.width });
+  const svg = buildMeteogramSvgMarkup(model, { timeMode: "Z" }, { viewportWidth: 1200, labelLayout });
+  const missingX = dimensions.xPositions[model.timeline.indexOf(gap)].toFixed(1);
+  const pressurePaths = [...svg.matchAll(/<path class="aviation-meteogram-pressure-line aviation-meteogram-line-forecast" d="([^"]+)"\/>/g)]
+    .map((match) => match[1]);
+  assert.ok(pressurePaths.every((path) => !new RegExp(`(?:M|L)${missingX.replace(".", "\\.")} `).test(path)), "the combined-bucket null hour is not plotted or bridged");
+  assert.match(svg, /NOAA model MSLP is missing at this exact valid time; no pressure was inferred/);
+  const table = buildMeteogramAccessibleTableMarkup(model, { timeMode: "Z" });
+  const gapRow = table.match(/<tr>[\s\S]*?<th scope="row">01 SEP 0500Z<\/th>[\s\S]*?<\/tr>/)?.[0] || "";
+  assert.match(gapRow, /NOAA model MSLP is missing at this exact valid time; no pressure was inferred/);
+});
+
+test("multi-page predictive-pressure print uses one selected-range pressure domain on every page", () => {
+  const start = Date.parse("2026-09-01T00:00:00Z");
+  const timeline = [manualMeteogramPoint({ observedZ: new Date(start).toISOString(), pressureInHg: 30.02 })];
+  for (let hour = 1; hour <= 24; hour += 1) {
+    const validZ = new Date(start + hour * 60 * 60_000).toISOString();
+    timeline.push(manualGfsPressurePoint({
+      validZ,
+      validEndZ: new Date(start + (hour + 1) * 60 * 60_000).toISOString(),
+      pressureInHg: hour === 12 ? null : 29.96 - hour * 0.004,
+    }));
+  }
+  const model = manualMeteogramModel(timeline, {
+    startZ: timeline[0].observedZ,
+    endZ: timeline.at(-1).validZ,
+    pressureForecast: {
+      product: "OPEN_METEO_GFS_MSLP",
+      source: "NOAA GFS / HRRR via Open-Meteo",
+      model: "gfs_seamless",
+      fetchedZ: "2026-09-01T00:05:00.000Z",
+    },
+  });
+  const range = resolveMeteogramPrintRange({ choice: "current", model, settings: { timeMode: "Z" } });
+  const plan = buildMeteogramPrintPlan({ model, settings: { timeMode: "Z" }, range });
+  assert.equal(plan.ok, true);
+  assert.equal(plan.pages.length, 2);
+  assert.ok(plan.scaleOverrides.pressureRange.maximum - plan.scaleOverrides.pressureRange.minimum >= 0.30);
+  const markup = buildMeteogramPrintPagesMarkup(plan);
+  for (const [attribute, value] of [
+    ["data-pressure-min", plan.scaleOverrides.pressureRange.minimum],
+    ["data-pressure-max", plan.scaleOverrides.pressureRange.maximum],
+  ]) {
+    const escapedValue = String(value).replace(".", "\\.");
+    assert.equal((markup.match(new RegExp(`${attribute}="${escapedValue}"`, "g")) || []).length, 2, `${attribute} repeats unchanged on both pages`);
+  }
+  assert.ok(plan.pages.every((page) => page.svg.includes("OBS ALTIMETER · FCST MSLP · IN HG")), "each page repeats the truthful pressure reference label");
+  assert.equal(plan.hasGfsPressure, true);
+  assert.equal((markup.match(/class="aviation-meteogram-print-pressure-source"/g) || []).length, 2, "every predictive-pressure print page repeats source and reference truth");
+  assert.equal((markup.match(/href="https:\/\/open-meteo\.com\/"/g) || []).length, 2, "every page repeats the Open-Meteo attribution link");
+  assert.match(markup, /MEAN SEA-LEVEL PRESSURE \(MSLP\)[\s\S]*NOT AN ALTIMETER SETTING/);
+  assert.match(lookupCss, /\.aviation-meteogram-print-pressure-source\{[^}]*font-weight:900/);
 });
 
 test("LOCAL/Z, F/C, and KT/MPH toggles rerender live without another lookup", () => {
@@ -1309,7 +1730,7 @@ test("row-label content is centralized and follows every live display toggle", (
     ["dewLine", "DEW POINT LINE", "SHARED °C SCALE"],
     ["wind", "WIND", "DOWNWIND ARROW · KT"],
     ["windSpeed", "WIND SPEED / GUST", "SOLID SUSTAINED · GUST WHISKER · KT"],
-    ["pressure", "PRESSURE", "IN HG"],
+    ["pressure", "PRESSURE", "ALTIMETER · IN HG"],
     ["clouds", "CLOUDS / CIG", "FT AGL"],
     ["visibility", "VISIBILITY", "SM / REPORTED"],
     ["precip", "PRECIP (IN)", "INTERVAL TOTAL"],
@@ -1467,7 +1888,7 @@ test("dynamic row-label measurement redraws for responsive and font lifecycle wi
   assert.match(meteogramJs, /Math\.max\(\.\.\.widths\)/);
   assert.match(meteogramJs, /meteogramRowLabelLayout\(displaySettings, availableWidth,[\s\S]*measureText: labelMeasurer\.measureText/);
   assert.match(meteogramJs, /buildMeteogramSvgMarkup\(model, settings, \{ viewportWidth, labelLayout \}\)/);
-  assert.match(meteogramJs, /buildMeteogramStickyLabelsMarkup\(displaySettings, dimensions, model\.forecasts\.length > 0, labelLayout, windSpeedGeometry, cloudScale\)/);
+  assert.match(meteogramJs, /buildMeteogramStickyLabelsMarkup\(displaySettings, dimensions, model\.forecasts\.length > 0, labelLayout, windSpeedGeometry, cloudScale, forecastSources\.hasGfsPressure\)/);
   assert.match(meteogramJs, /new ResizeObserverCtor\(scheduleDraw\)/);
   assert.match(meteogramJs, /addEventListener\?\.\("orientationchange", scheduleDraw\)/);
   assert.match(meteogramJs, /addEventListener\?\.\("fullscreenchange", scheduleDraw\)/);

@@ -19,6 +19,16 @@ const METEOGRAM_MAX_FORECAST_HOURS = 36;
 const METEOGRAM_MIN_SAMPLE_SPACING_MS = 30 * 60 * 1000;
 const METEOGRAM_MAX_FORECAST_MS = METEOGRAM_MAX_FORECAST_HOURS * 60 * 60 * 1000;
 const NWS_GRID_SOURCE = "NOAA/NWS forecast grid";
+const GFS_PRESSURE_PRODUCT = "OPEN_METEO_GFS_MSLP";
+const GFS_PRESSURE_SOURCE = "NOAA GFS / HRRR via Open-Meteo";
+const GFS_PRESSURE_MODEL = "gfs_seamless";
+const OPEN_METEO_GFS_HOST = "api.open-meteo.com";
+const OPEN_METEO_GFS_PATH = "/v1/gfs";
+const KMEM_FORECAST_POINT = Object.freeze({ latitude: 35.0424, longitude: -89.9767 });
+const GFS_GRID_POINT_TOLERANCE_DEGREES = 0.25;
+const PRESSURE_SAMPLE_INTERVAL_MS = 60 * 60 * 1000;
+const MIN_PLAUSIBLE_MSLP_HPA = 800;
+const MAX_PLAUSIBLE_MSLP_HPA = 1100;
 
 function normalizedRaw(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -319,12 +329,12 @@ function parsedDecodedPressure(values) {
   const inches = text.match(/(\d+(?:\.\d+)?) inHg/i);
   if (inches) {
     const pressureInHg = Number(inches[1]);
-    return { pressureInHg, pressureHpa: pressureInHg * HPA_PER_INHG };
+    return { pressureInHg, pressureHpa: pressureInHg * HPA_PER_INHG, pressureReference: "QNH" };
   }
   const hpa = text.match(/(\d+(?:\.\d+)?) hPa/i);
   if (!hpa) return null;
   const pressureHpa = Number(hpa[1]);
-  return { pressureHpa, pressureInHg: pressureHpa / HPA_PER_INHG };
+  return { pressureHpa, pressureInHg: pressureHpa / HPA_PER_INHG, pressureReference: "QNH" };
 }
 
 function forecastConditionPatch(conditions, { prevailing = false } = {}) {
@@ -358,6 +368,7 @@ function blankForecastState() {
     windGustKt: null,
     pressureInHg: null,
     pressureHpa: null,
+    pressureReference: null,
     visibilitySm: null,
     visibilityQualifier: "",
     visibilityDisplay: "—",
@@ -566,6 +577,153 @@ export function parseNwsGridForecast(input, {
     dewPointIntervals,
     quantitativePrecipitationIntervals,
     snowfallAmountIntervals,
+  };
+}
+
+function openMeteoGfsIdentity(value) {
+  try {
+    const url = new URL(String(value || ""));
+    if (
+      url.protocol !== "https:"
+      || url.hostname !== OPEN_METEO_GFS_HOST
+      || url.pathname !== OPEN_METEO_GFS_PATH
+      || url.port
+      || url.username
+      || url.password
+      || url.hash
+    ) return null;
+    const latitude = finiteNumber(url.searchParams.get("latitude"));
+    const longitude = finiteNumber(url.searchParams.get("longitude"));
+    const hourly = (url.searchParams.get("hourly") || "").split(",").map((item) => item.trim()).filter(Boolean);
+    if (
+      latitude === null
+      || longitude === null
+      || Math.abs(latitude - KMEM_FORECAST_POINT.latitude) > 0.0001
+      || Math.abs(longitude - KMEM_FORECAST_POINT.longitude) > 0.0001
+      || url.searchParams.get("models") !== GFS_PRESSURE_MODEL
+      || url.searchParams.get("timezone") !== "UTC"
+      || url.searchParams.get("forecast_hours") !== "48"
+      || hourly.length !== 1
+      || hourly[0] !== "pressure_msl"
+    ) return null;
+    return { sourceUrl: url.toString(), latitude, longitude };
+  } catch (_error) {
+    return null;
+  }
+}
+
+function openMeteoUtcHour(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:00(?::00)?Z?$/.test(text)) return null;
+  const timestamp = Date.parse(text.endsWith("Z") ? text : `${text}Z`);
+  if (!Number.isFinite(timestamp)) return null;
+  const date = new Date(timestamp);
+  return date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0
+    ? { timestamp, validZ: date.toISOString() }
+    : null;
+}
+
+export function parseGfsPressureForecast(input, {
+  station: stationValue = "KMEM",
+  now = new Date(),
+} = {}) {
+  const envelope = input && typeof input === "object" ? input : {};
+  const payload = envelope.payload && typeof envelope.payload === "object" ? envelope.payload : null;
+  const station = normalizeIcao(stationValue);
+  const nowDate = new Date(now);
+  const identity = openMeteoGfsIdentity(envelope.sourceUrl);
+  const fetchedZ = isoTimestamp(envelope.fetchedZ);
+  const updateZ = envelope.updateZ === null || envelope.updateZ === undefined || envelope.updateZ === ""
+    ? null
+    : isoTimestamp(envelope.updateZ);
+  const pointLatitude = finiteNumber(envelope.point?.latitude);
+  const pointLongitude = finiteNumber(envelope.point?.longitude);
+  const payloadLatitude = finiteNumber(payload?.latitude);
+  const payloadLongitude = finiteNumber(payload?.longitude);
+  if (
+    station !== "KMEM"
+    || envelope.product !== GFS_PRESSURE_PRODUCT
+    || envelope.station !== "KMEM"
+    || envelope.source !== GFS_PRESSURE_SOURCE
+    || envelope.model !== GFS_PRESSURE_MODEL
+    || !identity
+    || !fetchedZ
+    || (envelope.updateZ !== null && envelope.updateZ !== undefined && envelope.updateZ !== "" && !updateZ)
+    || !Number.isFinite(nowDate.getTime())
+    || pointLatitude === null
+    || pointLongitude === null
+    || Math.abs(pointLatitude - KMEM_FORECAST_POINT.latitude) > 0.0001
+    || Math.abs(pointLongitude - KMEM_FORECAST_POINT.longitude) > 0.0001
+    || payloadLatitude === null
+    || payloadLongitude === null
+    || Math.abs(payloadLatitude - KMEM_FORECAST_POINT.latitude) > GFS_GRID_POINT_TOLERANCE_DEGREES
+    || Math.abs(payloadLongitude - KMEM_FORECAST_POINT.longitude) > GFS_GRID_POINT_TOLERANCE_DEGREES
+    || payload?.utc_offset_seconds !== 0
+    || !["UTC", "GMT"].includes(String(payload?.timezone || "").toUpperCase())
+    || (payload?.timezone_abbreviation && !["UTC", "GMT"].includes(String(payload.timezone_abbreviation).toUpperCase()))
+    || payload?.hourly_units?.time !== "iso8601"
+    || payload?.hourly_units?.pressure_msl !== "hPa"
+    || !Array.isArray(payload?.hourly?.time)
+    || !Array.isArray(payload?.hourly?.pressure_msl)
+    || payload.hourly.time.length === 0
+    || payload.hourly.time.length !== payload.hourly.pressure_msl.length
+  ) return null;
+
+  const parsedTimes = payload.hourly.time.map(openMeteoUtcHour);
+  if (parsedTimes.some((entry) => !entry)) return null;
+  for (let index = 1; index < parsedTimes.length; index += 1) {
+    if (parsedTimes[index].timestamp - parsedTimes[index - 1].timestamp !== PRESSURE_SAMPLE_INTERVAL_MS) return null;
+  }
+  if (payload.hourly.pressure_msl.some((value) => (
+    value !== null
+    && (finiteJsonNumber(value) === null || value < MIN_PLAUSIBLE_MSLP_HPA || value > MAX_PLAUSIBLE_MSLP_HPA)
+  ))) return null;
+
+  const nowMs = nowDate.getTime();
+  const maximumEndMs = nowMs + METEOGRAM_MAX_FORECAST_MS;
+  const eligible = parsedTimes.flatMap(({ timestamp, validZ }, index) => (
+    timestamp >= nowMs && timestamp < maximumEndMs
+      ? [{ timestamp, validZ, pressureHpa: finiteJsonNumber(payload.hourly.pressure_msl[index]) }]
+      : []
+  ));
+  const firstValueIndex = eligible.findIndex((entry) => entry.pressureHpa !== null);
+  const lastValueIndex = eligible.findLastIndex((entry) => entry.pressureHpa !== null);
+  const retained = firstValueIndex < 0 ? [] : eligible.slice(firstValueIndex, lastValueIndex + 1);
+  const hourlyTimestamps = [];
+  const pressureSamples = [];
+  for (const { timestamp, validZ, pressureHpa } of retained) {
+    hourlyTimestamps.push(validZ);
+    if (pressureHpa === null) continue;
+    pressureSamples.push({
+      validStartZ: validZ,
+      validEndZ: new Date(Math.min(timestamp + PRESSURE_SAMPLE_INTERVAL_MS, maximumEndMs)).toISOString(),
+      sampleSemantics: "INSTANTANEOUS",
+      pressureHpa,
+      pressureInHg: pressureHpa / HPA_PER_INHG,
+      pressureReference: "MSLP",
+      product: GFS_PRESSURE_PRODUCT,
+      source: GFS_PRESSURE_SOURCE,
+      sourceUrl: identity.sourceUrl,
+      fetchedZ,
+      updateZ,
+      model: GFS_PRESSURE_MODEL,
+    });
+  }
+  return {
+    product: GFS_PRESSURE_PRODUCT,
+    station,
+    source: GFS_PRESSURE_SOURCE,
+    sourceUrl: identity.sourceUrl,
+    fetchedZ,
+    updateZ,
+    updateSemantics: updateZ ? "MODEL_RUN_TIME" : "NOT_EXPOSED_BY_SOURCE",
+    fetchedSemantics: "HTTP_RETRIEVAL_TIME",
+    model: GFS_PRESSURE_MODEL,
+    pressureReference: "MSLP",
+    point: { latitude: pointLatitude, longitude: pointLongitude },
+    sourceGridPoint: { latitude: payloadLatitude, longitude: payloadLongitude },
+    hourlyTimestamps,
+    pressureSamples,
   };
 }
 
@@ -800,6 +958,17 @@ export function buildTafForecastBuckets(tafReport, {
           validEndZ: validZ,
         } : null,
         dewPoint: null,
+        pressure: state.pressureInHg === null ? null : {
+          product: "TAF",
+          source: tafReport.source || "Current TAF",
+          sourceUrl: "",
+          updateZ: decoded.issuanceUtc,
+          fetchedZ: null,
+          model: null,
+          validStartZ: validZ,
+          validEndZ: validZ,
+          pressureReference: "QNH",
+        },
       },
     };
     value.weather = weatherPresentation(weatherCodes, value.clouds);
@@ -929,6 +1098,7 @@ export function parseMeteogramObservation(report) {
     windGustKt: windMatch?.[3] ? Number(windMatch[3]) * windFactor : null,
     pressureInHg,
     pressureHpa,
+    pressureReference: altimeter ? "ALTIMETER" : qnh ? "QNH" : null,
     visibilitySm: visibility.valueSm,
     visibilityQualifier: visibility.qualifier,
     visibilityDisplay: visibility.display,
@@ -1126,7 +1296,7 @@ function blankSupplementalForecastBucket(station, validZ, supplemental) {
     conditional: [],
     becoming: [],
     precipitation: blankPrecipitationState(),
-    fieldProvenance: { temperature: null, dewPoint: null },
+    fieldProvenance: { temperature: null, dewPoint: null, pressure: null },
     supplementalOnly: true,
   };
   value.weather = { icon: "·", label: "AVIATION WX UNAVAILABLE" };
@@ -1181,10 +1351,96 @@ function mergeSupplementalForecastBuckets(tafBuckets, supplemental, station, now
     });
 }
 
+function pressureSampleProvenance(sample) {
+  if (!sample) return null;
+  return {
+    product: sample.product,
+    source: sample.source,
+    sourceUrl: sample.sourceUrl,
+    fetchedZ: sample.fetchedZ,
+    updateZ: sample.updateZ,
+    model: sample.model,
+    validStartZ: sample.validStartZ,
+    validEndZ: sample.validEndZ,
+    pressureReference: sample.pressureReference,
+    sampleSemantics: sample.sampleSemantics,
+  };
+}
+
+function blankPressureForecastBucket(station, validZ, pressureForecast) {
+  const value = {
+    ...blankForecastState(),
+    station,
+    kind: "FORECAST",
+    observedZ: validZ,
+    validZ,
+    reportType: "GFS MSLP",
+    raw: "",
+    source: pressureForecast.source,
+    tafIssuanceZ: null,
+    tafSourceToken: "",
+    exactBoundary: false,
+    temperatureKind: "",
+    temperatureExtrema: [],
+    conditional: [],
+    becoming: [],
+    precipitation: blankPrecipitationState(),
+    fieldProvenance: { temperature: null, dewPoint: null, pressure: null },
+    supplementalOnly: false,
+    pressureOnly: true,
+  };
+  value.weather = { icon: "·", label: "AVIATION WX UNAVAILABLE" };
+  return value;
+}
+
+function mergePressureForecastBuckets(forecastBuckets, pressureForecast, station, nowDate) {
+  if (!pressureForecast) return forecastBuckets;
+  const nowMs = nowDate.getTime();
+  const maximumEndMs = nowMs + METEOGRAM_MAX_FORECAST_MS;
+  const byTime = new Map((forecastBuckets || []).map((bucket) => [bucket.validZ, bucket]));
+  const samplesByTime = new Map((pressureForecast.pressureSamples || []).map((sample) => [sample.validStartZ, sample]));
+  const pressureTimes = new Set(pressureForecast.hourlyTimestamps || []);
+  const times = new Set([...byTime.keys(), ...pressureTimes]);
+  return [...times]
+    .map((validZ) => ({ validZ, timestamp: Date.parse(validZ) }))
+    .filter((entry) => Number.isFinite(entry.timestamp) && entry.timestamp >= nowMs && entry.timestamp < maximumEndMs)
+    .sort((left, right) => left.timestamp - right.timestamp)
+    .map(({ validZ }) => {
+      const original = byTime.get(validZ);
+      const bucket = original
+        ? {
+          ...original,
+          precipitation: { ...original.precipitation },
+          fieldProvenance: { ...(original.fieldProvenance || {}) },
+        }
+        : blankPressureForecastBucket(station, validZ, pressureForecast);
+      if (!("pressure" in bucket.fieldProvenance)) bucket.fieldProvenance.pressure = null;
+      const sample = samplesByTime.get(validZ) || null;
+      bucket.pressureForecastExpected = pressureTimes.has(validZ);
+      bucket.pressureForecastValue = sample ? {
+        pressureHpa: sample.pressureHpa,
+        pressureInHg: sample.pressureInHg,
+        pressureReference: sample.pressureReference,
+        ...pressureSampleProvenance(sample),
+      } : null;
+      // An explicitly encoded TAF QNH remains authoritative for that aviation
+      // forecast bucket. GFS MSLP fills only a genuinely missing pressure and
+      // is never presented as an altimeter/QNH value.
+      if (bucket.pressureInHg === null && sample) {
+        bucket.pressureHpa = sample.pressureHpa;
+        bucket.pressureInHg = sample.pressureInHg;
+        bucket.pressureReference = "MSLP";
+        bucket.fieldProvenance.pressure = pressureSampleProvenance(sample);
+      }
+      return bucket;
+    });
+}
+
 export function buildMeteogramModel(reports, {
   station: stationValue,
   tafReports = [],
   supplementalForecast = null,
+  pressureForecast = null,
   now = new Date(),
 } = {}) {
   const station = normalizeIcao(stationValue || reports?.[0]?.station);
@@ -1214,15 +1470,24 @@ export function buildMeteogramModel(reports, {
   const supplementalTimestamps = Number.isFinite(nowDate.getTime())
     ? supplementalForecastTimestamps(supplemental, nowDate)
     : [];
+  const parsedPressureForecast = pressureForecast?.product === GFS_PRESSURE_PRODUCT
+    && Array.isArray(pressureForecast.pressureSamples)
+    && Array.isArray(pressureForecast.hourlyTimestamps)
+    ? pressureForecast
+    : parseGfsPressureForecast(pressureForecast, { station, now: nowDate });
+  const pressureTimestamps = parsedPressureForecast?.hourlyTimestamps || [];
   const tafResult = buildTafForecastBuckets(Array.isArray(tafReports) ? tafReports[0] : null, {
     station,
     now: nowDate,
     latestObservedZ: observations.at(-1)?.observedZ || null,
-    additionalTimestamps: supplementalTimestamps,
+    additionalTimestamps: [...supplementalTimestamps, ...pressureTimestamps],
   });
-  const forecasts = Number.isFinite(nowDate.getTime())
+  const supplementalForecasts = Number.isFinite(nowDate.getTime())
     ? mergeSupplementalForecastBuckets(tafResult.buckets, supplemental, station, nowDate, supplementalTimestamps)
     : tafResult.buckets;
+  const forecasts = Number.isFinite(nowDate.getTime())
+    ? mergePressureForecastBuckets(supplementalForecasts, parsedPressureForecast, station, nowDate)
+    : supplementalForecasts;
   const observedPrecipitationIntervals = selectedObservedPrecipitationIntervals(observations);
   const observedSnowDepthIncreaseIntervals = selectedObservedSnowDepthIncreaseIntervals(observations);
   const forecastPrecipitationIntervals = supplemental?.quantitativePrecipitationIntervals || [];
@@ -1236,6 +1501,7 @@ export function buildMeteogramModel(reports, {
     dividerZ: forecasts.length ? nowDate.toISOString() : null,
     taf: tafResult.taf,
     supplemental,
+    pressureForecast: parsedPressureForecast,
     observedPrecipitationIntervals,
     observedSnowDepthIncreaseIntervals,
     forecastPrecipitationIntervals,

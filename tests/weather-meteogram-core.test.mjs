@@ -10,6 +10,7 @@ import {
   formatTemperature,
   formatWind,
   meteogramLookupRequest,
+  parseGfsPressureForecast,
   parseNwsGridForecast,
   parseMeteogramObservation,
 } from "../weather-meteogram-core.js";
@@ -95,6 +96,51 @@ function nwsGridForecast({
   };
 }
 
+function gfsPressureForecast({
+  station = "KMEM",
+  product = "OPEN_METEO_GFS_MSLP",
+  source = "NOAA GFS / HRRR via Open-Meteo",
+  model = "gfs_seamless",
+  sourceUrl = "https://api.open-meteo.com/v1/gfs?latitude=35.0424&longitude=-89.9767&hourly=pressure_msl&models=gfs_seamless&timezone=UTC&forecast_hours=48",
+  fetchedZ = "2026-09-01T03:16:00Z",
+  updateZ = null,
+  point = { latitude: 35.0424, longitude: -89.9767 },
+  latitude = 35,
+  longitude = -90,
+  timezone = "GMT",
+  utcOffsetSeconds = 0,
+  timeUnit = "iso8601",
+  pressureUnit = "hPa",
+  times = [
+    "2026-09-01T03:00",
+    "2026-09-01T04:00",
+    "2026-09-01T05:00",
+    "2026-09-01T06:00",
+    "2026-09-01T07:00",
+  ],
+  pressures = [1014.2, 1013.8, null, 1012.4, 1011.9],
+} = {}) {
+  return {
+    product,
+    station,
+    source,
+    sourceUrl,
+    fetchedZ,
+    updateZ,
+    model,
+    point,
+    payload: {
+      latitude,
+      longitude,
+      utc_offset_seconds: utcOffsetSeconds,
+      timezone,
+      timezone_abbreviation: timezone,
+      hourly_units: { time: timeUnit, pressure_msl: pressureUnit },
+      hourly: { time: times, pressure_msl: pressures },
+    },
+  };
+}
+
 test("structured METAR parsing preserves exact observed fields and precipitation semantics", () => {
   const parsed = parseMeteogramObservation(report());
   assert.equal(parsed.station, "KMEM");
@@ -107,6 +153,7 @@ test("structured METAR parsing preserves exact observed fields and precipitation
   assert.equal(parsed.windSpeedKt, 12);
   assert.equal(parsed.windGustKt, 22);
   assert.equal(parsed.pressureInHg, 29.88);
+  assert.equal(parsed.pressureReference, "ALTIMETER");
   assert.equal(parsed.visibilitySm, 2);
   assert.equal(parsed.visibilityDisplay, "2 SM");
   assert.deepEqual(parsed.clouds.layers.map(({ cover, heightFt, convective }) => ({ cover, heightFt, convective })), [
@@ -139,6 +186,7 @@ test("international QNH, metric visibility, variable wind, negative temperature,
   assert.equal(parsed.clouds.display, "SKC", "the exact clear/no-significant-cloud token is retained for visual semantics");
   assert.ok(Math.abs(parsed.pressureHpa - 1018) < 0.001);
   assert.ok(Math.abs(parsed.pressureInHg - 30.061) < 0.01);
+  assert.equal(parsed.pressureReference, "QNH");
   for (const token of ["CLR", "NSC", "NCD"]) {
     const clear = parseMeteogramObservation({
       station: "EGLL", timestamp: "2026-09-01T00:20:00Z", product: "METAR",
@@ -676,6 +724,149 @@ test("trend connectors break across long observation gaps instead of fabricating
   const svg = buildMeteogramSvgMarkup(model, {}, { viewportWidth: 900 });
   assert.equal((svg.match(/class="aviation-meteogram-temp-line"/g) || []).length, 2);
   assert.equal((svg.match(/class="aviation-meteogram-dew-line"/g) || []).length, 2);
+});
+
+test("Open-Meteo NOAA GFS MSLP parser retains exact hourly samples and truthful provenance", () => {
+  const parsed = parseGfsPressureForecast(gfsPressureForecast(), {
+    station: "KMEM",
+    now: new Date("2026-09-01T03:15:00Z"),
+  });
+  assert.ok(parsed);
+  assert.equal(parsed.product, "OPEN_METEO_GFS_MSLP");
+  assert.equal(parsed.source, "NOAA GFS / HRRR via Open-Meteo");
+  assert.equal(parsed.model, "gfs_seamless");
+  assert.equal(parsed.pressureReference, "MSLP");
+  assert.equal(parsed.updateZ, null, "the API does not expose a model update time, so one is not invented");
+  assert.equal(parsed.updateSemantics, "NOT_EXPOSED_BY_SOURCE");
+  assert.equal(parsed.fetchedZ, "2026-09-01T03:16:00.000Z");
+  assert.equal(parsed.fetchedSemantics, "HTTP_RETRIEVAL_TIME");
+  assert.deepEqual(parsed.point, { latitude: 35.0424, longitude: -89.9767 });
+  assert.deepEqual(parsed.sourceGridPoint, { latitude: 35, longitude: -90 });
+  assert.deepEqual(parsed.hourlyTimestamps, [
+    "2026-09-01T04:00:00.000Z",
+    "2026-09-01T05:00:00.000Z",
+    "2026-09-01T06:00:00.000Z",
+    "2026-09-01T07:00:00.000Z",
+  ], "a null source value retains its exact timestamp so renderers can break the pressure path");
+  assert.deepEqual(parsed.pressureSamples.map((sample) => sample.validStartZ), [
+    "2026-09-01T04:00:00.000Z",
+    "2026-09-01T06:00:00.000Z",
+    "2026-09-01T07:00:00.000Z",
+  ]);
+  const first = parsed.pressureSamples[0];
+  assert.equal(first.validEndZ, "2026-09-01T05:00:00.000Z");
+  assert.equal(first.sampleSemantics, "INSTANTANEOUS");
+  assert.equal(first.pressureHpa, 1013.8);
+  assert.ok(Math.abs(first.pressureInHg - (1013.8 / 33.8638866667)) < 1e-12);
+  assert.equal(first.pressureReference, "MSLP");
+  assert.equal(first.product, "OPEN_METEO_GFS_MSLP");
+  assert.match(first.sourceUrl, /^https:\/\/api\.open-meteo\.com\/v1\/gfs\?/);
+});
+
+test("GFS MSLP parser fails closed on source, KMEM identity, units, timezone, cadence, and malformed pressure", () => {
+  const now = new Date("2026-09-01T03:15:00Z");
+  const rejected = [
+    gfsPressureForecast({ product: "GFS" }),
+    gfsPressureForecast({ source: "Unknown model" }),
+    gfsPressureForecast({ sourceUrl: "https://api.open-meteo.com/v1/gfs?latitude=35.0424&longitude=-89.9767&hourly=pressure_msl&models=gfs_seamless&timezone=UTC&forecast_hours=168" }),
+    gfsPressureForecast({ model: "ecmwf_ifs" }),
+    gfsPressureForecast({ station: "KATL" }),
+    gfsPressureForecast({ point: { latitude: 33.64, longitude: -84.43 } }),
+    gfsPressureForecast({ latitude: 34, longitude: -90 }),
+    gfsPressureForecast({ timezone: "America/Chicago", utcOffsetSeconds: -18000 }),
+    gfsPressureForecast({ pressureUnit: "Pa" }),
+    gfsPressureForecast({
+      sourceUrl: "https://example.com/v1/gfs?latitude=35.0424&longitude=-89.9767&hourly=pressure_msl&models=gfs_seamless&timezone=UTC",
+    }),
+    gfsPressureForecast({
+      sourceUrl: "https://api.open-meteo.com/v1/gfs?latitude=35.0424&longitude=-89.9767&hourly=surface_pressure&models=gfs_seamless&timezone=UTC",
+    }),
+    gfsPressureForecast({
+      times: ["2026-09-01T03:00", "2026-09-01T05:00"],
+      pressures: [1014, 1013],
+    }),
+    gfsPressureForecast({ pressures: [1014.2, "1013.8", null, 1012.4, 1011.9] }),
+    gfsPressureForecast({ pressures: [1014.2, 1200, null, 1012.4, 1011.9] }),
+  ];
+  rejected.forEach((input, index) => {
+    assert.equal(parseGfsPressureForecast(input, { station: "KMEM", now }), null, `invalid pressure input ${index + 1} fails closed`);
+  });
+});
+
+test("GFS MSLP fills only missing forecast pressure, preserves gaps, and does not overwrite TAF QNH", () => {
+  const now = new Date("2026-09-01T03:15:00Z");
+  const baseOptions = {
+    station: "KMEM",
+    pressureForecast: gfsPressureForecast(),
+    now,
+  };
+  const model = buildMeteogramModel([report({
+    timestamp: "2026-09-01T02:54:00Z",
+    raw: "METAR KMEM 010254Z 18005KT 10SM CLR 24/18 A3000",
+  })], baseOptions);
+  assert.equal(model.observations[0].pressureReference, "ALTIMETER");
+  assert.equal(model.pressureForecast.product, "OPEN_METEO_GFS_MSLP");
+  const atFour = model.forecasts.find((bucket) => bucket.validZ === "2026-09-01T04:00:00.000Z");
+  const atFive = model.forecasts.find((bucket) => bucket.validZ === "2026-09-01T05:00:00.000Z");
+  const atSix = model.forecasts.find((bucket) => bucket.validZ === "2026-09-01T06:00:00.000Z");
+  assert.equal(atFour.pressureHpa, 1013.8);
+  assert.equal(atFour.pressureReference, "MSLP");
+  assert.equal(atFour.pressureOnly, true);
+  assert.equal(atFour.supplementalOnly, false, "a GFS-only bucket is not mislabeled as an NWS grid bucket");
+  assert.equal(atFour.fieldProvenance.pressure.product, "OPEN_METEO_GFS_MSLP");
+  assert.equal(atFour.fieldProvenance.pressure.source, "NOAA GFS / HRRR via Open-Meteo");
+  assert.equal(atFour.fieldProvenance.pressure.model, "gfs_seamless");
+  assert.equal(atFour.fieldProvenance.pressure.fetchedZ, "2026-09-01T03:16:00.000Z");
+  assert.equal(atFour.fieldProvenance.pressure.validStartZ, "2026-09-01T04:00:00.000Z");
+  assert.equal(atFour.fieldProvenance.pressure.validEndZ, "2026-09-01T05:00:00.000Z");
+  assert.equal(atFive.pressureInHg, null, "a missing source hour is a real gap, not an interpolated pressure");
+  assert.equal(atFive.fieldProvenance.pressure, null);
+  assert.equal(atFive.pressureForecastExpected, true, "the missing source hour retains its truthful GFS coverage marker");
+  assert.equal(atSix.pressureHpa, 1012.4);
+
+  const tafWithQnh = tafReport({
+    raw: "TAF KMEM 010200Z 0103/0206 18008KT P6SM SCT050 QNH3001INS FM010600 22010KT P6SM BKN050 QNH3000INS",
+  });
+  const qnhModel = buildMeteogramModel([], {
+    ...baseOptions,
+    tafReports: [tafWithQnh],
+  });
+  const qnhAtFour = qnhModel.forecasts.find((bucket) => bucket.validZ === "2026-09-01T04:00:00.000Z");
+  assert.equal(qnhAtFour.pressureInHg, 30.01);
+  assert.equal(qnhAtFour.pressureReference, "QNH");
+  assert.equal(qnhAtFour.fieldProvenance.pressure.product, "TAF");
+  assert.equal(qnhAtFour.pressureForecastValue.pressureReference, "MSLP", "the unused source sample remains explicitly identified for diagnostics");
+
+  const tafWithoutQnh = tafReport({
+    raw: "TAF KMEM 010200Z 0103/0206 18008KT P6SM SCT050 FM010600 22010KT P6SM BKN050",
+  });
+  const combinedGapModel = buildMeteogramModel([], {
+    ...baseOptions,
+    tafReports: [tafWithoutQnh],
+  });
+  const combinedGap = combinedGapModel.forecasts.find((bucket) => bucket.validZ === "2026-09-01T05:00:00.000Z");
+  assert.ok(combinedGap.tafIssuanceZ, "the gap fixture is a real TAF bucket rather than a pressure-only synthetic bucket");
+  assert.equal(combinedGap.pressureOnly, undefined);
+  assert.equal(combinedGap.pressureForecastExpected, true);
+  assert.equal(combinedGap.pressureForecastValue, null);
+  assert.equal(combinedGap.pressureInHg, null, "a missing GFS hour remains missing inside a combined forecast bucket");
+});
+
+test("GFS pressure horizon uses the existing 36-hour cap without interpolation", () => {
+  const firstMs = Date.parse("2026-09-01T04:00:00Z");
+  const times = Array.from({ length: 45 }, (_, index) => new Date(firstMs + index * 60 * 60 * 1000).toISOString().slice(0, 16));
+  const parsed = parseGfsPressureForecast(gfsPressureForecast({
+    times,
+    pressures: times.map((_, index) => 1015 - index * 0.1),
+  }), {
+    station: "KMEM",
+    now: new Date("2026-09-01T03:15:00Z"),
+  });
+  assert.ok(parsed.pressureSamples.length > 0);
+  assert.ok(parsed.hourlyTimestamps.every((timestamp) => (
+    Date.parse(timestamp) < Date.parse("2026-09-02T15:15:00Z")
+  )));
+  assert.equal(parsed.hourlyTimestamps.at(-1), "2026-09-02T15:00:00.000Z");
 });
 
 test("official NWS grid fields retain units, valid intervals, provenance, and exact inch conversions", () => {

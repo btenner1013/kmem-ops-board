@@ -537,6 +537,15 @@
 }
 .aviation-meteogram-wind-forecast .aviation-meteogram-wind-arrow{stroke:#77dbe3;opacity:.78}
 .aviation-meteogram-pressure-value{fill:#8ee8ff;font-size:10px}
+.aviation-meteogram-pressure-reference{
+  fill:#67cbd6;
+  stroke:#050909;
+  stroke-width:2px;
+  paint-order:stroke;
+  font:900 7px Consolas,"Courier New",monospace;
+  letter-spacing:.055em;
+  text-anchor:middle;
+}
 
 .aviation-meteogram-cloud-altitude-tick line{stroke:rgba(125,157,156,.2);stroke-width:.8;stroke-dasharray:2 4}
 .aviation-meteogram-cloud-altitude-tick text{fill:#7fa5a4;font:800 8px Arial,sans-serif;paint-order:stroke;stroke:#050909;stroke-width:2.5px}
@@ -655,6 +664,12 @@
   font-weight:900;
   letter-spacing:.04em;
   line-height:1.35;
+}
+
+.aviation-meteogram-notes a{
+  color:#73cbd1;
+  text-decoration:underline;
+  text-underline-offset:2px;
 }
 
 .aviation-meteogram-data-details{
@@ -847,6 +862,7 @@
   body.aviation-meteogram-printing .aviation-meteogram-wind-heading,
   body.aviation-meteogram-printing .aviation-meteogram-wind-speed,
   body.aviation-meteogram-printing .aviation-meteogram-pressure-value,
+  body.aviation-meteogram-printing .aviation-meteogram-pressure-reference,
   body.aviation-meteogram-printing .aviation-meteogram-visibility-value,
   body.aviation-meteogram-printing .aviation-meteogram-cloud-layer-label,
   body.aviation-meteogram-printing .aviation-meteogram-cloud-unknown,
