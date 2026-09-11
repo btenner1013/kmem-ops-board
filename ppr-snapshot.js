@@ -1,4 +1,9 @@
-import { parsePprSnapshotCsv } from "./ppr-snapshot-core.js";
+import {
+  buildRimSlideLines,
+  formatPprDate,
+  formatPprTime,
+  parsePprSnapshotCsv
+} from "./ppr-snapshot-core.js";
 
 const DISPLAY_FIELDS = Object.freeze([
   "status",
@@ -34,11 +39,16 @@ const dom = {
   loadAnotherButton: document.querySelector("#loadAnotherButton"),
   clearButton: document.querySelector("#clearPprButton"),
   cards: document.querySelector("#pprCards"),
-  emptySnapshot: document.querySelector("#emptySnapshot")
+  emptySnapshot: document.querySelector("#emptySnapshot"),
+  rimSection: document.querySelector("#rimSection"),
+  rimLines: document.querySelector("#rimLines"),
+  copyRimButton: document.querySelector("#copyRimLinesButton"),
+  copyRimStatus: document.querySelector("#copyRimStatus")
 };
 
 const session = {
   records: [],
+  rimText: "",
   busy: false,
   loadEpoch: 0
 };
@@ -59,88 +69,98 @@ function joinVisible(values, separator) {
 }
 
 function timingText(timing) {
-  const local = joinVisible([timing?.dateLocal, timing?.timeLocal], " — ");
-  const zulu = hasText(timing?.timeZulu) ? String(timing.timeZulu).trim() : "";
-  return joinVisible([local, zulu], " / ");
+  const date = formatPprDate(timing?.dateLocal);
+  const local = formatPprTime(timing?.timeLocal, "L");
+  const zulu = formatPprTime(timing?.timeZulu, "Z");
+  return joinVisible([date, joinVisible([local, zulu], " / ")], " · ");
 }
 
 function estimatedBadge() {
   return textElement("span", "estimated-badge", "ESTIMATED");
 }
 
-function renderTimingBlock(title, timing, showEstimated) {
+function renderTimingLine(title, timing, showEstimated) {
   const value = timingText(timing);
   if (!value) return null;
-  const block = document.createElement("section");
-  block.className = "timing-block";
-
-  const heading = textElement("div", "timing-heading", title);
-  if (showEstimated) heading.append(estimatedBadge());
-  block.append(heading, textElement("p", "timing-value", value));
-  return block;
+  const line = document.createElement("p");
+  line.className = "timing-line";
+  line.append(
+    textElement("span", "timing-label", `${title}:`),
+    textElement("span", "timing-value", value)
+  );
+  if (showEstimated) line.append(estimatedBadge());
+  return line;
 }
 
-function appendDetail(list, label, value, { wide = false } = {}) {
+function appendDetail(container, label, value, { className = "" } = {}) {
   if (!hasText(value)) return;
-  const row = document.createElement("div");
-  row.className = `detail-row${wide ? " is-wide" : ""}`;
-  const term = textElement("dt", "", label);
-  const description = textElement("dd", "", value);
-  row.append(term, description);
-  list.append(row);
+  container.append(
+    textElement("p", `detail-line${className ? ` ${className}` : ""}`, `${label}: ${value}`)
+  );
+}
+
+function appendCombinedDetails(container, items) {
+  const parts = items
+    .filter(([, value]) => hasText(value))
+    .map(([label, value]) => `${label}: ${String(value).trim()}`);
+  if (parts.length) container.append(textElement("p", "detail-line", parts.join(" · ")));
 }
 
 function renderPprCard(record) {
   const cancelled = String(record.status || "").toLowerCase().includes("cancel");
   const article = document.createElement("article");
-  article.className = `ppr-card ${cancelled ? "is-cancelled" : "is-approved"}`;
+  article.className = `ppr-entry ${cancelled ? "is-cancelled" : "is-approved"}`;
   article.setAttribute(
     "aria-label",
     `${cancelled ? "Cancelled or denied" : "Approved"} PPR ${record.pprNumber || "number unavailable"}`
   );
 
   const status = document.createElement("header");
-  status.className = "card-status";
+  status.className = "ppr-status-line";
+  const dot = textElement("span", "status-dot", cancelled ? "🔴" : "🟢");
+  dot.setAttribute("aria-hidden", "true");
   status.append(
-    textElement("span", "status-label", cancelled ? "CANCELLED / DENIED" : "APPROVED - EMAIL SENT")
+    dot,
+    textElement("span", "status-label", cancelled ? "CANCELLED" : "APPROVED")
   );
   if (hasText(record.pprNumber)) {
-    status.append(textElement("span", "ppr-number", `— PPR ${record.pprNumber}`));
+    status.append(textElement("span", "ppr-number", `· PPR ${record.pprNumber}`));
   }
 
   const body = document.createElement("div");
-  body.className = "card-body";
+  body.className = "ppr-entry-body";
   const identity = joinVisible([record.callsign, record.aircraftType, record.requestType], " · ");
   if (identity) body.append(textElement("p", "identity-line", identity));
 
   const route = joinVisible([record.origin, record.destination], " → ");
   if (route) body.append(textElement("p", "route-line", route));
 
-  const timing = document.createElement("div");
-  timing.className = "timing-grid";
   const scope = record.estimatedScope;
-  const arrivalTiming = renderTimingBlock("ARRIVAL", record.arrival, scope === "arrival" || scope === "both");
-  const departureTiming = renderTimingBlock("DEPARTURE", record.departure, scope === "departure" || scope === "both");
-  if (arrivalTiming) timing.append(arrivalTiming);
-  if (departureTiming) timing.append(departureTiming);
-  if (timing.childElementCount) body.append(timing);
+  const arrivalTiming = renderTimingLine("ARR", record.arrival, scope === "arrival" || scope === "both");
+  const departureTiming = renderTimingLine("DEP", record.departure, scope === "departure" || scope === "both");
+  if (arrivalTiming) body.append(arrivalTiming);
+  if (departureTiming) body.append(departureTiming);
   if (scope === "neutral") {
     const neutral = estimatedBadge();
     neutral.classList.add("neutral-estimate");
     body.append(neutral);
   }
 
-  const details = document.createElement("dl");
-  details.className = "detail-list";
-  appendDetail(details, "HOME STATION", record.homeStation);
-  appendDetail(details, "TAIL", record.tailNumbers);
-  appendDetail(details, "VIP", record.vipCode);
-  appendDetail(details, "FUEL", record.fuel);
-  appendDetail(details, "TRANS", record.transportation);
-  appendDetail(details, "PAX", record.passengers);
-  appendDetail(details, "SPECIAL", record.specialRequirements, { wide: true });
-  appendDetail(details, "HAZMAT", record.hazmat, { wide: true });
-  appendDetail(details, "NOTES", record.notes, { wide: true });
+  const details = document.createElement("div");
+  details.className = "detail-lines";
+  if (!cancelled) {
+    appendCombinedDetails(details, [
+      ["HOME", record.homeStation],
+      ["TAIL", record.tailNumbers]
+    ]);
+    appendDetail(details, "VIP", record.vipCode);
+    appendDetail(details, "FUEL", record.fuel);
+    appendDetail(details, "TRANS", record.transportation);
+    appendDetail(details, "PAX", record.passengers);
+    appendDetail(details, "SPECIAL", record.specialRequirements);
+    appendDetail(details, "HAZMAT", record.hazmat);
+  }
+  appendDetail(details, "NOTES", record.notes, { className: "notes-line" });
   if (details.childElementCount) body.append(details);
 
   article.append(status, body);
@@ -149,13 +169,23 @@ function renderPprCard(record) {
 
 function renderRecords(records) {
   const stagedCards = document.createElement("div");
+  const allowedRecords = [];
   for (const record of records) {
     // Render only named allowlist fields. Unknown source columns never reach this loop.
     const allowedRecord = Object.create(null);
     for (const field of DISPLAY_FIELDS) allowedRecord[field] = record[field];
+    allowedRecords.push(allowedRecord);
     stagedCards.append(renderPprCard(allowedRecord));
   }
   dom.cards.replaceChildren(...stagedCards.children);
+
+  const rimLines = buildRimSlideLines(allowedRecords);
+  session.rimText = rimLines.join("\n");
+  dom.rimLines.replaceChildren(...rimLines.map(line => textElement("p", "rim-line", line)));
+  dom.rimSection.hidden = rimLines.length === 0;
+  dom.copyRimButton.disabled = rimLines.length === 0;
+  dom.copyRimStatus.textContent = "";
+
   const isEmpty = records.length === 0;
   dom.emptySnapshot.hidden = !isEmpty;
   dom.snapshotButton.disabled = isEmpty;
@@ -181,8 +211,13 @@ function releasePprSession({ showImport = true } = {}) {
   session.loadEpoch += 1;
   leaveSnapshotMode();
   session.records = [];
+  session.rimText = "";
   session.busy = false;
   dom.cards.replaceChildren();
+  dom.rimLines.replaceChildren();
+  dom.rimSection.hidden = true;
+  dom.copyRimButton.disabled = true;
+  dom.copyRimStatus.textContent = "";
   dom.emptySnapshot.hidden = true;
   dom.snapshotButton.disabled = true;
   dom.fileInput.value = "";
@@ -310,6 +345,15 @@ dom.dropZone.addEventListener("drop", event => {
 });
 
 dom.snapshotButton.addEventListener("click", () => void enterSnapshotMode());
+dom.copyRimButton.addEventListener("click", async () => {
+  if (!session.rimText) return;
+  try {
+    await navigator.clipboard.writeText(session.rimText);
+    dom.copyRimStatus.textContent = "RIM lines copied.";
+  } catch {
+    dom.copyRimStatus.textContent = "Copy was unavailable. Select the RIM lines and copy them manually.";
+  }
+});
 dom.loadAnotherButton.addEventListener("click", () => {
   releasePprSession();
   dom.chooseButton.focus();

@@ -4,12 +4,18 @@ import { readFile } from "node:fs/promises";
 
 import {
   MAX_PPR_SNAPSHOT_RECORDS,
+  PPR_OPERATION,
   PPR_REQUIRED_FIELDS,
   PPR_STATUS,
   PprCsvError,
+  buildRimSlideLines,
   estimatedScopeFromNotes,
+  formatPprDate,
+  formatPprTime,
+  formatRimSlideLine,
   isMeaningfulDisplayValue,
   mapPprHeaders,
+  normalizePprOperation,
   parseCsvRows,
   parsePprSnapshotCsv,
   redactSensitiveFreeText,
@@ -204,6 +210,167 @@ test("invalid arrival times sort after valid arrivals without fabricating a time
     ["001", "002"],
   );
   assert.equal(parsed.records[1].arrival.sortKey, null);
+});
+
+test("compact date and time helpers normalize supported source forms without inventing missing data", () => {
+  assert.equal(formatPprDate("09/12/2026"), "12 SEP");
+  assert.equal(formatPprDate("2026-09-12T08:15:00"), "12 SEP");
+  assert.equal(formatPprDate("Sep 9, 2026", { includeYear: true }), "09 SEP 2026");
+  assert.equal(formatPprDate("UNKNOWN"), "UNKNOWN");
+  assert.equal(formatPprDate("N/A"), "");
+
+  assert.equal(formatPprTime("8:15 AM", "L"), "0815L");
+  assert.equal(formatPprTime("1:05 PM", "l"), "1305L");
+  assert.equal(formatPprTime("1315Z", "Z"), "1315Z");
+  assert.equal(formatPprTime("24:00", "L"), "2400L");
+  assert.equal(formatPprTime("0.5", "Z"), "1200Z");
+  assert.equal(formatPprTime("UNKNOWN", "L"), "UNKNOWN");
+  assert.equal(formatPprTime("FALSE", "Z"), "");
+});
+
+test("request types normalize to exactly the four RIM operation labels", () => {
+  assert.equal(normalizePprOperation("Arrival"), PPR_OPERATION.INBOUND);
+  assert.equal(normalizePprOperation("Inbound Only"), PPR_OPERATION.INBOUND);
+  assert.equal(normalizePprOperation("Departure"), PPR_OPERATION.OUTBOUND);
+  assert.equal(normalizePprOperation("Outbound Only"), PPR_OPERATION.OUTBOUND);
+  assert.equal(normalizePprOperation("TURN"), PPR_OPERATION.INBOUND_OUTBOUND);
+  assert.equal(normalizePprOperation("inbound and outbound"), PPR_OPERATION.INBOUND_OUTBOUND);
+  assert.equal(normalizePprOperation("Arrival / Departure"), PPR_OPERATION.INBOUND_OUTBOUND);
+  assert.equal(normalizePprOperation("outbound + inbound"), PPR_OPERATION.OUTBOUND_INBOUND);
+  assert.equal(normalizePprOperation("Departure then Arrival"), PPR_OPERATION.OUTBOUND_INBOUND);
+  assert.equal(normalizePprOperation("unrecognized synthetic operation"), "");
+  assert.deepEqual(Object.values(PPR_OPERATION), [
+    "INBOUND",
+    "OUTBOUND",
+    "INBOUND + OUTBOUND",
+    "OUTBOUND + INBOUND",
+  ]);
+});
+
+test("RIM lines use exact movement-specific location and timing order", () => {
+  const parsed = parsePprSnapshotCsv(
+    fixture([
+      record({
+        Sequence: "001",
+        Callsign: "TESTIN",
+        "Request Type": "Inbound Only",
+        Origin: "KADW",
+        Destination: "KMEM",
+        "Arrival Date (L)": "09/12/2026",
+        "Arrival Time (L)": "10:30 PM",
+        "Arrival Time (z)": "0330Z",
+      }),
+      record({
+        Sequence: "002",
+        Callsign: "TESTOUT",
+        "Request Type": "Outbound Only",
+        Origin: "KMEM",
+        Destination: "KSUU",
+        "Departure Date (L)": "09/19/2026",
+        "Departure Time (L)": "4:30 PM",
+        "Departure Time (z)": "2130Z",
+      }),
+      record({
+        Sequence: "003",
+        Callsign: "TESTTURN",
+        "Request Type": "Inbound + Outbound",
+        Origin: "KCHS",
+        Destination: "KSKF",
+        "Arrival Date (L)": "09/15/2026",
+        "Arrival Time (L)": "8:30 AM",
+        "Arrival Time (z)": "1330Z",
+        "Departure Date (L)": "09/15/2026",
+        "Departure Time (L)": "11:00 AM",
+        "Departure Time (z)": "1600Z",
+      }),
+      record({
+        Sequence: "004",
+        Callsign: "TESTROUND",
+        "Request Type": "Outbound + Inbound",
+        Origin: "KADW",
+        Destination: "KSKF",
+        "Departure Date (L)": "09/20/2026",
+        "Departure Time (L)": "9:00 AM",
+        "Departure Time (z)": "1400Z",
+        "Arrival Date (L)": "09/20/2026",
+        "Arrival Time (L)": "5:30 PM",
+        "Arrival Time (z)": "2230Z",
+      }),
+    ]),
+  ).records;
+
+  const bySequence = new Map(parsed.map((entry) => [entry.sequence, formatRimSlideLine(entry)]));
+  assert.equal(
+    bySequence.get("001"),
+    "PPR 255-001 · TESTIN · INBOUND · ORIG KADW · ARR 12 SEP 2230L / 0330Z",
+  );
+  assert.equal(
+    bySequence.get("002"),
+    "PPR 255-002 · TESTOUT · OUTBOUND · DEST KSUU · DEP 19 SEP 1630L / 2130Z",
+  );
+  assert.equal(
+    bySequence.get("003"),
+    "PPR 255-003 · TESTTURN · INBOUND + OUTBOUND · ORIG KCHS · DEST KSKF · ARR 15 SEP 0830L / 1330Z · DEP 15 SEP 1100L / 1600Z",
+  );
+  assert.equal(
+    bySequence.get("004"),
+    "PPR 255-004 · TESTROUND · OUTBOUND + INBOUND · DEST KSKF · ORIG KADW · DEP 20 SEP 0900L / 1400Z · ARR 20 SEP 1730L / 2230Z",
+  );
+});
+
+test("RIM line generation is approved-only, chronological, KMEM-free, and support-detail-free", () => {
+  const parsed = parsePprSnapshotCsv(
+    fixture([
+      record({
+        Sequence: "003",
+        Callsign: "TESTLATE",
+        "Request Type": "Arrival",
+        Origin: "KBBB",
+        Destination: "KMEM",
+        "Arrival Date (L)": "09/13/2026",
+        "Notes:": "Synthetic note must not copy",
+      }),
+      record({
+        Sequence: "001",
+        Callsign: "TESTCOORD",
+        "Email Status": "In Coordination",
+        Origin: "KCCC",
+      }),
+      record({
+        Sequence: "004",
+        Callsign: "TESTCANCEL",
+        "Email Status": "Cancelled / Denied",
+        Origin: "KDDD",
+      }),
+      record({
+        Sequence: "002",
+        Callsign: "TESTEARLY",
+        "Request Type": "Departure",
+        Origin: "KMEM",
+        Destination: "KAAA",
+        "Arrival Date (L)": "09/11/2026",
+        "Departure Date (L)": "09/11/2026",
+        "Fuel:": "SYNTHETIC SECRET FUEL",
+        "Trans:": "SYNTHETIC SECRET TRANSPORT",
+        "Pax:": "99",
+        "Special Requirements:": "SYNTHETIC SECRET SUPPORT",
+        "Explosives Declared": "YES",
+        "Explosive Details": "SYNTHETIC SECRET HAZMAT",
+        "Notes:": "Synthetic secret note",
+      }),
+    ]),
+  ).records;
+  const reversed = [...parsed].reverse();
+  const lines = buildRimSlideLines(reversed);
+  const text = lines.join("\n");
+
+  assert.equal(lines.length, 2);
+  assert.match(lines[0], /^PPR 255-002 · TESTEARLY · OUTBOUND · DEST KAAA · DEP 11 SEP /);
+  assert.match(lines[1], /^PPR 255-003 · TESTLATE · INBOUND · ORIG KBBB · ARR 13 SEP /);
+  assert.doesNotMatch(text, /TESTCOORD|TESTCANCEL|KMEM/);
+  assert.doesNotMatch(text, /FUEL|TRANSPORT|PAX|SUPPORT|HAZMAT|secret note/i);
+  assert.equal(formatRimSlideLine(parsed.find(({ status }) => status === PPR_STATUS.CANCELLED)), "");
+  assert.equal(reversed[0].status, PPR_STATUS.CANCELLED, "the caller's array order must remain unchanged");
 });
 
 test("empty-value rules remove optional values and entire absent HAZMAT content", () => {

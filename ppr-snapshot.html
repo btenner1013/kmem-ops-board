@@ -57,8 +57,17 @@
 
       <section id="snapshotBoard" class="snapshot-board" aria-labelledby="snapshotTitle">
         <h2 id="snapshotTitle">CURRENT PPR SNAPSHOT</h2>
-        <div id="pprCards" class="ppr-card-grid"></div>
+        <div id="pprCards" class="ppr-entry-grid"></div>
         <p id="emptySnapshot" class="empty-snapshot" hidden>No approved or cancelled PPRs are present in this file.</p>
+      </section>
+
+      <section id="rimSection" class="rim-section" aria-labelledby="rimTitle" hidden>
+        <div class="rim-heading-row">
+          <h2 id="rimTitle">RIM SLIDE LINES</h2>
+          <button id="copyRimLinesButton" class="secondary-button copy-rim-button" type="button">COPY RIM LINES</button>
+        </div>
+        <div id="rimLines" class="rim-lines" aria-label="Approved PPR lines for RIM slides"></div>
+        <p id="copyRimStatus" class="copy-rim-status" role="status" aria-live="polite"></p>
       </section>
     </section>
   </main>

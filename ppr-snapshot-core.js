@@ -162,6 +162,41 @@ const MONTH_INDEX = Object.freeze({
   december: 11,
 });
 
+const MONTH_ABBREVIATIONS = Object.freeze([
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+]);
+
+export const PPR_OPERATION = Object.freeze({
+  INBOUND: "INBOUND",
+  OUTBOUND: "OUTBOUND",
+  INBOUND_OUTBOUND: "INBOUND + OUTBOUND",
+  OUTBOUND_INBOUND: "OUTBOUND + INBOUND",
+});
+
+const OPERATION_ALIASES = new Map([
+  ["ARRIVAL", PPR_OPERATION.INBOUND],
+  ["ARRIVAL ONLY", PPR_OPERATION.INBOUND],
+  ["INBOUND", PPR_OPERATION.INBOUND],
+  ["INBOUND ONLY", PPR_OPERATION.INBOUND],
+  ["INBOUND-ONLY", PPR_OPERATION.INBOUND],
+  ["DEPARTURE", PPR_OPERATION.OUTBOUND],
+  ["DEPARTURE ONLY", PPR_OPERATION.OUTBOUND],
+  ["OUTBOUND", PPR_OPERATION.OUTBOUND],
+  ["OUTBOUND ONLY", PPR_OPERATION.OUTBOUND],
+  ["OUTBOUND-ONLY", PPR_OPERATION.OUTBOUND],
+  ["ARRIVAL + DEPARTURE", PPR_OPERATION.INBOUND_OUTBOUND],
+  ["INBOUND + OUTBOUND", PPR_OPERATION.INBOUND_OUTBOUND],
+  ["INBOUND + DEPARTURE", PPR_OPERATION.INBOUND_OUTBOUND],
+  ["ARRIVAL + OUTBOUND", PPR_OPERATION.INBOUND_OUTBOUND],
+  ["TURN", PPR_OPERATION.INBOUND_OUTBOUND],
+  ["TURNAROUND", PPR_OPERATION.INBOUND_OUTBOUND],
+  ["DEPARTURE + ARRIVAL", PPR_OPERATION.OUTBOUND_INBOUND],
+  ["OUTBOUND + INBOUND", PPR_OPERATION.OUTBOUND_INBOUND],
+  ["OUTBOUND + ARRIVAL", PPR_OPERATION.OUTBOUND_INBOUND],
+  ["DEPARTURE + INBOUND", PPR_OPERATION.OUTBOUND_INBOUND],
+]);
+
 function normalizeHeader(value) {
   return String(value ?? "")
     .replace(/^\uFEFF/, "")
@@ -477,6 +512,46 @@ function parseTimeMinutes(value) {
   return hour * 60 + minute;
 }
 
+/** Format an accepted local date as the compact operational display date. */
+export function formatPprDate(value, { includeYear = false } = {}) {
+  const clean = meaningfulOrEmpty(value);
+  if (!clean) return "";
+  const parts = parseDateParts(clean);
+  if (!parts) return clean;
+  const compact = `${String(parts.day).padStart(2, "0")} ${MONTH_ABBREVIATIONS[parts.monthIndex]}`;
+  return includeYear ? `${compact} ${parts.year}` : compact;
+}
+
+/** Format an accepted clock value as four digits with an optional L/Z suffix. */
+export function formatPprTime(value, suffix = "") {
+  const clean = meaningfulOrEmpty(value);
+  if (!clean) return "";
+  const minutes = parseTimeMinutes(clean);
+  if (minutes === null) return clean;
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  const marker = /^[lz]$/i.test(String(suffix ?? "").trim())
+    ? String(suffix).trim().toLocaleUpperCase("en-US")
+    : "";
+  return `${String(hour).padStart(2, "0")}${String(minute).padStart(2, "0")}${marker}`;
+}
+
+/** Map known source request-type wording to one of the four approved operation labels. */
+export function normalizePprOperation(value) {
+  const clean = meaningfulOrEmpty(value);
+  if (!clean) return "";
+  const normalized = clean
+    .normalize("NFKC")
+    .toLocaleUpperCase("en-US")
+    .replace(/[‐‑‒–—―]/g, "-")
+    .replace(/\b(INBOUND|OUTBOUND|ARRIVAL|DEPARTURE)\s*-\s*(INBOUND|OUTBOUND|ARRIVAL|DEPARTURE)\b/g, "$1 + $2")
+    .replace(/\s*(?:\/|\+|&|→|->)\s*/g, " + ")
+    .replace(/\s+\b(?:AND|THEN)\b\s+/g, " + ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return OPERATION_ALIASES.get(normalized) ?? "";
+}
+
 function sortKeyForLocalDateTime(dateValue, timeValue) {
   const date = parseDateParts(dateValue);
   const minutes = parseTimeMinutes(timeValue);
@@ -646,6 +721,68 @@ function compareRecords(left, right) {
     return arrivalDifference;
   }
   return left.sourceRowNumber - right.sourceRowNumber;
+}
+
+function externalRimLocation(label, value) {
+  const location = meaningfulOrEmpty(value);
+  if (!location || location.toLocaleUpperCase("en-US") === "KMEM") return "";
+  return `${label} ${location}`;
+}
+
+function formatRimTiming(label, timing) {
+  const date = formatPprDate(timing?.dateLocal);
+  const local = formatPprTime(timing?.timeLocal, "L");
+  const zulu = formatPprTime(timing?.timeZulu, "Z");
+  const clocks = [local, zulu].filter(Boolean).join(" / ");
+  const value = [date, clocks].filter(Boolean).join(" ");
+  return value ? `${label} ${value}` : "";
+}
+
+/** Build one approved RIM slide line from display-allowlisted record fields only. */
+export function formatRimSlideLine(record) {
+  if (!record || record.status !== PPR_STATUS.APPROVED) return "";
+  const pprNumber = meaningfulOrEmpty(record.pprNumber);
+  const callsign = meaningfulOrEmpty(record.callsign);
+  const operation = normalizePprOperation(record.requestType);
+  if (!pprNumber || !callsign || !operation) return "";
+
+  const segments = [`PPR ${pprNumber}`, callsign, operation];
+  if (operation === PPR_OPERATION.INBOUND) {
+    segments.push(
+      externalRimLocation("ORIG", record.origin),
+      formatRimTiming("ARR", record.arrival),
+    );
+  } else if (operation === PPR_OPERATION.OUTBOUND) {
+    segments.push(
+      externalRimLocation("DEST", record.destination),
+      formatRimTiming("DEP", record.departure),
+    );
+  } else if (operation === PPR_OPERATION.INBOUND_OUTBOUND) {
+    segments.push(
+      externalRimLocation("ORIG", record.origin),
+      externalRimLocation("DEST", record.destination),
+      formatRimTiming("ARR", record.arrival),
+      formatRimTiming("DEP", record.departure),
+    );
+  } else {
+    segments.push(
+      externalRimLocation("DEST", record.destination),
+      externalRimLocation("ORIG", record.origin),
+      formatRimTiming("DEP", record.departure),
+      formatRimTiming("ARR", record.arrival),
+    );
+  }
+  return segments.filter(Boolean).join(" · ");
+}
+
+/** Return approved-only RIM lines in the same chronological order as the main snapshot. */
+export function buildRimSlideLines(records) {
+  if (!Array.isArray(records)) return [];
+  return records
+    .filter((record) => record?.status === PPR_STATUS.APPROVED)
+    .sort(compareRecords)
+    .map(formatRimSlideLine)
+    .filter(Boolean);
 }
 
 /**

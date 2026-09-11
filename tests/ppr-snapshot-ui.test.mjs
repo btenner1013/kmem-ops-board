@@ -83,7 +83,7 @@ test("clear and navigation release raw text, normalized records, card DOM, and f
   assert.match(appJs, /const loadEpoch = session\.loadEpoch[\s\S]*?await file\.text\(\)[\s\S]*?loadEpoch !== session\.loadEpoch/);
 });
 
-test("card rendering is staged off-DOM and failures clear the visible snapshot", () => {
+test("entry rendering is staged off-DOM and failures clear the visible snapshot", () => {
   assert.match(appJs, /const stagedCards = document\.createElement\("div"\)/);
   assert.match(appJs, /stagedCards\.append\(renderPprCard\(allowedRecord\)\)/);
   assert.match(appJs, /dom\.cards\.replaceChildren\(\.\.\.stagedCards\.children\)/);
@@ -93,30 +93,60 @@ test("card rendering is staged off-DOM and failures clear the visible snapshot",
   );
 });
 
-test("screenshot mode exposes only the white board heading and rendered cards", () => {
+test("screenshot mode exposes only the white board heading and rendered entries", () => {
   const snapshotHtml = toolHtml.match(/<section id="snapshotBoard"[\s\S]*?<\/section>/)?.[0] ?? "";
   assert.match(toolHtml, /id="snapshotTitle">CURRENT PPR SNAPSHOT</);
-  assert.match(toolHtml, /id="pprCards" class="ppr-card-grid"/);
+  assert.match(toolHtml, /id="pprCards" class="ppr-entry-grid"/);
+  assert.match(toolHtml, /id="rimSection" class="rim-section"/);
+  assert.match(toolHtml, /id="rimLines" class="rim-lines"/);
   assert.match(toolHtml, /id="snapshotModeButton"[^>]*>SCREENSHOT VIEW</);
   assert.match(appJs, /document\.body\.classList\.add\("is-snapshot-mode"\)/);
-  assert.match(toolCss, /body\.is-snapshot-mode \.tool-header,[\s\S]*body\.is-snapshot-mode \.session-controls\s*{[\s\S]*display:\s*none !important/);
+  assert.match(toolCss, /body\.is-snapshot-mode \.tool-header,[\s\S]*body\.is-snapshot-mode \.session-controls,[\s\S]*body\.is-snapshot-mode \.rim-section\s*{[\s\S]*display:\s*none !important/);
   assert.match(toolCss, /body\.is-snapshot-mode \.snapshot-board\s*{[\s\S]*min-height:\s*100vh/);
   assert.match(toolCss, /--paper:\s*#ffffff/);
-  assert.doesNotMatch(snapshotHtml, /EXPORT|DOWNLOAD|GENERATED AT|ROW COUNT|FILE NAME|PRIVACY/i);
+  assert.doesNotMatch(snapshotHtml, /RIM SLIDE LINES|COPY|EXPORT|DOWNLOAD|GENERATED AT|ROW COUNT|FILE NAME|PRIVACY/i);
 });
 
-test("approved and cancelled cards use explicit text plus distinct accessible styling", () => {
-  assert.match(appJs, /cancelled \? "CANCELLED \/ DENIED" : "APPROVED - EMAIL SENT"/);
-  assert.match(appJs, /is-cancelled" : "is-approved/);
-  assert.match(toolCss, /\.ppr-card\.is-approved\s*{[\s\S]*--status-color:\s*var\(--ops-green\)/);
-  assert.match(toolCss, /\.ppr-card\.is-cancelled\s*{[\s\S]*--status-color:\s*var\(--cancel-red\)/);
+test("approved and cancelled entries use compact dot-plus-text status lines", () => {
+  assert.match(appJs, /cancelled \? "🔴" : "🟢"/u);
+  assert.match(appJs, /cancelled \? "CANCELLED" : "APPROVED"/);
+  assert.match(appJs, /article\.className = `ppr-entry \$\{cancelled \? "is-cancelled" : "is-approved"\}`/);
+  assert.match(appJs, /"span", "status-dot"/);
+  assert.match(toolCss, /\.ppr-entry\.is-approved \.status-label\s*{[\s\S]*color:\s*var\(--ops-green-dark\)/);
+  assert.match(toolCss, /\.ppr-entry\.is-cancelled \.status-label\s*{[\s\S]*color:\s*var\(--cancel-red-dark\)/);
   assert.match(appJs, /aria-label[\s\S]*Cancelled or denied[\s\S]*Approved/);
 });
 
-test("responsive board uses two desktop columns, one mobile column, and prevents page overflow", () => {
-  assert.match(toolCss, /\.ppr-card-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(toolCss, /@media \(max-width: 720px\)[\s\S]*\.ppr-card-grid,[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+test("snapshot entries are plain copy-sheet rows rather than dashboard cards", () => {
+  const entryRule = toolCss.match(/\.ppr-entry\s*{([\s\S]*?)\}/)?.[1] ?? "";
+  assert.match(entryRule, /min-width:\s*0/);
+  assert.match(entryRule, /padding:[^;]+/);
+  assert.match(entryRule, /border-bottom:\s*1px solid/);
+  assert.doesNotMatch(entryRule, /border-left|border-radius|box-shadow|background:\s*var\(--(?:ops-green|cancel-red)-soft\)/);
+  assert.doesNotMatch(toolCss, /\.timing-block\s*{[\s\S]*?(?:border|background):/);
+  assert.doesNotMatch(toolCss, /\.card-status\s*{[\s\S]*background:/);
+});
+
+test("RIM section is approved-only plain text with one explicit copy control", () => {
+  const rimHtml = toolHtml.match(/<section id="rimSection"[\s\S]*?<\/section>/)?.[0] ?? "";
+  assert.match(rimHtml, />RIM SLIDE LINES</);
+  assert.match(rimHtml, /id="rimLines"/);
+  assert.match(rimHtml, /id="copyRimLinesButton"[^>]*>COPY RIM LINES</);
+  assert.match(rimHtml, /id="copyRimStatus"[^>]*aria-live="polite"/);
+  assert.match(appJs, /buildRimSlideLines\(allowedRecords\)/);
+  assert.match(appJs, /navigator\.clipboard\.writeText\(session\.rimText\)/);
+  assert.doesNotMatch(rimHtml, /DOWNLOAD|EXPORT/i);
+  assert.match(toolCss, /\.rim-lines\s*{[\s\S]*min-width:\s*0/);
+  const rimLineRule = toolCss.match(/\.rim-line\s*{([\s\S]*?)\}/)?.[1] ?? "";
+  assert.match(rimLineRule, /overflow-wrap:\s*anywhere/);
+  assert.doesNotMatch(rimLineRule, /border-radius|box-shadow|background:/);
+});
+
+test("responsive sheet uses two desktop columns, one mobile column, and protects long text from overflow", () => {
+  assert.match(toolCss, /\.ppr-entry-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(toolCss, /@media \(max-width: 720px\)[\s\S]*\.ppr-entry-grid\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(toolCss, /html,[\s\S]*body\s*{[\s\S]*overflow-x:\s*hidden/);
-  assert.match(toolCss, /\.ppr-card\s*{[\s\S]*min-width:\s*0[\s\S]*overflow:\s*hidden/);
-  assert.match(toolCss, /overflow-wrap:\s*anywhere/);
+  assert.match(toolCss, /\.ppr-entry\s*{[\s\S]*min-width:\s*0/);
+  assert.match(toolCss, /\.notes-line\s*{[\s\S]*margin-top:/);
+  assert.match(toolCss, /\.rim-line\s*{[\s\S]*overflow-wrap:\s*anywhere/);
 });
