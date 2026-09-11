@@ -686,6 +686,40 @@ MIL_NOTAM_CACHE_FIELDS = (
     "taxiRestrictionNotamCount",
 )
 
+# The AHAS/BWC block travels as one unit between cache locations, exactly like
+# the NMS block above, so a role handoff can never publish an older snapshot
+# over a newer one already on the board.
+BWC_CACHE_FIELDS = (
+    "bwc",
+    "bwcSource",
+    "bwcUpdatedZ",
+    "bwcNexrad",
+    "bwcSoarRisk",
+    "bwcBamRisk",
+    "bwcAhasRisk",
+    "bwcBasedOn",
+    "bwcHeight100FtAgl",
+    "bwcUrl",
+    "bwcRiskUrl",
+    "bwcFetchStatus",
+)
+
+
+def cached_bwc_updated_datetime(data):
+    """Return the AHAS timestamp only for a usable cached BWC block."""
+    if not isinstance(data, dict) or not is_good_bwc(data):
+        return None
+
+    text = str(data.get("bwcUpdatedZ") or "").strip()
+    # AHAS reports "YYYY-MM-DD HH:MM:SS.fff" (UTC, no suffix); older caches may
+    # carry the board's own Z-suffixed forms.
+    for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+    return parse_z_datetime(text)
+
 
 def cached_mil_notam_updated_datetime(data):
     """Return the timestamp only for a complete, coherent cached NMS block."""
@@ -809,6 +843,25 @@ def load_previous_weather():
         print(
             f"Selected newest coherent cached NMS block from {notam_source}: "
             f"{notam_path} ({zulu_iso(updated)})"
+        )
+
+    bwc_candidates = []
+    for priority, source_name, path, data in loaded:
+        updated = cached_bwc_updated_datetime(data)
+        if updated:
+            bwc_candidates.append((updated, priority, source_name, path, data))
+
+    if bwc_candidates:
+        # Same rule as NMS: the newest AHAS timestamp wins across PRIMARY/BACKUP
+        # cache locations, so a host whose own AHAS fetch failed cannot publish
+        # its older local snapshot over a newer one another host already
+        # published. Equal timestamps keep location priority.
+        selected = max(bwc_candidates, key=lambda item: (item[0], -item[1]))
+        updated, _, bwc_source, bwc_path, bwc_data = selected
+        previous.update({key: bwc_data[key] for key in BWC_CACHE_FIELDS if key in bwc_data})
+        print(
+            f"Selected newest cached AHAS/BWC block from {bwc_source}: "
+            f"{bwc_path} ({zulu_iso(updated)})"
         )
 
     return previous

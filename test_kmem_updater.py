@@ -88,6 +88,24 @@ def notam_cache_fixture(tag, updated_z, *, fetch_status="OK", raw_status="Succes
     return block
 
 
+def bwc_cache_fixture(tag, updated, *, risk="SEVERE", fetch_status="PARSED_DIRECT_XML"):
+    """Return one AHAS/BWC cache block using the AHAS service timestamp format."""
+    return {
+        "bwc": risk,
+        "bwcSource": "AHAS",
+        "bwcUpdatedZ": updated,
+        "bwcNexrad": risk,
+        "bwcSoarRisk": "LOW",
+        "bwcBamRisk": "MODERATE",
+        "bwcAhasRisk": risk,
+        "bwcBasedOn": "NEXRAD",
+        "bwcHeight100FtAgl": 0,
+        "bwcUrl": f"https://www.usahas.com/print.aspx?tag={tag}",
+        "bwcRiskUrl": f"https://www.usahas.com/webservices/GetAHASRisk?tag={tag}",
+        "bwcFetchStatus": fetch_status,
+    }
+
+
 BWC_LIFECYCLE_GENERATOR = """import json
 import os
 from pathlib import Path
@@ -281,6 +299,52 @@ class WeatherCacheHandoffTests(unittest.TestCase):
         selected = self.load_caches(local, repo_last_good, repo_weather)
 
         self.assertEqual(selected["milNotams"], local["milNotams"])
+        self.assertEqual(selected["metar"], "LOCAL")
+
+    def test_newest_ahas_block_overlays_across_cache_locations_after_handoff(self):
+        # Observed 2026-09-11 13:36Z: PRIMARY's AHAS fetch failed on a degraded
+        # link and it republished its local 12:06 snapshot over the 13:12
+        # snapshot BACKUP had already published from the repository.
+        local = {
+            "metar": "LOCAL METAR MUST WIN",
+            **bwc_cache_fixture("LOCAL", "2026-09-11 12:06:00.000", risk="SEVERE"),
+        }
+        repo_last_good = {
+            "metar": "REPO METAR MUST NOT WIN",
+            **bwc_cache_fixture("REPO", "2026-09-11 12:48:00.000", risk="MODERATE"),
+        }
+        repo_weather = {
+            "metar": "WEATHER.JSON METAR MUST NOT WIN",
+            **bwc_cache_fixture("WEATHER", "2026-09-11 13:12:00.000", risk="SEVERE"),
+        }
+
+        selected = self.load_caches(local, repo_last_good, repo_weather)
+
+        self.assertEqual(selected["metar"], "LOCAL METAR MUST WIN")
+        for key in weather.BWC_CACHE_FIELDS:
+            self.assertEqual(selected[key], repo_weather[key], key)
+
+        # The failed-fetch fallback then carries the newest block, not the
+        # host-local one, and stays parseable for the board's age display.
+        self.assertEqual(
+            weather.cached_bwc_updated_datetime(selected),
+            datetime(2026, 9, 11, 13, 12, tzinfo=timezone.utc),
+        )
+
+    def test_unusable_or_equal_ahas_blocks_keep_location_priority(self):
+        local = {"metar": "LOCAL", **bwc_cache_fixture("LOCAL", "2026-09-11 12:06:00.000")}
+
+        pending_newer = bwc_cache_fixture("PENDING", "2026-09-11 13:12:00.000", risk="PENDING")
+        missing_time_newer = bwc_cache_fixture("NOTIME", "--")
+        for invalid in (pending_newer, missing_time_newer):
+            with self.subTest(tag=invalid["bwcUrl"]):
+                selected = self.load_caches(local, invalid, {})
+                self.assertEqual(selected["bwcUpdatedZ"], local["bwcUpdatedZ"])
+                self.assertEqual(selected["bwcUrl"], local["bwcUrl"])
+
+        equal_repo = {"metar": "REPO", **bwc_cache_fixture("REPO", "2026-09-11 12:06:00.000")}
+        selected = self.load_caches(local, equal_repo, {})
+        self.assertEqual(selected["bwcUrl"], local["bwcUrl"])
         self.assertEqual(selected["metar"], "LOCAL")
 
     def test_failed_fetch_retains_newest_content_but_remains_error_and_fail_closed(self):
