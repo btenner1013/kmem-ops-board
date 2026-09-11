@@ -1,18 +1,18 @@
 {
   "metar": "METAR KMEM 111654Z VRB03KT 10SM SCT070 BKN090 BKN160 31/22 A2995 RMK AO2 SLP136 T03060222",
   "taf": "TAF KMEM 111636Z 1117/1218 13005KT P6SM VCSH SCT050 BKN070 \n  TEMPO 1117/1120 5SM -SHRA BKN050 \n  FM112000 18006KT P6SM VCTS FEW045CB BKN050 \n  TEMPO 1122/1201 VRB10G20KT 4SM TSRA BKN040CB \n  FM120200 13005KT P6SM -SHRA BKN080 \n  FM120400 16004KT P6SM SCT060 BKN150 \n  FM121500 20006KT P6SM SCT030 BKN045",
-  "atisText": "MEM ATIS INFO R 1654Z. VRB03KT 10SM SCT070 BKN090 BKN160 31/22 A2995 (TWO NINER NINER FIVE) RMK AO2 SLP136 T03060222. SIMUL VISUAL APCHS IN USE RY 36L, 36C, 9. DEPG RWYS 36L, 36C, 9. NOTICE TO AIRMEN. RWY 18L, 36R CLSD. TWY S CLSD BTN TWY, E AND TWY H. ILS RWY 27 OTS, RY 18R REILS OTS, RY 36C PAPI OTS, FREQ 119.7 OTS. CONTACT TOWER 118.3. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO R",
-  "atisLetter": "R",
-  "atisPhonetic": "ROMEO",
-  "atisDisplay": "ROMEO",
+  "atisText": "MEM ATIS INFO S 1654Z. VRB03KT 10SM SCT070 BKN090 BKN160 31/22 A2995 (TWO NINER NINER FIVE) RMK AO2 SLP136 T03060222. SIMUL VISUAL APCHS IN USE RY 36L, 36C, 9. DEPG RWYS 36L, 36C, 9. NOTICE TO AIRMEN. RWY 18L, 36R CLSD. TWY S CLSD BTN TWY, E AND TWY H. ILS RWY 27 OTS, RY 18R REILS OTS, FREQ 119.7 OTS. CONTACT TOWER 118.3. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO S",
+  "atisLetter": "S",
+  "atisPhonetic": "SIERRA",
+  "atisDisplay": "SIERRA",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-11T16:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-09-11T16:54:00Z",
-  "atisAgeMinutes": 22,
-  "atisReportIdentity": "R:1654Z",
+  "atisAgeMinutes": 32,
+  "atisReportIdentity": "S:1654Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -22,7 +22,7 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "R:1654Z",
+      "identity": "S:1654Z",
       "observedZ": "2026-09-11T16:54:00Z",
       "sources": [
         "ATIS_INFO_API",
@@ -31,8 +31,8 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "R",
-  "atisReportedPhonetic": "ROMEO",
+  "atisReportedLetter": "S",
+  "atisReportedPhonetic": "SIERRA",
   "atisReportedArrRunways": "36L / 36C / 9",
   "atisReportedDepRunways": "36L / 36C / 9",
   "atisReportedClosedRunways": "18L / 36R",
@@ -169,7 +169,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-20Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-11 17:12:00.000",
+  "bwcUpdatedZ": "2026-09-11 17:24:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -218,7 +218,7 @@
   "milNotamAttemptProxyRoute": "NOT_USED",
   "milNotamAttemptReason": "UPSTREAM_RESPONSE_TIMEOUT",
   "milNotamFailureCategory": "UPSTREAM_RESPONSE_TIMEOUT",
-  "milNotamAttemptZ": "2026-09-11 17:19:59Z",
+  "milNotamAttemptZ": "2026-09-11 17:29:07Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [],
@@ -240,13 +240,13 @@
   "constructionStatusNotamCount": 1,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-09-11 17:16Z",
+  "allFeedsUpdatedZ": "2026-09-11 17:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-11 17:16:28Z"
+    "lastWorkflowTimestampZ": "2026-09-11 17:25:47Z"
   }
 }
