@@ -62,30 +62,48 @@ ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
 # NMS staging showed a rate limit around 1 request/sec.
 REQUEST_DELAY_SECONDS = 1.25
 MAX_RETRIES = 2
-URLLIB_TOTAL_TIMEOUT_SECONDS = 25
+TOKEN_CONNECT_TIMEOUT_SECONDS = 8
+TOKEN_TOTAL_TIMEOUT_SECONDS = 25
+TOKEN_PROCESS_TIMEOUT_SECONDS = 30
+# NMS documents an approximately 30-second server-side NOTAMS timeout. The
+# client waits just beyond it so the service can return data or its own error.
+NOTAMS_CONNECT_TIMEOUT_SECONDS = 8
+NOTAMS_TOTAL_TIMEOUT_SECONDS = 40
+NOTAMS_PROCESS_TIMEOUT_SECONDS = 45
+# Backward-compatible names retain the tighter TOKEN policy. Production calls
+# select the explicit TOKEN/NOTAMS policy before entering a transport.
+URLLIB_TOTAL_TIMEOUT_SECONDS = TOKEN_TOTAL_TIMEOUT_SECONDS
 TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
 # Windows production prefers OS curl, then the checked-in PowerShell transport
 # using the interactive task user's Windows system-proxy settings. Both child
 # processes have hard deadlines below the updater's parent timeout.
-CURL_CONNECT_TIMEOUT_SECONDS = 8
-CURL_TOTAL_TIMEOUT_SECONDS = 25
-CURL_PROCESS_TIMEOUT_SECONDS = 30
+CURL_CONNECT_TIMEOUT_SECONDS = TOKEN_CONNECT_TIMEOUT_SECONDS
+CURL_TOTAL_TIMEOUT_SECONDS = TOKEN_TOTAL_TIMEOUT_SECONDS
+CURL_PROCESS_TIMEOUT_SECONDS = TOKEN_PROCESS_TIMEOUT_SECONDS
 CURL_MAX_RETRIES = 2
 # Only availability/framing failures may cross from curl to the independently
 # verified PowerShell transport. TLS, certificate, trust-store, client-certificate,
 # and pinning failures intentionally remain terminal instead of trying a transport
 # with potentially different validation behavior.
+# Exit 28 crosses only when safe curl timing does not prove the TLS/request phase;
+# a proven upstream-response timeout is handled terminally before this set.
 CURL_CROSS_TRANSPORT_EXIT_CODES = {2, 5, 6, 7, 18, 28, 52, 55, 56, 92, 95, 96}
 CURL_HTTP_STATUS_MARKER = "__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:"
+CURL_TIMING_MARKER = "__KMEM_NMS_CURL_TIMING_5A92D4E7__:"
 CURL_STATUS_RE = re.compile(
     rb"(?:\r?\n)__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:([0-9]{3})\r?\n?\Z"
+)
+CURL_TIMED_STATUS_RE = re.compile(
+    rb"(?:\r?\n)__KMEM_NMS_CURL_TIMING_5A92D4E7__:"
+    rb"([0-9]+(?:\.[0-9]+)?),([0-9]+(?:\.[0-9]+)?)\r?\n"
+    rb"__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:([0-9]{3})\r?\n?\Z"
 )
 CURL_DIAGNOSTIC_LIMIT = 1024
 TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS = 3
 TRANSPORT_TREE_KILL_TIMEOUT_SECONDS = 5
-POWERSHELL_TOTAL_TIMEOUT_SECONDS = 25
-POWERSHELL_PROCESS_TIMEOUT_SECONDS = 30
+POWERSHELL_TOTAL_TIMEOUT_SECONDS = TOKEN_TOTAL_TIMEOUT_SECONDS
+POWERSHELL_PROCESS_TIMEOUT_SECONDS = TOKEN_PROCESS_TIMEOUT_SECONDS
 POWERSHELL_MAX_RETRIES = 2
 PYTHON_CHILD_TOTAL_TIMEOUT_SECONDS = 25
 PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS = 30
@@ -115,6 +133,7 @@ SAFE_TRANSPORT_REASONS = {
     "PROXY_ROUTE",
     "CONNECTION",
     "TIMEOUT",
+    "UPSTREAM_RESPONSE_TIMEOUT",
     "TLS_SECURITY",
     "RESPONSE_TOO_LARGE",
     "UNCLASSIFIED",
@@ -124,6 +143,7 @@ SAFE_FAILURE_CATEGORIES = {
     "AUTH_HTTP",
     "RATE_LIMIT",
     "UPSTREAM_HTTP",
+    "UPSTREAM_RESPONSE_TIMEOUT",
     "TLS_SECURITY",
     "PROXY_AUTH",
     "TRANSPORT_COMPATIBILITY",
@@ -144,11 +164,17 @@ class NmsCompatibilityError(NmsTransportError):
     """A local transport command is incompatible with its fixed invocation."""
 
 
+class NmsUpstreamResponseTimeout(RuntimeError):
+    """A request timed out after verified TLS, so it must not be replayed."""
+
+
 def helper_failure_category(error):
     """Map a failed helper run to a credential-free operational category."""
     text = str(error).casefold()
     if isinstance(error, SystemExit):
         return "CONFIGURATION"
+    if isinstance(error, NmsUpstreamResponseTimeout):
+        return "UPSTREAM_RESPONSE_TIMEOUT"
     if "http 401" in text or "http 403" in text:
         return "AUTH_HTTP"
     if "http 407" in text:
@@ -229,6 +255,43 @@ def ssl_context(insecure=False):
     return ssl._create_unverified_context() if insecure else ssl.create_default_context()
 
 
+def resolve_request_stage(request_stage=None, method=None, url=None):
+    """Resolve an explicit stage, or infer it from the fixed endpoint path."""
+    if request_stage is not None:
+        stage = str(request_stage).strip().upper()
+    else:
+        normalized_method = str(method or "").strip().upper()
+        path = urlsplit(str(url or "")).path.rstrip("/").casefold()
+        if normalized_method == "GET" and path.endswith("/notams"):
+            stage = "NOTAMS"
+        elif normalized_method == "POST" and path.endswith("/token"):
+            stage = "TOKEN"
+        else:
+            # Preserve the historic tight default for isolated/generic callers.
+            stage = "TOKEN"
+    if stage not in {"TOKEN", "NOTAMS"}:
+        raise ValueError("invalid NMS request stage")
+    return stage
+
+
+def transport_timeout_policy(request_stage):
+    """Return the fixed bounded policy for one allowlisted NMS request stage."""
+    stage = resolve_request_stage(request_stage)
+    if stage == "TOKEN":
+        return {
+            "connect": TOKEN_CONNECT_TIMEOUT_SECONDS,
+            "total": TOKEN_TOTAL_TIMEOUT_SECONDS,
+            "process": TOKEN_PROCESS_TIMEOUT_SECONDS,
+        }
+    if stage == "NOTAMS":
+        return {
+            "connect": NOTAMS_CONNECT_TIMEOUT_SECONDS,
+            "total": NOTAMS_TOTAL_TIMEOUT_SECONDS,
+            "process": NOTAMS_PROCESS_TIMEOUT_SECONDS,
+        }
+    raise AssertionError("unreachable NMS request stage")
+
+
 def retry_wait_seconds(attempt):
     return REQUEST_DELAY_SECONDS * attempt + 1.0
 
@@ -248,10 +311,22 @@ def raise_or_retry_http_error(exc, attempt):
     raise RuntimeError(f"HTTP {exc.code}: {error_text}") from exc
 
 
-def urllib_http_request(method, url, headers=None, body=None, timeout=45):
+def urllib_http_request(
+    method,
+    url,
+    headers=None,
+    body=None,
+    timeout=45,
+    *,
+    request_stage=None,
+):
     """Portable verified-TLS fallback used when Windows curl is unavailable."""
+    request_stage = resolve_request_stage(request_stage, method, url)
     req = Request(url=url, data=body, headers=headers or {}, method=method)
-    timeout = min(float(timeout), URLLIB_TOTAL_TIMEOUT_SECONDS)
+    timeout = min(
+        float(timeout),
+        transport_timeout_policy(request_stage)["total"],
+    )
     if timeout <= 0:
         raise ValueError("urllib request timeout must be positive")
 
@@ -652,6 +727,16 @@ def record_process_boundary(name):
     print(f"NMS process boundary: {name}")
 
 
+def record_transport_reason(reason):
+    """Publish one credential-free allowlisted transport outcome."""
+    global LAST_TRANSPORT_REASON
+    normalized = str(reason or "UNCLASSIFIED").strip().upper()
+    LAST_TRANSPORT_REASON = (
+        normalized if normalized in SAFE_TRANSPORT_REASONS else "UNCLASSIFIED"
+    )
+    print(f"NMS transport reason: {LAST_TRANSPORT_REASON}")
+
+
 def run_bounded_transport_process(command, *, input, timeout, env):
     """Run a byte transport with a hard deadline and bounded tree cleanup."""
     platform_options = {}
@@ -759,13 +844,22 @@ def curl_header_stdin(headers=None):
     return (("\n".join(lines) + "\n") if lines else "").encode("utf-8")
 
 
-def curl_request_command(curl_path, method, url, body=None):
+def curl_request_command(
+    curl_path,
+    method,
+    url,
+    body=None,
+    *,
+    request_stage=None,
+):
     """Build a secret-free curl argv with explicit HTTPS and time limits."""
     normalized_method = str(method or "GET").strip().upper()
     if not re.fullmatch(r"[A-Z]+", normalized_method):
         raise ValueError("invalid HTTP method")
     if not str(url).lower().startswith("https://"):
         raise ValueError("NMS curl transport requires HTTPS")
+    request_stage = resolve_request_stage(request_stage, normalized_method, url)
+    timeout_policy = transport_timeout_policy(request_stage)
 
     command = [
         curl_path,
@@ -775,15 +869,19 @@ def curl_request_command(curl_path, method, url, body=None):
         "--proto",
         "=https",
         "--connect-timeout",
-        str(CURL_CONNECT_TIMEOUT_SECONDS),
+        str(timeout_policy["connect"]),
         "--max-time",
-        str(CURL_TOTAL_TIMEOUT_SECONDS),
+        str(timeout_policy["total"]),
         "--request",
         normalized_method,
         "--url",
         str(url),
         "--write-out",
-        f"\\n{CURL_HTTP_STATUS_MARKER}%{{http_code}}\\n",
+        (
+            f"\\n{CURL_TIMING_MARKER}"
+            "%{time_appconnect},%{time_starttransfer}\\n"
+            f"{CURL_HTTP_STATUS_MARKER}%{{http_code}}\\n"
+        ),
         "--header",
         "@-",
     ]
@@ -831,16 +929,46 @@ def curl_http_body_diagnostic(body, headers=None):
 
 def split_curl_response(stdout):
     """Strip and return only curl's unique final stdout HTTP status marker."""
+    status, body, _, _ = split_curl_response_metadata(stdout)
+    return status, body
+
+
+def split_curl_response_metadata(stdout):
+    """Strip curl's final markers and return only numeric phase telemetry."""
     raw = stdout or b""
+    timed_status_match = CURL_TIMED_STATUS_RE.search(raw)
+    if timed_status_match:
+        return (
+            int(timed_status_match.group(3)),
+            raw[:timed_status_match.start()],
+            float(timed_status_match.group(1)),
+            float(timed_status_match.group(2)),
+        )
     status_match = CURL_STATUS_RE.search(raw)
     if not status_match:
-        return None, b""
-    return int(status_match.group(1)), raw[:status_match.start()]
+        return None, b"", None, None
+    return int(status_match.group(1)), raw[:status_match.start()], None, None
 
 
-def run_curl_attempt(curl_path, method, url, headers=None, body=None):
+def run_curl_attempt(
+    curl_path,
+    method,
+    url,
+    headers=None,
+    body=None,
+    *,
+    request_stage=None,
+):
     """Run one bounded curl process and return transport metadata."""
-    command = curl_request_command(curl_path, method, url, body)
+    request_stage = resolve_request_stage(request_stage, method, url)
+    timeout_policy = transport_timeout_policy(request_stage)
+    command = curl_request_command(
+        curl_path,
+        method,
+        url,
+        body,
+        request_stage=request_stage,
+    )
     header_input = curl_header_stdin(headers)
 
     child_environment = os.environ.copy()
@@ -851,7 +979,7 @@ def run_curl_attempt(curl_path, method, url, headers=None, body=None):
         completed = run_bounded_transport_process(
             command,
             input=header_input,
-            timeout=CURL_PROCESS_TIMEOUT_SECONDS,
+            timeout=timeout_policy["process"],
             env=child_environment,
         )
     except subprocess.TimeoutExpired:
@@ -860,15 +988,24 @@ def run_curl_attempt(curl_path, method, url, headers=None, body=None):
             "status": None,
             "body": b"",
             "diagnostic": "curl process exceeded its hard timeout",
+            "appConnectSeconds": None,
+            "startTransferSeconds": None,
         }
 
     stderr = completed.stderr or b""
-    status, response_body = split_curl_response(completed.stdout)
+    (
+        status,
+        response_body,
+        app_connect_seconds,
+        start_transfer_seconds,
+    ) = split_curl_response_metadata(completed.stdout)
     return {
         "returncode": completed.returncode,
         "status": status,
         "body": response_body,
         "diagnostic": curl_diagnostics(stderr, headers),
+        "appConnectSeconds": app_connect_seconds,
+        "startTransferSeconds": start_transfer_seconds,
         "httpBodyDiagnostic": (
             curl_http_body_diagnostic(response_body, headers)
             if completed.returncode == 0 and status is not None
@@ -888,7 +1025,31 @@ def curl_result_is_transport_failure(result):
     return_code = result.get("returncode")
     if return_code == 0:
         return not isinstance(status, int) or not 100 <= status <= 599
+    app_connect_seconds = result.get("appConnectSeconds")
+    if (
+        isinstance(app_connect_seconds, (int, float))
+        and app_connect_seconds > 0
+    ):
+        # TLS completed, so these fixed requests may already have reached the
+        # provider. Never replay a partial/empty/protocol-failed response on a
+        # second transport.
+        return False
     return return_code in CURL_CROSS_TRANSPORT_EXIT_CODES
+
+
+def curl_result_is_upstream_response_timeout(result):
+    """Identify a curl timeout only after verified TLS reached the request phase."""
+    if result.get("returncode") != 28:
+        return False
+    app_connect_seconds = result.get("appConnectSeconds")
+    # curl reports time_starttransfer as elapsed-to-failure on some timeout
+    # paths, even when no response byte arrived. A positive TLS-completion time
+    # is the reliable boundary: for these fixed HTTPS requests, curl has entered
+    # the request/response phase and another transport must not replay it.
+    return (
+        isinstance(app_connect_seconds, (int, float))
+        and app_connect_seconds > 0
+    )
 
 
 def curl_result_is_transient(result):
@@ -913,17 +1074,39 @@ def curl_failure_message(result):
     return f"NMS curl request failed ({summary}): {diagnostic}"
 
 
-def curl_http_request(curl_path, method, url, headers=None, body=None):
+def curl_http_request(
+    curl_path,
+    method,
+    url,
+    headers=None,
+    body=None,
+    *,
+    request_stage=None,
+):
     """Use bounded verified-TLS Windows curl attempts and fail closed."""
+    request_stage = resolve_request_stage(request_stage, method, url)
     for attempt in range(1, CURL_MAX_RETRIES + 1):
         try:
-            result = run_curl_attempt(curl_path, method, url, headers, body)
+            result = run_curl_attempt(
+                curl_path,
+                method,
+                url,
+                headers,
+                body,
+                request_stage=request_stage,
+            )
         except OSError as error:
             raise NmsTransportError(
                 "NMS curl request failed (process launch error): no diagnostic text"
             ) from error
         if curl_result_is_success(result):
             return result["body"]
+
+        if curl_result_is_upstream_response_timeout(result):
+            record_transport_reason("UPSTREAM_RESPONSE_TIMEOUT")
+            raise NmsUpstreamResponseTimeout(
+                "NMS curl request failed (upstream response timeout)"
+            )
 
         # A second verified Windows transport is safer and faster than retrying a
         # curl process which could not produce a complete HTTP response. Valid
@@ -982,7 +1165,14 @@ def powershell_request_command(powershell_path):
     ]
 
 
-def powershell_request_stdin(method, url, headers=None, body=None):
+def powershell_request_stdin(
+    method,
+    url,
+    headers=None,
+    body=None,
+    *,
+    request_stage=None,
+):
     """Serialize the request, including authorization, only to child stdin."""
     normalized_method = str(method or "GET").strip().upper()
     if normalized_method not in {"GET", "POST"}:
@@ -1020,6 +1210,11 @@ def powershell_request_stdin(method, url, headers=None, body=None):
     )
     if not (expected_token_request or expected_notam_request):
         raise ValueError("invalid NMS PowerShell endpoint contract")
+    request_stage = resolve_request_stage(request_stage, normalized_method, url)
+    expected_stage = "TOKEN" if expected_token_request else "NOTAMS"
+    if request_stage != expected_stage:
+        raise ValueError("invalid NMS PowerShell request stage")
+    timeout_policy = transport_timeout_policy(request_stage)
 
     normalized_headers = validated_http_headers(headers)
     prohibited_headers = {
@@ -1035,6 +1230,8 @@ def powershell_request_stdin(method, url, headers=None, body=None):
     payload = {
         "method": normalized_method,
         "url": str(url),
+        "requestStage": request_stage,
+        "timeoutSeconds": timeout_policy["total"],
         "headers": normalized_headers,
         "hasBody": body_bytes is not None,
         "bodyBase64": base64.b64encode(body_bytes or b"").decode("ascii"),
@@ -1042,10 +1239,26 @@ def powershell_request_stdin(method, url, headers=None, body=None):
     return json.dumps(payload, separators=(",", ":")).encode("utf-8")
 
 
-def run_powershell_attempt(powershell_path, method, url, headers=None, body=None):
+def run_powershell_attempt(
+    powershell_path,
+    method,
+    url,
+    headers=None,
+    body=None,
+    *,
+    request_stage=None,
+):
     """Run one bounded verified-TLS Windows HttpClient request."""
+    request_stage = resolve_request_stage(request_stage, method, url)
+    timeout_policy = transport_timeout_policy(request_stage)
     command = powershell_request_command(powershell_path)
-    request_input = powershell_request_stdin(method, url, headers, body)
+    request_input = powershell_request_stdin(
+        method,
+        url,
+        headers,
+        body,
+        request_stage=request_stage,
+    )
     child_environment = os.environ.copy()
     child_environment.pop("NMS_CLIENT_ID", None)
     child_environment.pop("NMS_CLIENT_SECRET", None)
@@ -1054,7 +1267,7 @@ def run_powershell_attempt(powershell_path, method, url, headers=None, body=None
         completed = run_bounded_transport_process(
             command,
             input=request_input,
-            timeout=POWERSHELL_PROCESS_TIMEOUT_SECONDS,
+            timeout=timeout_policy["process"],
             env=child_environment,
         )
     except subprocess.TimeoutExpired as error:
@@ -1146,8 +1359,17 @@ def powershell_failure_message(result):
     return f"NMS PowerShell HTTP request failed ({summary})"
 
 
-def powershell_http_request(powershell_path, method, url, headers=None, body=None):
+def powershell_http_request(
+    powershell_path,
+    method,
+    url,
+    headers=None,
+    body=None,
+    *,
+    request_stage=None,
+):
     """Use bounded verified-TLS Windows HttpClient attempts and fail closed."""
+    request_stage = resolve_request_stage(request_stage, method, url)
     for attempt in range(1, POWERSHELL_MAX_RETRIES + 1):
         try:
             result = run_powershell_attempt(
@@ -1156,6 +1378,7 @@ def powershell_http_request(powershell_path, method, url, headers=None, body=Non
                 url,
                 headers,
                 body,
+                request_stage=request_stage,
             )
         except OSError as error:
             raise NmsTransportError(
@@ -1168,7 +1391,10 @@ def powershell_http_request(powershell_path, method, url, headers=None, body=Non
 
         transient = (
             result.get("status") in TRANSIENT_HTTP_STATUS_CODES
-            or result.get("returncode") == 28
+            or (
+                result.get("returncode") == 28
+                and request_stage != "NOTAMS"
+            )
         )
         if transient and attempt < POWERSHELL_MAX_RETRIES:
             wait = retry_wait_seconds(attempt)
@@ -1688,13 +1914,29 @@ def record_request_stage(name):
     print("NMS transport reason: NOT_USED")
 
 
-def http_request(method, url, headers=None, body=None, timeout=45):
+def http_request(
+    method,
+    url,
+    headers=None,
+    body=None,
+    timeout=45,
+    *,
+    request_stage=None,
+):
     """Select bounded verified Windows transports, then portable urllib."""
+    request_stage = resolve_request_stage(request_stage, method, url)
     curl_path = windows_curl_path()
     if curl_path:
         record_http_transport("WINDOWS_CURL")
         try:
-            return curl_http_request(curl_path, method, url, headers, body)
+            return curl_http_request(
+                curl_path,
+                method,
+                url,
+                headers,
+                body,
+                request_stage=request_stage,
+            )
         except NmsTransportError:
             # Curl produced no completed HTTP response. Use the checked-in
             # Windows system-proxy route so the interactive PRIMARY task can
@@ -1708,6 +1950,7 @@ def http_request(method, url, headers=None, body=None, timeout=45):
                     url,
                     headers,
                     body,
+                    request_stage=request_stage,
                 )
 
             record_http_transport("WINDOWS_NO_TRUSTED_TRANSPORT")
@@ -1724,6 +1967,7 @@ def http_request(method, url, headers=None, body=None, timeout=45):
             url,
             headers,
             body,
+            request_stage=request_stage,
         )
 
     if os.name == "nt":
@@ -1733,7 +1977,14 @@ def http_request(method, url, headers=None, body=None, timeout=45):
         ) from None
 
     record_http_transport("PORTABLE_URLLIB")
-    return urllib_http_request(method, url, headers, body, timeout)
+    return urllib_http_request(
+        method,
+        url,
+        headers,
+        body,
+        timeout,
+        request_stage=request_stage,
+    )
 
 
 def get_token(client_id, client_secret):
@@ -1748,6 +1999,7 @@ def get_token(client_id, client_secret):
             "Content-Type": "application/x-www-form-urlencoded",
         },
         body=b"grant_type=client_credentials",
+        request_stage="TOKEN",
     )
 
     data = json.loads(raw.decode("utf-8"))
@@ -1772,7 +2024,12 @@ def nms_get_json(path, token, query=None, response_format=None):
     if response_format:
         headers["nmsResponseFormat"] = response_format
 
-    raw = http_request("GET", url, headers=headers)
+    raw = http_request(
+        "GET",
+        url,
+        headers=headers,
+        request_stage="NOTAMS",
+    )
     return json.loads(raw.decode("utf-8", errors="replace"))
 
 

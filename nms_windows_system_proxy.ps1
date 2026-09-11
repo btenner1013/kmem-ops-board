@@ -7,7 +7,11 @@ $ProgressPreference = "SilentlyContinue"
 
 $expectedHost = "api-staging.cgifederal-aim.com"
 $statusMarker = "__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:"
-$timeoutSeconds = 25
+# The parent supplies only one of these values; endpoint validation below
+# rejects mismatched stages/timeouts before any network request is created.
+$tokenTimeoutSeconds = 25
+$notamsTimeoutSeconds = 40
+$timeoutSeconds = 0
 $responseLimitBytes = 32MB
 
 $client = $null
@@ -88,6 +92,17 @@ try {
     if ($methodText -notin @("GET", "POST")) {
         Stop-WithReason "CONFIGURATION" 2
     }
+    if ($null -eq $request.PSObject.Properties["requestStage"] -or
+        $null -eq $request.PSObject.Properties["timeoutSeconds"]) {
+        Stop-WithReason "CONFIGURATION" 2
+    }
+    $requestStage = ([string]$request.requestStage).ToUpperInvariant()
+    $timeoutText = [string]$request.timeoutSeconds
+    if ($requestStage -notin @("TOKEN", "NOTAMS") -or
+        $timeoutText -notin @("25", "40")) {
+        Stop-WithReason "CONFIGURATION" 2
+    }
+    $timeoutSeconds = [int]$timeoutText
 
     $uri = [Uri]([string]$request.url)
     if (-not $uri.IsAbsoluteUri -or
@@ -101,13 +116,17 @@ try {
     if ($uri.AbsolutePath -eq "/v1/auth/token") {
         if ($methodText -cne "POST" -or
             -not [bool]$request.hasBody -or
-            -not [string]::IsNullOrEmpty($uri.Query)) {
+            -not [string]::IsNullOrEmpty($uri.Query) -or
+            $requestStage -cne "TOKEN" -or
+            $timeoutSeconds -ne $tokenTimeoutSeconds) {
             Stop-WithReason "CONFIGURATION" 2
         }
     } elseif ($uri.AbsolutePath -eq "/nmsapi/v1/notams") {
         if ($methodText -cne "GET" -or
             [bool]$request.hasBody -or
-            $uri.Query -cne "?location=KMEM") {
+            $uri.Query -cne "?location=KMEM" -or
+            $requestStage -cne "NOTAMS" -or
+            $timeoutSeconds -ne $notamsTimeoutSeconds) {
             Stop-WithReason "CONFIGURATION" 2
         }
     } else {

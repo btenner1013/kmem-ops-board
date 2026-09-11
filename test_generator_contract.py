@@ -48,6 +48,23 @@ def _curl_completed(returncode=0, status=200, body=b"ok", diagnostic=b""):
     return subprocess.CompletedProcess(["curl.exe"], returncode, stdout, diagnostic)
 
 
+def _curl_timed_completed(
+    returncode=0,
+    status=200,
+    body=b"ok",
+    diagnostic=b"",
+    *,
+    app_connect_seconds=0.2,
+    start_transfer_seconds=0.4,
+):
+    stdout = body + (
+        f"\n{nms.CURL_TIMING_MARKER}"
+        f"{app_connect_seconds},{start_transfer_seconds}\n"
+        f"{nms.CURL_HTTP_STATUS_MARKER}{status:03d}\n"
+    ).encode("ascii")
+    return subprocess.CompletedProcess(["curl.exe"], returncode, stdout, diagnostic)
+
+
 def _aixm_record(classification, number, text, *, updated="2026-09-07T06:25:00Z"):
     number_markup = ""
     simple_number = number
@@ -505,6 +522,73 @@ class WeatherGeneratorContractTests(unittest.TestCase):
         self.assertRegex(
             result["milNotamAttemptZ"],
             r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}Z$",
+        )
+
+    def test_upstream_response_timeout_retains_last_good_notams_and_freshness(self):
+        previous = {
+            "milNotamCount": 2,
+            "milNotamStatus": "2 ACTIVE",
+            "milNotamScrollText": "M0001/26 FIRST | M0002/26 SECOND",
+            "milNotamSource": "FAA_NMS_STAGING",
+            "milNotamUpdatedZ": "2026-09-11 09:45:50Z",
+            "milNotamFetchStatus": "OK",
+            "milNotamRawStatus": "Success",
+            "milNotamTransport": "WINDOWS_CURL",
+            "milNotamProcessBoundary": "WINDOWS_DIRECT_BOUNDED",
+            "milNotams": [
+                {"number": "M0001/26", "text": "FIRST MIL NOTAM"},
+                {"number": "M0002/26", "text": "SECOND MIL NOTAM"},
+            ],
+        }
+        completed = subprocess.CompletedProcess(
+            ["nms"],
+            1,
+            (
+                "NMS request stage: NOTAMS\n"
+                "NMS HTTP transport: WINDOWS_CURL\n"
+                "NMS process boundary: WINDOWS_DIRECT_BOUNDED\n"
+                "NMS system proxy route: NOT_USED\n"
+                "NMS transport reason: UPSTREAM_RESPONSE_TIMEOUT\n"
+            ),
+            "NMS failure category: UPSTREAM_RESPONSE_TIMEOUT\n",
+        )
+
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"NMS_CLIENT_ID": "synthetic-id", "NMS_CLIENT_SECRET": "synthetic-secret"},
+                clear=False,
+            ),
+            mock.patch.object(updater.os.path, "exists", return_value=True),
+            mock.patch.object(updater, "run_bounded_process", return_value=completed),
+            mock.patch("builtins.print"),
+        ):
+            result = updater.fetch_mil_notams(previous)
+
+        self.assertEqual(result["milNotamFetchStatus"], "SCRIPT_FAILED")
+        self.assertEqual(result["milNotamRawStatus"], "Success")
+        self.assertEqual(result["milNotamUpdatedZ"], "2026-09-11 09:45:50Z")
+        self.assertEqual(
+            [item["number"] for item in result["milNotams"]],
+            ["M0001/26", "M0002/26"],
+        )
+        self.assertEqual(result["milNotamCount"], 2)
+        self.assertEqual(result["milNotamAttemptTransport"], "WINDOWS_CURL")
+        self.assertEqual(result["milNotamAttemptStage"], "NOTAMS")
+        self.assertEqual(
+            result["milNotamAttemptReason"],
+            "UPSTREAM_RESPONSE_TIMEOUT",
+        )
+        self.assertEqual(
+            result["milNotamFailureCategory"],
+            "UPSTREAM_RESPONSE_TIMEOUT",
+        )
+        self.assertEqual(
+            updater.classify_notam_feed(
+                result,
+                updater.datetime(2026, 9, 11, 10, 0, tzinfo=updater.timezone.utc),
+            )["status"],
+            "ERROR",
         )
 
     def test_nms_attempt_telemetry_rejects_untrusted_child_values(self):
@@ -977,6 +1061,282 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                 category = nms.helper_failure_category(error)
                 self.assertIn(category, nms.SAFE_FAILURE_CATEGORIES)
                 self.assertEqual(category, expected)
+
+    def test_upstream_response_timeout_enum_is_safe_end_to_end(self):
+        error = nms.NmsUpstreamResponseTimeout("safe upstream response timeout")
+
+        self.assertEqual(
+            nms.helper_failure_category(error),
+            "UPSTREAM_RESPONSE_TIMEOUT",
+        )
+        self.assertIn("UPSTREAM_RESPONSE_TIMEOUT", nms.SAFE_TRANSPORT_REASONS)
+        self.assertIn("UPSTREAM_RESPONSE_TIMEOUT", nms.SAFE_FAILURE_CATEGORIES)
+        self.assertIn(
+            "UPSTREAM_RESPONSE_TIMEOUT",
+            updater.NMS_SAFE_TRANSPORT_REASONS,
+        )
+        self.assertIn(
+            "UPSTREAM_RESPONSE_TIMEOUT",
+            updater.NMS_SAFE_FAILURE_CATEGORIES,
+        )
+
+        metadata = updater.nms_attempt_metadata(
+            "NMS request stage: NOTAMS\n"
+            "NMS transport reason: UPSTREAM_RESPONSE_TIMEOUT\n",
+            "NMS failure category: UPSTREAM_RESPONSE_TIMEOUT\n",
+            "HELPER_EXIT_NONZERO",
+        )
+        self.assertEqual(
+            metadata["milNotamAttemptReason"],
+            "UPSTREAM_RESPONSE_TIMEOUT",
+        )
+        self.assertEqual(
+            metadata["milNotamFailureCategory"],
+            "UPSTREAM_RESPONSE_TIMEOUT",
+        )
+
+    def test_token_and_notams_use_distinct_bounded_curl_timeout_policies(self):
+        responses = [
+            _curl_timed_completed(
+                body=(
+                    b'{"access_token":"synthetic-token",'
+                    b'"status":"Success","expires_in":300}'
+                ),
+            ),
+            _curl_timed_completed(
+                body=b'{"status":"Success","data":{"aixm":[]}}',
+            ),
+        ]
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                side_effect=responses,
+            ) as run,
+            mock.patch("builtins.print"),
+        ):
+            token = nms.get_token("synthetic-id", "synthetic-secret")
+            notams = nms.nms_get_json(
+                "/notams",
+                token,
+                query={"location": "KMEM"},
+                response_format="AIXM",
+            )
+
+        self.assertEqual(token, "synthetic-token")
+        self.assertEqual(notams["status"], "Success")
+        self.assertEqual(run.call_count, 2)
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(
+            [
+                int(command[command.index("--connect-timeout") + 1])
+                for command in commands
+            ],
+            [nms.TOKEN_CONNECT_TIMEOUT_SECONDS, nms.NOTAMS_CONNECT_TIMEOUT_SECONDS],
+        )
+        self.assertEqual(
+            [int(command[command.index("--max-time") + 1]) for command in commands],
+            [nms.TOKEN_TOTAL_TIMEOUT_SECONDS, nms.NOTAMS_TOTAL_TIMEOUT_SECONDS],
+        )
+        self.assertEqual(
+            [call.kwargs["timeout"] for call in run.call_args_list],
+            [nms.TOKEN_PROCESS_TIMEOUT_SECONDS, nms.NOTAMS_PROCESS_TIMEOUT_SECONDS],
+        )
+        self.assertEqual(nms.TOKEN_TOTAL_TIMEOUT_SECONDS, 25)
+        self.assertEqual(nms.NOTAMS_TOTAL_TIMEOUT_SECONDS, 40)
+        self.assertTrue(
+            all(
+                "--insecure" not in command
+                and command[command.index("--proto") + 1] == "=https"
+                for command in commands
+            )
+        )
+
+    def test_notams_policy_allows_simulated_thirty_second_service_response(self):
+        def complete_after_simulated_service_delay(command, **kwargs):
+            total_timeout = int(command[command.index("--max-time") + 1])
+            self.assertGreater(total_timeout, 30)
+            self.assertGreater(kwargs["timeout"], 30)
+            return _curl_timed_completed(
+                body=b'{"status":"Success","data":{"aixm":[]}}',
+                app_connect_seconds=0.2,
+                start_transfer_seconds=30.0,
+            )
+
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                side_effect=complete_after_simulated_service_delay,
+            ) as run,
+            mock.patch.object(nms, "powershell_http_request") as powershell,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            result = nms.nms_get_json(
+                "/notams",
+                "synthetic-token",
+                query={"location": "KMEM"},
+                response_format="AIXM",
+            )
+
+        self.assertEqual(result["status"], "Success")
+        self.assertEqual(run.call_count, 1)
+        powershell.assert_not_called()
+        sleep.assert_not_called()
+
+    def test_post_tls_no_first_byte_timeout_is_not_retried_or_replayed(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        post_tls_timeout = _curl_timed_completed(
+            returncode=28,
+            status=0,
+            body=b"",
+            diagnostic=b"operation timed out before first response byte",
+            app_connect_seconds=0.2,
+            # curl can report elapsed-to-timeout here even when no response
+            # byte arrived; TLS completion is the replay-safety boundary.
+            start_transfer_seconds=40.0,
+        )
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+            mock.patch.object(
+                nms,
+                "windows_powershell_path",
+                return_value=powershell_path,
+            ),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=post_tls_timeout,
+            ) as run,
+            mock.patch.object(nms, "powershell_http_request") as powershell,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(
+                nms.NmsUpstreamResponseTimeout,
+                "upstream response timeout",
+            ) as raised:
+                nms.http_request(
+                    "GET",
+                    nms.BASE_URL + "/notams?location=KMEM",
+                    {"Authorization": "Bearer synthetic-token"},
+                    request_stage="NOTAMS",
+                )
+
+        self.assertNotIsInstance(raised.exception, nms.NmsTransportError)
+        self.assertEqual(run.call_count, 1)
+        powershell.assert_not_called()
+        sleep.assert_not_called()
+        self.assertEqual(nms.LAST_HTTP_TRANSPORT, "WINDOWS_CURL")
+        self.assertEqual(nms.LAST_TRANSPORT_REASON, "UPSTREAM_RESPONSE_TIMEOUT")
+
+    def test_post_tls_receive_failure_is_not_replayed(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        partial_response_failure = _curl_timed_completed(
+            returncode=56,
+            status=200,
+            body=b"partial response",
+            diagnostic=b"response stream ended unexpectedly",
+            app_connect_seconds=0.2,
+            start_transfer_seconds=0.4,
+        )
+        with (
+            mock.patch.object(nms, "windows_curl_path", return_value=self.CURL_PATH),
+            mock.patch.object(
+                nms,
+                "windows_powershell_path",
+                return_value=powershell_path,
+            ),
+            mock.patch.object(
+                nms,
+                "run_bounded_transport_process",
+                return_value=partial_response_failure,
+            ) as run,
+            mock.patch.object(nms, "powershell_http_request") as powershell,
+            mock.patch.object(nms.time, "sleep") as sleep,
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "curl exit 56") as raised:
+                nms.http_request(
+                    "GET",
+                    nms.BASE_URL + "/notams?location=KMEM",
+                    {"Authorization": "Bearer synthetic-token"},
+                    request_stage="NOTAMS",
+                )
+
+        self.assertNotIsInstance(raised.exception, nms.NmsTransportError)
+        self.assertEqual(run.call_count, 1)
+        powershell.assert_not_called()
+        sleep.assert_not_called()
+
+    def test_establishment_failures_still_use_verified_powershell_fallback(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        cases = (
+            (6, "DNS resolution did not establish TLS"),
+            (7, "connection did not establish TLS"),
+            (28, "connect timeout did not establish TLS"),
+        )
+        for returncode, diagnostic in cases:
+            failure = _curl_timed_completed(
+                returncode=returncode,
+                status=0,
+                body=b"",
+                diagnostic=diagnostic.encode("ascii"),
+                app_connect_seconds=0.0,
+                start_transfer_seconds=0.0,
+            )
+            with self.subTest(returncode=returncode):
+                with (
+                    mock.patch.object(
+                        nms,
+                        "windows_curl_path",
+                        return_value=self.CURL_PATH,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "windows_powershell_path",
+                        return_value=powershell_path,
+                    ),
+                    mock.patch.object(
+                        nms,
+                        "run_bounded_transport_process",
+                        return_value=failure,
+                    ) as run,
+                    mock.patch.object(
+                        nms,
+                        "powershell_http_request",
+                        return_value=b"recovered by verified PowerShell",
+                    ) as powershell,
+                    mock.patch.object(nms.time, "sleep") as sleep,
+                    mock.patch("builtins.print"),
+                ):
+                    result = nms.http_request(
+                        "GET",
+                        nms.BASE_URL + "/notams?location=KMEM",
+                        {"Authorization": "Bearer synthetic-token"},
+                        request_stage="NOTAMS",
+                    )
+
+                self.assertEqual(result, b"recovered by verified PowerShell")
+                self.assertEqual(run.call_count, 1)
+                powershell.assert_called_once_with(
+                    powershell_path,
+                    "GET",
+                    nms.BASE_URL + "/notams?location=KMEM",
+                    {"Authorization": "Bearer synthetic-token"},
+                    None,
+                    request_stage="NOTAMS",
+                )
+                sleep.assert_not_called()
 
     def test_curl_success_uses_bounded_https_transport_and_stdin_authorization(self):
         authorization = "Bearer test-sensitive-token"
@@ -1473,8 +1833,10 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertIn("$responseLimitBytes = 32MB", script)
         self.assertNotIn("ServerCertificateValidationCallback", script)
         self.assertNotIn("DangerousAcceptAnyServerCertificateValidator", script)
-        self.assertEqual(kwargs["timeout"], nms.POWERSHELL_PROCESS_TIMEOUT_SECONDS)
+        self.assertEqual(kwargs["timeout"], nms.NOTAMS_PROCESS_TIMEOUT_SECONDS)
         request = json.loads(kwargs["input"].decode("utf-8"))
+        self.assertEqual(request["requestStage"], "NOTAMS")
+        self.assertEqual(request["timeoutSeconds"], nms.NOTAMS_TOTAL_TIMEOUT_SECONDS)
         self.assertEqual(request["headers"]["Authorization"], authorization)
         self.assertNotIn("NMS_CLIENT_ID", kwargs["env"])
         self.assertNotIn("NMS_CLIENT_SECRET", kwargs["env"])
@@ -1494,6 +1856,60 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertIn(
             "shell=False",
             inspect.getsource(nms.run_bounded_transport_process),
+        )
+
+    def test_powershell_uses_stage_specific_payload_and_process_timeouts(self):
+        powershell_path = (
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        with mock.patch.object(
+            nms,
+            "run_bounded_transport_process",
+            side_effect=[
+                _curl_completed(body=b'{"access_token":"synthetic-token"}'),
+                _curl_completed(body=b'{"status":"Success","data":{"aixm":[]}}'),
+            ],
+        ) as run:
+            token_result = nms.run_powershell_attempt(
+                powershell_path,
+                "POST",
+                nms.AUTH_URL,
+                {
+                    "Authorization": "Basic synthetic-value",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                b"grant_type=client_credentials",
+                request_stage="TOKEN",
+            )
+            notams_result = nms.run_powershell_attempt(
+                powershell_path,
+                "GET",
+                nms.BASE_URL + "/notams?location=KMEM",
+                {"Authorization": "Bearer synthetic-token"},
+                request_stage="NOTAMS",
+            )
+
+        self.assertEqual(token_result["status"], 200)
+        self.assertEqual(notams_result["status"], 200)
+        self.assertEqual(
+            [call.kwargs["timeout"] for call in run.call_args_list],
+            [nms.TOKEN_PROCESS_TIMEOUT_SECONDS, nms.NOTAMS_PROCESS_TIMEOUT_SECONDS],
+        )
+        payloads = [
+            json.loads(call.kwargs["input"].decode("utf-8"))
+            for call in run.call_args_list
+        ]
+        self.assertEqual(
+            [payload["requestStage"] for payload in payloads],
+            ["TOKEN", "NOTAMS"],
+        )
+        self.assertEqual(
+            [payload["timeoutSeconds"] for payload in payloads],
+            [nms.TOKEN_TOTAL_TIMEOUT_SECONDS, nms.NOTAMS_TOTAL_TIMEOUT_SECONDS],
+        )
+        self.assertEqual(
+            [payload["timeoutSeconds"] for payload in payloads],
+            [25, 40],
         )
 
     def test_powershell_transient_http_retry_and_hard_timeout_are_bounded(self):
@@ -1525,13 +1941,13 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
 
         expired = subprocess.TimeoutExpired(
             [powershell_path],
-            nms.POWERSHELL_PROCESS_TIMEOUT_SECONDS,
+            nms.NOTAMS_PROCESS_TIMEOUT_SECONDS,
         )
         with (
             mock.patch.object(
                 nms,
                 "run_bounded_transport_process",
-                side_effect=[expired, expired],
+                side_effect=expired,
             ) as run,
             mock.patch.object(nms.time, "sleep") as sleep,
             mock.patch("builtins.print"),
@@ -1544,34 +1960,37 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     {"Authorization": "Bearer token"},
                 )
 
-        self.assertEqual(run.call_count, nms.POWERSHELL_MAX_RETRIES)
-        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
 
         native_timeout = subprocess.CompletedProcess(
             [powershell_path],
             28,
             b"",
-            b"NMS PowerShell HTTP request timed out",
+            (
+                b"NMS system proxy route: DIRECT\n"
+                b"NMS system proxy reason: TIMEOUT\n"
+            ),
         )
         with (
             mock.patch.object(
                 nms,
                 "run_bounded_transport_process",
-                side_effect=[native_timeout, _curl_completed(0, 200, body=b"recovered")],
+                return_value=native_timeout,
             ) as run,
             mock.patch.object(nms.time, "sleep") as sleep,
             mock.patch("builtins.print"),
         ):
-            result = nms.powershell_http_request(
-                powershell_path,
-                "GET",
-                nms.BASE_URL + "/notams?location=KMEM",
-                {"Authorization": "Bearer token"},
-            )
+            with self.assertRaisesRegex(RuntimeError, "transport TIMEOUT"):
+                nms.powershell_http_request(
+                    powershell_path,
+                    "GET",
+                    nms.BASE_URL + "/notams?location=KMEM",
+                    {"Authorization": "Bearer token"},
+                )
 
-        self.assertEqual(result, b"recovered")
-        self.assertEqual(run.call_count, 2)
-        sleep.assert_called_once_with(nms.retry_wait_seconds(1))
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
         script = nms.powershell_http_script()
         self.assertIn("TaskCanceledException", script)
         self.assertIn("TimeoutException", script)
@@ -1591,17 +2010,35 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             '[System.Net.SecurityProtocolType]::Tls12',
             '[System.Net.Http.HttpCompletionOption]::ResponseHeadersRead',
             '$responseLimitBytes = 32MB',
-            '$timeoutSeconds = 25',
+            '$tokenTimeoutSeconds = 25',
+            '$notamsTimeoutSeconds = 40',
+            '$timeoutSeconds = 0',
+            '$requestStage -cne "TOKEN"',
+            '$requestStage -cne "NOTAMS"',
+            '$timeoutSeconds -ne $tokenTimeoutSeconds',
+            '$timeoutSeconds -ne $notamsTimeoutSeconds',
         ):
             self.assertIn(required, script)
         self.assertNotIn("UseDefaultCredentials = $true", script)
         self.assertNotIn("ServerCertificateValidationCallback", script)
         self.assertNotIn("DangerousAcceptAnyServerCertificateValidator", script)
-        timeout_match = re.search(r"\$timeoutSeconds\s*=\s*(\d+)", script)
-        self.assertIsNotNone(timeout_match)
+        token_timeout_match = re.search(
+            r"\$tokenTimeoutSeconds\s*=\s*(\d+)",
+            script,
+        )
+        notams_timeout_match = re.search(
+            r"\$notamsTimeoutSeconds\s*=\s*(\d+)",
+            script,
+        )
+        self.assertIsNotNone(token_timeout_match)
+        self.assertIsNotNone(notams_timeout_match)
         self.assertEqual(
-            int(timeout_match.group(1)),
-            nms.POWERSHELL_TOTAL_TIMEOUT_SECONDS,
+            int(token_timeout_match.group(1)),
+            nms.TOKEN_TOTAL_TIMEOUT_SECONDS,
+        )
+        self.assertEqual(
+            int(notams_timeout_match.group(1)),
+            nms.NOTAMS_TOTAL_TIMEOUT_SECONDS,
         )
 
     @unittest.skipUnless(os.name == "nt", "Windows PowerShell 5.1 smoke coverage")
@@ -1722,8 +2159,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                             {"Authorization": "Bearer token"},
                         )
                 python_runtime.assert_not_called()
-                expected_calls = 2 if reason == "TIMEOUT" else 1
-                self.assertEqual(run.call_count, expected_calls)
+                self.assertEqual(run.call_count, 1)
                 self.assertEqual(
                     nms.helper_failure_category(raised.exception),
                     "TRANSPORT_UNAVAILABLE",
@@ -1842,6 +2278,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
                     "https://nms.example.test/notams?location=KMEM",
                     {"Authorization": "Bearer token"},
                     None,
+                    request_stage="NOTAMS",
                 )
                 python_runtime.assert_not_called()
                 sleep.assert_not_called()
@@ -1896,6 +2333,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             "https://nms.example.test/notams?location=KMEM",
             {"Authorization": authorization},
             None,
+            request_stage="NOTAMS",
         )
         python_runtime.assert_not_called()
         self.assertEqual(
@@ -1952,6 +2390,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             "https://nms.example.test/notams?location=KMEM",
             {"Authorization": "Bearer token"},
             None,
+            request_stage="NOTAMS",
         )
         python_runtime.assert_not_called()
         self.assertEqual(
@@ -2567,7 +3006,10 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertFalse(sentinel.exists())
 
     def test_transport_fallback_budget_fits_parent_timeout(self):
-        expired = subprocess.TimeoutExpired([self.CURL_PATH], nms.CURL_PROCESS_TIMEOUT_SECONDS)
+        expired = subprocess.TimeoutExpired(
+            [self.CURL_PATH],
+            nms.NOTAMS_PROCESS_TIMEOUT_SECONDS,
+        )
         with (
             mock.patch.object(nms, "ALLOW_INSECURE_SSL_FALLBACK", False),
             mock.patch.object(nms, "run_bounded_transport_process", side_effect=expired) as run,
@@ -2585,39 +3027,43 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         self.assertEqual(run.call_count, 1)
         self.assertTrue(
             all(
-                call.kwargs["timeout"] == nms.CURL_PROCESS_TIMEOUT_SECONDS
+                call.kwargs["timeout"] == nms.NOTAMS_PROCESS_TIMEOUT_SECONDS
                 for call in run.call_args_list
             )
         )
         sleep.assert_not_called()
 
-        # The helper makes exactly two HTTP calls: token plus one bulk location
-        # request. Windows has no unbounded Python replay: a full curl process
-        # can reach at most two bounded PowerShell attempts plus one retry wait.
-        powershell_request_budget = (
-            nms.POWERSHELL_MAX_RETRIES * nms.POWERSHELL_PROCESS_TIMEOUT_SECONDS
-            + sum(
-                nms.retry_wait_seconds(attempt)
-                for attempt in range(1, nms.POWERSHELL_MAX_RETRIES)
-            )
+        # The helper makes exactly two logical HTTP requests: token plus one
+        # bulk location request. Model the slowest timeout path, including the
+        # direct-fallback tree-kill and drain ceilings. TOKEN may retry one
+        # PowerShell timeout; NOTAMS response timeouts are terminal.
+        retry_wait_budget = sum(
+            nms.retry_wait_seconds(attempt)
+            for attempt in range(1, nms.POWERSHELL_MAX_RETRIES)
         )
-        per_request_budget = (
-            nms.CURL_PROCESS_TIMEOUT_SECONDS
-            + powershell_request_budget
+        direct_cleanup_budget = (
+            (2 * nms.TRANSPORT_TREE_KILL_TIMEOUT_SECONDS)
+            + (2 * 1)
+            + nms.TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS
         )
-        cleanup_margin = (
-            2
-            * (1 + nms.POWERSHELL_MAX_RETRIES)
-            * (
-                nms.TRANSPORT_TREE_KILL_TIMEOUT_SECONDS
-                + nms.TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS
+        token_request_budget = (
+            nms.TOKEN_PROCESS_TIMEOUT_SECONDS + direct_cleanup_budget
+            + (
+                nms.POWERSHELL_MAX_RETRIES
+                * (nms.TOKEN_PROCESS_TIMEOUT_SECONDS + direct_cleanup_budget)
             )
+            + retry_wait_budget
+        )
+        notams_request_budget = (
+            nms.NOTAMS_PROCESS_TIMEOUT_SECONDS + direct_cleanup_budget
+            + nms.NOTAMS_PROCESS_TIMEOUT_SECONDS + direct_cleanup_budget
         )
         helper_budget = (
-            (2 * per_request_budget)
-            + cleanup_margin
+            token_request_budget
+            + notams_request_budget
             + nms.REQUEST_DELAY_SECONDS
         )
+        self.assertEqual(updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS, 300)
         self.assertLess(helper_budget, updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS)
 
     def test_missing_windows_tools_fail_closed_without_python_or_urllib(self):
@@ -2686,6 +3132,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             {"Authorization": "Bearer token"},
             None,
             9,
+            request_stage="NOTAMS",
         )
         output.assert_called_once_with("NMS HTTP transport: PORTABLE_URLLIB")
 
