@@ -9,8 +9,10 @@ $expectedHost = "api-staging.cgifederal-aim.com"
 $statusMarker = "__KMEM_NMS_HTTP_STATUS_7E3C1B9A__:"
 # The parent supplies only one of these values; endpoint validation below
 # rejects mismatched stages/timeouts before any network request is created.
-$tokenTimeoutSeconds = 25
-$notamsTimeoutSeconds = 40
+# Values mirror TOKEN_TOTAL_TIMEOUT_SECONDS / NOTAMS_TOTAL_TIMEOUT_SECONDS in
+# nms_kmem_mil_notams_test.py (congested-link budget, 2026-09-11).
+$tokenTimeoutSeconds = 35
+$notamsTimeoutSeconds = 120
 $timeoutSeconds = 0
 $responseLimitBytes = 32MB
 
@@ -99,7 +101,7 @@ try {
     $requestStage = ([string]$request.requestStage).ToUpperInvariant()
     $timeoutText = [string]$request.timeoutSeconds
     if ($requestStage -notin @("TOKEN", "NOTAMS") -or
-        $timeoutText -notin @("25", "40")) {
+        $timeoutText -notin @("35", "120")) {
         Stop-WithReason "CONFIGURATION" 2
     }
     $timeoutSeconds = [int]$timeoutText

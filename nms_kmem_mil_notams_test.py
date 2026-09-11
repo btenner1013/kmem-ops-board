@@ -62,14 +62,18 @@ ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
 # NMS staging showed a rate limit around 1 request/sec.
 REQUEST_DELAY_SECONDS = 1.25
 MAX_RETRIES = 2
-TOKEN_CONNECT_TIMEOUT_SECONDS = 8
-TOKEN_TOTAL_TIMEOUT_SECONDS = 25
-TOKEN_PROCESS_TIMEOUT_SECONDS = 30
-# NMS documents an approximately 30-second server-side NOTAMS timeout. The
-# client waits just beyond it so the service can return data or its own error.
-NOTAMS_CONNECT_TIMEOUT_SECONDS = 8
-NOTAMS_TOTAL_TIMEOUT_SECONDS = 40
-NOTAMS_PROCESS_TIMEOUT_SECONDS = 45
+# Budgets are sized for PRIMARY's congested shared Wi-Fi, measured 2026-09-11:
+# a lossy link needs 3-4 SYN retries (about 15 s) to open a socket, and the
+# KMEM location pull is ~300 KB of AIXM that the service does not compress, so
+# 40 s only fit it above ~7.5 KB/s. NMS's documented 30-second limit is
+# server-side processing; transferring the finished body to a slow client is
+# bounded here instead. Every stage remains a hard deadline and fails closed.
+TOKEN_CONNECT_TIMEOUT_SECONDS = 20
+TOKEN_TOTAL_TIMEOUT_SECONDS = 35
+TOKEN_PROCESS_TIMEOUT_SECONDS = 40
+NOTAMS_CONNECT_TIMEOUT_SECONDS = 20
+NOTAMS_TOTAL_TIMEOUT_SECONDS = 120
+NOTAMS_PROCESS_TIMEOUT_SECONDS = 130
 # Backward-compatible names retain the tighter TOKEN policy. Production calls
 # select the explicit TOKEN/NOTAMS policy before entering a transport.
 URLLIB_TOTAL_TIMEOUT_SECONDS = TOKEN_TOTAL_TIMEOUT_SECONDS

@@ -48,7 +48,9 @@ TREND_LOOKBACK_HOURS = 3
 
 NMS_MIL_NOTAMS_SCRIPT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_test.py")
 NMS_MIL_NOTAMS_OUTPUT_PATH = os.path.join(REPO_DIR, "nms_kmem_mil_notams_output.json")
-NMS_MIL_NOTAMS_TIMEOUT_SECONDS = 300
+# Must exceed the helper's modelled worst-case path (token retries plus one
+# terminal NOTAMS attempt per transport) with margin; the contract test pins it.
+NMS_MIL_NOTAMS_TIMEOUT_SECONDS = 540
 NMS_MIL_NOTAMS_TIMEOUT_LOG_TAIL_CHARS = 8192
 NMS_SAFE_TRANSPORTS = {
     "WINDOWS_CURL",

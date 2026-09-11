@@ -262,8 +262,8 @@ class WeatherGeneratorContractTests(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertEqual(command[:2], [updater.sys.executable, "-u"])
         self.assertEqual(command[2], updater.NMS_MIL_NOTAMS_SCRIPT_PATH)
-        self.assertEqual(updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS, 5 * 60)
-        self.assertEqual(run.call_args.kwargs["timeout"], 5 * 60)
+        self.assertEqual(updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS, 9 * 60)
+        self.assertEqual(run.call_args.kwargs["timeout"], 9 * 60)
         self.assertLess(
             updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS,
             kmem_updater.GENERATOR_TIMEOUT_SECONDS,
@@ -1143,8 +1143,18 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             [call.kwargs["timeout"] for call in run.call_args_list],
             [nms.TOKEN_PROCESS_TIMEOUT_SECONDS, nms.NOTAMS_PROCESS_TIMEOUT_SECONDS],
         )
-        self.assertEqual(nms.TOKEN_TOTAL_TIMEOUT_SECONDS, 25)
-        self.assertEqual(nms.NOTAMS_TOTAL_TIMEOUT_SECONDS, 40)
+        # Congested-link budget (2026-09-11): the KMEM pull measured 304,429
+        # bytes uncompressed and the service ignores Accept-Encoding, so the
+        # NOTAMS window must carry ~300 KB at a few KB/s; connects need room
+        # for SYN retries on a lossy link. Both stay hard, fail-closed limits.
+        self.assertEqual(nms.TOKEN_CONNECT_TIMEOUT_SECONDS, 20)
+        self.assertEqual(nms.TOKEN_TOTAL_TIMEOUT_SECONDS, 35)
+        self.assertEqual(nms.NOTAMS_CONNECT_TIMEOUT_SECONDS, 20)
+        self.assertEqual(nms.NOTAMS_TOTAL_TIMEOUT_SECONDS, 120)
+        self.assertGreater(nms.TOKEN_PROCESS_TIMEOUT_SECONDS, nms.TOKEN_TOTAL_TIMEOUT_SECONDS)
+        self.assertGreater(nms.NOTAMS_PROCESS_TIMEOUT_SECONDS, nms.NOTAMS_TOTAL_TIMEOUT_SECONDS)
+        self.assertLess(nms.TOKEN_CONNECT_TIMEOUT_SECONDS, nms.TOKEN_TOTAL_TIMEOUT_SECONDS)
+        self.assertLess(nms.NOTAMS_CONNECT_TIMEOUT_SECONDS, nms.NOTAMS_TOTAL_TIMEOUT_SECONDS)
         self.assertTrue(
             all(
                 "--insecure" not in command
@@ -1909,7 +1919,7 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
         )
         self.assertEqual(
             [payload["timeoutSeconds"] for payload in payloads],
-            [25, 40],
+            [35, 120],
         )
 
     def test_powershell_transient_http_retry_and_hard_timeout_are_bounded(self):
@@ -2010,8 +2020,9 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             '[System.Net.SecurityProtocolType]::Tls12',
             '[System.Net.Http.HttpCompletionOption]::ResponseHeadersRead',
             '$responseLimitBytes = 32MB',
-            '$tokenTimeoutSeconds = 25',
-            '$notamsTimeoutSeconds = 40',
+            f'$tokenTimeoutSeconds = {nms.TOKEN_TOTAL_TIMEOUT_SECONDS}',
+            f'$notamsTimeoutSeconds = {nms.NOTAMS_TOTAL_TIMEOUT_SECONDS}',
+            f'$timeoutText -notin @("{nms.TOKEN_TOTAL_TIMEOUT_SECONDS}", "{nms.NOTAMS_TOTAL_TIMEOUT_SECONDS}")',
             '$timeoutSeconds = 0',
             '$requestStage -cne "TOKEN"',
             '$requestStage -cne "NOTAMS"',
@@ -3063,8 +3074,15 @@ class NmsWindowsCurlTransportTests(unittest.TestCase):
             + notams_request_budget
             + nms.REQUEST_DELAY_SECONDS
         )
-        self.assertEqual(updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS, 300)
+        self.assertEqual(updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS, 540)
         self.assertLess(helper_budget, updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS)
+        # Keep real margin for interpreter start-up and diagnostics capture.
+        self.assertGreaterEqual(updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS - helper_budget, 60)
+        # The helper's whole worst case must still fit inside one generation.
+        self.assertLess(
+            updater.NMS_MIL_NOTAMS_TIMEOUT_SECONDS,
+            kmem_updater.GENERATOR_TIMEOUT_SECONDS,
+        )
 
     def test_missing_windows_tools_fail_closed_without_python_or_urllib(self):
         with (
