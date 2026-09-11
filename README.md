@@ -81,13 +81,26 @@ Run the dependency-free flight-plan tests with Node.js:
 npm run test:flight-plan
 ```
 
-To include the private real-PDF integration fixture without committing it to
-the public repository:
+Flight-plan tests use only the approved, wholly synthetic scenario in
+`tests/fixtures/dd1801-approved-synthetic.mjs` plus synthetic structures built
+in memory. Do not point the test suite at an operational DD1801, copy one into
+the repository, or transcribe operational values into test expectations.
 
-```powershell
-$env:DD1801_TEST_PDF = "C:\path\to\electronic-dd1801.pdf"
-npm run test:flight-plan
-```
+Earlier commits contained values derived from an operational DD1801. Those
+legacy commits were intentionally not rewritten; the current tree and all
+future DD1801 tests must use synthetic data only.
+
+### PPR Snapshot privacy boundary
+
+`ppr-snapshot.html` reads one user-selected CSV locally with the browser File
+API, normalizes an explicit display-field allowlist in JavaScript memory, and
+renders the current snapshot directly into the page. It has no upload,
+persistent browser storage, application cache, history, export, or downloaded
+artifact path. Clearing, replacing, or leaving the page releases the
+application's active references; this is not a claim of secure RAM erasure.
+
+Never commit an operational PPR CSV or values copied from one. Automated and
+browser QA must use only `tests/fixtures/ppr-snapshot/synthetic-ppr-snapshot.csv`.
 
 ---
 

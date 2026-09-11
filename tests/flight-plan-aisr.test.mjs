@@ -13,33 +13,30 @@ import {
   createBlankFlightPlan,
   setFieldValue,
 } from "../flight-plan-core.js";
+import {
+  SYNTHETIC_DD1801,
+  SYNTHETIC_DD1801_FPL,
+} from "./fixtures/dd1801-approved-synthetic.mjs";
 
-const ELVIS63_FPL = `(FPL-ELVIS63-IM
--C17/H-SDE1E2FGHIJ5RTUWXYZ/B1D1L
--LROP0800
--N0442F340 SOKRU DCT OXDOC/N0423F340 DCT IRLOX/N0443F340 DCT MEGIK DCT ROMIS DCT LOKVU DCT LALUK DCT KOSIX L986 POVEL DCT MAXUN DCT RENEQ DCT TOWTE/N0432F260 DCT ASLIB
--EGPK0331 EGUN
--STS/MARSA STATE PBN/A1B1C1D1L1O1S1 NAV/RNP10 RNAV1 RNAV5 RNVD1E2A1 DAT/1FANS CPDLCX SUR/EUADSBX DOF/260901 REG/10189A SEL/EQLM CODE/AE10B8 RVR/800 OPR/DOD PER/D)`;
-
-function makeElvisPlan() {
+function makeSyntheticPlan() {
   const plan = createBlankFlightPlan();
   const values = {
-    "item7.aircraftIdentification": "ELVIS63",
-    "item8.flightRules": "I",
-    "item8.typeOfFlight": "M",
-    "item9.aircraftType": "C17",
-    "item9.wakeCategory": "H",
-    "item10.equipment": "SDE1E2FGHIJ5RTUWXYZ",
-    "item10.surveillance": "B1D1L",
-    "item13.departure": "LROP",
-    "item13.time": "0800",
-    "item15.speed": "N0442",
-    "item15.level": "F340",
-    "item15.route": "SOKRU DCT OXDOC/N0423F340 DCT IRLOX/N0443F340 DCT MEGIK DCT ROMIS DCT LOKVU DCT LALUK DCT KOSIX L986 POVEL DCT MAXUN DCT RENEQ DCT TOWTE/N0432F260 DCT ASLIB",
-    "item16.destination": "EGPK",
-    "item16.totalEet": "0331",
-    "item16.alternate": "EGUN",
-    "item18.otherInformation": "STS/MARSA STATE PBN/A1B1C1D1L1O1S1 NAV/RNP10 RNAV1 RNAV5 RNVD1E2A1 DAT/1FANS CPDLCX SUR/EUADSBX DOF/260901 REG/10189A SEL/EQLM CODE/AE10B8 RVR/800 OPR/DOD PER/D",
+    "item7.aircraftIdentification": SYNTHETIC_DD1801.aircraftIdentification,
+    "item8.flightRules": SYNTHETIC_DD1801.flightRules,
+    "item8.typeOfFlight": SYNTHETIC_DD1801.typeOfFlight,
+    "item9.aircraftType": SYNTHETIC_DD1801.aircraftType,
+    "item9.wakeCategory": SYNTHETIC_DD1801.wakeCategory,
+    "item10.equipment": SYNTHETIC_DD1801.equipment,
+    "item10.surveillance": SYNTHETIC_DD1801.surveillance,
+    "item13.departure": SYNTHETIC_DD1801.departure,
+    "item13.time": SYNTHETIC_DD1801.departureTime,
+    "item15.speed": SYNTHETIC_DD1801.speed,
+    "item15.level": SYNTHETIC_DD1801.level,
+    "item15.route": SYNTHETIC_DD1801.route,
+    "item16.destination": SYNTHETIC_DD1801.destination,
+    "item16.totalEet": SYNTHETIC_DD1801.totalEet,
+    "item16.alternate": SYNTHETIC_DD1801.alternate,
+    "item18.otherInformation": SYNTHETIC_DD1801.otherInformation,
   };
   for (const [path, value] of Object.entries(values)) setFieldValue(plan, path, value);
   return plan;
@@ -62,38 +59,38 @@ test("C-17 MIL IFR preset contains only the approved normal defaults", () => {
   assert.equal("field18" in C17_MIL_IFR_PRESET, false);
 });
 
-test("deterministic ELVIS63 fixture maps into the normalized AISR model", () => {
-  const plan = makeElvisPlan();
+test("approved synthetic fixture maps into the normalized AISR model", () => {
+  const plan = makeSyntheticPlan();
   const normalized = normalizeAisrPlan(plan);
   const fields = fieldsByKey(normalized);
 
-  assert.equal(buildFplMessage(plan).message, ELVIS63_FPL);
+  assert.equal(buildFplMessage(plan).message, SYNTHETIC_DD1801_FPL);
   assert.equal(fields.messageType.value, "FPL");
   assert.equal(fields.messageType.source, "C-17 PRESET");
-  assert.equal(fields.aircraftIdentification.value, "ELVIS63");
+  assert.equal(fields.aircraftIdentification.value, SYNTHETIC_DD1801.aircraftIdentification);
   assert.equal(fields.flightRules.value, "I");
   assert.equal(fields.typeOfFlight.value, "M");
   assert.equal(fields.aircraftType.value, "C17");
   assert.equal(fields.wakeCategory.value, "H");
-  assert.equal(fields.equipment.value, "SDE1E2FGHIJ5RTUWXYZ");
-  assert.equal(fields.surveillance.value, "B1D1L");
-  assert.equal(fields.departure.value, "LROP");
-  assert.equal(fields.departureTime.value, "0800");
-  assert.equal(fields.speed.value, "N0442");
-  assert.equal(fields.level.value, "F340");
+  assert.equal(fields.equipment.value, SYNTHETIC_DD1801.equipment);
+  assert.equal(fields.surveillance.value, SYNTHETIC_DD1801.surveillance);
+  assert.equal(fields.departure.value, SYNTHETIC_DD1801.departure);
+  assert.equal(fields.departureTime.value, SYNTHETIC_DD1801.departureTime);
+  assert.equal(fields.speed.value, SYNTHETIC_DD1801.speed);
+  assert.equal(fields.level.value, SYNTHETIC_DD1801.level);
   assert.equal(fields.route.value, plan.item15.route);
-  assert.equal(fields.destination.value, "EGPK");
-  assert.equal(fields.totalEet.value, "0331");
-  assert.equal(fields.alternate1.value, "EGUN");
+  assert.equal(fields.destination.value, SYNTHETIC_DD1801.destination);
+  assert.equal(fields.totalEet.value, SYNTHETIC_DD1801.totalEet);
+  assert.equal(fields.alternate1.value, SYNTHETIC_DD1801.alternate);
   assert.equal(fields.alternate2.status, "MANUAL REQUIRED");
   assert.equal(fields.field18.value, plan.item18.otherInformation);
-  assert.equal(fields.homeStationOrganization.value, "DOD");
+  assert.equal(fields.homeStationOrganization.value, "TEST");
   assert.equal(fields.homeStationOrganization.source, "FLIGHT PLAN");
   assert.equal(normalized.warnings.length, 0);
 });
 
 test("normal source C17, IFR, military, and heavy values do not produce preset warnings", () => {
-  const normalized = normalizeAisrPlan(makeElvisPlan());
+  const normalized = normalizeAisrPlan(makeSyntheticPlan());
   const fields = fieldsByKey(normalized);
   for (const key of ["flightRules", "typeOfFlight", "aircraftType", "wakeCategory"]) {
     assert.equal(fields[key].source, "FLIGHT PLAN");
@@ -103,7 +100,7 @@ test("normal source C17, IFR, military, and heavy values do not produce preset w
 });
 
 test("explicit VFR source wins over IFR preset and produces the required warning", () => {
-  const plan = makeElvisPlan();
+  const plan = makeSyntheticPlan();
   setFieldValue(plan, "item8.flightRules", "V");
   const field = fieldsByKey(normalizeAisrPlan(plan)).flightRules;
   assert.equal(field.value, "V");
@@ -113,7 +110,7 @@ test("explicit VFR source wins over IFR preset and produces the required warning
 });
 
 test("non-military, non-C17, and non-heavy source values remain authoritative", () => {
-  const plan = makeElvisPlan();
+  const plan = makeSyntheticPlan();
   setFieldValue(plan, "item8.typeOfFlight", "G");
   setFieldValue(plan, "item9.aircraftType", "B738");
   setFieldValue(plan, "item9.wakeCategory", "M");
@@ -127,7 +124,7 @@ test("non-military, non-C17, and non-heavy source values remain authoritative", 
 });
 
 test("missing eligible values use preset but an invalid source is retained", () => {
-  const plan = makeElvisPlan();
+  const plan = makeSyntheticPlan();
   setFieldValue(plan, "item8.flightRules", "");
   setFieldValue(plan, "item8.typeOfFlight", "");
   setFieldValue(plan, "item9.aircraftType", "");
@@ -147,12 +144,12 @@ test("missing eligible values use preset but an invalid source is retained", () 
 });
 
 test("Field 10 and Field 18 always use source and never receive blind fallbacks", () => {
-  const source = fieldsByKey(normalizeAisrPlan(makeElvisPlan()));
+  const source = fieldsByKey(normalizeAisrPlan(makeSyntheticPlan()));
   assert.equal(source.equipment.source, "FLIGHT PLAN");
   assert.equal(source.surveillance.source, "FLIGHT PLAN");
   assert.equal(source.field18.source, "FLIGHT PLAN");
 
-  const blank = makeElvisPlan();
+  const blank = makeSyntheticPlan();
   setFieldValue(blank, "item10.equipment", "");
   setFieldValue(blank, "item10.surveillance", "");
   setFieldValue(blank, "item18.otherInformation", "");
@@ -165,7 +162,7 @@ test("Field 10 and Field 18 always use source and never receive blind fallbacks"
 });
 
 test("AISR field validation stays aligned with existing flight-plan syntax", () => {
-  const plan = makeElvisPlan();
+  const plan = makeSyntheticPlan();
   setFieldValue(plan, "item7.aircraftIdentification", "A");
   setFieldValue(plan, "item10.equipment", "NB1");
   setFieldValue(plan, "item10.surveillance", "N1");
@@ -181,9 +178,9 @@ test("AISR field validation stays aligned with existing flight-plan syntax", () 
 });
 
 test("route and Field 18 preserve internal text exactly", () => {
-  const plan = makeElvisPlan();
-  const route = "  SOKRU  DCT\nOXDOC/N0423F340  ";
-  const field18 = "  STS/MARSA STATE  RMK/KEEP  DOUBLE SPACE  ";
+  const plan = makeSyntheticPlan();
+  const route = "  MOCKA  DCT\nBRAVO/N0310F220  ";
+  const field18 = "  PBN/A1B1  RMK/KEEP  DOUBLE SPACE  ";
   setFieldValue(plan, "item15.route", route);
   setFieldValue(plan, "item18.otherInformation", field18);
   const fields = fieldsByKey(normalizeAisrPlan(plan));
@@ -193,19 +190,19 @@ test("route and Field 18 preserve internal text exactly", () => {
 });
 
 test("unreliable imported values remain visible and require conflict review", () => {
-  const plan = makeElvisPlan();
+  const plan = makeSyntheticPlan();
   const normalized = normalizeAisrPlan(plan, {
     importResult: { unreliableFields: ["item10.surveillance"] },
   });
   const surveillance = fieldsByKey(normalized).surveillance;
-  assert.equal(surveillance.value, "B1D1L");
+  assert.equal(surveillance.value, SYNTHETIC_DD1801.surveillance);
   assert.equal(surveillance.source, "FLIGHT PLAN");
   assert.equal(surveillance.status, "CONFLICT");
   assert.match(surveillance.warning, /NOT EXTRACTED RELIABLY/);
 });
 
 test("blank unreliable imports never make a C-17 preset look source-confirmed", () => {
-  const plan = makeElvisPlan();
+  const plan = makeSyntheticPlan();
   setFieldValue(plan, "item8.flightRules", "");
   const options = { importResult: { unreliableFields: ["item8.flightRules"] } };
   const imported = fieldsByKey(normalizeAisrPlan(plan, options)).flightRules;
@@ -224,7 +221,7 @@ test("blank unreliable imports never make a C-17 preset look source-confirmed", 
 });
 
 test("derived supplementary values honor import reliability and manual corrections", () => {
-  const plan = makeElvisPlan();
+  const plan = makeSyntheticPlan();
   setFieldValue(plan, "item19.emergencyRadio.frequency1215", true);
   const options = {
     importResult: { unreliableFields: ["item19.emergencyRadio.frequency1215"] },
@@ -244,37 +241,37 @@ test("derived supplementary values honor import reliability and manual correctio
 });
 
 test("supplementary fields map only when reliable working-plan data exists", () => {
-  const plan = makeElvisPlan();
-  setFieldValue(plan, "item19.endurance", "0604");
-  setFieldValue(plan, "item19.personsOnBoard", "004");
+  const plan = makeSyntheticPlan();
+  setFieldValue(plan, "item19.endurance", SYNTHETIC_DD1801.endurance);
+  setFieldValue(plan, "item19.personsOnBoard", SYNTHETIC_DD1801.personsOnBoard);
   setFieldValue(plan, "item19.emergencyRadio.frequency1215", true);
   setFieldValue(plan, "item19.emergencyRadio.frequency243", true);
   setFieldValue(plan, "item19.survivalEquipment.global", true);
   setFieldValue(plan, "item19.lifeJackets.carried", true);
   setFieldValue(plan, "item19.lifeJackets.lights", true);
   setFieldValue(plan, "item19.dinghies.carried", true);
-  setFieldValue(plan, "item19.dinghies.number", "03");
-  setFieldValue(plan, "item19.dinghies.capacity", "138");
-  setFieldValue(plan, "item19.dinghies.color", "ORANGE");
-  setFieldValue(plan, "item19.remarks", "SYNTHETIC TEST");
-  setFieldValue(plan, "item19.aircraftSerial", "01-0189");
+  setFieldValue(plan, "item19.dinghies.number", SYNTHETIC_DD1801.dinghyNumber);
+  setFieldValue(plan, "item19.dinghies.capacity", SYNTHETIC_DD1801.dinghyCapacity);
+  setFieldValue(plan, "item19.dinghies.color", SYNTHETIC_DD1801.dinghyColor);
+  setFieldValue(plan, "item19.remarks", SYNTHETIC_DD1801.remarks);
+  setFieldValue(plan, "item19.aircraftSerial", SYNTHETIC_DD1801.aircraftSerial);
   setFieldValue(plan, "item19.aircraftType", "C17");
   const fields = fieldsByKey(normalizeAisrPlan(plan));
 
-  assert.equal(fields.endurance.value, "0604");
-  assert.equal(fields.personsOnBoard.value, "004");
+  assert.equal(fields.endurance.value, SYNTHETIC_DD1801.endurance);
+  assert.equal(fields.personsOnBoard.value, SYNTHETIC_DD1801.personsOnBoard);
   assert.equal(fields.emergencyRadio.value, "121.5 MHZ, 243.0 MHZ");
   assert.equal(fields.survivalEquipment.value, "GLOBAL");
   assert.equal(fields.lifeJackets.value, "CARRIED, LIGHTS");
-  assert.match(fields.dinghies.value, /CARRIED.*NUMBER 03.*CAPACITY 138.*COLOR ORANGE/);
-  assert.equal(fields.remarks.value, "SYNTHETIC TEST");
-  assert.equal(fields.aircraftSerialNumbers.value, "01-0189");
+  assert.match(fields.dinghies.value, /CARRIED.*NUMBER 02.*CAPACITY 016.*COLOR BLUE/);
+  assert.equal(fields.remarks.value, SYNTHETIC_DD1801.remarks);
+  assert.equal(fields.aircraftSerialNumbers.value, SYNTHETIC_DD1801.aircraftSerial);
   assert.equal(fields.aircraftTypesInFlight.value, "C17");
   assert.equal(fields.pilotInCommand.status, "MANUAL REQUIRED");
 });
 
 test("readiness summary counts provenance and unresolved review states", () => {
-  const normalized = normalizeAisrPlan(makeElvisPlan());
+  const normalized = normalizeAisrPlan(makeSyntheticPlan());
   assert.equal(normalized.summary.total, AISR_FIELD_DEFINITIONS.length);
   assert.equal(normalized.summary.fromPreset, 1);
   assert.equal(normalized.summary.fromFlightPlan, 17);
@@ -287,10 +284,10 @@ test("readiness summary counts provenance and unresolved review states", () => {
 });
 
 test("existing structural validation is surfaced in AISR review and transfer data", () => {
-  const plan = makeElvisPlan();
+  const plan = makeSyntheticPlan();
   setFieldValue(plan, "item9.number", "1");
   setFieldValue(plan, "item16.alternate", "");
-  setFieldValue(plan, "item16.secondAlternate", "EGUN");
+  setFieldValue(plan, "item16.secondAlternate", "ZZZD");
   const normalized = normalizeAisrPlan(plan);
 
   assert.equal(normalized.structuralValidation.passed, false);
@@ -311,17 +308,17 @@ test("existing structural validation is surfaced in AISR review and transfer dat
 });
 
 test("human copy summary is AISR-oriented and keeps manual-review warnings", () => {
-  const normalized = normalizeAisrPlan(makeElvisPlan());
+  const normalized = normalizeAisrPlan(makeSyntheticPlan());
   const summary = formatAisrSummary(normalized);
   assert.match(summary, /^AISR ASSISTANT\nPRESET: C-17 MIL IFR/m);
-  assert.match(summary, /AIRCRAFT IDENTIFICATION: ELVIS63/);
-  assert.match(summary, /FIELD 10 — EQUIPMENT: SDE1E2FGHIJ5RTUWXYZ/);
+  assert.match(summary, /AIRCRAFT IDENTIFICATION: LAB731/);
+  assert.match(summary, /FIELD 10 — EQUIPMENT: SFGHIRWY/);
   assert.match(summary, /PILOT IN COMMAND: MANUAL REQUIRED/);
   assert.match(summary, /USER MUST REVIEW AND MANUALLY FILE/);
 });
 
 test("autofill transfer payload is versioned, whitelisted, populate-only, and nonfiling", () => {
-  const normalized = normalizeAisrPlan(makeElvisPlan());
+  const normalized = normalizeAisrPlan(makeSyntheticPlan());
   const payloadText = serializeAisrTransferPayload(normalized);
   const payload = JSON.parse(payloadText);
   assert.equal(payload.schemaVersion, 1);
@@ -330,9 +327,9 @@ test("autofill transfer payload is versioned, whitelisted, populate-only, and no
   assert.equal(payload.filingAllowed, false);
   assert.deepEqual(payload.selectorMapping, { verified: false, profile: null });
   assert.equal(payload.structuralValidation.passed, true);
-  assert.equal(payload.fields.aircraftIdentification.value, "ELVIS63");
-  assert.equal(payload.fields.route.value, makeElvisPlan().item15.route);
-  assert.equal(payload.fields.field18.value, makeElvisPlan().item18.otherInformation);
+  assert.equal(payload.fields.aircraftIdentification.value, SYNTHETIC_DD1801.aircraftIdentification);
+  assert.equal(payload.fields.route.value, makeSyntheticPlan().item15.route);
+  assert.equal(payload.fields.field18.value, makeSyntheticPlan().item18.otherInformation);
   assert.equal("password" in payload, false);
   assert.equal("credentials" in payload, false);
   assert.equal("cookies" in payload, false);
@@ -343,6 +340,6 @@ test("autofill transfer payload is versioned, whitelisted, populate-only, and no
 
 test("core implementation contains no fixture hard-code, persistence, network, or filing path", async () => {
   const source = await import("node:fs/promises").then(fs => fs.readFile(new URL("../flight-plan-aisr.js", import.meta.url), "utf8"));
-  assert.doesNotMatch(source, /ELVIS63|10189A|SOKRU/);
+  assert.doesNotMatch(source, /LAB731|TEST731|SIM1A/);
   assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB|fetch\(|XMLHttpRequest|WebSocket|postMessage\(|\.submit\(|requestSubmit\(/);
 });

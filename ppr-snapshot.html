@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f4f7f6">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; media-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'"
+  >
+  <title>PPR Snapshot | KMEM Ops Board</title>
+  <link rel="stylesheet" href="./ppr-snapshot.css">
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">Skip to PPR Snapshot</a>
+
+  <header class="tool-header" id="toolHeader">
+    <div>
+      <p class="eyebrow">KMEM OPS BOARD</p>
+      <h1>PPR SNAPSHOT</h1>
+      <p class="header-copy">Build a clean, current PPR board from a SharePoint CSV selected on this device.</p>
+    </div>
+    <a class="board-link" href="./index.html" aria-label="Return to KMEM Ops Board">
+      <span aria-hidden="true">&#8592;</span> RETURN TO BOARD
+    </a>
+  </header>
+
+  <main id="mainContent" class="tool-shell">
+    <section id="importView" class="import-panel" aria-labelledby="importTitle">
+      <p class="section-kicker">LOCAL BROWSER SESSION</p>
+      <h2 id="importTitle">Select the current PPR CSV</h2>
+      <p class="privacy-copy">
+        The file is read only by this page and is not uploaded or saved by the application.
+        Closing, clearing, or replacing the page drops the active application references.
+      </p>
+
+      <div id="csvDropZone" class="drop-zone" tabindex="0" role="button" aria-controls="pprCsvInput" aria-describedby="fileRules">
+        <span class="drop-icon" aria-hidden="true">&#128197;</span>
+        <strong>DROP SHAREPOINT CSV HERE</strong>
+        <span>or choose one local file</span>
+        <button id="chooseCsvButton" class="primary-button" type="button">CHOOSE CSV</button>
+      </div>
+      <input id="pprCsvInput" class="visually-hidden" type="file" accept=".csv,text/csv" tabindex="-1">
+      <p id="fileRules" class="file-rules">CSV only. One active snapshot at a time. No upload, saved board, history, or export is created.</p>
+      <p id="importStatus" class="import-status" role="alert" aria-live="assertive"></p>
+    </section>
+
+    <section id="loadedView" class="loaded-view" hidden>
+      <nav id="sessionControls" class="session-controls" aria-label="PPR Snapshot controls">
+        <button id="snapshotModeButton" class="primary-button" type="button">SCREENSHOT VIEW</button>
+        <button id="loadAnotherButton" class="secondary-button" type="button">LOAD ANOTHER CSV</button>
+        <button id="clearPprButton" class="danger-button" type="button">CLEAR PPR DATA</button>
+        <span class="escape-note">Press Esc to leave screenshot view.</span>
+      </nav>
+
+      <section id="snapshotBoard" class="snapshot-board" aria-labelledby="snapshotTitle">
+        <h2 id="snapshotTitle">CURRENT PPR SNAPSHOT</h2>
+        <div id="pprCards" class="ppr-card-grid"></div>
+        <p id="emptySnapshot" class="empty-snapshot" hidden>No approved or cancelled PPRs are present in this file.</p>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./ppr-snapshot.js"></script>
+</body>
+</html>

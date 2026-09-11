@@ -12,27 +12,31 @@ import {
   validateFlightPlan,
   validateRoute,
 } from "../flight-plan-core.js";
+import {
+  SYNTHETIC_DD1801,
+  SYNTHETIC_DD1801_FPL,
+} from "./fixtures/dd1801-approved-synthetic.mjs";
 
 function makeValidFlightPlan() {
   const model = createBlankFlightPlan();
   const values = {
-    "item7.aircraftIdentification": "RCH123",
-    "item8.flightRules": "I",
-    "item8.typeOfFlight": "M",
-    "item9.aircraftType": "C17",
-    "item9.wakeCategory": "H",
-    "item10.equipment": "DE1E2FGHIJ5RSTUWXYZ",
-    "item10.surveillance": "B1D1L",
-    "item13.departure": "EGPK",
-    "item13.time": "1532",
-    "item15.speed": "N0450",
-    "item15.level": "F330",
-    "item15.route": "ABC DCT DEF UL607 GHI",
-    "item16.destination": "LROP",
-    "item16.totalEet": "0315",
-    "item16.alternate": "LHBP",
-    "item16.secondAlternate": "LRCL",
-    "item18.otherInformation": "DOF/260826 OPR/USAF",
+    "item7.aircraftIdentification": SYNTHETIC_DD1801.aircraftIdentification,
+    "item8.flightRules": SYNTHETIC_DD1801.flightRules,
+    "item8.typeOfFlight": SYNTHETIC_DD1801.typeOfFlight,
+    "item9.aircraftType": SYNTHETIC_DD1801.aircraftType,
+    "item9.wakeCategory": SYNTHETIC_DD1801.wakeCategory,
+    "item10.equipment": SYNTHETIC_DD1801.equipment,
+    "item10.surveillance": SYNTHETIC_DD1801.surveillance,
+    "item13.departure": SYNTHETIC_DD1801.departure,
+    "item13.time": SYNTHETIC_DD1801.departureTime,
+    "item15.speed": SYNTHETIC_DD1801.speed,
+    "item15.level": SYNTHETIC_DD1801.level,
+    "item15.route": SYNTHETIC_DD1801.route,
+    "item16.destination": SYNTHETIC_DD1801.destination,
+    "item16.totalEet": SYNTHETIC_DD1801.totalEet,
+    "item16.alternate": SYNTHETIC_DD1801.alternate,
+    "item16.secondAlternate": SYNTHETIC_DD1801.secondAlternate,
+    "item18.otherInformation": SYNTHETIC_DD1801.otherInformation,
   };
   for (const [path, value] of Object.entries(values)) {
     setFieldValue(model, path, value);
@@ -92,10 +96,10 @@ test("route-token classification covers operational token families", () => {
   assert.equal(classifyRouteToken("DCT"), "dct");
   assert.equal(classifyRouteToken("UL607"), "airway");
   assert.equal(classifyRouteToken("NATA"), "airway");
-  assert.equal(classifyRouteToken("ELVIS7"), "procedure");
+  assert.equal(classifyRouteToken("SIM1A"), "procedure");
   assert.equal(classifyRouteToken("STAR"), "procedure");
-  assert.equal(classifyRouteToken("SUDB1L.SUDBY"), "procedure");
-  assert.equal(classifyRouteToken("TOSVI.TOSV1E"), "procedure");
+  assert.equal(classifyRouteToken("SIM1A.MOCKA"), "procedure");
+  assert.equal(classifyRouteToken("TRIAL.SIM2B"), "procedure");
   assert.equal(classifyRouteToken("N0450F330"), "modifier");
   assert.equal(classifyRouteToken("F350"), "modifier");
   assert.equal(classifyRouteToken("5230N02000W"), "coordinate");
@@ -134,14 +138,14 @@ test("an airway between points remains unchanged", () => {
 });
 
 test("a mixed route changes only confidently adjacent point pairs", () => {
-  const result = validateRoute("ABC DEF UL607 GHI JKL ELVIS7 MNO");
-  assert.equal(result.route, "ABC DCT DEF UL607 GHI DCT JKL ELVIS7 MNO");
+  const result = validateRoute("ALPHA BRAVO Q42 CHARL DELTA SIM1A ECHO");
+  assert.equal(result.route, "ALPHA DCT BRAVO Q42 CHARL DCT DELTA SIM1A ECHO");
   assert.equal(result.insertedCount, 2);
   assert.equal(result.changed, true);
 });
 
 test("dotted SID and STAR transition tokens from electronic DD1801 routes remain untouched", () => {
-  const route = "SUDB1L.SUDBY UL607 ABC TOSVI.TOSV1E";
+  const route = "SIM1A.MOCKA Q42 ALPHA TRIAL.SIM2B";
   assert.deepEqual(validateRoute(route), {
     route,
     changed: false,
@@ -158,14 +162,14 @@ test("dotted SID and STAR transition tokens from electronic DD1801 routes remain
 
 test("normalized DD1801 SID and STAR boundary envelopes do not gain speculative DCT", () => {
   const route =
-    "SUDB1L SUDBY DCS L612 BARTN MCT M16 DOLAS LAMSO PETIK PAM L620 OMELO PEPIK BERVA ERGOM TEGRI TOSVI TOSV1E";
+    "SIM1A MOCKA ALPHA BRAVO Q42 CHARL DELTA ECHO T7 FOXT GOLF TRIAL SIM2B";
   const result = validateRoute(route);
   assert.equal(
     result.route,
-    "SUDB1L SUDBY DCS L612 BARTN DCT MCT M16 DOLAS DCT LAMSO DCT PETIK DCT PAM L620 OMELO DCT PEPIK DCT BERVA DCT ERGOM DCT TEGRI TOSVI TOSV1E",
+    "SIM1A MOCKA ALPHA DCT BRAVO Q42 CHARL DCT DELTA DCT ECHO T7 FOXT DCT GOLF TRIAL SIM2B",
   );
-  assert.equal(result.insertedCount, 8);
-  assert.doesNotMatch(result.route, /SUDBY DCT DCS|TEGRI DCT TOSVI/);
+  assert.equal(result.insertedCount, 4);
+  assert.doesNotMatch(result.route, /MOCKA DCT ALPHA|GOLF DCT TRIAL/);
 });
 
 test("unknown route tokens and their surrounding sections are left unchanged", () => {
@@ -255,7 +259,7 @@ test("local checks distinguish deterministic errors from review warnings", () =>
   setFieldValue(invalid, "item15.speed", "450");
   setFieldValue(invalid, "item15.level", "330");
   setFieldValue(invalid, "item16.alternate", "");
-  setFieldValue(invalid, "item16.secondAlternate", "LRCL");
+  setFieldValue(invalid, "item16.secondAlternate", "ZZZD");
   const invalidResult = validateFlightPlan(invalid);
   assert.equal(invalidResult.passed, false);
   assert.equal(invalidResult.status, "ERROR");
@@ -280,22 +284,20 @@ test("FPL generation combines Item 10 with exactly one slash", () => {
   assert.equal(validation.passed, true);
   assert.equal(
     message,
-    "(FPL-RCH123-IM\n" +
-      "-C17/H-DE1E2FGHIJ5RSTUWXYZ/B1D1L\n" +
-      "-EGPK1532\n" +
-      "-N0450F330 ABC DCT DEF UL607 GHI\n" +
-      "-LROP0315 LHBP LRCL\n" +
-      "-DOF/260826 OPR/USAF)",
+    SYNTHETIC_DD1801_FPL,
   );
   const item9And10Line = message.split("\n")[1];
-  assert.equal(item9And10Line, "-C17/H-DE1E2FGHIJ5RSTUWXYZ/B1D1L");
+  assert.equal(item9And10Line, `-C17/H-${SYNTHETIC_DD1801.equipment}/${SYNTHETIC_DD1801.surveillance}`);
   assert.equal(item9And10Line.split("-")[2].split("/").length - 1, 1);
 });
 
 test("optional aircraft number is prepended to Item 9 when entered", () => {
   const model = makeValidFlightPlan();
   setFieldValue(model, "item9.number", "2");
-  assert.equal(buildFplMessage(model).message.split("\n")[1], "-2C17/H-DE1E2FGHIJ5RSTUWXYZ/B1D1L");
+  assert.equal(
+    buildFplMessage(model).message.split("\n")[1],
+    `-2C17/H-${SYNTHETIC_DD1801.equipment}/${SYNTHETIC_DD1801.surveillance}`,
+  );
 });
 
 test("Item 9 uses blank for one aircraft and accepts only entered counts 2 through 99", () => {
@@ -310,7 +312,7 @@ test("Item 9 uses blank for one aircraft and accepts only entered counts 2 throu
 
   setFieldValue(model, "item9.number", "99");
   assert.equal(validateFlightPlan(model).passed, true);
-  assert.match(buildFplMessage(model).message, /^\(FPL-RCH123-IM\n-99C17\/H-/);
+  assert.match(buildFplMessage(model).message, /^\(FPL-LAB731-IM\n-99C17\/H-/);
 });
 
 test("Item 19 remains associated with the model but is excluded from transmitted FPL", () => {
