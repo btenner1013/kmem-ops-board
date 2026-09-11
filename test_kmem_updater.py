@@ -15,20 +15,43 @@ from pathlib import Path
 from unittest import mock
 
 from host_health_history import DEFAULT_MAX_SERIALIZED_BYTES
+import kmem_updater
 from kmem_updater import (
+    ACQUIRE_DEADLINE_SECONDS,
     BACKUP_HANDOFF_MINUTES,
     BackupObservation,
     GENERATED_FILES,
+    GENERATOR_TIMEOUT_SECONDS,
     HOST_FAILOVER_MINUTES,
     InvalidLeaseObservation,
+    LEASE_FILE,
     LEASE_MINUTES,
+    NMS_PROBE_RESULT_MARKER,
+    NMS_PROBE_TIMEOUT_SECONDS,
+    NOTAM_FEED_FRESH_MINUTES,
+    NOTAM_FEED_RETAKE_COOLDOWN_MINUTES,
+    NOTAM_FEED_TAKEOVER_MINUTES,
+    NOTAM_HANDOFF_REOFFER_MINUTES,
+    NOTAM_HANDOFF_WINDOW_MINUTES,
+    NotamFeedTakeoverObservation,
+    PUBLISH_REASONS,
     REQUIRED_OWNED_CYCLE_SKIPPED_EXIT,
+    RESTART_AFTER_SYNC_EXIT,
+    RemoteSnapshot,
+    STATUS_FILE,
     UpdaterCoordinator,
+    WEATHER_FILE,
+    WORKER_TIMEOUT_SECONDS,
     active_lease,
+    atomic_write_json,
     classify_lease_state,
     classify_host_heartbeat,
+    classify_published_notam_feed,
     coordinated_worker_is_authorized,
+    evaluate_backup_publication,
+    format_utc,
     lease_is_active,
+    parse_notam_handoff,
     parse_role,
     parse_utc,
     released_lease,
@@ -36,6 +59,7 @@ from kmem_updater import (
     worker_authorization_path,
     write_worker_authorization,
     _log_generator_output,
+    _probe_summary_line,
     _terminate_process_tree,
     _windows_descendant_pids,
 )
@@ -942,6 +966,77 @@ class RemoteLeaseTests(GitFixture):
         self.assertIn("KMEM updater lease PRIMARY", messages)
         self.assertIn("KMEM weather update", messages)
 
+    def test_standby_fast_forwards_new_coordinator_code_before_standing_down(self):
+        # M: a BACKUP that keeps deferring to a healthy PRIMARY must still load new
+        # coordinator logic. Previously the standby returned on heartbeat/lease
+        # checks BEFORE repo.sync(), so it could run stale code indefinitely.
+        healthy = {
+            "schemaVersion": 1,
+            "activeRole": "PRIMARY",
+            "heartbeatUtc": FIXED_NOW.isoformat(),
+            "lastSuccessfulUpdateUtc": FIXED_NOW.isoformat(),
+            "codeSyncStatus": "CURRENT",
+            "updateStatus": "OK",
+        }
+        write(self.writer / "host_status.json", json.dumps(healthy) + "\n")
+        write(
+            self.writer / "update_weather_local.py",
+            "# new coordinator-era code\n"
+            + (self.writer / "update_weather_local.py").read_text(encoding="utf-8"),
+        )
+        run_git(self.writer, "add", "--", "host_status.json", "update_weather_local.py")
+        run_git(self.writer, "commit", "-m", "code change while PRIMARY is healthy")
+        run_git(self.writer, "push", "origin", "main")
+
+        repo = GitRepository(self.primary, fetch_attempts=1)
+        stale_head = repo.sha("HEAD")
+        backup = UpdaterCoordinator(
+            repo,
+            "BACKUP",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW + timedelta(minutes=2),
+            python_executable=sys.executable,
+        )
+        self.assertEqual(backup.run_once(), RESTART_AFTER_SYNC_EXIT)
+        self.assertNotEqual(repo.sha("HEAD"), stale_head)
+        self.assertEqual(repo.sha("HEAD"), repo.sha("origin/main"))
+        # The restarted (now current) standby still stands down for a healthy PRIMARY.
+        origin_before = repo.sha("origin/main")
+        self.assertEqual(backup.run_once(), 0)
+        repo.fetch()
+        self.assertEqual(repo.sha("origin/main"), origin_before)
+
+    def test_primary_honours_its_own_handoff_window_without_touching_the_lease(self):
+        repo = GitRepository(self.primary, fetch_attempts=1)
+        primary = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW,
+            python_executable=sys.executable,
+        )
+        primary.handoff.record_offer(FIXED_NOW - timedelta(minutes=1), FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES - 1))
+        origin_before = repo.sha("origin/main")
+        self.assertEqual(primary.run_once(), 0)
+        repo.fetch()
+        self.assertEqual(repo.sha("origin/main"), origin_before, "a yielding PRIMARY must publish nothing")
+        self.assertEqual(repo.read_json("origin/main", "updater_lease.json")["state"], "RELEASED")
+        # Once the window lapses PRIMARY resumes normal ownership automatically.
+        resumed = UpdaterCoordinator(
+            repo,
+            "PRIMARY",
+            self.runtime,
+            now_fn=lambda: FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES),
+            python_executable=sys.executable,
+        )
+        self.assertEqual(resumed.run_once(), 0)
+        repo.fetch()
+        self.assertNotEqual(repo.sha("origin/main"), origin_before)
+        status = repo.read_json("origin/main", "host_status.json")
+        self.assertEqual(status["activeRole"], "PRIMARY")
+        self.assertEqual(status["publishReason"], "SCHEDULED")
+        self.assertIsNone(status["notamHandoff"])
+
     def test_host_health_failure_never_blocks_weather_status_or_lease_publication(self):
         repo = GitRepository(self.primary, fetch_attempts=1)
         coordinator = UpdaterCoordinator(
@@ -1561,6 +1656,945 @@ class HeartbeatAndRoleTests(unittest.TestCase):
                     FIXED_NOW + timedelta(minutes=(LEASE_MINUTES * 2), seconds=2),
                 )
             )
+
+
+class NotamAwareFailoverTests(unittest.TestCase):
+    """NOTAM-aware failover: PRIMARY stays primary; BACKUP covers a PRIMARY that
+    is alive but cannot retrieve NOTAMs; PRIMARY reclaims only after proving
+    recovery. All decisions use fake clocks and in-memory documents."""
+
+    # ----- fixtures ---------------------------------------------------------
+
+    def status(self, age_minutes, role="PRIMARY", **extra):
+        completed = FIXED_NOW - timedelta(minutes=age_minutes)
+        value = {
+            "schemaVersion": 1,
+            "activeRole": role,
+            "heartbeatUtc": format_utc(completed),
+            "lastSuccessfulUpdateUtc": format_utc(completed),
+            "runStartedUtc": format_utc(completed - timedelta(seconds=25)),
+            "runCompletedUtc": format_utc(completed),
+            "codeSyncStatus": "CURRENT",
+            "updateStatus": "OK",
+            "publishReason": "SCHEDULED",
+            "notamHandoff": None,
+        }
+        value.update(extra)
+        return value
+
+    def weather(self, notam_age_minutes, fetch_status="OK", raw_status="Success",
+                actor="KMEM_BACKUP_UPDATER", generated_age_minutes=None):
+        notam_at = FIXED_NOW - timedelta(minutes=notam_age_minutes)
+        generated_at = (
+            FIXED_NOW - timedelta(minutes=generated_age_minutes)
+            if generated_age_minutes is not None
+            else notam_at
+        )
+        return {
+            "milNotamFetchStatus": fetch_status,
+            "milNotamRawStatus": raw_status,
+            "milNotamUpdatedZ": notam_at.strftime("%Y-%m-%d %H:%M:%SZ"),
+            "allFeedsUpdatedZ": generated_at.strftime("%Y-%m-%d %H:%MZ"),
+            "workflowMetadata": {
+                "lastWorkflowActor": actor,
+                "lastWorkflowTimestampZ": generated_at.strftime("%Y-%m-%d %H:%M:%SZ"),
+            },
+        }
+
+    def backup_ok(self, age_minutes=5, **status_extra):
+        """A coherent successful BACKUP publication `age_minutes` old."""
+        extra = {"publishReason": "NOTAM_DEGRADED_TAKEOVER", **status_extra}
+        status = self.status(age_minutes, role="BACKUP", **extra)
+        weather = self.weather(age_minutes + 0.1)  # pull finished seconds before completion
+        return status, weather
+
+    def coordinator(self, role, runtime, **kwargs):
+        return UpdaterCoordinator(
+            repo=kwargs.pop("repo", None),
+            role=role,
+            runtime_root=runtime,
+            now_fn=kwargs.pop("now_fn", lambda: FIXED_NOW),
+            **kwargs,
+        )
+
+    # ----- classifiers -------------------------------------------------------
+
+    def test_published_feed_classification_boundaries_and_bad_input(self):
+        ok = classify_published_notam_feed(self.weather(5), FIXED_NOW)
+        self.assertTrue(ok.ok)
+        self.assertTrue(classify_published_notam_feed(self.weather(NOTAM_FEED_FRESH_MINUTES), FIXED_NOW).ok)
+        self.assertFalse(classify_published_notam_feed(self.weather(NOTAM_FEED_FRESH_MINUTES + 0.01), FIXED_NOW).ok)
+        # The threshold is "last authoritative retrieval older than 20 minutes",
+        # not a count of attempts: exactly 20 does not qualify.
+        at_threshold = classify_published_notam_feed(self.weather(NOTAM_FEED_TAKEOVER_MINUTES, "SCRIPT_FAILED"), FIXED_NOW)
+        self.assertEqual(at_threshold.status, "FAILED")
+        self.assertFalse(at_threshold.failing_beyond_takeover)
+        self.assertTrue(classify_published_notam_feed(self.weather(NOTAM_FEED_TAKEOVER_MINUTES + 0.01, "TIMEOUT"), FIXED_NOW).failing_beyond_takeover)
+        # Retained content after a failed pull keeps rawStatus Success but is FAILED.
+        retained = classify_published_notam_feed(self.weather(40, "SCRIPT_FAILED", "Success"), FIXED_NOW)
+        self.assertEqual(retained.status, "FAILED")
+        self.assertFalse(classify_published_notam_feed(self.weather(5, "OK", "LAST_GOOD"), FIXED_NOW).ok)
+        for bad in (None, {}, {"milNotamFetchStatus": ""}, {"milNotamFetchStatus": "OK", "milNotamRawStatus": "Success", "milNotamUpdatedZ": "garbage"}):
+            state = classify_published_notam_feed(bad, FIXED_NOW)
+            self.assertFalse(state.ok)
+            self.assertFalse(state.failing_beyond_takeover)
+        future = classify_published_notam_feed(self.weather(-5, "SCRIPT_FAILED"), FIXED_NOW)
+        self.assertIsNone(future.age_minutes)
+        self.assertFalse(future.failing_beyond_takeover)
+
+    def test_backup_publication_requires_one_coherent_successful_run(self):
+        status, weather = self.backup_ok(5)
+        result = evaluate_backup_publication(status, weather, FIXED_NOW)
+        self.assertTrue(result.qualifies, result.reason)
+
+        cases = {
+            # F: fresh error heartbeat + retained successful weather must not qualify.
+            "error heartbeat with retained weather": (
+                self.status(2, role="BACKUP", updateStatus="ERROR", lastSuccessfulUpdateUtc=format_utc(FIXED_NOW - timedelta(minutes=20))),
+                self.weather(20),
+                "BACKUP_LAST_RUN_NOT_OK",
+            ),
+            "success timestamp not this run": (
+                self.status(2, role="BACKUP", lastSuccessfulUpdateUtc=format_utc(FIXED_NOW - timedelta(minutes=20))),
+                self.weather(2.1),
+                "BACKUP_RUN_WINDOW_INCONSISTENT",
+            ),
+            "weather from an older run than the heartbeat": (self.status(2, role="BACKUP"), self.weather(20), "WEATHER_NOT_FROM_BACKUP_RUN"),
+            "weather generated by PRIMARY": (self.status(2, role="BACKUP"), self.weather(2.1, actor="KMEM_PRIMARY_UPDATER"), "WEATHER_NOT_FROM_BACKUP_RUN"),
+            "retained OK NOTAMs older than this run": (self.status(2, role="BACKUP"), self.weather(25, generated_age_minutes=2.1), "BACKUP_NOTAMS_RETAINED_NOT_FRESH"),
+            "NOTAM pull failed this run": (self.status(2, role="BACKUP"), self.weather(2.1, "SCRIPT_FAILED"), "BACKUP_NOTAM_PULL_NOT_OK"),
+            "publisher is PRIMARY": (self.status(2, role="PRIMARY"), self.weather(2.1), "PUBLISHER_NOT_BACKUP"),
+            "heartbeat delayed": (self.status(16, role="BACKUP"), self.weather(16.1), "BACKUP_HEARTBEAT_DELAYED"),
+            "heartbeat silent": (self.status(40, role="BACKUP"), self.weather(40.1), "BACKUP_HEARTBEAT_NO_HEARTBEAT"),
+            "future run": (self.status(-3, role="BACKUP"), self.weather(-2.9), "BACKUP_HEARTBEAT_UNAVAILABLE"),
+            "malformed window": (self.status(2, role="BACKUP", runStartedUtc="not-a-time"), self.weather(2.1), "BACKUP_RUN_WINDOW_MALFORMED"),
+            "missing status": (None, self.weather(2.1), "BACKUP_EVIDENCE_MISSING"),
+            "missing weather": (self.status(2, role="BACKUP"), None, "BACKUP_EVIDENCE_MISSING"),
+        }
+        for label, (status, weather, expected) in cases.items():
+            with self.subTest(case=label):
+                result = evaluate_backup_publication(status, weather, FIXED_NOW)
+                self.assertFalse(result.qualifies)
+                self.assertEqual(result.reason, expected)
+
+    def test_handoff_offer_parsing_is_strict(self):
+        offered = FIXED_NOW - timedelta(minutes=2)
+        expires = offered + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES)
+        good = self.status(2, notamHandoff={"offeredUtc": format_utc(offered), "expiresUtc": format_utc(expires)})
+        self.assertEqual(parse_notam_handoff(good, FIXED_NOW), (offered, expires))
+        bad = {
+            "expired": {"offeredUtc": format_utc(FIXED_NOW - timedelta(minutes=20)), "expiresUtc": format_utc(FIXED_NOW - timedelta(minutes=8))},
+            "future offer": {"offeredUtc": format_utc(FIXED_NOW + timedelta(minutes=1)), "expiresUtc": format_utc(FIXED_NOW + timedelta(minutes=13))},
+            "window too long": {"offeredUtc": format_utc(offered), "expiresUtc": format_utc(offered + timedelta(hours=2))},
+            "inverted": {"offeredUtc": format_utc(expires), "expiresUtc": format_utc(offered)},
+            "malformed": {"offeredUtc": "x", "expiresUtc": format_utc(expires)},
+            "not a dict": "soon",
+        }
+        for label, offer in bad.items():
+            with self.subTest(case=label):
+                self.assertIsNone(parse_notam_handoff(self.status(2, notamHandoff=offer), FIXED_NOW))
+        self.assertIsNone(parse_notam_handoff(None, FIXED_NOW))
+
+    # ----- BACKUP eligibility --------------------------------------------------
+
+    def test_healthy_primary_behavior_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            backup = self.coordinator("BACKUP", runtime)
+            fresh = self.weather(5, actor="KMEM_PRIMARY_UPDATER")
+            for age in (5, 15, 16, 25):
+                with self.subTest(age=age):
+                    self.assertFalse(backup._backup_should_run(self.status(age), fresh))
+                    self.assertEqual(backup.publish_reason, "SCHEDULED")
+            self.assertTrue(backup._backup_should_run(self.status(26), fresh))
+            self.assertEqual(backup.publish_reason, "HEARTBEAT_FAILOVER")
+            # No weather supplied at all: identical to the pre-change contract.
+            self.assertFalse(backup._backup_should_run(self.status(5)))
+            self.assertFalse(backup._backup_should_run(self.status(10, role="BACKUP")))
+            self.assertTrue(backup._backup_should_run(self.status(13, role="BACKUP")))
+
+    def test_alive_primary_with_failing_feed_makes_backup_eligible(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            backup = self.coordinator("BACKUP", runtime)
+            failing = self.weather(25, "SCRIPT_FAILED", actor="KMEM_PRIMARY_UPDATER")
+            for age, state in ((5, "OK"), (20, "DELAYED")):
+                with self.subTest(primary_heartbeat=state):
+                    self.assertTrue(backup._backup_should_run(self.status(age), failing))
+                    self.assertTrue(backup.feed_takeover_active)
+                    self.assertEqual(backup.publish_reason, "NOTAM_DEGRADED_TAKEOVER")
+            self.assertFalse(backup._backup_should_run(self.status(5), self.weather(15, "SCRIPT_FAILED", actor="KMEM_PRIMARY_UPDATER")))
+            self.assertFalse(backup.feed_takeover_active)
+            self.assertFalse(backup._backup_should_run(self.status(5), self.weather(25, actor="KMEM_PRIMARY_UPDATER")))
+            self.assertFalse(backup._backup_should_run(self.status(5, codeSyncStatus="BLOCKED_DIRTY_WORKTREE"), failing))
+            # An explicit handoff offer is accepted immediately ...
+            offered = FIXED_NOW - timedelta(minutes=1)
+            offer = {"offeredUtc": format_utc(offered), "expiresUtc": format_utc(offered + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES))}
+            self.assertTrue(backup._backup_should_run(self.status(1, notamHandoff=offer), self.weather(21, "SCRIPT_FAILED", actor="KMEM_PRIMARY_UPDATER")))
+            self.assertEqual(backup.publish_reason, "NOTAM_DEGRADED_TAKEOVER")
+            # ... unless this host's own recent takeover also failed NMS.
+            backup.feed_takeover.record_failed_takeover(FIXED_NOW - timedelta(minutes=5))
+            self.assertFalse(backup._backup_should_run(self.status(1, notamHandoff=offer), self.weather(21, "SCRIPT_FAILED", actor="KMEM_PRIMARY_UPDATER")))
+            backup.feed_takeover.reset()
+
+    def test_notam_takeover_keeps_ten_minute_cadence_only_while_own_pull_is_proven(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            backup = self.coordinator("BACKUP", runtime)
+            # D: own heartbeat 10 minutes old would normally wait for PRIMARY; in a
+            # NOTAM takeover with a proven pull it continues on schedule.
+            status, weather = self.backup_ok(10)
+            self.assertTrue(backup._backup_should_run(status, weather))
+            self.assertEqual(backup.publish_reason, "NOTAM_DEGRADED_TAKEOVER")
+            self.assertTrue(backup.feed_takeover_active)
+            # Own last publication red -> ordinary handoff window applies again.
+            red_weather = self.weather(10.1, "SCRIPT_FAILED")
+            self.assertFalse(backup._backup_should_run(status, red_weather))
+            # Own last publication was a heartbeat-driven takeover -> unchanged rules.
+            plain, plain_weather = self.backup_ok(10, publishReason="HEARTBEAT_FAILOVER")
+            self.assertFalse(backup._backup_should_run(plain, plain_weather))
+            self.assertTrue(backup._backup_should_run(*self.backup_ok(13, publishReason="HEARTBEAT_FAILOVER")))
+
+    def test_cooldown_limits_feed_rule_only_and_never_heartbeat_failover(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            backup = self.coordinator("BACKUP", runtime)
+            failing = self.weather(25, "SCRIPT_FAILED", actor="KMEM_PRIMARY_UPDATER")
+            backup.feed_takeover.record_failed_takeover(FIXED_NOW - timedelta(minutes=5))
+            self.assertFalse(backup._backup_should_run(self.status(5), failing))
+            # I: PRIMARY goes heartbeat-stale while the cooldown is active.
+            self.assertTrue(backup._backup_should_run(self.status(26), failing))
+            self.assertEqual(backup.publish_reason, "HEARTBEAT_FAILOVER")
+            # Already-active BACKUP keeps publishing regardless of cooldown.
+            self.assertTrue(backup._backup_should_run(self.status(13, role="BACKUP"), failing))
+            # Cooldown expires; a healthy published feed clears it early.
+            backup.feed_takeover.reset()
+            backup.feed_takeover.record_failed_takeover(FIXED_NOW - timedelta(minutes=NOTAM_FEED_RETAKE_COOLDOWN_MINUTES))
+            self.assertTrue(backup._backup_should_run(self.status(5), failing))
+            backup.feed_takeover.record_failed_takeover(FIXED_NOW - timedelta(minutes=1))
+            backup._backup_should_run(self.status(5), self.weather(3, actor="KMEM_PRIMARY_UPDATER"))
+            self.assertFalse(backup.feed_takeover.cooling_down(FIXED_NOW))
+            # Consecutive failed takeovers back off 30 -> 60 -> 120 (cap) minutes; success resets.
+            backup.feed_takeover.reset()
+            for expected in (30, 60, 120, 120):
+                backup.feed_takeover.record_failed_takeover(FIXED_NOW)
+                self.assertEqual(backup.feed_takeover.cooldown_minutes(), expected)
+            self.assertTrue(backup.feed_takeover.cooling_down(FIXED_NOW + timedelta(minutes=119)))
+            self.assertFalse(backup.feed_takeover.cooling_down(FIXED_NOW + timedelta(minutes=120)))
+            backup.feed_takeover.reset()
+            backup.feed_takeover.record_failed_takeover(FIXED_NOW)
+            self.assertEqual(backup.feed_takeover.cooldown_minutes(), 30)
+            # O: malformed / future cooldown metadata never blocks.
+            atomic_write_json(backup.feed_takeover.path, {"lastFailedTakeoverUtc": "garbage"})
+            self.assertFalse(backup.feed_takeover.cooling_down(FIXED_NOW))
+            backup.feed_takeover.record_failed_takeover(FIXED_NOW + timedelta(hours=1))
+            self.assertFalse(backup.feed_takeover.cooling_down(FIXED_NOW))
+
+    def test_takeover_outcome_recorded_from_actual_notam_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            backup = self.coordinator("BACKUP", runtime)
+            backup.feed_takeover_active = True
+            # J: generator exit 0 / publish OK but NOTAM status failed -> cooldown.
+            backup.last_generated_notam_status = "SCRIPT_FAILED"
+            backup._record_feed_takeover_outcome(published=True)
+            self.assertTrue(backup.feed_takeover.cooling_down(FIXED_NOW))
+            backup.last_generated_notam_status = "OK"
+            backup._record_feed_takeover_outcome(published=True)
+            self.assertFalse(backup.feed_takeover.cooling_down(FIXED_NOW))
+            backup._record_feed_takeover_outcome(published=False)
+            self.assertTrue(backup.feed_takeover.cooling_down(FIXED_NOW))
+            for status in ("TIMEOUT", "NO_OUTPUT_JSON", "ERROR", "NO_CREDENTIALS", ""):
+                backup.feed_takeover.reset()
+                backup.last_generated_notam_status = status
+                backup._record_feed_takeover_outcome(published=True)
+                self.assertTrue(backup.feed_takeover.cooling_down(FIXED_NOW), status)
+            # Heartbeat-driven takeovers and PRIMARY never touch it.
+            backup.feed_takeover.reset()
+            backup.feed_takeover_active = False
+            backup.last_generated_notam_status = "SCRIPT_FAILED"
+            backup._record_feed_takeover_outcome(published=True)
+            self.assertFalse(backup.feed_takeover.cooling_down(FIXED_NOW))
+            primary = self.coordinator("PRIMARY", runtime)
+            primary.feed_takeover_active = True
+            primary.last_generated_notam_status = "SCRIPT_FAILED"
+            primary._record_feed_takeover_outcome(published=True)
+            self.assertFalse(primary.feed_takeover.cooling_down(FIXED_NOW))
+
+    # ----- PRIMARY: handoff opportunity (mechanism A) --------------------------
+
+    def test_primary_offers_bounded_handoff_only_for_its_own_stale_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            primary = self.coordinator("PRIMARY", runtime)
+            primary.last_generated_notam_status = "OK"
+            primary.last_generated_notam_updated = FIXED_NOW - timedelta(minutes=40)
+            self.assertIsNone(primary._primary_handoff_offer(FIXED_NOW))
+            primary.last_generated_notam_status = "SCRIPT_FAILED"
+            primary.last_generated_notam_updated = FIXED_NOW - timedelta(minutes=NOTAM_FEED_TAKEOVER_MINUTES)
+            self.assertIsNone(primary._primary_handoff_offer(FIXED_NOW))
+            primary.last_generated_notam_updated = FIXED_NOW - timedelta(minutes=NOTAM_FEED_TAKEOVER_MINUTES, seconds=1)
+            offer = primary._primary_handoff_offer(FIXED_NOW)
+            self.assertEqual(offer, {
+                "offeredUtc": format_utc(FIXED_NOW),
+                "expiresUtc": format_utc(FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES)),
+            })
+            # The local record is written only once the push carrying it succeeds.
+            self.assertIsNone(primary.handoff.open_window(FIXED_NOW))
+            primary.handoff.record_offer(FIXED_NOW, FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES))
+            # Not re-offered while a recent offer is on record.
+            later = FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_REOFFER_MINUTES - 1)
+            primary.last_generated_notam_updated = later - timedelta(minutes=60)
+            self.assertIsNone(primary._primary_handoff_offer(later))
+            self.assertIsNotNone(primary._primary_handoff_offer(FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_REOFFER_MINUTES)))
+            # BACKUP never offers.
+            backup = self.coordinator("BACKUP", runtime)
+            backup.last_generated_notam_status = "SCRIPT_FAILED"
+            backup.last_generated_notam_updated = FIXED_NOW - timedelta(hours=1)
+            self.assertIsNone(backup._primary_handoff_offer(FIXED_NOW))
+
+    def test_handoff_window_is_honoured_until_taken_or_expired(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            primary = self.coordinator("PRIMARY", runtime)
+            snapshot_primary = RemoteSnapshot("s1", self.status(1), self.weather(30, "SCRIPT_FAILED", actor="KMEM_PRIMARY_UPDATER"), None)
+            self.assertFalse(primary._primary_handoff_window_open(snapshot_primary))
+            primary.handoff.record_offer(FIXED_NOW - timedelta(minutes=1), FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES - 1))
+            self.assertTrue(primary._primary_handoff_window_open(snapshot_primary))
+            # Expired -> resume; PRIMARY is never withdrawn past the window.
+            expired = self.coordinator("PRIMARY", runtime, now_fn=lambda: FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES))
+            self.assertFalse(expired._primary_handoff_window_open(snapshot_primary))
+            # Taken by BACKUP -> window closes, re-offer bookkeeping kept.
+            primary.handoff.record_offer(FIXED_NOW - timedelta(minutes=1), FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES - 1))
+            snapshot_backup = RemoteSnapshot("s2", *self.backup_ok(0.5), None)
+            self.assertFalse(primary._primary_handoff_window_open(snapshot_backup))
+            self.assertIsNone(primary.handoff.open_window(FIXED_NOW))
+            self.assertFalse(primary.handoff.may_offer(FIXED_NOW))
+            self.assertTrue(primary.handoff.may_offer(FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_REOFFER_MINUTES)))
+            # Taken by a BACKUP whose own pull failed -> next offer waits twice as long.
+            primary.handoff.record_offer(FIXED_NOW - timedelta(minutes=1), FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES - 1))
+            red_taker = RemoteSnapshot("s3", self.status(0.5, role="BACKUP", publishReason="NOTAM_DEGRADED_TAKEOVER"), self.weather(0.6, "SCRIPT_FAILED"), None)
+            self.assertFalse(primary._primary_handoff_window_open(red_taker))
+            self.assertFalse(primary.handoff.may_offer(FIXED_NOW + timedelta(minutes=NOTAM_HANDOFF_REOFFER_MINUTES)))
+            self.assertTrue(primary.handoff.may_offer(FIXED_NOW + timedelta(minutes=2 * NOTAM_HANDOFF_REOFFER_MINUTES)))
+            # O: malformed / future local offer state is ignored.
+            atomic_write_json(primary.handoff.path, {"offeredUtc": "x", "expiresUtc": "y"})
+            self.assertFalse(primary._primary_handoff_window_open(snapshot_primary))
+            primary.handoff.record_offer(FIXED_NOW + timedelta(minutes=5), FIXED_NOW + timedelta(minutes=17))
+            self.assertFalse(primary._primary_handoff_window_open(snapshot_primary))
+
+    # ----- PRIMARY: recovery probe + post-probe recheck (mechanism B) ----------
+
+    class FakeRepo:
+        """Two-phase remote: `before` is read first, `after` once fetch() runs."""
+
+        def __init__(self, before, after=None, advance_code_after_probe=False):
+            self.before = before
+            self.after = after if after is not None else before
+            self.advance_code_after_probe = advance_code_after_probe
+            self.fetches = 0
+            self.repo_dir = Path(".")
+
+        def fetch(self):
+            self.fetches += 1
+
+        def sync(self, already_fetched=True):
+            advanced = self.advance_code_after_probe and self.fetches > 0
+            return type("Outcome", (), {"advanced": advanced, "status": "CODE_CURRENT", "local_sha": "a", "origin_sha": "b"})()
+
+        def sha(self, ref):
+            return "after" if self.fetches else "before"
+
+        def read_json(self, ref, name):
+            docs = self.after if ref == "after" else self.before
+            return docs.get(name)
+
+    def docs(self, status, weather):
+        return {STATUS_FILE: status, WEATHER_FILE: weather, LEASE_FILE: {"state": "RELEASED"}}
+
+    def test_primary_probes_before_lease_and_rechecks_after(self):
+        healthy = self.docs(*self.backup_ok(5))
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            probe = mock.Mock(return_value=False)
+
+            # No qualifying standby -> proceed, probe never spent.
+            plain = self.coordinator("PRIMARY", runtime, repo=self.FakeRepo(self.docs(self.status(5), self.weather(5, actor="KMEM_PRIMARY_UPDATER"))), notam_probe_fn=probe)
+            self.assertEqual(plain._primary_recovery_decision(plain._read_snapshot()), "PROCEED")
+            probe.assert_not_called()
+
+            # Standby healthy, probe fails, still healthy after -> yield.
+            repo = self.FakeRepo(healthy)
+            primary = self.coordinator("PRIMARY", runtime, repo=repo, notam_probe_fn=probe)
+            self.assertEqual(primary._primary_recovery_decision(primary._read_snapshot()), "YIELD")
+            self.assertEqual(probe.call_count, 1)
+            self.assertEqual(repo.fetches, 1)
+
+            # E: standby dies during the probe -> resume normal ownership path.
+            died = self.docs(self.status(40, role="BACKUP"), self.weather(40.1))
+            repo = self.FakeRepo(healthy, after=died)
+            primary = self.coordinator("PRIMARY", runtime, repo=repo, notam_probe_fn=mock.Mock(return_value=False))
+            self.assertEqual(primary._primary_recovery_decision(primary._read_snapshot()), "PROCEED")
+
+            # Probe passes -> proceed (reclaim under lease rules), even if standby still healthy.
+            primary = self.coordinator("PRIMARY", runtime, repo=self.FakeRepo(healthy), notam_probe_fn=mock.Mock(return_value=True))
+            self.assertEqual(primary._primary_recovery_decision(primary._read_snapshot()), "PROCEED")
+
+            # G: code advanced while probing -> restart, probe result discarded.
+            repo = self.FakeRepo(healthy, advance_code_after_probe=True)
+            primary = self.coordinator("PRIMARY", runtime, repo=repo, notam_probe_fn=mock.Mock(return_value=True))
+            primary.probe_result_path = runtime / "stale-probe.json"
+            primary.probe_result_path.write_text("{}", encoding="utf-8")
+            self.assertEqual(primary._primary_recovery_decision(primary._read_snapshot()), "RESTART")
+            self.assertIsNone(primary.probe_result_path)
+
+            # Probe launch failure counts as a failed probe.
+            primary = self.coordinator("PRIMARY", runtime, repo=self.FakeRepo(healthy), notam_probe_fn=mock.Mock(side_effect=OSError("no python")))
+            self.assertEqual(primary._primary_recovery_decision(primary._read_snapshot()), "YIELD")
+
+            # BACKUP role never runs mechanism B.
+            backup = self.coordinator("BACKUP", runtime, repo=self.FakeRepo(healthy), notam_probe_fn=probe)
+            probe.reset_mock()
+            self.assertEqual(backup._primary_recovery_decision(backup._read_snapshot()), "PROCEED")
+            probe.assert_not_called()
+
+    def test_acquire_deadline_skips_generation_when_budget_is_gone(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            primary = self.coordinator("PRIMARY", runtime)
+            self.assertFalse(primary._acquire_deadline_exceeded())  # no cycle started
+            with mock.patch("kmem_updater.time.monotonic", side_effect=[1000.0, 1000.0 + ACQUIRE_DEADLINE_SECONDS, 1000.0 + ACQUIRE_DEADLINE_SECONDS + 1]):
+                primary.cycle_started_monotonic = kmem_updater.time.monotonic()
+                self.assertFalse(primary._acquire_deadline_exceeded())
+                self.assertTrue(primary._acquire_deadline_exceeded())
+            self.assertEqual(ACQUIRE_DEADLINE_SECONDS, WORKER_TIMEOUT_SECONDS - GENERATOR_TIMEOUT_SECONDS - 120)
+            self.assertGreater(ACQUIRE_DEADLINE_SECONDS, NMS_PROBE_TIMEOUT_SECONDS)
+
+    # ----- probe result reuse (generator side) ---------------------------------
+
+    def probe_payload(self, **overrides):
+        payload = {
+            "status": "Success",
+            "generatedZ": (FIXED_NOW - timedelta(seconds=30)).strftime("%Y-%m-%d %H:%M:%SZ"),
+            "location": "KMEM",
+            "source": "FAA_NMS_STAGING",
+            "httpTransport": "WINDOWS_CURL",
+            "processBoundary": "WINDOWS_JOB_OBJECT",
+            "requestStage": "NOTAMS",
+            "milNotams": [{"number": "M0024/26", "text": "MIL RAMP ARFF STATUS YELLOW", "classification": "MIL"}],
+            "ficonNotams": [],
+            "runwayClosureNotams": [],
+            "constructionStatusNotams": [],
+            "taxiRestrictionNotams": [],
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_recovery_probe_result_is_reused_only_when_fully_validated(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "nms-probe-abc.json")
+            fixed = FIXED_NOW
+            with mock.patch.object(weather, "datetime", wraps=datetime) as fake_datetime:
+                fake_datetime.now.return_value = fixed
+                weather.write_recovery_probe_result(path, "abc", self.probe_payload())
+                env = {"KMEM_NMS_PROBE_RESULT_PATH": path, "KMEM_NMS_PROBE_TOKEN": "abc"}
+                with mock.patch.dict(os.environ, env, clear=False):
+                    reused = weather.load_recovery_probe_result()
+                self.assertIsNotNone(reused)
+                self.assertEqual(reused["milNotamFetchStatus"], "OK")
+                self.assertEqual(reused["milNotamAcquisition"], "RECOVERY_PROBE")
+                self.assertEqual(reused["milNotamUpdatedZ"], self.probe_payload()["generatedZ"])  # original retrieval time
+                self.assertEqual(reused["milNotamCount"], 1)
+
+                rejects = {
+                    "wrong token": ({"KMEM_NMS_PROBE_TOKEN": "zzz"}, {}),
+                    "no token": ({"KMEM_NMS_PROBE_TOKEN": ""}, {}),
+                    "too old": ({}, {"probedAtUtc": (fixed - timedelta(minutes=weather.NMS_PROBE_RESULT_MAX_AGE_MINUTES + 1)).strftime("%Y-%m-%d %H:%M:%SZ")}),
+                    "future": ({}, {"probedAtUtc": (fixed + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%SZ")}),
+                    "wrong location": ({}, {"location": "KBNA"}),
+                    "wrong source": ({}, {"source": "OTHER"}),
+                    "failed payload": ({}, {"payload": self.probe_payload(status="Error")}),
+                    "bad schema": ({}, {"schemaVersion": 99}),
+                }
+                for label, (env_override, record_override) in rejects.items():
+                    with self.subTest(case=label):
+                        record = json.loads(Path(path).read_text(encoding="utf-8"))
+                        record.update(record_override)
+                        other = os.path.join(directory, f"{label}.json")
+                        Path(other).write_text(json.dumps(record), encoding="utf-8")
+                        with mock.patch.dict(os.environ, {**env, "KMEM_NMS_PROBE_RESULT_PATH": other, **env_override}, clear=False):
+                            self.assertIsNone(weather.load_recovery_probe_result())
+                with mock.patch.dict(os.environ, {"KMEM_NMS_PROBE_RESULT_PATH": os.path.join(directory, "missing.json"), "KMEM_NMS_PROBE_TOKEN": "abc"}, clear=False):
+                    self.assertIsNone(weather.load_recovery_probe_result())
+            # Without the env contract the normal path is untouched.
+            with mock.patch.dict(os.environ, {"KMEM_NMS_PROBE_RESULT_PATH": "", "KMEM_NMS_PROBE_TOKEN": ""}, clear=False):
+                self.assertIsNone(weather.load_recovery_probe_result())
+
+    def test_generator_probe_writes_result_only_on_success_and_never_reads_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = os.path.join(directory, "probe-out.json")
+            raw_path = os.path.join(directory, "helper-output.json")
+            Path(raw_path).write_text(json.dumps(self.probe_payload()), encoding="utf-8")
+            ok_block = {"milNotamFetchStatus": "OK", "milNotamRawStatus": "Success", "milNotamFailureCategory": "NONE",
+                        "milNotamAttemptStage": "NOTAMS", "milNotamAttemptTransport": "WINDOWS_CURL", "milNotamCount": 1}
+            failed_block = dict(ok_block, milNotamFetchStatus="SCRIPT_FAILED", milNotamFailureCategory="UPSTREAM_RESPONSE_TIMEOUT", milNotamCount=0)
+            for block, expected in ((failed_block, False), (ok_block, True)):
+                with self.subTest(expected=expected):
+                    env = {"KMEM_PROBE_OUTPUT_PATH_INTERNAL": out, "KMEM_NMS_PROBE_TOKEN": "tok",
+                           "KMEM_NMS_PROBE_RESULT_PATH": out}  # must be ignored by the probe itself
+                    with (
+                        mock.patch.dict(os.environ, env, clear=False),
+                        mock.patch.object(weather, "fetch_mil_notams", return_value=block) as fetch,
+                        mock.patch.object(weather, "NMS_MIL_NOTAMS_OUTPUT_PATH", raw_path),
+                        mock.patch("builtins.print"),
+                    ):
+                        self.assertIs(weather.probe_mil_notam_feed(), expected)
+                        self.assertNotIn("KMEM_NMS_PROBE_RESULT_PATH", os.environ)
+                    fetch.assert_called_once_with({})
+                    self.assertEqual(os.path.exists(out), expected)
+            record = json.loads(Path(out).read_text(encoding="utf-8"))
+            self.assertEqual(record["invocationToken"], "tok")
+            self.assertEqual(record["location"], "KMEM")
+            self.assertEqual(record["payload"]["status"], "Success")
+
+    def test_probe_summary_line_returns_only_the_marker_payload(self):
+        stdout = (
+            "MIL NOTAMS: running FAA NMS pull...\n"
+            "Authorization: Basic SHOULD-NEVER-BE-LOGGED\n"
+            f"{NMS_PROBE_RESULT_MARKER}" '{"fetchStatus": "OK", "ok": true}\n'
+        )
+        self.assertEqual(_probe_summary_line(stdout), '{"fetchStatus": "OK", "ok": true}')
+        self.assertEqual(_probe_summary_line("no marker here"), "summary=unavailable")
+        self.assertEqual(_probe_summary_line(None), "summary=unavailable")
+
+    def test_status_payload_carries_validated_reason_and_offer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            backup = self.coordinator("BACKUP", runtime)
+            backup.publish_reason = "NOTAM_DEGRADED_TAKEOVER"
+            payload = backup._status_payload(run_started=FIXED_NOW - timedelta(seconds=20), completed=FIXED_NOW,
+                                             code_sha="c", origin_sha="c", publish_base_sha="b", generation_ok=True, error_code="")
+            self.assertEqual(payload["publishReason"], "NOTAM_DEGRADED_TAKEOVER")
+            self.assertIsNone(payload["notamHandoff"])
+            backup.publish_reason = "MADE_UP"
+            payload = backup._status_payload(run_started=FIXED_NOW, completed=FIXED_NOW, code_sha="c", origin_sha="c",
+                                             publish_base_sha="b", generation_ok=True, error_code="", notam_handoff={"offeredUtc": "x", "expiresUtc": "y"})
+            self.assertEqual(payload["publishReason"], "SCHEDULED")
+            self.assertEqual(payload["notamHandoff"], {"offeredUtc": "x", "expiresUtc": "y"})
+            self.assertIn("SCHEDULED", PUBLISH_REASONS)
+
+
+
+class NotamFailoverScheduleSimulationTests(unittest.TestCase):
+    """Deterministic two-host discrete-event simulation driving the REAL decision
+    methods (`_backup_should_run`, `_primary_handoff_window_open`,
+    `_primary_recovery_decision`, `_primary_handoff_offer`,
+    `_record_feed_takeover_outcome`, `_status_payload`) with a fake clock, an
+    in-memory remote, a modelled atomic lease with the real 20-minute TTL,
+    10-minute triggers with IgnoreNew, configurable trigger offsets, fetch /
+    probe / generation durations, and per-host NMS outcomes. Time-consuming
+    steps re-enter the scheduler, so the other host observes active leases and
+    acts during a slow probe or generation.
+
+    Stated assumption of every scenario: at least one host executes scheduled
+    work and can reach the remote. Simultaneous outages are not covered."""
+
+    class World:
+        def __init__(self):
+            self.now = FIXED_NOW
+            self.sha = 0
+            self.docs = {STATUS_FILE: None, WEATHER_FILE: None, LEASE_FILE: {"state": "RELEASED"}}
+            self.publishes = []  # (time, role, notam_ok, notam_updated, reason)
+            self.code_advanced = False
+            self.events = []  # (time, seq, host)
+            self.seq = 0
+
+        def read(self, name):
+            value = self.docs.get(name)
+            return json.loads(json.dumps(value)) if value is not None else None
+
+        def lease_active(self):
+            return lease_is_active(self.docs[LEASE_FILE], self.now)
+
+        def schedule(self, when, host):
+            self.seq += 1
+            self.events.append((when, self.seq, host))
+            self.events.sort(key=lambda item: (item[0], item[1]))
+
+        def advance_to(self, when):
+            """Run every trigger due up to `when` (re-entrant), then set the clock."""
+            while self.events and self.events[0][0] <= when:
+                due, _, host = self.events.pop(0)
+                self.now = max(self.now, due)
+                host.trigger()
+            self.now = max(self.now, when)
+
+    class WorldRepo:
+        def __init__(self, world):
+            self.world = world
+            self.repo_dir = Path(".")
+
+        def fetch(self):
+            return None
+
+        def sync(self, already_fetched=True):
+            advanced = self.world.code_advanced
+            self.world.code_advanced = False
+            return type("Outcome", (), {"advanced": advanced, "status": "CODE_CURRENT", "local_sha": "a", "origin_sha": "b"})()
+
+        def sha(self, ref):
+            return str(self.world.sha)
+
+        def read_json(self, ref, name):
+            return self.world.read(name)
+
+    class Host:
+        def __init__(self, sim, role, offset_minutes, *, fetch_minutes, generation_minutes, nms_ok, probe_minutes=2.0):
+            self.sim = sim
+            self.world = sim.world
+            self.role = role
+            self.offset = offset_minutes
+            self.fetch_minutes = fetch_minutes
+            self.generation_minutes = generation_minutes
+            self.nms_ok = nms_ok  # callable(now) -> bool
+            self.probe_minutes = probe_minutes
+            self.busy = False
+            self.crashed_until = None
+            self.runtime = Path(sim.directory) / f"{role}-runtime"
+            self.runtime.mkdir(parents=True, exist_ok=True)
+            self.coordinator = UpdaterCoordinator(
+                repo=sim.repo,
+                role=role,
+                runtime_root=self.runtime,
+                now_fn=lambda: self.world.now,
+                sleep_fn=self.spend_seconds,
+                notam_probe_fn=self.probe,
+            )
+            self.probes = []
+            self.skips = []
+            self.cycles = 0
+
+        # -- time -----------------------------------------------------------
+        def spend(self, minutes):
+            self.world.advance_to(self.world.now + timedelta(minutes=minutes))
+
+        def spend_seconds(self, seconds):
+            self.spend(seconds / 60.0)
+
+        def probe(self):
+            self.spend(self.probe_minutes)
+            ok = bool(self.nms_ok(self.world.now))
+            self.probes.append((self.world.now, ok))
+            if ok:
+                self.coordinator.probe_result_path = self.runtime / "probe.json"
+                self.coordinator.probe_token = "sim"
+            return ok
+
+        def snapshot(self):
+            w = self.world
+            return RemoteSnapshot(str(w.sha), w.read(STATUS_FILE), w.read(WEATHER_FILE), w.read(LEASE_FILE))
+
+        # -- one scheduled invocation -----------------------------------------
+        def trigger(self):
+            world = self.world
+            if self.crashed_until is not None and world.now < self.crashed_until:
+                return
+            if self.busy:
+                self.skips.append(world.now)  # IgnoreNew
+                return
+            self.busy = True
+            try:
+                self.cycle()
+            finally:
+                self.busy = False
+
+        def cycle(self):
+            world = self.world
+            coordinator = self.coordinator
+            start = world.now
+            self.cycles += 1
+            coordinator.cycle_started_monotonic = None
+            coordinator.feed_takeover_active = False
+            coordinator.publish_reason = "SCHEDULED"
+            coordinator._discard_probe_result()
+            self.spend(self.fetch_minutes)
+            snapshot = self.snapshot()
+            if self.role == "BACKUP":
+                if world.lease_active():
+                    return
+                if not coordinator._backup_should_run(snapshot.status, snapshot.weather):
+                    wait = coordinator._backup_handoff_wait_seconds(snapshot.status)
+                    if wait is None:
+                        return
+                    coordinator.sleep_fn(wait)
+                    snapshot = self.snapshot()
+                    if world.lease_active() or not coordinator._backup_should_run(snapshot.status, snapshot.weather):
+                        return
+            else:
+                if coordinator._primary_handoff_window_open(snapshot):
+                    return
+                if coordinator._primary_recovery_decision(snapshot) != "PROCEED":
+                    return
+            if world.lease_active():
+                coordinator._discard_probe_result()
+                return
+            acquired = world.now
+            world.docs[LEASE_FILE] = {
+                "state": "ACTIVE", "owner": self.role, "leaseId": f"{self.role}-{world.sha}",
+                "acquiredUtc": format_utc(acquired), "expiresUtc": format_utc(acquired + timedelta(minutes=LEASE_MINUTES)),
+            }
+            world.sha += 1
+            self.spend(self.generation_minutes)
+            if coordinator.probe_result_path is not None:
+                notam_ok, acquisition = True, "RECOVERY_PROBE"  # reused; no second download
+            else:
+                notam_ok, acquisition = bool(self.nms_ok(world.now)), "GENERATION"
+            previous = world.read(WEATHER_FILE) or {}
+            if notam_ok:
+                updated, fetch_status = world.now, "OK"
+            else:
+                updated = parse_utc(previous.get("milNotamUpdatedZ")) or (FIXED_NOW - timedelta(hours=2))
+                fetch_status = "SCRIPT_FAILED"
+            coordinator.last_generated_notam_status = fetch_status
+            coordinator.last_generated_notam_updated = updated
+            if world.now > acquired + timedelta(minutes=LEASE_MINUTES):
+                world.docs[LEASE_FILE] = {"state": "RELEASED", "owner": self.role}
+                coordinator._discard_probe_result()
+                return  # lease expired during generation: existing rule, nothing published
+            completed = world.now
+            offer = coordinator._primary_handoff_offer(completed)
+            status = coordinator._status_payload(
+                run_started=start, completed=completed, code_sha="c", origin_sha="c",
+                publish_base_sha="b", generation_ok=True, error_code="", notam_handoff=offer,
+            )
+            world.docs[STATUS_FILE] = status
+            world.docs[WEATHER_FILE] = {
+                "milNotamFetchStatus": fetch_status,
+                "milNotamRawStatus": "Success",
+                "milNotamUpdatedZ": updated.strftime("%Y-%m-%d %H:%M:%SZ"),
+                "milNotamAcquisition": acquisition if notam_ok else "NONE",
+                "allFeedsUpdatedZ": completed.strftime("%Y-%m-%d %H:%MZ"),
+                "workflowMetadata": {
+                    "lastWorkflowActor": f"KMEM_{self.role}_UPDATER",
+                    "lastWorkflowTimestampZ": completed.strftime("%Y-%m-%d %H:%M:%SZ"),
+                },
+            }
+            world.docs[LEASE_FILE] = {"state": "RELEASED", "owner": self.role, "releasedUtc": format_utc(completed)}
+            world.sha += 1
+            if offer:
+                coordinator.handoff.record_offer(parse_utc(offer["offeredUtc"]), parse_utc(offer["expiresUtc"]))
+            coordinator._record_feed_takeover_outcome(True)
+            coordinator._discard_probe_result()
+            world.publishes.append((completed, self.role, notam_ok, updated, status["publishReason"]))
+
+    # ----- harness -------------------------------------------------------------
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="KMEM notam failover sim ")
+        self.directory = self.temporary.name
+        self.world = self.World()
+        self.repo = self.WorldRepo(self.world)
+        self.hosts = []
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def host(self, role, offset, **kwargs):
+        created = self.Host(self, role, offset, **kwargs)
+        self.hosts.append(created)
+        return created
+
+    def seed_primary_publish(self, notam_ok=True, minutes_ago=1.0):
+        completed = FIXED_NOW - timedelta(minutes=minutes_ago)
+        self.world.docs[STATUS_FILE] = {
+            "schemaVersion": 1, "activeRole": "PRIMARY", "heartbeatUtc": format_utc(completed),
+            "lastSuccessfulUpdateUtc": format_utc(completed), "runStartedUtc": format_utc(completed - timedelta(seconds=20)),
+            "runCompletedUtc": format_utc(completed), "codeSyncStatus": "CURRENT", "updateStatus": "OK",
+            "publishReason": "SCHEDULED", "notamHandoff": None,
+        }
+        self.world.docs[WEATHER_FILE] = {
+            "milNotamFetchStatus": "OK" if notam_ok else "SCRIPT_FAILED", "milNotamRawStatus": "Success",
+            "milNotamUpdatedZ": completed.strftime("%Y-%m-%d %H:%M:%SZ"),
+            "allFeedsUpdatedZ": completed.strftime("%Y-%m-%d %H:%MZ"),
+            "workflowMetadata": {"lastWorkflowActor": "KMEM_PRIMARY_UPDATER", "lastWorkflowTimestampZ": completed.strftime("%Y-%m-%d %H:%M:%SZ")},
+        }
+
+    def run_minutes(self, minutes):
+        horizon = FIXED_NOW + timedelta(minutes=minutes)
+        for host in self.hosts:
+            when = FIXED_NOW + timedelta(minutes=host.offset)
+            while when <= horizon:
+                self.world.schedule(when, host)
+                when += timedelta(minutes=10)
+        self.world.advance_to(horizon)
+
+    def notam_staleness(self, publishes, horizon_minutes):
+        """Max minutes the board's last successful NOTAM retrieval was old, sampled each minute."""
+        worst = 0.0
+        for minute in range(horizon_minutes):
+            now = FIXED_NOW + timedelta(minutes=minute)
+            visible = [p for p in publishes if p[0] <= now]
+            if not visible:
+                continue
+            worst = max(worst, (now - visible[-1][3]).total_seconds() / 60.0)
+        return worst
+
+    def role_switches(self, publishes):
+        roles = [p[1] for p in publishes]
+        return sum(1 for a, b in zip(roles, roles[1:]) if a != b)
+
+    # ----- scenarios -----------------------------------------------------------
+
+    def test_healthy_primary_never_yields_and_backup_never_publishes(self):
+        self.seed_primary_publish()
+        primary = self.host("PRIMARY", 0, fetch_minutes=0.05, generation_minutes=0.3, nms_ok=lambda now: True)
+        self.host("BACKUP", 5, fetch_minutes=0.05, generation_minutes=0.3, nms_ok=lambda now: True)
+        self.run_minutes(180)
+        self.assertGreaterEqual(len(self.world.publishes), 17)
+        self.assertEqual({p[1] for p in self.world.publishes}, {"PRIMARY"})
+        self.assertEqual(primary.probes, [])
+        self.assertEqual({p[4] for p in self.world.publishes}, {"SCHEDULED"})
+
+    def test_congested_primary_hands_off_under_every_backup_offset(self):
+        # C: PRIMARY cycles run ~9.4 minutes on the bad link, so back-to-back
+        # 10-minute triggers leave the lease free for well under a minute per
+        # slot; a purely eligibility-based BACKUP can be starved for any offset.
+        for offset in range(10):
+            with self.subTest(backup_offset_minutes=offset):
+                self.setUp()
+                self.seed_primary_publish()
+                primary = self.host("PRIMARY", 0, fetch_minutes=1.0, generation_minutes=8.4, nms_ok=lambda now: False)
+                self.host("BACKUP", offset, fetch_minutes=0.05, generation_minutes=0.3, nms_ok=lambda now: True)
+                self.run_minutes(240)
+                publishes = self.world.publishes
+                backup_ok = [p for p in publishes if p[1] == "BACKUP" and p[2]]
+                self.assertTrue(backup_ok, "BACKUP never published a successful pull")
+                first = (backup_ok[0][0] - FIXED_NOW).total_seconds() / 60.0
+                # Measured chain: threshold (20) + the PRIMARY cycle that publishes the
+                # offer (<=10) + handoff window (12) + one BACKUP slot (10) + margin.
+                self.assertLessEqual(first, 20 + 10 + 12 + 10 + 3, f"first BACKUP success at {first:.1f} min")
+                # D: after takeover BACKUP keeps its 10-minute cadence (no 18-minute gaps),
+                # so its heartbeat stays inside PRIMARY's 15-minute qualification window.
+                times = [p[0] for p in publishes if p[1] == "BACKUP"]
+                gaps = [(b - a).total_seconds() / 60.0 for a, b in zip(times, times[1:])]
+                self.assertTrue(gaps, "BACKUP published only once")
+                self.assertLessEqual(max(gaps), 11.0, f"BACKUP gaps {['%.1f' % g for g in gaps]}")
+                # A still-failing PRIMARY never reclaimed: every reclaim needs a passing probe.
+                reclaimed = [p for p in publishes if p[1] == "PRIMARY" and p[0] > backup_ok[0][0]]
+                self.assertEqual(reclaimed, [], "PRIMARY reclaimed without demonstrating recovery")
+                self.assertTrue(primary.probes)
+                self.assertFalse(any(ok for _, ok in primary.probes))
+                self.tearDown()
+
+    def test_primary_reclaims_after_recovery_and_backup_stands_down(self):
+        self.seed_primary_publish()
+        recovery_at = FIXED_NOW + timedelta(minutes=150)
+        self.host("PRIMARY", 0, fetch_minutes=1.0, generation_minutes=5.0, nms_ok=lambda now: now >= recovery_at)
+        self.host("BACKUP", 3, fetch_minutes=0.05, generation_minutes=0.3, nms_ok=lambda now: True)
+        self.run_minutes(300)
+        publishes = self.world.publishes
+        self.assertTrue(any(p[1] == "BACKUP" for p in publishes))
+        primary_reclaim = next(p for p in publishes if p[1] == "PRIMARY" and p[0] > recovery_at)
+        self.assertTrue(primary_reclaim[2], "reclaim must publish a successful pull (probe reused)")
+        self.assertLessEqual((primary_reclaim[0] - recovery_at).total_seconds() / 60.0, 25)
+        after = [p for p in publishes if p[0] > primary_reclaim[0] + timedelta(minutes=15)]
+        self.assertTrue(after)
+        self.assertTrue(all(p[1] == "PRIMARY" for p in after), "BACKUP must stand down after PRIMARY resumes")
+        self.assertLessEqual(self.notam_staleness(publishes, 300), 60)
+
+    def test_both_hosts_failing_nms_keeps_other_feeds_and_avoids_ping_pong(self):
+        # K: neither host can reach NMS for 4 hours.
+        self.seed_primary_publish()
+        self.host("PRIMARY", 0, fetch_minutes=0.5, generation_minutes=3.0, nms_ok=lambda now: False)
+        self.host("BACKUP", 4, fetch_minutes=0.05, generation_minutes=0.5, nms_ok=lambda now: False)
+        self.run_minutes(240)
+        publishes = self.world.publishes
+        self.assertGreaterEqual(len(publishes), 18, "other feeds must keep publishing")
+        self.assertTrue(all(not p[2] for p in publishes))
+        self.assertEqual(len({p[3] for p in publishes}), 1, "last-success time must not move")
+        # Bounded, documented oscillation: BACKUP's cooldown backs off 30/60/120 min
+        # after each failed takeover and PRIMARY re-offers at most hourly after a
+        # failed taker; every takeover is red for both hosts and content is retained.
+        self.assertLessEqual(self.role_switches(publishes), 8, f"role oscillation: {self.role_switches(publishes)} switches")
+        self.assertEqual(publishes[-1][1], "PRIMARY", "PRIMARY must not stay withdrawn")
+        gaps = [(b[0] - a[0]).total_seconds() / 60.0 for a, b in zip(publishes, publishes[1:])]
+        self.assertLessEqual(max(gaps), 25, f"publication gap {max(gaps):.1f} min")
+
+    def test_intermittent_primary_never_reclaims_on_a_lucky_probe_alone(self):
+        # L: PRIMARY link flaps minute to minute; BACKUP is solid.
+        import random
+        rng = random.Random(1013)
+        flaps = {}
+
+        def primary_ok(now):
+            key = int((now - FIXED_NOW).total_seconds() // 60)
+            if key not in flaps:
+                flaps[key] = rng.random() < 0.55
+            return flaps[key]
+
+        self.seed_primary_publish()
+        primary = self.host("PRIMARY", 0, fetch_minutes=1.0, generation_minutes=4.0, nms_ok=primary_ok)
+        self.host("BACKUP", 5, fetch_minutes=0.05, generation_minutes=0.3, nms_ok=lambda now: True)
+        self.run_minutes(480)
+        publishes = self.world.publishes
+        # PRIMARY never takes the board back from a successfully publishing BACKUP
+        # with a failed pull: a reclaim reuses the validated probe result. (A later
+        # ordinary PRIMARY cycle may still fail; that is a truthful red, not a reclaim.)
+        for previous, current in zip(publishes, publishes[1:]):
+            if previous[1] == "BACKUP" and previous[2] and current[1] == "PRIMARY":
+                self.assertTrue(current[2], f"reclaim at {current[0]} published a failed pull")
+        self.assertTrue(any(ok for _, ok in primary.probes) and any(not ok for _, ok in primary.probes))
+        self.assertLessEqual(self.notam_staleness(publishes, 480), 60)
+        self.assertLessEqual(self.role_switches(publishes), 16, f"{self.role_switches(publishes)} role switches in 8 h")
+
+    def test_backup_dying_after_takeover_returns_primary_to_normal_ownership(self):
+        # E at the schedule level: BACKUP takes over, then disappears for good.
+        self.seed_primary_publish()
+        primary = self.host("PRIMARY", 0, fetch_minutes=1.0, generation_minutes=6.0, nms_ok=lambda now: False)
+        backup = self.host("BACKUP", 5, fetch_minutes=0.05, generation_minutes=0.3, nms_ok=lambda now: True)
+        original_trigger = backup.trigger
+
+        def crash_after_first_takeover():
+            if any(p[1] == "BACKUP" for p in self.world.publishes):
+                return  # crashed for good
+            original_trigger()
+
+        backup.trigger = crash_after_first_takeover
+        self.run_minutes(240)
+        publishes = self.world.publishes
+        first_backup = next(p for p in publishes if p[1] == "BACKUP")
+        later = [p for p in publishes if p[0] > first_backup[0] + timedelta(minutes=40)]
+        self.assertTrue(later, "PRIMARY must resume when the standby disappears")
+        self.assertTrue(all(p[1] == "PRIMARY" for p in later))
+        self.assertTrue(primary.probes)
+
+    def test_mixed_offsets_speeds_and_a_primary_crash_still_make_progress(self):
+        # P: sweep offsets, generation speeds, and a PRIMARY that is down for an hour.
+        for primary_offset, backup_offset, primary_gen, crash in (
+            (0, 5, 8.4, None), (3, 3, 4.0, None), (7, 2, 9.0, None), (0, 9, 6.0, 60), (2, 6, 0.3, None),
+        ):
+            with self.subTest(primary_offset=primary_offset, backup_offset=backup_offset, primary_gen=primary_gen, crash=crash):
+                self.setUp()
+                self.seed_primary_publish()
+                primary = self.host("PRIMARY", primary_offset, fetch_minutes=1.0, generation_minutes=primary_gen, nms_ok=lambda now: False)
+                self.host("BACKUP", backup_offset, fetch_minutes=0.05, generation_minutes=0.3, nms_ok=lambda now: True)
+                if crash:
+                    primary.crashed_until = FIXED_NOW + timedelta(minutes=crash)
+                self.run_minutes(240)
+                staleness = self.notam_staleness(self.world.publishes, 240)
+                self.assertLessEqual(staleness, 60, f"NOTAM staleness reached {staleness:.1f} min")
+                self.assertTrue(any(p[1] == "BACKUP" and p[2] for p in self.world.publishes))
+                self.tearDown()
 
 
 class LocalLockTests(unittest.TestCase):

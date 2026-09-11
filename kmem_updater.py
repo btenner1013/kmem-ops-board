@@ -69,8 +69,42 @@ GENERATOR_TIMEOUT_SECONDS = 17 * 60
 WORKER_TIMEOUT_SECONDS = 25 * 60
 RESTART_AFTER_SYNC_EXIT = 75
 REQUIRED_OWNED_CYCLE_SKIPPED_EXIT = 76
+# NOTAM-aware failover (2026-09-11). A PRIMARY whose own NMS pull keeps failing
+# on a congested link must not keep reclaiming the board while the other host
+# can retrieve NOTAMs. Two distinct mechanisms, never conflated:
+#   A. Initial handoff opportunity: after PRIMARY publishes a failed NOTAM pull
+#      whose last authoritative retrieval is older than the takeover threshold,
+#      it steps aside for one bounded window so BACKUP gets a free lease during
+#      at least one of its scheduled slots. If BACKUP never appears the window
+#      expires and PRIMARY resumes; it is not re-offered for a while.
+#   B. Continued yield: while BACKUP is provably publishing successful NOTAM
+#      pulls (verified from one coherent commit), PRIMARY probes its own NMS
+#      path before every reclaim and yields only when that probe fails; it
+#      re-checks the standby after the probe and reclaims automatically the
+#      first cycle its probe passes.
+# Heartbeat thresholds, the lease, IgnoreNew, and the fail-closed red light on
+# any host whose own pull failed are unchanged.
+NOTAM_FEED_TAKEOVER_MINUTES = 20
+NOTAM_FEED_FRESH_MINUTES = 30  # the board's own NOTAMS OK window
+NOTAM_FEED_RETAKE_COOLDOWN_MINUTES = 30
+NOTAM_HANDOFF_WINDOW_MINUTES = 12  # > one 10-minute standby slot
+NOTAM_HANDOFF_REOFFER_MINUTES = 30
+# Recovery probe: single attempt per stage, no cross-transport replay, so a
+# probing PRIMARY cannot consume the invocation budget generation needs.
+NMS_PROBE_TIMEOUT_SECONDS = 4 * 60
+NMS_PROBE_RESULT_MAX_AGE_MINUTES = 15
+# Generation must never start with less than its own deadline (plus push
+# margin) left in the worker budget; a slow probe/fetch skips this cycle.
+ACQUIRE_DEADLINE_SECONDS = WORKER_TIMEOUT_SECONDS - GENERATOR_TIMEOUT_SECONDS - 120
+PUBLISH_REASONS = {
+    "SCHEDULED",
+    "HEARTBEAT_FAILOVER",
+    "NOTAM_DEGRADED_TAKEOVER",
+    "FORCED_FAILOVER",
+}
 STATUS_FILE = "host_status.json"
 LEASE_FILE = "updater_lease.json"
+WEATHER_FILE = "weather.json"
 HOST_HEALTH_HISTORY_FILE = "host_health_history.json"
 GENERATED_FILES = (
     "weather.json",
@@ -423,6 +457,142 @@ def classify_host_heartbeat(status: Optional[dict], now: datetime) -> HeartbeatS
     return HeartbeatState("NO_HEARTBEAT", age, role)
 
 
+@dataclass(frozen=True)
+class NotamFeedState:
+    """The NOTAM feed as currently published, independent of who published it."""
+
+    status: str  # OK | FAILED | UNKNOWN
+    age_minutes: Optional[float]
+
+    @property
+    def ok(self) -> bool:
+        return (
+            self.status == "OK"
+            and self.age_minutes is not None
+            and self.age_minutes <= NOTAM_FEED_FRESH_MINUTES
+        )
+
+    @property
+    def failing_beyond_takeover(self) -> bool:
+        """A published failed pull whose last authoritative retrieval is older than the threshold.
+
+        This is a statement about the published feed, not a count of attempts:
+        it does not prove that two failed attempts occurred.
+        """
+        return (
+            self.status == "FAILED"
+            and self.age_minutes is not None
+            and self.age_minutes > NOTAM_FEED_TAKEOVER_MINUTES
+        )
+
+
+def _age_minutes(now: datetime, value: Optional[datetime]) -> Optional[float]:
+    if value is None:
+        return None
+    age = (now.astimezone(timezone.utc) - value).total_seconds() / 60.0
+    return None if age < 0 else age
+
+
+def classify_published_notam_feed(weather: Optional[dict], now: datetime) -> NotamFeedState:
+    """Classify the published NOTAM block from weather.json without trusting freshness claims."""
+    if not isinstance(weather, dict):
+        return NotamFeedState("UNKNOWN", None)
+    fetch_status = str(weather.get("milNotamFetchStatus") or "").strip().upper()
+    raw_status = str(weather.get("milNotamRawStatus") or "").strip().upper()
+    age = _age_minutes(now, parse_utc(weather.get("milNotamUpdatedZ")))
+    if not fetch_status:
+        return NotamFeedState("UNKNOWN", age)
+    if fetch_status == "OK" and raw_status == "SUCCESS":
+        return NotamFeedState("OK", age)
+    return NotamFeedState("FAILED", age)
+
+
+@dataclass(frozen=True)
+class BackupPublication:
+    """Whether one coherent remote commit proves a successful BACKUP NOTAM publication."""
+
+    qualifies: bool
+    reason: str
+    heartbeat_age_minutes: Optional[float] = None
+    notam_age_minutes: Optional[float] = None
+
+
+def evaluate_backup_publication(
+    status: Optional[dict],
+    weather: Optional[dict],
+    now: datetime,
+) -> BackupPublication:
+    """Prove, from status.json and weather.json read at the SAME commit, that BACKUP's
+    latest run generated successfully AND retrieved NOTAMs in that run.
+
+    A status-only error heartbeat paired with a retained older weather artifact
+    must not qualify, so every timestamp is tied back to the run window.
+    """
+    if not isinstance(status, dict) or not isinstance(weather, dict):
+        return BackupPublication(False, "BACKUP_EVIDENCE_MISSING")
+    heartbeat = classify_host_heartbeat(status, now)
+    if heartbeat.role != "BACKUP":
+        return BackupPublication(False, "PUBLISHER_NOT_BACKUP", heartbeat.age_minutes)
+    if heartbeat.state != "OK":
+        return BackupPublication(False, f"BACKUP_HEARTBEAT_{heartbeat.state}", heartbeat.age_minutes)
+    if str(status.get("updateStatus") or "").strip().upper() != "OK":
+        return BackupPublication(False, "BACKUP_LAST_RUN_NOT_OK", heartbeat.age_minutes)
+
+    heartbeat_at = parse_utc(status.get("heartbeatUtc"))
+    success_at = parse_utc(status.get("lastSuccessfulUpdateUtc"))
+    run_started = parse_utc(status.get("runStartedUtc"))
+    run_completed = parse_utc(status.get("runCompletedUtc"))
+    if None in (heartbeat_at, success_at, run_started, run_completed):
+        return BackupPublication(False, "BACKUP_RUN_WINDOW_MALFORMED", heartbeat.age_minutes)
+    now_utc = now.astimezone(timezone.utc)
+    if run_completed > now_utc or run_started > run_completed or success_at != heartbeat_at:
+        return BackupPublication(False, "BACKUP_RUN_WINDOW_INCONSISTENT", heartbeat.age_minutes)
+    if run_completed != heartbeat_at:
+        return BackupPublication(False, "BACKUP_RUN_WINDOW_INCONSISTENT", heartbeat.age_minutes)
+
+    metadata = weather.get("workflowMetadata")
+    actor = str((metadata or {}).get("lastWorkflowActor") or "").strip().upper() if isinstance(metadata, dict) else ""
+    if actor != "KMEM_BACKUP_UPDATER":
+        return BackupPublication(False, "WEATHER_NOT_FROM_BACKUP_RUN", heartbeat.age_minutes)
+    generated_at = parse_utc((metadata or {}).get("lastWorkflowTimestampZ"))
+    window_start = run_started - timedelta(seconds=60)
+    window_end = run_completed + timedelta(seconds=60)
+    if generated_at is None or not (window_start <= generated_at <= window_end):
+        return BackupPublication(False, "WEATHER_NOT_FROM_BACKUP_RUN", heartbeat.age_minutes)
+
+    feed = classify_published_notam_feed(weather, now)
+    if feed.status != "OK":
+        return BackupPublication(False, "BACKUP_NOTAM_PULL_NOT_OK", heartbeat.age_minutes, feed.age_minutes)
+    notam_at = parse_utc(weather.get("milNotamUpdatedZ"))
+    if notam_at is None or not (window_start <= notam_at <= window_end):
+        # OK status carried from an earlier run is retained data, not this run's pull.
+        return BackupPublication(False, "BACKUP_NOTAMS_RETAINED_NOT_FRESH", heartbeat.age_minutes, feed.age_minutes)
+    if not feed.ok:
+        return BackupPublication(False, "BACKUP_NOTAMS_STALE", heartbeat.age_minutes, feed.age_minutes)
+    return BackupPublication(True, "BACKUP_PUBLICATION_QUALIFIES", heartbeat.age_minutes, feed.age_minutes)
+
+
+def parse_notam_handoff(status: Optional[dict], now: datetime) -> Optional[tuple[datetime, datetime]]:
+    """Return (offeredUtc, expiresUtc) for a valid, unexpired published handoff offer, else None."""
+    if not isinstance(status, dict):
+        return None
+    offer = status.get("notamHandoff")
+    if not isinstance(offer, dict):
+        return None
+    offered = parse_utc(offer.get("offeredUtc"))
+    expires = parse_utc(offer.get("expiresUtc"))
+    if offered is None or expires is None:
+        return None
+    now_utc = now.astimezone(timezone.utc)
+    if offered > now_utc or expires <= offered:
+        return None
+    if (expires - offered) > timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES + 1):
+        return None
+    if expires <= now_utc:
+        return None
+    return offered, expires
+
+
 def classify_lease_state(lease: Optional[dict], now: datetime) -> str:
     if not isinstance(lease, dict):
         return "FREE"
@@ -520,6 +690,17 @@ def _log_generator_output(result: subprocess.CompletedProcess, environment: dict
                 LOGGER.log(level, "GENERATOR %s %s", stream_name, line[:4000])
 
 
+NMS_PROBE_RESULT_MARKER = "__KMEM_NMS_PROBE_RESULT_3F7A1C2E__:"
+
+
+def _probe_summary_line(stdout: Optional[str]) -> str:
+    """Return only the generator's machine-readable probe summary (safe enums, no secrets)."""
+    for line in reversed((stdout or "").splitlines()):
+        if line.startswith(NMS_PROBE_RESULT_MARKER):
+            return line[len(NMS_PROBE_RESULT_MARKER):].strip()[:600]
+    return "summary=unavailable"
+
+
 def short_sha(value: str) -> str:
     return (value or "--")[:12]
 
@@ -566,6 +747,132 @@ class BackupObservation:
         return (now - first).total_seconds() / 60.0 > HOST_FAILOVER_MINUTES
 
 
+class NotamFeedTakeoverObservation:
+    """Cool down NOTAM-aware takeovers when BACKUP's own pull also failed.
+
+    If both hosts cannot reach NMS, a feed-based takeover would just swap one
+    red publisher for another every cycle. Record a failed takeover locally
+    and stand down from the feed rule for a bounded period; heartbeat-based
+    takeover is unaffected.
+    """
+
+    def __init__(self, path: Path):
+        self.path = path
+
+    def reset(self) -> None:
+        try:
+            self.path.unlink()
+        except FileNotFoundError:
+            pass
+
+    def record_failed_takeover(self, now: datetime) -> None:
+        existing = read_local_json(self.path) or {}
+        failures = existing.get("consecutiveFailures")
+        failures = failures + 1 if isinstance(failures, int) and not isinstance(failures, bool) and failures >= 0 else 1
+        atomic_write_json(
+            self.path,
+            {
+                "schemaVersion": 1,
+                "lastFailedTakeoverUtc": format_utc(now),
+                "consecutiveFailures": min(failures, 8),
+            },
+        )
+
+    def cooldown_minutes(self) -> float:
+        """30 min after one failed takeover, doubling per consecutive failure, capped at 2 h."""
+        existing = read_local_json(self.path) or {}
+        failures = existing.get("consecutiveFailures")
+        if not isinstance(failures, int) or isinstance(failures, bool) or failures < 1:
+            failures = 1
+        return min(NOTAM_FEED_RETAKE_COOLDOWN_MINUTES * (2 ** (failures - 1)), 4 * NOTAM_FEED_RETAKE_COOLDOWN_MINUTES)
+
+    def cooling_down(self, now: datetime) -> bool:
+        existing = read_local_json(self.path) or {}
+        last = parse_utc(existing.get("lastFailedTakeoverUtc"))
+        if last is None or last > now:
+            return False
+        return (now - last).total_seconds() / 60.0 < self.cooldown_minutes()
+
+
+class NotamHandoffObservation:
+    """PRIMARY's own record of the bounded handoff opportunity it published.
+
+    Stored outside disposable scratch clones. A window is honoured only while
+    unexpired; once it lapses PRIMARY resumes and will not re-offer until the
+    re-offer interval has passed, so a persistent failure cannot keep PRIMARY
+    withdrawn indefinitely.
+    """
+
+    def __init__(self, path: Path):
+        self.path = path
+
+    def reset(self) -> None:
+        try:
+            self.path.unlink()
+        except FileNotFoundError:
+            pass
+
+    def _load(self) -> dict:
+        return read_local_json(self.path) or {}
+
+    def record_offer(self, offered: datetime, expires: datetime) -> None:
+        atomic_write_json(
+            self.path,
+            {
+                "schemaVersion": 1,
+                "offeredUtc": format_utc(offered),
+                "expiresUtc": format_utc(expires),
+                "lastOfferedUtc": format_utc(offered),
+            },
+        )
+
+    def mark_consumed(self, now: datetime, taker_pull_ok: bool) -> None:
+        """BACKUP took the offer: keep only the re-offer bookkeeping.
+
+        When the taker's own pull failed too, the next offer waits twice as long,
+        so two hosts that both cannot reach NMS do not trade the board every
+        half hour. Repeated observations of the same failure never extend a
+        withdrawal: PRIMARY keeps publishing between offers.
+        """
+        existing = self._load()
+        last = parse_utc(existing.get("lastOfferedUtc")) or now.astimezone(timezone.utc)
+        atomic_write_json(
+            self.path,
+            {
+                "schemaVersion": 1,
+                "lastOfferedUtc": format_utc(last),
+                "lastOfferTakerPullOk": bool(taker_pull_ok),
+            },
+        )
+
+    def open_window(self, now: datetime) -> Optional[datetime]:
+        """Return the expiry of an unexpired offer window, else None."""
+        existing = self._load()
+        offered = parse_utc(existing.get("offeredUtc"))
+        expires = parse_utc(existing.get("expiresUtc"))
+        if offered is None or expires is None:
+            return None
+        now_utc = now.astimezone(timezone.utc)
+        if offered > now_utc or expires <= offered:
+            return None
+        if (expires - offered) > timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES + 1):
+            return None
+        if expires <= now_utc:
+            return None
+        return expires
+
+    def may_offer(self, now: datetime) -> bool:
+        now_utc = now.astimezone(timezone.utc)
+        existing = self._load()
+        last = parse_utc(existing.get("lastOfferedUtc"))
+        if last is None or last > now_utc:
+            return True
+        interval = NOTAM_HANDOFF_REOFFER_MINUTES
+        if existing.get("lastOfferTakerPullOk") is False:
+            interval *= 2
+        return (now_utc - last).total_seconds() / 60.0 >= interval
+
+
 class InvalidLeaseObservation:
     """Fail closed briefly, then recover one unchanged malformed lease atomically."""
 
@@ -603,6 +910,16 @@ class LeaseOwnership:
     scratch: ScratchClone
 
 
+@dataclass(frozen=True)
+class RemoteSnapshot:
+    """status/weather/lease read from one origin/main commit."""
+
+    sha: str
+    status: Optional[dict]
+    weather: Optional[dict]
+    lease: Optional[dict]
+
+
 class UpdaterCoordinator:
     def __init__(
         self,
@@ -615,6 +932,7 @@ class UpdaterCoordinator:
         now_fn: Callable[[], datetime] = utc_now,
         sleep_fn: Callable[[float], None] = time.sleep,
         python_executable: str = sys.executable,
+        notam_probe_fn: Optional[Callable[[], bool]] = None,
     ):
         self.repo = repo
         self.role = role
@@ -624,10 +942,23 @@ class UpdaterCoordinator:
         self.now_fn = now_fn
         self.sleep_fn = sleep_fn
         self.python_executable = python_executable
+        self.notam_probe_fn = notam_probe_fn or self._probe_notam_feed
         self.observation = BackupObservation(runtime_root.parent / "backup-observation.json")
         self.invalid_lease_observation = InvalidLeaseObservation(
             runtime_root.parent / "invalid-lease-observation.json"
         )
+        self.feed_takeover = NotamFeedTakeoverObservation(
+            runtime_root.parent / "notam-feed-takeover.json"
+        )
+        self.handoff = NotamHandoffObservation(runtime_root.parent / "notam-handoff.json")
+        # Per-invocation decision state (never persisted; reset each cycle).
+        self.feed_takeover_active = False  # BACKUP eligibility came from the NOTAM rules
+        self.publish_reason = "SCHEDULED"
+        self.last_generated_notam_status: Optional[str] = None
+        self.last_generated_notam_updated: Optional[datetime] = None
+        self.probe_result_path: Optional[Path] = None  # validated recovery-probe result to reuse
+        self.probe_token: Optional[str] = None
+        self.cycle_started_monotonic: Optional[float] = None
 
     def skipped_cycle_result(self) -> int:
         return REQUIRED_OWNED_CYCLE_SKIPPED_EXIT if self.require_owned_cycle else 0
@@ -684,17 +1015,43 @@ class UpdaterCoordinator:
             return True, lease, f"{state}_QUARANTINE_EXPIRED"
         return False, lease, state
 
-    def _backup_should_run(self, status: Optional[dict]) -> bool:
+    def _backup_should_run(self, status: Optional[dict], weather: Optional[dict] = None) -> bool:
+        """BACKUP eligibility. Sets self.publish_reason / self.feed_takeover_active."""
+        self.feed_takeover_active = False
+        self.publish_reason = "SCHEDULED"
         if self.force_failover:
+            self.publish_reason = "FORCED_FAILOVER"
             LOGGER.warning("FORCE FAILOVER REQUESTED - heartbeat preference bypassed; Git push remains normal.")
             return True
 
-        state = classify_host_heartbeat(status, self.now_fn())
+        now = self.now_fn()
+        state = classify_host_heartbeat(status, now)
         age = "--" if state.display_age is None else f"{state.display_age}M"
         LOGGER.info("PRIMARY heartbeat state=%s age=%s", state.state, age)
 
         if state.role == "BACKUP" and state.age_minutes is not None:
             self.observation.reset()
+            published_reason = str((status or {}).get("publishReason") or "").strip().upper()
+            if published_reason == "NOTAM_DEGRADED_TAKEOVER":
+                # Mechanism B cadence: while this host's own last publication proved a
+                # successful NOTAM pull, keep the normal 10-minute schedule instead of
+                # the preferred-PRIMARY handoff wait. PRIMARY reclaims when its own
+                # probe passes; the lease is free for it almost the whole time.
+                own = evaluate_backup_publication(status, weather, now)
+                if own.qualifies:
+                    self.feed_takeover_active = True
+                    self.publish_reason = "NOTAM_DEGRADED_TAKEOVER"
+                    LOGGER.info(
+                        "decision=NOTAM_TAKEOVER_CONTINUES own_heartbeat=%sM own_notams=%sM - "
+                        "BACKUP keeps its 10-minute cadence; PRIMARY reclaims after a passing probe.",
+                        state.display_age,
+                        display_age_minutes(own.notam_age_minutes or 0.0),
+                    )
+                    return True
+                LOGGER.info(
+                    "decision=NOTAM_TAKEOVER_NOT_CONTINUED reason=%s - ordinary handoff window applies.",
+                    own.reason,
+                )
             if state.age_minutes <= BACKUP_HANDOFF_MINUTES:
                 LOGGER.info(
                     "Recent BACKUP heartbeat - waiting through %s-minute PRIMARY handoff window.",
@@ -702,7 +1059,54 @@ class UpdaterCoordinator:
                 )
                 return False
             LOGGER.info("PRIMARY did not resume during handoff window; BACKUP remains eligible.")
+            self.publish_reason = "HEARTBEAT_FAILOVER"
             return True
+
+        if state.role == "PRIMARY" and state.state in {"OK", "DELAYED"}:
+            # PRIMARY is alive. Mechanism A: an explicit, unexpired handoff offer.
+            offer = parse_notam_handoff(status, now)
+            if offer is not None:
+                if self.feed_takeover.cooling_down(now):
+                    LOGGER.info(
+                        "decision=NOTAM_TAKEOVER_COOLDOWN offer_expires=%s - this host's own recent takeover "
+                        "also failed NMS; the offer is left to expire (heartbeat failover unaffected).",
+                        format_utc(offer[1]),
+                    )
+                else:
+                    self.observation.reset()
+                    self.feed_takeover_active = True
+                    self.publish_reason = "NOTAM_DEGRADED_TAKEOVER"
+                    LOGGER.warning(
+                        "decision=NOTAM_HANDOFF_OPPORTUNITY offered=%s expires=%s - PRIMARY stepped aside; "
+                        "BACKUP eligible; Git push remains normal.",
+                        format_utc(offer[0]),
+                        format_utc(offer[1]),
+                    )
+                    return True
+            # Otherwise: has the feed PRIMARY keeps publishing been failing long enough?
+            feed = classify_published_notam_feed(weather, now)
+            if feed.ok:
+                self.feed_takeover.reset()
+            elif feed.failing_beyond_takeover:
+                feed_age = display_age_minutes(feed.age_minutes)
+                if self.feed_takeover.cooling_down(now):
+                    LOGGER.info(
+                        "decision=NOTAM_TAKEOVER_COOLDOWN feed_failing=%sM - this host's own recent takeover "
+                        "also failed NMS; feed-rule takeovers paused (heartbeat failover unaffected).",
+                        feed_age,
+                    )
+                else:
+                    self.observation.reset()
+                    self.feed_takeover_active = True
+                    self.publish_reason = "NOTAM_DEGRADED_TAKEOVER"
+                    LOGGER.warning(
+                        "decision=NOTAM_DEGRADED_TAKEOVER_ELIGIBLE primary_heartbeat=%s published_notam_failure "
+                        "last_success=%sM (> %sM) - BACKUP eligible; Git push remains normal.",
+                        state.state,
+                        feed_age,
+                        NOTAM_FEED_TAKEOVER_MINUTES,
+                    )
+                    return True
         if state.role == "PRIMARY" and state.state in {"OK", "CODE_SYNC_BLOCKED"}:
             self.observation.reset()
             LOGGER.info("PRIMARY HEALTHY - BACKUP NOT REQUIRED")
@@ -712,11 +1116,16 @@ class UpdaterCoordinator:
             LOGGER.info("PRIMARY DELAYED - BACKUP WAITS")
             return False
         if state.role == "PRIMARY" and state.state == "NO_HEARTBEAT":
+            self.publish_reason = "HEARTBEAT_FAILOVER"
+            if self.feed_takeover.cooling_down(now):
+                LOGGER.info("decision=HEARTBEAT_FAILOVER_OVERRIDES_NOTAM_COOLDOWN")
             return True
 
         eligible = self.observation.unknown_is_eligible(self.now_fn())
         if not eligible:
             LOGGER.info("PRIMARY heartbeat unavailable - starting/continuing 25-minute observation grace.")
+        else:
+            self.publish_reason = "HEARTBEAT_FAILOVER"
         return eligible
 
     def _backup_handoff_wait_seconds(self, status: Optional[dict]) -> Optional[float]:
@@ -729,6 +1138,168 @@ class UpdaterCoordinator:
         if 0 < remaining <= BACKUP_HANDOFF_MAX_WAIT_SECONDS:
             return remaining
         return None
+
+    # ----- PRIMARY-side NOTAM-aware decisions -------------------------------
+
+    def _read_snapshot(self) -> "RemoteSnapshot":
+        """Read status, weather, and lease from ONE origin/main commit."""
+        sha = self.repo.sha("origin/main")
+        return RemoteSnapshot(
+            sha=sha,
+            status=self.repo.read_json(sha, STATUS_FILE),
+            weather=self.repo.read_json(sha, WEATHER_FILE),
+            lease=self.repo.read_json(sha, LEASE_FILE),
+        )
+
+    def _primary_handoff_window_open(self, snapshot: "RemoteSnapshot") -> bool:
+        """Mechanism A: honour this host's own unexpired handoff offer while BACKUP has not taken it."""
+        if self.role != "PRIMARY":
+            return False
+        now = self.now_fn()
+        expires = self.handoff.open_window(now)
+        if expires is None:
+            return False
+        heartbeat = classify_host_heartbeat(snapshot.status, now)
+        if heartbeat.role == "BACKUP":
+            taker = evaluate_backup_publication(snapshot.status, snapshot.weather, now)
+            self.handoff.mark_consumed(now, taker.qualifies)
+            LOGGER.info(
+                "decision=NOTAM_HANDOFF_CONSUMED taker_pull=%s - BACKUP has published; continuing under yield rules.",
+                "OK" if taker.qualifies else taker.reason,
+            )
+            return False
+        remaining = int((expires - now.astimezone(timezone.utc)).total_seconds())
+        LOGGER.warning(
+            "decision=NOTAM_HANDOFF_OPPORTUNITY remaining=%ss - PRIMARY leaves the lease free for the standby; "
+            "resumes automatically when the window expires.",
+            max(remaining, 0),
+        )
+        return True
+
+    def _primary_recovery_decision(self, snapshot: "RemoteSnapshot") -> str:
+        """Mechanism B. Returns PROCEED, YIELD, or RESTART.
+
+        PROCEED after a passing probe carries the validated probe result for this
+        invocation's own NOTAM acquisition (see _run_generator).
+        """
+        if self.role != "PRIMARY":
+            return "PROCEED"
+        now = self.now_fn()
+        before = evaluate_backup_publication(snapshot.status, snapshot.weather, now)
+        if not before.qualifies:
+            return "PROCEED"
+        LOGGER.info(
+            "decision=BACKUP_PUBLICATION_QUALIFIES heartbeat=%sM notams=%sM - probing this host's own NMS pull "
+            "before reclaiming (no lease held).",
+            display_age_minutes(before.heartbeat_age_minutes or 0.0),
+            display_age_minutes(before.notam_age_minutes or 0.0),
+        )
+        probe_ok = self._run_recovery_probe()
+
+        # The probe may have taken minutes: re-read the remote state from a fresh
+        # commit and account for code changes before any final decision.
+        self.repo.fetch()
+        outcome = self.repo.sync(already_fetched=True)
+        if outcome.advanced:
+            self._discard_probe_result()
+            LOGGER.info("Code fast-forwarded after probe; restarting to load the synchronized coordinator.")
+            return "RESTART"
+        after_snapshot = self._read_snapshot()
+        after = evaluate_backup_publication(after_snapshot.status, after_snapshot.weather, self.now_fn())
+        if probe_ok:
+            LOGGER.info("decision=PRIMARY_RECOVERY_PROBE_PASSED - PRIMARY reclaims under normal lease rules.")
+            return "PROCEED"
+        self._discard_probe_result()
+        if after.qualifies:
+            LOGGER.warning(
+                "decision=PRIMARY_YIELD_BACKUP_HEALTHY - own probe failed and the standby still qualifies; "
+                "PRIMARY publishes nothing this cycle and reclaims automatically once its own pull succeeds."
+            )
+            return "YIELD"
+        LOGGER.warning(
+            "decision=BACKUP_NO_LONGER_QUALIFIES reason=%s - own probe failed but the standby is not "
+            "publishing successfully; PRIMARY returns to normal ownership under lease rules.",
+            after.reason,
+        )
+        return "PROCEED"
+
+    def _run_recovery_probe(self) -> bool:
+        self._discard_probe_result()
+        try:
+            ok = bool(self.notam_probe_fn())
+        except Exception as error:  # noqa: BLE001 - any failure means "not proven"
+            LOGGER.warning("decision=PRIMARY_RECOVERY_PROBE_FAILED launch=%s", type(error).__name__)
+            return False
+        if not ok:
+            LOGGER.warning("decision=PRIMARY_RECOVERY_PROBE_FAILED")
+        return ok
+
+    def _discard_probe_result(self) -> None:
+        if self.probe_result_path is not None:
+            try:
+                self.probe_result_path.unlink()
+            except OSError:
+                pass
+        self.probe_result_path = None
+        self.probe_token = None
+
+    def _probe_notam_feed(self) -> bool:
+        """Run the generator's bounded recovery probe in the maintained checkout.
+
+        The probe exercises the real failing operation (token, complete KMEM
+        transfer, parse, validation) with a single attempt per stage. A passing
+        probe leaves its validated result in a private runtime file keyed by a
+        per-invocation token so THIS invocation's generation can use it instead
+        of downloading the same large response again.
+        """
+        self.runtime_root.parent.mkdir(parents=True, exist_ok=True)
+        token = uuid.uuid4().hex
+        result_path = self.runtime_root.parent / f"nms-probe-{token}.json"
+        probe_env = os.environ.copy()
+        probe_env.pop("KMEM_COORDINATED_WORKER_TOKEN", None)
+        probe_env["KMEM_UPDATER_ROLE"] = self.role
+        probe_env["NMS_RECOVERY_PROBE"] = "1"
+        probe_env["KMEM_NMS_PROBE_RESULT_PATH"] = str(result_path)
+        probe_env["KMEM_NMS_PROBE_TOKEN"] = token
+        try:
+            result = run_bounded_process(
+                [self.python_executable, "update_weather_local.py", "--probe-nms"],
+                cwd=self.repo.repo_dir,
+                env=probe_env,
+                capture_output=True,
+                timeout=NMS_PROBE_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            LOGGER.warning("NOTAM probe exceeded %s seconds and was terminated.", NMS_PROBE_TIMEOUT_SECONDS)
+            return False
+        except OSError:
+            LOGGER.warning("NOTAM probe process could not be started.")
+            return False
+        summary = _probe_summary_line(result.stdout)
+        LOGGER.info("NOTAM probe returnCode=%s %s", result.returncode, summary)
+        if result.returncode == 0 and result_path.is_file():
+            self.probe_result_path = result_path
+            self.probe_token = token
+            return True
+        try:
+            result_path.unlink()
+        except OSError:
+            pass
+        return False
+
+    def _acquire_deadline_exceeded(self) -> bool:
+        """Never start generation without room for its own deadline inside the worker budget."""
+        if self.cycle_started_monotonic is None:
+            return False
+        elapsed = time.monotonic() - self.cycle_started_monotonic
+        if elapsed <= ACQUIRE_DEADLINE_SECONDS:
+            return False
+        LOGGER.warning(
+            "decision=INVOCATION_BUDGET_EXHAUSTED elapsed=%ss limit=%ss - lease not acquired this cycle.",
+            int(elapsed),
+            ACQUIRE_DEADLINE_SECONDS,
+        )
+        return True
 
     def _new_scratch(self, ref: str) -> ScratchClone:
         scratch = self.repo.make_scratch_clone(ref, self.runtime_root)
@@ -759,7 +1330,12 @@ class UpdaterCoordinator:
                 )
 
             status = self.repo.read_json("origin/main", STATUS_FILE)
-            if self.role == "BACKUP" and not self._backup_should_run(status):
+            weather = (
+                self.repo.read_json("origin/main", WEATHER_FILE)
+                if self.role == "BACKUP"
+                else None
+            )
+            if self.role == "BACKUP" and not self._backup_should_run(status, weather):
                 return None
 
             replacement_allowed, current_lease, current_lease_state = self._lease_replacement_allowed(
@@ -831,7 +1407,16 @@ class UpdaterCoordinator:
         LOGGER.info("Generation started role=%s", self.role)
         generator_env = os.environ.copy()
         generator_env.pop("KMEM_COORDINATED_WORKER_TOKEN", None)
+        generator_env.pop("KMEM_NMS_PROBE_RESULT_PATH", None)
+        generator_env.pop("KMEM_NMS_PROBE_TOKEN", None)
+        generator_env.pop("NMS_RECOVERY_PROBE", None)
         generator_env["KMEM_UPDATER_ROLE"] = self.role
+        if self.probe_result_path is not None and self.probe_token:
+            # Reuse THIS invocation's validated recovery probe as its NOTAM
+            # acquisition; the generator re-validates token, age, and location and
+            # falls back to an explicit second retrieval if anything is off.
+            generator_env["KMEM_NMS_PROBE_RESULT_PATH"] = str(self.probe_result_path)
+            generator_env["KMEM_NMS_PROBE_TOKEN"] = self.probe_token
         weather_path = scratch.path / "weather.json"
         try:
             previous_weather = weather_path.read_bytes()
@@ -867,6 +1452,15 @@ class UpdaterCoordinator:
             return False, "WEATHER_ARTIFACT_INVALID"
         if any(key not in parsed_weather for key in REQUIRED_WEATHER_DIAGNOSTICS):
             return False, "WEATHER_DIAGNOSTICS_MISSING"
+        # Remembered so a NOTAM-aware BACKUP takeover can tell whether its own
+        # pull succeeded (cooldown bookkeeping only; never alters the artifact).
+        self.last_generated_notam_status = str(
+            parsed_weather.get("milNotamFetchStatus") or ""
+        )
+        self.last_generated_notam_updated = parse_utc(parsed_weather.get("milNotamUpdatedZ"))
+        acquisition = str(parsed_weather.get("milNotamAcquisition") or "").upper()
+        if acquisition:
+            LOGGER.info("NOTAM acquisition=%s status=%s", acquisition, self.last_generated_notam_status)
         generated_at = parse_utc(parsed_weather.get("allFeedsUpdatedZ"))
         generated_age = (
             (self.now_fn() - generated_at).total_seconds() / 60.0
@@ -934,9 +1528,14 @@ class UpdaterCoordinator:
         generation_ok: bool,
         error_code: str,
         previous_status: Optional[dict] = None,
+        publish_reason: Optional[str] = None,
+        notam_handoff: Optional[dict] = None,
     ) -> dict:
         timestamp = format_utc(completed)
         previous_success = (previous_status or {}).get("lastSuccessfulUpdateUtc")
+        reason = str(publish_reason or self.publish_reason or "SCHEDULED").upper()
+        if reason not in PUBLISH_REASONS:
+            reason = "SCHEDULED"
         return {
             "schemaVersion": 1,
             "activeRole": self.role,
@@ -956,6 +1555,8 @@ class UpdaterCoordinator:
             "updateStatus": "OK" if generation_ok else "ERROR",
             "lastSuccessfulPushUtc": timestamp,
             "lastError": None if generation_ok else error_code,
+            "publishReason": reason,
+            "notamHandoff": notam_handoff if isinstance(notam_handoff, dict) else None,
         }
 
     def _remote_move_is_retryable(self, expected_sha: str, lease_id: str) -> tuple[bool, str]:
@@ -1120,6 +1721,9 @@ class UpdaterCoordinator:
 
             previous_status = scratch.read_json("HEAD", STATUS_FILE)
             released = released_lease(ownership.lease, now)
+            # Mechanism A is decided from this cycle's own generated NOTAM outcome
+            # and published in the same commit, so BACKUP reads a coherent offer.
+            handoff_offer = self._primary_handoff_offer(now) if generation_ok else None
             current_status = self._status_payload(
                 run_started=run_started,
                 completed=now,
@@ -1129,6 +1733,7 @@ class UpdaterCoordinator:
                 generation_ok=generation_ok,
                 error_code=error_code,
                 previous_status=previous_status,
+                notam_handoff=handoff_offer,
             )
             scratch.write_json(LEASE_FILE, released)
             scratch.write_json(STATUS_FILE, current_status)
@@ -1192,6 +1797,11 @@ class UpdaterCoordinator:
                     push_ok = remote_after_push == final_sha or ancestry.returncode == 0
             if push_ok:
                 LOGGER.info("Generated update pushed sha=%s", short_sha(final_sha))
+                if handoff_offer:
+                    offered_at = parse_utc(handoff_offer.get("offeredUtc"))
+                    expires_at = parse_utc(handoff_offer.get("expiresUtc"))
+                    if offered_at is not None and expires_at is not None:
+                        self.handoff.record_offer(offered_at, expires_at)
                 scratch.close()
                 self.repo.fetch()
                 outcome = self.repo.sync(already_fetched=True)
@@ -1212,34 +1822,17 @@ class UpdaterCoordinator:
 
     def run_once(self) -> int:
         run_started = self.now_fn()
+        self.cycle_started_monotonic = time.monotonic()
+        self.feed_takeover_active = False
+        self.publish_reason = "SCHEDULED"
+        self._discard_probe_result()
         LOGGER.info("Cycle start role=%s", self.role)
 
         self.repo.validate()
         self.repo.fetch()
-        if self.role == "BACKUP":
-            status = self.repo.read_json("origin/main", STATUS_FILE)
-            lease = self.repo.read_json("origin/main", LEASE_FILE)
-            if lease_is_active(lease, self.now_fn()):
-                LOGGER.info("Active remote lease found; BACKUP exits.")
-                return self.skipped_cycle_result()
-            if not self._backup_should_run(status):
-                wait_seconds = self._backup_handoff_wait_seconds(status)
-                if wait_seconds is None:
-                    return self.skipped_cycle_result()
-                LOGGER.info(
-                    "BACKUP handoff recheck scheduled in %s seconds.",
-                    int(wait_seconds),
-                )
-                self.sleep_fn(wait_seconds)
-                self.repo.fetch()
-                lease = self.repo.read_json("origin/main", LEASE_FILE)
-                if lease_is_active(lease, self.now_fn()):
-                    LOGGER.info("Active remote lease found after handoff wait; BACKUP exits.")
-                    return self.skipped_cycle_result()
-                status = self.repo.read_json("origin/main", STATUS_FILE)
-                if not self._backup_should_run(status):
-                    return self.skipped_cycle_result()
 
+        # Code sync happens BEFORE any standby early exit so a BACKUP that keeps
+        # standing down for a healthy PRIMARY still loads new coordinator logic.
         outcome = self.repo.sync(already_fetched=True)
         LOGGER.info(
             "Code sync=%s local=%s origin=%s",
@@ -1251,19 +1844,114 @@ class UpdaterCoordinator:
             LOGGER.info("Code fast-forwarded; restarting to load the synchronized coordinator.")
             return RESTART_AFTER_SYNC_EXIT
 
+        snapshot = self._read_snapshot()
+        if self.role == "BACKUP":
+            if lease_is_active(snapshot.lease, self.now_fn()):
+                LOGGER.info("Active remote lease found; BACKUP exits.")
+                return self.skipped_cycle_result()
+            if not self._backup_should_run(snapshot.status, snapshot.weather):
+                wait_seconds = self._backup_handoff_wait_seconds(snapshot.status)
+                if wait_seconds is None:
+                    return self.skipped_cycle_result()
+                LOGGER.info(
+                    "BACKUP handoff recheck scheduled in %s seconds.",
+                    int(wait_seconds),
+                )
+                self.sleep_fn(wait_seconds)
+                self.repo.fetch()
+                snapshot = self._read_snapshot()
+                if lease_is_active(snapshot.lease, self.now_fn()):
+                    LOGGER.info("Active remote lease found after handoff wait; BACKUP exits.")
+                    return self.skipped_cycle_result()
+                if not self._backup_should_run(snapshot.status, snapshot.weather):
+                    return self.skipped_cycle_result()
+
+        if self.role == "PRIMARY":
+            # Mechanism A: an unexpired handoff window this host itself published.
+            if self._primary_handoff_window_open(snapshot):
+                return self.skipped_cycle_result()
+            # Mechanism B: probe before the lease; re-check the standby after the probe.
+            decision = self._primary_recovery_decision(snapshot)
+            if decision == "RESTART":
+                return RESTART_AFTER_SYNC_EXIT
+            if decision == "YIELD":
+                return self.skipped_cycle_result()
+
+        if self._acquire_deadline_exceeded():
+            self._discard_probe_result()
+            return self.skipped_cycle_result()
+
         try:
             ownership = self.acquire_lease()
         except GitSafetyError as error:
             if error.code == "RESTART_REQUIRED":
+                self._discard_probe_result()
                 return RESTART_AFTER_SYNC_EXIT
             raise
         if ownership is None:
+            self._discard_probe_result()
             return self.skipped_cycle_result()
         try:
             success = self.publish_owned_cycle(ownership, run_started)
+            self._record_feed_takeover_outcome(success)
             return 0 if success else 1
         finally:
+            self._discard_probe_result()
             ownership.scratch.close()
+
+    def _record_feed_takeover_outcome(self, published: bool) -> None:
+        """After a NOTAM-aware takeover, start the cooldown if BACKUP's own pull was red too.
+
+        Recorded from the actual published NOTAM outcome (token, transfer, parse,
+        launch, and timeout failures all surface as a non-OK milNotamFetchStatus),
+        or from a takeover attempt that could not be established as successful.
+        Only repeated NOTAM-driven takeovers are affected; heartbeat failover and an
+        already-active BACKUP are not.
+        """
+        if self.role != "BACKUP" or not self.feed_takeover_active:
+            return
+        own_status = str(self.last_generated_notam_status or "").strip().upper()
+        if published and own_status == "OK":
+            self.feed_takeover.reset()
+            LOGGER.info("decision=NOTAM_TAKEOVER_PUBLISHED_OK - this host published a successful NOTAM pull.")
+            return
+        self.feed_takeover.record_failed_takeover(self.now_fn())
+        LOGGER.warning(
+            "decision=NOTAM_TAKEOVER_FAILED status=%s published=%s - feed-rule takeovers pause for %s minutes; "
+            "heartbeat-based takeover is unaffected.",
+            own_status or "UNKNOWN",
+            published,
+            NOTAM_FEED_RETAKE_COOLDOWN_MINUTES,
+        )
+
+    def _primary_handoff_offer(self, now: datetime) -> Optional[dict]:
+        """Mechanism A, decided from THIS cycle's own generated NOTAM outcome.
+
+        Offered only when this PRIMARY's own pull failed and the last authoritative
+        retrieval it is about to publish is already older than the takeover
+        threshold, and not within the re-offer interval of a previous offer.
+        """
+        if self.role != "PRIMARY":
+            return None
+        own_status = str(self.last_generated_notam_status or "").strip().upper()
+        if not own_status or own_status == "OK":
+            return None
+        age = _age_minutes(now, self.last_generated_notam_updated)
+        if age is None or age <= NOTAM_FEED_TAKEOVER_MINUTES:
+            return None
+        if not self.handoff.may_offer(now):
+            LOGGER.info("decision=NOTAM_HANDOFF_NOT_REOFFERED - a recent offer was not taken; PRIMARY continues.")
+            return None
+        offered = now.astimezone(timezone.utc)
+        expires = offered + timedelta(minutes=NOTAM_HANDOFF_WINDOW_MINUTES)
+        LOGGER.warning(
+            "decision=NOTAM_HANDOFF_OFFERED last_success=%sM expires=%s - PRIMARY will leave the lease free "
+            "until then unless BACKUP publishes first; it resumes automatically afterwards.",
+            display_age_minutes(age),
+            format_utc(expires),
+        )
+        # Recorded locally only once the publication carrying it has been pushed.
+        return {"offeredUtc": format_utc(offered), "expiresUtc": format_utc(expires)}
 
 
 def parse_role(value: Optional[str]) -> str:

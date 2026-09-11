@@ -71,6 +71,12 @@ NMS_SAFE_PROCESS_BOUNDARIES = {
     "NOT_USED",
 }
 NMS_SAFE_REQUEST_STAGES = {"TOKEN", "NOTAMS", "NOT_USED"}
+# How this cycle's NOTAM block was acquired. RECOVERY_PROBE means the validated
+# result of THIS invocation's own recovery probe was reused (see
+# load_recovery_probe_result); NONE means a failed acquisition retained data.
+NMS_SAFE_ACQUISITIONS = {"GENERATION", "RECOVERY_PROBE", "NONE"}
+NMS_PROBE_RESULT_SCHEMA_VERSION = 1
+NMS_PROBE_RESULT_MAX_AGE_MINUTES = 15
 NMS_SAFE_SYSTEM_PROXY_ROUTES = {"DIRECT", "SYSTEM_PROXY", "NOT_USED"}
 NMS_SAFE_TRANSPORT_REASONS = {
     "NONE",
@@ -4860,8 +4866,10 @@ def safe_nms_failure_category(value, fallback="UNCLASSIFIED"):
     return "UNCLASSIFIED"
 
 
-def normalize_mil_notams_output(raw, fetch_status="OK"):
+def normalize_mil_notams_output(raw, fetch_status="OK", acquisition="GENERATION"):
     raw = raw or {}
+    if acquisition not in NMS_SAFE_ACQUISITIONS:
+        acquisition = "GENERATION"
     transport = str(raw.get("httpTransport") or "UNKNOWN").strip().upper()
     if transport not in NMS_SAFE_TRANSPORTS:
         transport = "UNKNOWN"
@@ -4958,6 +4966,7 @@ def normalize_mil_notams_output(raw, fetch_status="OK"):
         if str(raw.get("transportReason") or "NOT_USED").strip().upper()
         in NMS_SAFE_TRANSPORT_REASONS
         else "UNCLASSIFIED",
+        "milNotamAcquisition": acquisition if fetch_status == "OK" else "NONE",
         "milNotamFailureCategory": safe_nms_failure_category(
             "NONE" if fetch_status == "OK" else fetch_status,
         ),
@@ -4985,6 +4994,7 @@ def previous_mil_notams_or_default(
         "milNotamAttemptStage": "NOT_USED",
         "milNotamAttemptProxyRoute": "NOT_USED",
         "milNotamAttemptReason": "NOT_USED",
+        "milNotamAcquisition": "NONE",
         "milNotamFailureCategory": safe_nms_failure_category(fetch_status),
         "milNotamAttemptZ": datetime.now(timezone.utc).strftime(
             "%Y-%m-%d %H:%M:%SZ"
@@ -5123,6 +5133,7 @@ def nms_attempt_metadata(stdout, stderr, failure_category):
             "NMS transport reason:",
             NMS_SAFE_TRANSPORT_REASONS,
         ),
+        "milNotamAcquisition": "NONE",
         "milNotamFailureCategory": reported_failure,
         "milNotamAttemptZ": datetime.now(timezone.utc).strftime(
             "%Y-%m-%d %H:%M:%SZ"
@@ -5192,6 +5203,10 @@ def fetch_mil_notams(previous_data):
         print(f"MIL NOTAMS: script missing: {NMS_MIL_NOTAMS_SCRIPT_PATH}")
         return previous_mil_notams_or_default(previous_data, "NO_NMS_SCRIPT")
 
+    reused = load_recovery_probe_result()
+    if reused is not None:
+        return reused
+
     try:
         print("MIL NOTAMS: running FAA NMS pull...")
 
@@ -5260,6 +5275,83 @@ def fetch_mil_notams(previous_data):
         )
 
 
+
+
+def write_recovery_probe_result(path, token, raw):
+    """Persist THIS invocation's validated probe payload for its own generation step.
+
+    Written only for a complete successful pull; the file lives in the private
+    updater runtime directory (never the repository) and is keyed by a
+    per-invocation token so a later invocation can never pick it up.
+    """
+    record = {
+        "schemaVersion": NMS_PROBE_RESULT_SCHEMA_VERSION,
+        "invocationToken": str(token),
+        "probedAtUtc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"),
+        "location": str(raw.get("location") or ""),
+        "source": str(raw.get("source") or ""),
+        "payload": raw,
+    }
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temporary = f"{path}.tmp"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(record, handle)
+    os.replace(temporary, path)
+
+
+def load_recovery_probe_result():
+    """Return a normalized OK NOTAM block from this invocation's validated probe, or None.
+
+    Every check fails closed to None, in which case the caller performs the
+    normal (explicit) retrieval. Nothing here can turn a failed or stale probe
+    into a successful acquisition.
+    """
+    path = os.environ.get("KMEM_NMS_PROBE_RESULT_PATH", "").strip()
+    token = os.environ.get("KMEM_NMS_PROBE_TOKEN", "").strip()
+    if not path or not token:
+        return None
+    record = load_json_file(path)
+    if not isinstance(record, dict):
+        print("MIL NOTAMS: recovery probe result unreadable; performing normal pull.")
+        return None
+    reasons = []
+    if record.get("schemaVersion") != NMS_PROBE_RESULT_SCHEMA_VERSION:
+        reasons.append("schema")
+    if str(record.get("invocationToken") or "") != token:
+        reasons.append("token")
+    probed_at = parse_z_datetime(record.get("probedAtUtc"))
+    now = datetime.now(timezone.utc)
+    if probed_at is None or probed_at > now + timedelta(minutes=1):
+        reasons.append("time")
+    elif (now - probed_at).total_seconds() / 60.0 > NMS_PROBE_RESULT_MAX_AGE_MINUTES:
+        reasons.append("age")
+    payload = record.get("payload")
+    if not isinstance(payload, dict):
+        reasons.append("payload")
+        payload = {}
+    if str(record.get("location") or payload.get("location") or "").upper() != "KMEM":
+        reasons.append("location")
+    if str(record.get("source") or payload.get("source") or "") != "FAA_NMS_STAGING":
+        reasons.append("source")
+    if str(payload.get("status") or "").strip().upper() != "SUCCESS":
+        reasons.append("status")
+    if not parse_z_datetime(payload.get("generatedZ")):
+        reasons.append("generatedZ")
+    if reasons:
+        print(f"MIL NOTAMS: recovery probe result rejected ({','.join(reasons)}); performing normal pull.")
+        return None
+    mil_data = normalize_mil_notams_output(payload, "OK", acquisition="RECOVERY_PROBE")
+    if mil_data.get("milNotamRawStatus", "").strip().upper() != "SUCCESS":
+        print("MIL NOTAMS: recovery probe payload did not normalize as a success; performing normal pull.")
+        return None
+    print(
+        "MIL NOTAMS: using this invocation's validated recovery probe "
+        f"(probed {record.get('probedAtUtc')}); no second download."
+    )
+    print("MIL NOTAMS:", mil_data["milNotamStatus"], "SOURCE:", mil_data["milNotamSource"])
+    return mil_data
 
 
 def should_save_last_good(data):
@@ -5763,6 +5855,11 @@ def build_weather_json():
             "milNotamAttemptReason",
             "NOT_USED",
         ),
+        "milNotamAcquisition": (
+            mil_notam_data.get("milNotamAcquisition")
+            if mil_notam_data.get("milNotamAcquisition") in NMS_SAFE_ACQUISITIONS
+            else "NONE"
+        ),
         "milNotamFailureCategory": mil_notam_data.get(
             "milNotamFailureCategory",
             "UNKNOWN",
@@ -5866,6 +5963,48 @@ def generate_once():
     download_radar_gif()
 
 
+NMS_PROBE_RESULT_MARKER = "__KMEM_NMS_PROBE_RESULT_3F7A1C2E__:"
+NMS_PROBE_FAILED_EXIT = 2
+
+
+def probe_mil_notam_feed():
+    """
+    Run one bounded NMS pull and report only whether THIS host can retrieve KMEM
+    NOTAMs right now. kmem_updater.py uses it so an alive PRIMARY whose own link
+    cannot reach NMS yields one cycle to a standby that can, instead of holding
+    the lease and publishing a failed feed. Same helper, credentials, timeouts,
+    and fail-closed handling as the real pull; nothing is written to weather.json.
+    """
+    # A probe must never itself be satisfied by a reused result.
+    os.environ.pop("KMEM_NMS_PROBE_RESULT_PATH", None)
+    probe_path = os.environ.get("KMEM_PROBE_OUTPUT_PATH_INTERNAL", "")
+    result = fetch_mil_notams({})
+    fetch_status = str(result.get("milNotamFetchStatus") or "")
+    ok = (
+        fetch_status == "OK"
+        and str(result.get("milNotamRawStatus") or "").strip().upper() == "SUCCESS"
+    )
+    if ok and probe_path:
+        raw = load_json_file(NMS_MIL_NOTAMS_OUTPUT_PATH)
+        token = os.environ.get("KMEM_NMS_PROBE_TOKEN", "").strip()
+        if isinstance(raw, dict) and token:
+            try:
+                write_recovery_probe_result(probe_path, token, raw)
+            except OSError as error:
+                print("MIL NOTAMS: recovery probe result not saved:", error)
+    summary = {
+        "ok": ok,
+        "fetchStatus": fetch_status,
+        "failureCategory": result.get("milNotamFailureCategory") or "NONE",
+        "attemptStage": result.get("milNotamAttemptStage") or "NOT_USED",
+        "attemptTransport": result.get("milNotamAttemptTransport") or "NOT_USED",
+        "count": result.get("milNotamCount"),
+    }
+    # Machine-readable last line; these safe enums contain no credentials.
+    print(NMS_PROBE_RESULT_MARKER + json.dumps(summary, sort_keys=True))
+    return ok
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="KMEM Ops Board Weather Updater")
@@ -5874,7 +6013,26 @@ def main():
         action="store_true",
         help="Generate weather artifacts without Git; used by kmem_updater.py",
     )
+    parser.add_argument(
+        "--probe-nms",
+        action="store_true",
+        help="Run one bounded NMS pull; exit 0 only if KMEM NOTAMs were retrieved. Used by kmem_updater.py",
+    )
     args = parser.parse_args()
+
+    if args.probe_nms:
+        # Move the coordinator-provided output path aside so the probe's own
+        # fetch cannot be short-circuited by it, then write there on success.
+        output_path = os.environ.pop("KMEM_NMS_PROBE_RESULT_PATH", "").strip()
+        if output_path:
+            os.environ["KMEM_PROBE_OUTPUT_PATH_INTERNAL"] = output_path
+        try:
+            sys.exit(0 if probe_mil_notam_feed() else NMS_PROBE_FAILED_EXIT)
+        except SystemExit:
+            raise
+        except Exception as error:
+            print("NMS PROBE FAILED:", error)
+            sys.exit(NMS_PROBE_FAILED_EXIT)
 
     if not args.generate_only:
         parser.error(

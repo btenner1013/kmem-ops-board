@@ -62,6 +62,11 @@ ALLOW_INSECURE_SSL_FALLBACK = os.environ.get(
 # NMS staging showed a rate limit around 1 request/sec.
 REQUEST_DELAY_SECONDS = 1.25
 MAX_RETRIES = 2
+# Recovery probe mode (set only by kmem_updater.py while PRIMARY tests its own
+# NMS path before reclaiming from a healthy standby): one attempt per stage and
+# no cross-transport replay, so the probe fits a small fixed budget. Verified
+# TLS, endpoints, credentials, and fail-closed handling are identical.
+RECOVERY_PROBE_MODE = os.environ.get("NMS_RECOVERY_PROBE", "").strip().lower() in {"1", "true", "yes", "on"}
 # Budgets are sized for PRIMARY's congested shared Wi-Fi, measured 2026-09-11:
 # a lossy link needs 3-4 SYN retries (about 15 s) to open a socket, and the
 # KMEM location pull is ~300 KB of AIXM that the service does not compress, so
@@ -85,7 +90,7 @@ TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 CURL_CONNECT_TIMEOUT_SECONDS = TOKEN_CONNECT_TIMEOUT_SECONDS
 CURL_TOTAL_TIMEOUT_SECONDS = TOKEN_TOTAL_TIMEOUT_SECONDS
 CURL_PROCESS_TIMEOUT_SECONDS = TOKEN_PROCESS_TIMEOUT_SECONDS
-CURL_MAX_RETRIES = 2
+CURL_MAX_RETRIES = 1 if RECOVERY_PROBE_MODE else 2
 # Only availability/framing failures may cross from curl to the independently
 # verified PowerShell transport. TLS, certificate, trust-store, client-certificate,
 # and pinning failures intentionally remain terminal instead of trying a transport
@@ -108,7 +113,7 @@ TRANSPORT_PIPE_DRAIN_TIMEOUT_SECONDS = 3
 TRANSPORT_TREE_KILL_TIMEOUT_SECONDS = 5
 POWERSHELL_TOTAL_TIMEOUT_SECONDS = TOKEN_TOTAL_TIMEOUT_SECONDS
 POWERSHELL_PROCESS_TIMEOUT_SECONDS = TOKEN_PROCESS_TIMEOUT_SECONDS
-POWERSHELL_MAX_RETRIES = 2
+POWERSHELL_MAX_RETRIES = 1 if RECOVERY_PROBE_MODE else 2
 PYTHON_CHILD_TOTAL_TIMEOUT_SECONDS = 25
 PYTHON_CHILD_PROCESS_TIMEOUT_SECONDS = 30
 PYTHON_CHILD_MAX_RETRIES = 2
@@ -1942,6 +1947,10 @@ def http_request(
                 request_stage=request_stage,
             )
         except NmsTransportError:
+            if RECOVERY_PROBE_MODE:
+                # A recovery probe answers one question - can THIS host complete
+                # the pull right now - within a fixed budget; no second transport.
+                raise
             # Curl produced no completed HTTP response. Use the checked-in
             # Windows system-proxy route so the interactive PRIMARY task can
             # honor its Internet Options/PAC and proxy credentials.
