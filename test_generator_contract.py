@@ -3299,6 +3299,12 @@ class SchedulerContractTests(unittest.TestCase):
         )
         self.assertNotIn("--force-failover", installer)
         self.assertIn("-LogonType Interactive", installer)
+        # A denied registration must abort before the success banner prints.
+        self.assertIn("Register-ScheduledTask @registration -ErrorAction Stop", installer)
+        self.assertLess(
+            installer.index("Register-ScheduledTask @registration -ErrorAction Stop"),
+            installer.index("Write-Host \"Installed '$TaskName'.\""),
+        )
 
     def test_display_installer_uses_role_specific_runtime_limits(self):
         script = (REPO_DIR / "install_display_tasks.ps1").read_text(encoding="utf-8")

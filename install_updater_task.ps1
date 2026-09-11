@@ -117,10 +117,13 @@ $registration = @{
 if ($ReplaceExisting) {
     $registration.Force = $true
 }
-Register-ScheduledTask @registration | Out-Null
+# CIM-backed ScheduledTasks cmdlets do not inherit this script's
+# $ErrorActionPreference, so a denied registration must be made terminal
+# explicitly; otherwise the success banner below would print after a failure.
+Register-ScheduledTask @registration -ErrorAction Stop | Out-Null
 
 if ($StartNow) {
-    Start-ScheduledTask -TaskName $TaskName -TaskPath "\"
+    Start-ScheduledTask -TaskName $TaskName -TaskPath "\" -ErrorAction Stop
 }
 
 Write-Host "Installed '$TaskName'." -ForegroundColor Green
