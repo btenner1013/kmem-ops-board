@@ -3277,6 +3277,29 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn('--daemon --interval 600 --role "%ROLE%"', daemon)
         self.assertIn("-RepetitionInterval (New-TimeSpan -Minutes 10)", installer)
 
+    def test_updater_installer_standby_persistence_options_are_opt_in(self):
+        installer = (REPO_DIR / "install_updater_task.ps1").read_text(encoding="utf-8")
+
+        # Both standby-host options exist and default off, so PRIMARY installs
+        # are unchanged unless the flags are passed explicitly.
+        self.assertIn("[switch]$AtLogOn", installer)
+        self.assertIn("[switch]$WakeToRun", installer)
+        self.assertIn("-WakeToRun:$WakeToRun", installer)
+        self.assertIn(
+            "if ($AtLogOn) {",
+            installer,
+        )
+        self.assertIn("New-ScheduledTaskTrigger -AtLogOn -User $currentUser", installer)
+        # The sign-in trigger supplements the 10-minute repetition; it never
+        # replaces it, and the task action/role argument is untouched.
+        self.assertIn(
+            "New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(1)) `\n"
+            "        -RepetitionInterval (New-TimeSpan -Minutes 10)",
+            installer,
+        )
+        self.assertNotIn("--force-failover", installer)
+        self.assertIn("-LogonType Interactive", installer)
+
     def test_display_installer_uses_role_specific_runtime_limits(self):
         script = (REPO_DIR / "install_display_tasks.ps1").read_text(encoding="utf-8")
         server = script.split("$serverSettings =", 1)[1].split("$updaterSettings =", 1)[0]

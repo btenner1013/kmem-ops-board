@@ -7,7 +7,11 @@ param(
     [string]$TaskName,
     [switch]$ReplaceExisting,
     [switch]$AcknowledgeExistingUpdaterTasks,
-    [switch]$StartNow
+    [switch]$StartNow,
+    # Standby hosts: also evaluate promptly after the scheduled user signs in.
+    [switch]$AtLogOn,
+    # Standby hosts: allow the scheduler to wake the machine for a cycle.
+    [switch]$WakeToRun
 )
 
 $ErrorActionPreference = "Stop"
@@ -76,7 +80,8 @@ $settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 30) `
     -MultipleInstances IgnoreNew `
     -RestartCount 2 `
-    -RestartInterval (New-TimeSpan -Minutes 2)
+    -RestartInterval (New-TimeSpan -Minutes 2) `
+    -WakeToRun:$WakeToRun
 
 $wscriptPath = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::System)) "wscript.exe"
 if (-not (Test-Path -LiteralPath $wscriptPath -PathType Leaf)) {
@@ -84,8 +89,16 @@ if (-not (Test-Path -LiteralPath $wscriptPath -PathType Leaf)) {
 }
 $arguments = "//B //NoLogo `"$hiddenUpdateVbs`" $Role"
 $action = New-ScheduledTaskAction -Execute $wscriptPath -Argument $arguments -WorkingDirectory $projectDir
-$trigger = New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(1)) `
-    -RepetitionInterval (New-TimeSpan -Minutes 10)
+$trigger = @(
+    New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(1)) `
+        -RepetitionInterval (New-TimeSpan -Minutes 10)
+)
+if ($AtLogOn) {
+    # The 10-minute repetition above resumes on its own after a reboot; this
+    # extra trigger only makes the first standby evaluation prompt at sign-in.
+    # IgnoreNew prevents the two triggers from overlapping.
+    $trigger += New-ScheduledTaskTrigger -AtLogOn -User $currentUser
+}
 $description = if ($Role -eq "PRIMARY") {
     "Runs the preferred KMEM updater every 10 minutes with safe self-sync and remote lease protection."
 } else {
@@ -114,5 +127,7 @@ Write-Host "Installed '$TaskName'." -ForegroundColor Green
 Write-Host "Role: $Role"
 Write-Host "Cadence: 10 minutes"
 Write-Host "Overlap policy: IgnoreNew"
+Write-Host ("Sign-in trigger: {0}" -f $(if ($AtLogOn) { "enabled" } else { "disabled" }))
+Write-Host ("Wake to run: {0}" -f $(if ($WakeToRun) { "enabled" } else { "disabled" }))
 Write-Host "Scheduled launcher: hidden/background"
 Write-Host "Working directory: $projectDir"
