@@ -8,7 +8,7 @@
   "retentionBoundaryGap": null,
   "archiveStartedUtc": "2026-09-09T05:35:56Z",
   "coverageStartUtc": "2026-09-09T05:35:56Z",
-  "updatedUtc": "2026-09-11T09:45:53Z",
+  "updatedUtc": "2026-09-11T10:07:46Z",
   "partialHistory": true,
   "thresholds": {
     "healthyMinutes": 15,
@@ -21,22 +21,22 @@
       "healthState": "HEALTHY",
       "roleState": "ACTIVE_PUBLISHER",
       "reason": "HEARTBEAT_CURRENT",
-      "heartbeatAgeMinutes": 0.003,
+      "heartbeatAgeMinutes": 0.014,
       "lastObservedHealthState": "HEALTHY",
-      "lastHeartbeatUtc": "2026-09-11T09:45:53Z",
-      "lastSuccessfulUpdaterRunUtc": "2026-09-11T09:45:53Z",
-      "lastSuccessfulPushUtc": "2026-09-11T09:45:53Z",
-      "lastKnownSourceSha": "01921e352108f1f361517bbdf4632dbf17eb70f3",
+      "lastHeartbeatUtc": "2026-09-11T10:07:46Z",
+      "lastSuccessfulUpdaterRunUtc": "2026-09-11T10:07:46Z",
+      "lastSuccessfulPushUtc": "2026-09-11T10:07:46Z",
+      "lastKnownSourceSha": "dc90627d7ce38a077962d2d9c56cd855c194147d",
       "lastError": null,
       "taskState": "UNKNOWN",
-      "evidenceUpdatedUtc": "2026-09-11T09:45:53Z"
+      "evidenceUpdatedUtc": "2026-09-11T10:07:46Z"
     },
     "BACKUP": {
       "role": "BACKUP",
       "healthState": "UNKNOWN",
       "roleState": "STANDBY_NOT_OBSERVED",
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "heartbeatAgeMinutes": 2022.769,
+      "heartbeatAgeMinutes": 2044.664,
       "lastObservedHealthState": "HEALTHY",
       "lastHeartbeatUtc": "2026-09-10T00:03:07Z",
       "lastSuccessfulUpdaterRunUtc": "2026-09-10T00:03:07Z",
@@ -52,26 +52,26 @@
       "role": "PRIMARY",
       "sinceUtc": "2026-09-10T00:15:35Z",
       "sinceTimestampBasis": "LEASE_ACQUIRED_UTC",
-      "lastSuccessfulPublishUtc": "2026-09-11T09:45:53Z",
-      "lastSuccessfulPushUtc": "2026-09-11T09:45:53Z",
+      "lastSuccessfulPublishUtc": "2026-09-11T10:07:46Z",
+      "lastSuccessfulPushUtc": "2026-09-11T10:07:46Z",
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "rootCauseKnown": false
     },
     "boardDelivery": {
       "state": "CONTINUOUS",
-      "lastSuccessfulPublishUtc": "2026-09-11T09:45:53Z",
+      "lastSuccessfulPublishUtc": "2026-09-11T10:07:46Z",
       "publisher": "PRIMARY",
-      "ageMinutes": 0.003,
+      "ageMinutes": 0.014,
       "reason": "BOARD_PUBLISH_CURRENT"
     },
     "lease": {
       "state": "RELEASED",
       "activeOwner": null,
       "lastOwner": "PRIMARY",
-      "acquiredUtc": "2026-09-11T09:45:36Z",
-      "expiresUtc": "2026-09-11T09:45:53Z",
-      "releasedUtc": "2026-09-11T09:45:53Z",
-      "observedUtc": "2026-09-11T09:45:53Z"
+      "acquiredUtc": "2026-09-11T09:55:45Z",
+      "expiresUtc": "2026-09-11T10:07:46Z",
+      "releasedUtc": "2026-09-11T10:07:46Z",
+      "observedUtc": "2026-09-11T10:07:46Z"
     }
   },
   "intervals": [
@@ -1263,11 +1263,13 @@
       "host": null,
       "state": "CONTINUOUS",
       "startUtc": "2026-09-09T23:50:48Z",
-      "endUtc": null,
+      "endUtc": "2026-09-11T10:00:54Z",
       "reason": "BOARD_PUBLISH_CURRENT",
       "sourceSha": "3a4bc7f1f82f3c64fd40de34e4f3eed8fff093b7",
       "startTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
-      "startTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
+      "startTimestampCertainty": "EXACT_SOURCE_TIMESTAMP",
+      "endTimestampBasis": "BOARD_PUBLISH_DELAY_THRESHOLD_DERIVED",
+      "endTimestampCertainty": "DERIVED_FROM_PUBLISH_TIMESTAMPS_AND_THRESHOLD"
     },
     {
       "track": "PUBLISHER",
@@ -1296,9 +1298,59 @@
       "host": "PRIMARY",
       "state": "HEALTHY",
       "startUtc": "2026-09-10T00:16:01Z",
-      "endUtc": null,
+      "endUtc": "2026-09-11T10:00:54Z",
       "reason": "HEARTBEAT_CURRENT",
       "sourceSha": "2e225f89e3ab471d0b46db45b9b0a54c1be09901",
+      "startTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
+      "startTimestampCertainty": "EXACT_SOURCE_TIMESTAMP",
+      "endTimestampBasis": "HEALTHY_THRESHOLD_DERIVED",
+      "endTimestampCertainty": "DERIVED_FROM_HEARTBEAT_AND_CONFIGURED_THRESHOLD"
+    },
+    {
+      "track": "BOARD_DELIVERY",
+      "host": null,
+      "state": "DELAYED",
+      "startUtc": "2026-09-11T10:00:54Z",
+      "endUtc": "2026-09-11T10:07:46Z",
+      "reason": "BOARD_PUBLISH_DELAYED",
+      "sourceSha": "01921e352108f1f361517bbdf4632dbf17eb70f3",
+      "startTimestampBasis": "BOARD_PUBLISH_DELAY_THRESHOLD_DERIVED",
+      "startTimestampCertainty": "DERIVED_FROM_PUBLISH_TIMESTAMPS_AND_THRESHOLD",
+      "endTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
+      "endTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
+    },
+    {
+      "track": "PRIMARY",
+      "host": "PRIMARY",
+      "state": "DELAYED",
+      "startUtc": "2026-09-11T10:00:54Z",
+      "endUtc": "2026-09-11T10:07:46Z",
+      "reason": "HEARTBEAT_EXCEEDED_HEALTHY_THRESHOLD",
+      "sourceSha": "01921e352108f1f361517bbdf4632dbf17eb70f3",
+      "startTimestampBasis": "HEALTHY_THRESHOLD_DERIVED",
+      "startTimestampCertainty": "DERIVED_FROM_HEARTBEAT_AND_CONFIGURED_THRESHOLD",
+      "endTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
+      "endTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
+    },
+    {
+      "track": "BOARD_DELIVERY",
+      "host": null,
+      "state": "CONTINUOUS",
+      "startUtc": "2026-09-11T10:07:46Z",
+      "endUtc": null,
+      "reason": "BOARD_PUBLISH_CURRENT",
+      "sourceSha": "dc90627d7ce38a077962d2d9c56cd855c194147d",
+      "startTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
+      "startTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
+    },
+    {
+      "track": "PRIMARY",
+      "host": "PRIMARY",
+      "state": "HEALTHY",
+      "startUtc": "2026-09-11T10:07:46Z",
+      "endUtc": null,
+      "reason": "HEARTBEAT_CURRENT",
+      "sourceSha": "dc90627d7ce38a077962d2d9c56cd855c194147d",
       "startTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
       "startTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
     }
@@ -2389,6 +2441,50 @@
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
       "publisher": "PRIMARY",
       "sourceSha": "8b51ad3dd3f6607e23d0e060aca5464204efa22d",
+      "timestampBasis": "PUBLISHED_HEARTBEAT_UTC",
+      "timestampCertainty": "EXACT_SOURCE_TIMESTAMP",
+      "leaseOwner": null
+    },
+    {
+      "eventType": "PRIMARY_DELAYED",
+      "timestampUtc": "2026-09-11T10:00:54Z",
+      "host": "PRIMARY",
+      "reason": "HEARTBEAT_EXCEEDED_HEALTHY_THRESHOLD",
+      "publisher": "PRIMARY",
+      "sourceSha": "01921e352108f1f361517bbdf4632dbf17eb70f3",
+      "timestampBasis": "HEALTHY_THRESHOLD_DERIVED",
+      "timestampCertainty": "DERIVED_FROM_HEARTBEAT_AND_CONFIGURED_THRESHOLD",
+      "leaseOwner": null
+    },
+    {
+      "eventType": "BOARD_DELAYED",
+      "timestampUtc": "2026-09-11T10:00:54Z",
+      "host": null,
+      "reason": "BOARD_PUBLISH_DELAYED",
+      "publisher": "PRIMARY",
+      "sourceSha": "01921e352108f1f361517bbdf4632dbf17eb70f3",
+      "timestampBasis": "BOARD_PUBLISH_DELAY_THRESHOLD_DERIVED",
+      "timestampCertainty": "DERIVED_FROM_PUBLISH_TIMESTAMPS_AND_THRESHOLD",
+      "leaseOwner": null
+    },
+    {
+      "eventType": "PRIMARY_DELAY_RECOVERED",
+      "timestampUtc": "2026-09-11T10:07:46Z",
+      "host": "PRIMARY",
+      "reason": "HEARTBEAT_CURRENT",
+      "publisher": "PRIMARY",
+      "sourceSha": "dc90627d7ce38a077962d2d9c56cd855c194147d",
+      "timestampBasis": "PUBLISHED_HEARTBEAT_UTC",
+      "timestampCertainty": "EXACT_SOURCE_TIMESTAMP",
+      "leaseOwner": null
+    },
+    {
+      "eventType": "BOARD_DELAY_RECOVERED",
+      "timestampUtc": "2026-09-11T10:07:46Z",
+      "host": null,
+      "reason": "BOARD_PUBLISH_CURRENT",
+      "publisher": "PRIMARY",
+      "sourceSha": "dc90627d7ce38a077962d2d9c56cd855c194147d",
       "timestampBasis": "PUBLISHED_HEARTBEAT_UTC",
       "timestampCertainty": "EXACT_SOURCE_TIMESTAMP",
       "leaseOwner": null
