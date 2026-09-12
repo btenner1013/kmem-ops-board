@@ -41,7 +41,7 @@ test("PPR data has no application persistence, cache, filesystem, or download pa
   assert.match(appJs, /localCsvText = await file\.text\(\)[\s\S]*?parsePprSnapshotCsv\(localCsvText\)/);
   assert.match(appJs, /finally\s*{[\s\S]*?localCsvText = null/);
   assert.doesNotMatch(appJs, /session\.rawCsvText/);
-  assert.match(appJs, /session\.snapshotText = buildPprSnapshotText\(allowedRecords\)/);
+  assert.match(appJs, /session\.mattermostText = buildPprMattermostText\(allowedRecords\)/);
 });
 
 test("one local CSV picker and drag-and-drop share the same in-memory loader", () => {
@@ -73,7 +73,7 @@ test("clear and navigation release raw text, normalized records, card DOM, and f
     appJs.indexOf("function setBusy"),
   );
   assert.match(clearBody, /session\.records = \[\]/);
-  assert.match(clearBody, /session\.snapshotText = ""/);
+  assert.match(clearBody, /session\.mattermostText = ""/);
   assert.match(clearBody, /session\.rimText = ""/);
   assert.match(clearBody, /session\.loadEpoch \+= 1/);
   assert.match(clearBody, /dom\.cards\.replaceChildren\(\)/);
@@ -111,11 +111,12 @@ test("screenshot mode exposes only the white board heading and rendered entries"
   assert.doesNotMatch(snapshotHtml, /RIM SLIDE LINES|COPY|EXPORT|DOWNLOAD|GENERATED AT|ROW COUNT|FILE NAME|PRIVACY/i);
 });
 
-test("main snapshot has one explicit plain-text copy control outside screenshot mode", () => {
-  assert.match(toolHtml, /id="copySnapshotButton"[^>]*>COPY SNAPSHOT</);
-  assert.match(toolHtml, /id="copySnapshotStatus"[^>]*aria-live="polite"/);
-  assert.match(appJs, /buildPprSnapshotText\(allowedRecords\)/);
-  assert.match(appJs, /navigator\.clipboard\.writeText\(session\.snapshotText\)/);
+test("main snapshot has a dedicated Mattermost copy control outside screenshot mode", () => {
+  assert.match(toolHtml, /id="copyMattermostButton"[^>]*>COPY FOR MATTERMOST</);
+  assert.match(toolHtml, /id="copyMattermostStatus"[^>]*aria-live="polite"/);
+  assert.match(appJs, /buildPprMattermostText\(allowedRecords\)/);
+  assert.match(appJs, /navigator\.clipboard\.writeText\(session\.mattermostText\)/);
+  assert.doesNotMatch(appJs, /(?:innerText|textContent)[\s\S]{0,120}navigator\.clipboard\.writeText/);
   assert.match(toolCss, /body\.is-snapshot-mode \.session-controls[\s\S]*display:\s*none !important/);
 });
 

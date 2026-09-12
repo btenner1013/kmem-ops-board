@@ -39,8 +39,8 @@ const SELECTORS = [
   "#chooseCsvButton",
   "#pprCsvInput",
   "#importStatus",
-  "#copySnapshotButton",
-  "#copySnapshotStatus",
+  "#copyMattermostButton",
+  "#copyMattermostStatus",
   "#snapshotModeButton",
   "#loadAnotherButton",
   "#clearPprButton",
@@ -439,24 +439,24 @@ test("runtime import renders only allowed synthetic data and CLEAR releases the 
     assert.deepEqual(clipboardWrites, []);
     assert.deepEqual(privacyHits, []);
 
-    elements.get("#copySnapshotButton").click();
+    elements.get("#copyMattermostButton").click();
     await settle();
     assert.equal(clipboardWrites.length, 1);
     assert.match(clipboardWrites[0], /^🟢 APPROVED · PPR 255-001/u);
     assert.match(clipboardWrites[0], /TEST123 · C17 · INBOUND ONLY/);
     assert.match(clipboardWrites[0], /KAAA → KMEM/);
     assert.doesNotMatch(clipboardWrites[0], /private\.person|SP-SECRET|Private Requester/i);
-    assert.match(elements.get("#copySnapshotStatus").textContent, /copied/i);
+    assert.match(elements.get("#copyMattermostStatus").textContent, /copy ready/i);
 
     elements.get("#clearPprButton").click();
     assert.equal(elements.get("#pprCards").childElementCount, 0);
     assert.equal(elements.get("#rimLines").childElementCount, 0);
     assert.equal(elements.get("#copyRimLinesButton").disabled, true);
-    assert.equal(elements.get("#copySnapshotButton").disabled, true);
+    assert.equal(elements.get("#copyMattermostButton").disabled, true);
     assert.equal(elements.get("#pprCards").textContent, "");
     assert.equal(elements.get("#rimLines").textContent, "");
     assert.equal(elements.get("#copyRimStatus").textContent, "");
-    assert.equal(elements.get("#copySnapshotStatus").textContent, "");
+    assert.equal(elements.get("#copyMattermostStatus").textContent, "");
     assert.equal(elements.get("#loadedView").hidden, true);
     assert.equal(elements.get("#importView").hidden, false);
     assert.equal(elements.get("#snapshotModeButton").disabled, true);
@@ -487,7 +487,7 @@ test("an unscoped estimated note renders and copies one neutral timing-block ind
     assert.equal(neutralBadges[0].textContent, "ESTIMATED");
     assert.ok(timingLines.every((line) => !/ESTIMATED/.test(line.textContent)));
 
-    elements.get("#copySnapshotButton").click();
+    elements.get("#copyMattermostButton").click();
     await settle();
     assert.equal(clipboardWrites.length, 1);
     assert.match(clipboardWrites[0], /DEP: 12 SEP · 1030L \/ 1530Z\nESTIMATED\nHOME:/);
@@ -639,14 +639,14 @@ test("cancelled entries stay lean and RIM copy contains only chronologically sor
     assert.doesNotMatch(renderedRim, /HOME|TAIL|VIP|FUEL|TRANS|PAX|SPECIAL|HAZMAT|NOTES|SYNTHETIC FUEL/i);
     assert.deepEqual(clipboardWrites, []);
 
-    elements.get("#copySnapshotButton").click();
+    elements.get("#copyMattermostButton").click();
     await settle();
     assert.equal(clipboardWrites.length, 1);
     assert.match(clipboardWrites[0], /^🟢 APPROVED · PPR 255-001/u);
     assert.match(clipboardWrites[0], /\n\n🟢 APPROVED · PPR 255-002/u);
     assert.match(clipboardWrites[0], /\n\n🔴 CANCELLED · PPR 255-003/u);
     assert.doesNotMatch(clipboardWrites[0], /CANCELLED SECRET|TEST000|coordination row/i);
-    assert.match(elements.get("#copySnapshotStatus").textContent, /copied/i);
+    assert.match(elements.get("#copyMattermostStatus").textContent, /copy ready/i);
 
     elements.get("#copyRimLinesButton").click();
     await settle();

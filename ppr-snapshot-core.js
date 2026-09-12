@@ -797,6 +797,17 @@ function recordIdentity(record) {
   ].filter(Boolean).join(" · ");
 }
 
+function mattermostValue(value) {
+  return meaningfulOrEmpty(value)
+    .replace(/[\r\n\u2028\u2029]+/g, " ")
+    .replace(/[\t\f\v ]+/g, " ")
+    .trim();
+}
+
+function mattermostLine(value) {
+  return mattermostValue(value);
+}
+
 /** Build one compact, copy-ready main snapshot entry from allowlisted fields. */
 export function formatPprSnapshotEntry(record) {
   if (!record || ![PPR_STATUS.APPROVED, PPR_STATUS.CANCELLED].includes(record.status)) return "";
@@ -838,6 +849,51 @@ export function buildPprSnapshotText(records) {
     .filter((record) => [PPR_STATUS.APPROVED, PPR_STATUS.CANCELLED].includes(record?.status))
     .sort(compareRecords)
     .map(formatPprSnapshotEntry)
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/** Build one Mattermost-ready entry without deriving whitespace from rendered DOM. */
+export function formatPprMattermostEntry(record) {
+  if (!record || ![PPR_STATUS.APPROVED, PPR_STATUS.CANCELLED].includes(record.status)) return "";
+  const cancelled = record.status === PPR_STATUS.CANCELLED;
+  const pprNumber = mattermostValue(record.pprNumber);
+  const estimate = estimatedMovement(record);
+  const lines = [
+    `${cancelled ? "🔴 CANCELLED" : "🟢 APPROVED"}${pprNumber ? ` · PPR ${pprNumber}` : ""}`,
+    mattermostLine(recordIdentity(record)),
+    mattermostLine(formatPprRoute(record)),
+    mattermostLine(formatSnapshotTiming("ARR", record.arrival, estimate === "arrival" || estimate === "both")),
+    mattermostLine(formatSnapshotTiming("DEP", record.departure, estimate === "departure" || estimate === "both")),
+  ];
+  if (estimate === "neutral") lines.push("ESTIMATED");
+
+  if (!cancelled) {
+    const homeTail = [
+      mattermostValue(record.homeStation) ? `HOME: ${mattermostValue(record.homeStation)}` : "",
+      mattermostValue(record.tailNumbers) ? `TAIL: ${mattermostValue(record.tailNumbers)}` : "",
+    ].filter(Boolean).join(" · ");
+    lines.push(
+      homeTail,
+      mattermostValue(record.vipCode) ? `VIP: ${mattermostValue(record.vipCode)}` : "",
+      mattermostValue(record.fuel) ? `FUEL: ${mattermostValue(record.fuel)}` : "",
+      mattermostValue(record.transportation) ? `TRANS: ${mattermostValue(record.transportation)}` : "",
+      mattermostValue(record.passengers) ? `PAX: ${mattermostValue(record.passengers)}` : "",
+      mattermostValue(record.specialRequirements) ? `SPECIAL: ${mattermostValue(record.specialRequirements)}` : "",
+      mattermostValue(record.hazmat) ? `HAZMAT: ${mattermostValue(record.hazmat)}` : "",
+    );
+  }
+  if (mattermostValue(record.notes)) lines.push(`NOTES: ${mattermostValue(record.notes)}`);
+  return lines.map(mattermostLine).filter(Boolean).join("\n");
+}
+
+/** Return compact Mattermost text with exactly one blank line between sorted entries. */
+export function buildPprMattermostText(records) {
+  if (!Array.isArray(records)) return "";
+  return records
+    .filter((record) => [PPR_STATUS.APPROVED, PPR_STATUS.CANCELLED].includes(record?.status))
+    .sort(compareRecords)
+    .map(formatPprMattermostEntry)
     .filter(Boolean)
     .join("\n\n");
 }

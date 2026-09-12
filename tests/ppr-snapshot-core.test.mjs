@@ -8,10 +8,12 @@ import {
   PPR_REQUIRED_FIELDS,
   PPR_STATUS,
   PprCsvError,
+  buildPprMattermostText,
   buildPprSnapshotText,
   buildRimSlideLines,
   estimatedScopeFromNotes,
   formatPprDate,
+  formatPprMattermostEntry,
   formatPprRoute,
   formatPprSnapshotEntry,
   formatPprTime,
@@ -443,6 +445,55 @@ test("main snapshot text follows the compact approved and lean cancelled formats
     formatRimSlideLine(records[0]),
     "PPR 6256-02 · RCH4556 · INBOUND ONLY · KADW → KMEM · ARR 12 SEP 2230L / 0330Z · DEP 13 SEP 0100L / 0600Z",
   );
+});
+
+test("Mattermost text has exact entry spacing and keeps long fields on single logical lines", () => {
+  const records = parsePprSnapshotCsv(
+    fixture([
+      record({
+        Julian: "6257",
+        Sequence: "1",
+        Callsign: "TEST789",
+        "Email Status": "Cancelled / Denied",
+        "Trans:": "SUPPRESSED\nCANCELLED TRANSPORT",
+        "Special Requirements:": "SUPPRESSED\nCANCELLED SUPPORT",
+        "Notes:": "Synthetic mission cancelled\nby controlling agency",
+      }),
+      record({
+        Julian: "6255",
+        Sequence: "1",
+        Callsign: "TEST135",
+        "Aircraft Type": "KC-135",
+        "Request Type": "Inbound + Outbound",
+        Origin: "KAAA",
+        Destination: "KBBB",
+        "Trans:": "Yes - 6 crew members to AMOPS\nfor flight plan filing",
+        "Pax:": "5 pax with hand carried baggage\r\nand equipment",
+        "Special Requirements:": "air stairs, power cart,\nand customs/intl trash",
+        "Notes:": "Synthetic first line\nSynthetic second line",
+      }),
+    ]),
+  ).records;
+
+  const mattermost = buildPprMattermostText([...records].reverse());
+  const entries = mattermost.split("\n\n");
+
+  assert.equal(entries.length, 2);
+  assert.equal(mattermost, entries.join("\n\n"));
+  assert.doesNotMatch(mattermost, /\n{3,}/);
+  assert.doesNotMatch(mattermost, /\n$/);
+  assert.ok(entries.every((entry) => !entry.includes("\n\n")));
+  assert.match(mattermost, /TRANS: Yes - 6 crew members to AMOPS for flight plan filing\n/);
+  assert.match(mattermost, /PAX: 5 pax with hand carried baggage and equipment\n/);
+  assert.match(mattermost, /SPECIAL: air stairs, power cart, and customs\/intl trash\n/);
+  assert.match(mattermost, /NOTES: Synthetic first line Synthetic second line/);
+  assert.match(mattermost, /NOTES: Synthetic mission cancelled by controlling agency$/);
+  assert.doesNotMatch(mattermost, /SUPPRESSED|CANCELLED TRANSPORT|CANCELLED SUPPORT/);
+  assert.doesNotMatch(mattermost, /<[^>]+>|```|^[-*] /m);
+  assert.equal(formatPprMattermostEntry(records[0]), entries[0]);
+  assert.equal(entries[0].split("\n")[0], "🟢 APPROVED · PPR 6255-1");
+  assert.equal(entries[0].split("\n")[1], "TEST135 · KC-135 · INBOUND + OUTBOUND");
+  assert.equal(entries[1].split("\n")[0], "🔴 CANCELLED · PPR 6257-1");
 });
 
 test("RIM line generation is approved-only, chronological, route-complete, and support-detail-free", () => {

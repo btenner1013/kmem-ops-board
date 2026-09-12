@@ -1,5 +1,5 @@
 import {
-  buildPprSnapshotText,
+  buildPprMattermostText,
   buildRimSlideLines,
   formatPprDate,
   formatPprRoute,
@@ -38,8 +38,8 @@ const dom = {
   chooseButton: document.querySelector("#chooseCsvButton"),
   fileInput: document.querySelector("#pprCsvInput"),
   importStatus: document.querySelector("#importStatus"),
-  copySnapshotButton: document.querySelector("#copySnapshotButton"),
-  copySnapshotStatus: document.querySelector("#copySnapshotStatus"),
+  copyMattermostButton: document.querySelector("#copyMattermostButton"),
+  copyMattermostStatus: document.querySelector("#copyMattermostStatus"),
   snapshotButton: document.querySelector("#snapshotModeButton"),
   loadAnotherButton: document.querySelector("#loadAnotherButton"),
   clearButton: document.querySelector("#clearPprButton"),
@@ -53,7 +53,7 @@ const dom = {
 
 const session = {
   records: [],
-  snapshotText: "",
+  mattermostText: "",
   rimText: "",
   busy: false,
   loadEpoch: 0
@@ -188,9 +188,9 @@ function renderRecords(records) {
   }
   dom.cards.replaceChildren(...stagedCards.children);
 
-  session.snapshotText = buildPprSnapshotText(allowedRecords);
-  dom.copySnapshotButton.disabled = !session.snapshotText;
-  dom.copySnapshotStatus.textContent = "";
+  session.mattermostText = buildPprMattermostText(allowedRecords);
+  dom.copyMattermostButton.disabled = !session.mattermostText;
+  dom.copyMattermostStatus.textContent = "";
 
   const rimLines = buildRimSlideLines(allowedRecords);
   session.rimText = rimLines.join("\n");
@@ -224,12 +224,12 @@ function releasePprSession({ showImport = true } = {}) {
   session.loadEpoch += 1;
   leaveSnapshotMode();
   session.records = [];
-  session.snapshotText = "";
+  session.mattermostText = "";
   session.rimText = "";
   session.busy = false;
   dom.cards.replaceChildren();
-  dom.copySnapshotButton.disabled = true;
-  dom.copySnapshotStatus.textContent = "";
+  dom.copyMattermostButton.disabled = true;
+  dom.copyMattermostStatus.textContent = "";
   dom.rimLines.replaceChildren();
   dom.rimSection.hidden = true;
   dom.copyRimButton.disabled = true;
@@ -360,13 +360,13 @@ dom.dropZone.addEventListener("drop", event => {
   void loadCsvFile(files[0]);
 });
 
-dom.copySnapshotButton.addEventListener("click", async () => {
-  if (!session.snapshotText) return;
+dom.copyMattermostButton.addEventListener("click", async () => {
+  if (!session.mattermostText) return;
   try {
-    await navigator.clipboard.writeText(session.snapshotText);
-    dom.copySnapshotStatus.textContent = "Snapshot copied.";
+    await navigator.clipboard.writeText(session.mattermostText);
+    dom.copyMattermostStatus.textContent = "Mattermost copy ready.";
   } catch {
-    dom.copySnapshotStatus.textContent = "Copy was unavailable. Select the snapshot text and copy it manually.";
+    dom.copyMattermostStatus.textContent = "Copy was unavailable. Select the snapshot text and copy it manually.";
   }
 });
 dom.snapshotButton.addEventListener("click", () => void enterSnapshotMode());
