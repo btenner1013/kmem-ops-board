@@ -1,19 +1,19 @@
 {
   "metar": "METAR KMEM 121454Z 13005KT 10SM -TSRA BKN060CB BKN160 27/23 A2997 RMK AO2 RAB53 SLP143 OCNL LTGIC N-NE TS N-NE MOV SE P0000 60000 T02670228 53018 $",
   "taf": "TAF KMEM 121454Z 1215/1318 VRB05G15KT P6SM -TSRA SCT045CB BKN080 \n  FM121530 23005KT P6SM BKN050 BKN100 \n  FM122000 31008KT P6SM SCT060 \n  FM130100 VRB03KT P6SM FEW250",
-  "atisText": "MEM ATIS INFO F 1454Z. 13005KT 10SM -TSRA BKN060CB BKN160 27/23 A2997 (TWO NINER NINER SEVEN). ILS APCH IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. TWY C CLSD BTN TWY, D AND TWY C4. RY 18L SFL OTS, RY 18R, 27 REILS OTS, FREQ 119.7 OTS. CONTACT TOWER 118.3. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO F",
-  "atisLetter": "F",
-  "atisPhonetic": "FOXTROT",
-  "atisDisplay": "FOXTROT",
+  "atisText": "MEM ATIS INFO G 1454Z. 13005KT 10SM -TSRA BKN060CB BKN160 27/23 A2997 (TWO NINER NINER SEVEN). ILS APCH IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. TWY C CLSD BTN TWY, D AND TWY C4. ILS RWY 18L OTS, RY 18L SFL OTS, RY 18R, 27 REILS OTS, FREQ 119.7 OTS. CONTACT TOWER 118.3. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO G",
+  "atisLetter": "G",
+  "atisPhonetic": "GOLF",
+  "atisDisplay": "GOLF",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-12T14:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-09-12T14:54:00Z",
-  "atisAgeMinutes": 12,
-  "atisReportIdentity": "F:1454Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisAgeMinutes": 22,
+  "atisReportIdentity": "G:1454Z",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -22,17 +22,16 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "F:1454Z",
+      "identity": "G:1454Z",
       "observedZ": "2026-09-12T14:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
-        "ATIS_RELAY"
+        "ATIS_INFO_API"
       ]
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "F",
-  "atisReportedPhonetic": "FOXTROT",
+  "atisReportedLetter": "G",
+  "atisReportedPhonetic": "GOLF",
   "atisReportedArrRunways": "36L / 36R / 27",
   "atisReportedDepRunways": "36L / 36C / 36R / 27",
   "atisReportedClosedRunways": "NONE",
@@ -45,7 +44,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-12T12:15:40Z",
+  "trendReferenceTimestampZ": "2026-09-12T12:25:40Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -167,7 +166,7 @@
   "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA ATIS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-12 15:00:00.000",
+  "bwcUpdatedZ": "2026-09-12 15:12:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -180,7 +179,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-12 15:05:57Z",
+  "milNotamUpdatedZ": "2026-09-12 15:16:03Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -217,7 +216,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-09-12 15:05:57Z",
+  "milNotamAttemptZ": "2026-09-12 15:16:03Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [],
@@ -239,13 +238,13 @@
   "constructionStatusNotamCount": 1,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-09-12 15:05Z",
+  "allFeedsUpdatedZ": "2026-09-12 15:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-12 15:05:40Z"
+    "lastWorkflowTimestampZ": "2026-09-12 15:15:40Z"
   }
 }
