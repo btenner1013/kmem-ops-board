@@ -592,7 +592,7 @@ test("forecast SVG has a distinct NOW divider and conditional TAF styling withou
   assert.match(svg, /aviation-meteogram-forecast-column/);
   assert.match(svg, /P30|TEMPO/);
   assert.match(svg, /TMP 2 SM/, "conditional visibility is shown without replacing prevailing visibility");
-  assert.match(svg, /TMP BKN008CB/, "the conditional cloud group retains its exact TAF layer token");
+  assert.match(svg, /data-cloud-label="BKN008CB"/, "the conditional cloud group retains its exact TAF layer token while the conditional type remains available in detail");
   assert.match(
     svg,
     /aviation-meteogram-cloud-layer-BKN[^\"]*aviation-meteogram-cloud-layer-ceiling[^\"]*aviation-meteogram-cloud-layer-conditional"[^>]*data-base-ft="800"[^>]*data-base-y="797\.2"/,

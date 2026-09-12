@@ -36,9 +36,14 @@ const CLOUD_CELL_PADDING = 4;
 const CLOUD_NARROW_CELL_PADDING = 1;
 const CLOUD_DENSITY_FULL_WIDTH = 112;
 const CLOUD_DENSITY_COMPACT_WIDTH = 68;
+const DENSE_EVENT_CLUSTER_GAP_PX = 38;
+const DENSE_EVENT_PAIR_GAP_PX = 22;
+const TIME_LABEL_MINIMUM_DISTANCE_PX = 44;
 const CLOUD_LABEL_LANE_STEP = 17;
 const CLOUD_LABEL_COLLISION_GAP = 2;
-const METEOGRAM_MAX_PIXELS_PER_HOUR = 320;
+const METEOGRAM_OVERVIEW_MAX_PIXELS_PER_HOUR = 160;
+const METEOGRAM_ZOOM_MAX_PIXELS_PER_HOUR = 960;
+const METEOGRAM_ZOOM_FACTORS = Object.freeze([1, 2, 4, 8]);
 const WEATHER_OVERLAY_ZONE_TOP = METEOGRAM_ROWS.clouds.bottom - 26;
 const WEATHER_OVERLAY_ZONE_BOTTOM = METEOGRAM_ROWS.clouds.bottom - 10;
 const LIGHTNING_PATH_LEFT = -2;
@@ -520,12 +525,6 @@ export function meteogramDimensions(timelineOrCount, viewportWidth, {
   const lastTime = validTimes.length ? Math.max(...validTimes) : Math.max(0, observationCount - 1) * 60 * 60 * 1000;
   const spanHours = Math.max(0, (lastTime - firstTime) / (60 * 60 * 1000));
   const minimumPixelsPerHour = safeViewportWidth < 600 ? 82 : 76;
-  const orderedDistinctTimes = [...new Set(validTimes)].sort((left, right) => left - right);
-  const minimumGapHours = orderedDistinctTimes.slice(1).reduce((minimum, value, index) => {
-    const gap = (value - orderedDistinctTimes[index]) / (60 * 60 * 1000);
-    return gap > 0 ? Math.min(minimum, gap) : minimum;
-  }, Infinity);
-  const densityPixelsPerHour = Number.isFinite(minimumGapHours) ? 64 / minimumGapHours : minimumPixelsPerHour;
   const fillPixelsPerHour = spanHours > 0
     ? (safeViewportWidth - plotLeft - minimumPixelsPerHour) / spanHours
     : minimumPixelsPerHour;
@@ -534,8 +533,8 @@ export function meteogramDimensions(timelineOrCount, viewportWidth, {
     && requestedPixelsPerHour !== ""
     && Number.isFinite(Number(requestedPixelsPerHour));
   const pixelsPerHour = hasRequestedPixelsPerHour
-    ? clamp(Number(requestedPixelsPerHour), 40, METEOGRAM_MAX_PIXELS_PER_HOUR)
-    : clamp(Math.max(fillPixelsPerHour, densityPixelsPerHour), minimumPixelsPerHour, METEOGRAM_MAX_PIXELS_PER_HOUR);
+    ? clamp(Number(requestedPixelsPerHour), 40, METEOGRAM_ZOOM_MAX_PIXELS_PER_HOUR)
+    : clamp(fillPixelsPerHour, minimumPixelsPerHour, METEOGRAM_OVERVIEW_MAX_PIXELS_PER_HOUR);
   const columnWidth = clamp(pixelsPerHour, minimumPixelsPerHour, 118);
   const timeScale = pixelsPerHour / (60 * 60 * 1000);
   const timelineWidth = spanHours * pixelsPerHour;
@@ -761,23 +760,29 @@ export function buildMeteogramStickyTimeRulerMarkup(model = {}, settings = {}, d
   const timeline = Array.isArray(model?.timeline) ? model.timeline : [];
   if (!dimensions || !timeline.length) return "";
   const normalizedSettings = normalizedMeteogramSettings(settings, model);
-  const labelMask = meteogramVisualLabelMask(timeline, dimensions.xPositions);
+  const densityLayout = meteogramDensityLayout(timeline, dimensions.xPositions, dimensions.cellBounds);
+  const labelMask = meteogramTimeLabelMask(timeline, dimensions.xPositions, densityLayout);
   let previousDate = "";
   const ticks = timeline.map((observation, index) => {
-    if (!labelMask[index]) return "";
     const time = formatMeteogramTime(timelineTime(observation), {
       mode: normalizedSettings.timeMode,
       station: model.station,
     });
-    const dateChanged = !previousDate || previousDate !== time.date;
-    previousDate = time.date;
+    const dateChanged = labelMask[index] && (!previousDate || previousDate !== time.date);
+    if (labelMask[index]) previousDate = time.date;
     const x = dimensions.xPositions[index];
-    return `<g class="aviation-meteogram-sticky-time-tick${dateChanged ? " aviation-meteogram-sticky-time-date-change" : ""}" data-time-x="${x.toFixed(1)}" data-time-z="${escapeMarkup(timelineTime(observation))}" transform="translate(${x.toFixed(1)} 0)">
+    const cluster = densityLayout.clusterByIndex[index];
+    return `<g class="aviation-meteogram-sticky-time-tick${dateChanged ? " aviation-meteogram-sticky-time-date-change" : ""}${cluster ? " aviation-meteogram-sticky-time-tick-dense" : ""}${labelMask[index] ? "" : " aviation-meteogram-label-suppressed"}" data-time-x="${x.toFixed(1)}" data-time-z="${escapeMarkup(timelineTime(observation))}" data-time-label-visible="${labelMask[index]}"${cluster ? ` data-dense-cluster-id="${cluster.id}"` : ""} transform="translate(${x.toFixed(1)} 0)">
+      <title>${escapeMarkup(`${stickyTimeText(time, normalizedSettings.timeMode)} · exact ${String(observation?.reportType || "observation").toUpperCase()}`)}</title>
       <line x1="0" y1="0" x2="0" y2="54"/>
-      <text x="0" y="21">${escapeMarkup(stickyTimeText(time, normalizedSettings.timeMode))}</text>
-      <text class="aviation-meteogram-sticky-time-date" x="0" y="39">${escapeMarkup(dateChanged ? `${time.date} · ${time.zone}` : time.zone)}</text>
+      ${labelMask[index] ? `<text x="0" y="21">${escapeMarkup(stickyTimeText(time, normalizedSettings.timeMode))}</text>
+      <text class="aviation-meteogram-sticky-time-date" x="0" y="39">${escapeMarkup(dateChanged ? `${time.date} · ${time.zone}` : time.zone)}</text>` : ""}
     </g>`;
   }).join("");
+  const clusterBands = densityLayout.clusters.map((cluster) => `<g class="aviation-meteogram-sticky-cluster-band" data-dense-cluster-id="${cluster.id}" data-cluster-start-z="${escapeMarkup(cluster.firstTimeZ)}" data-cluster-end-z="${escapeMarkup(cluster.lastTimeZ)}">
+    <rect x="${cluster.left.toFixed(1)}" y="0" width="${Math.max(1, cluster.right - cluster.left).toFixed(1)}" height="54"/>
+    <text x="${((cluster.left + cluster.right) / 2).toFixed(1)}" y="51">${escapeMarkup(`SPECI ×${cluster.speciCount}`)}</text>
+  </g>`).join("");
   const dividerTime = model.dividerZ || model.forecasts?.[0]?.validZ;
   const dividerX = Number.isFinite(Date.parse(dividerTime)) ? dimensions.xForTime(dividerTime) : null;
   const now = dividerX === null ? "" : `<g class="aviation-meteogram-sticky-time-now" data-now-x="${dividerX.toFixed(1)}" transform="translate(${dividerX.toFixed(1)} 0)"><line x1="0" y1="0" x2="0" y2="54"/><text x="0" y="51">NOW</text></g>`;
@@ -792,7 +797,7 @@ export function buildMeteogramStickyTimeRulerMarkup(model = {}, settings = {}, d
     <div class="aviation-meteogram-sticky-time-viewport">
       <div class="aviation-meteogram-sticky-time-track" style="width:${dimensions.width}px">
         <svg xmlns="${SVG_NS}" width="${dimensions.width}" height="54" viewBox="0 0 ${dimensions.width} 54" data-plot-left="${dimensions.plotLeft}" aria-hidden="true">
-          <rect class="aviation-meteogram-sticky-time-background" width="${dimensions.width}" height="54"/>${ticks}${solar}${now}
+          <rect class="aviation-meteogram-sticky-time-background" width="${dimensions.width}" height="54"/>${clusterBands}${ticks}${solar}${now}
         </svg>
       </div>
     </div>
@@ -1485,6 +1490,38 @@ export function meteogramCloudBaseY(heightFt, maximumFt = 10000) {
   return bottom - clamp(height / maximum, 0, 1) * (bottom - top);
 }
 
+export function meteogramCeilingProfileGeometry(timeline, xPositions, maximumFt = 10000) {
+  const observations = Array.isArray(timeline) ? timeline : [];
+  const positions = Array.isArray(xPositions) ? xPositions : [];
+  const points = observations.map((observation, index) => {
+    const ceilingFt = lowestReportedCeilingFt(observation);
+    const x = Number(positions[index]);
+    const y = ceilingFt === null ? null : meteogramCloudBaseY(ceilingFt, maximumFt);
+    return Number.isFinite(x) && y !== null
+      ? { index, x, y, ceilingFt, timeZ: timelineTime(observation), forecast: isForecast(observation) }
+      : null;
+  });
+  const segments = [];
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    if (!previous || !current || previous.forecast !== current.forecast) continue;
+    const elapsed = Date.parse(current.timeZ) - Date.parse(previous.timeZ);
+    if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed > MAX_CONNECTOR_GAP_MS) continue;
+    segments.push({
+      startIndex: previous.index,
+      endIndex: current.index,
+      startTimeZ: previous.timeZ,
+      endTimeZ: current.timeZ,
+      fromFt: previous.ceilingFt,
+      toFt: current.ceilingFt,
+      forecast: current.forecast,
+      path: `M${previous.x.toFixed(1)} ${previous.y.toFixed(1)}H${current.x.toFixed(1)}V${current.y.toFixed(1)}`,
+    });
+  }
+  return { points, segments };
+}
+
 export function meteogramCloudTickLayout(ticks, maximumFt = 10000, { minimumGapPx = 13 } = {}) {
   const gap = Math.max(10, Number(minimumGapPx) || 13);
   const selected = [];
@@ -1569,22 +1606,22 @@ export function meteogramCloudLayerPriority(layer = {}, index = 0) {
 
 function cloudDensityMode(cellWidth, layerCount) {
   const width = Math.max(0, Number(cellWidth) || 0);
-  if (width >= CLOUD_DENSITY_FULL_WIDTH) return "FULL";
+  if (width >= CLOUD_DENSITY_FULL_WIDTH) return "WIDE";
   if (width >= CLOUD_DENSITY_COMPACT_WIDTH || Number(layerCount) <= 1) return "COMPACT";
-  return "MINIMAL";
+  return "DENSE";
 }
 
 function cloudCompactDisplayToken(layer, mode, safeWidth) {
   const full = cloudLayerToken(layer);
   const raw = cloudLayerRawToken(layer);
   if (!cloudLayerHasReportedBase(layer)) {
-    if (mode === "FULL" && cloudLayerTagWidth(layer, full) <= safeWidth) return full;
+    if (mode === "WIDE" && cloudLayerTagWidth(layer, full) <= safeWidth) return full;
     const convective = String(layer?.convective || "").toUpperCase();
     if (convective) return `${convective}?`;
     if (["BKN", "OVC", "VV"].includes(String(layer?.cover || "").toUpperCase())) return "CIG?";
     return `${String(layer?.cover || "CLD").toUpperCase()}?`;
   }
-  if (mode === "FULL" && cloudLayerTagWidth(layer, full) <= safeWidth) return full;
+  if (mode === "WIDE" && cloudLayerTagWidth(layer, full) <= safeWidth) return full;
   if (safeWidth >= 42) return raw;
   if (String(layer?.convective || "").toUpperCase()) return String(layer.convective).toUpperCase();
   if (cloudLayerIsCeiling(layer)) return String(layer?.cover || "CLD").toUpperCase();
@@ -1621,7 +1658,7 @@ export function meteogramCloudLabelLayout(layers, maximumFt = 10000, {
   columnX = 0,
   plotLeft = -100000,
   plotRight = 100000,
-  displayMode = "FULL",
+  displayMode = "WIDE",
   displayTokens = [],
   reservedBoxes = [],
 } = {}) {
@@ -1716,7 +1753,7 @@ function cloudUnknownLabelLayout(layers, {
   columnX = 0,
   plotLeft = -100000,
   plotRight = 100000,
-  displayMode = "FULL",
+  displayMode = "WIDE",
   existingLayout = [],
   reservedBoxes = [],
 } = {}) {
@@ -1835,11 +1872,15 @@ export function meteogramCloudBucketLayout(layers, maximumFt = 10000, {
   additionalCollapsedCount = 0,
   reservedBoxes = [],
   indicatorLayerToken = "",
+  densityMode = null,
 } = {}) {
   const values = Array.isArray(layers) ? layers : [];
   const indexed = values.map((layer, index) => ({ layer, index }));
   const cellWidth = Math.max(0, Number(plotRight) - Number(plotLeft));
-  const mode = cloudDensityMode(cellWidth, indexed.length);
+  const requestedMode = String(densityMode || "").toUpperCase();
+  const mode = ["WIDE", "COMPACT", "DENSE"].includes(requestedMode)
+    ? requestedMode
+    : cloudDensityMode(cellWidth, indexed.length);
   const prioritized = [...indexed]
     .sort((left, right) => meteogramCloudLayerPriority(right.layer, right.index) - meteogramCloudLayerPriority(left.layer, left.index) || left.index - right.index);
   const denseCore = [];
@@ -1867,8 +1908,8 @@ export function meteogramCloudBucketLayout(layers, maximumFt = 10000, {
   addDenseCore(denseConvective);
   if (!denseCore.length) addDenseCore(prioritized[0]);
   const denseCapacity = Math.min(cellWidth >= 20 ? 2 : 1, denseCore.length);
-  const displayCandidates = mode === "FULL" ? prioritized : denseCore;
-  const capacity = mode === "FULL" ? indexed.length : denseCapacity;
+  const displayCandidates = mode === "WIDE" ? prioritized : denseCore;
+  const capacity = mode === "WIDE" ? indexed.length : denseCapacity;
   const safeWidth = Math.max(0, cellWidth - cloudCellPadding(cellWidth) * 2);
   const extraCollapsed = Math.max(0, Math.floor(Number(additionalCollapsedCount) || 0));
   let accepted = null;
@@ -2184,6 +2225,190 @@ export function meteogramLightningGeometry(observation = {}, maximumFt = 10000) 
   };
 }
 
+function derivedCellBounds(xPositions, plotLeft = 0, plotRight = Number.POSITIVE_INFINITY) {
+  const positions = Array.isArray(xPositions) ? xPositions.map(Number) : [];
+  return positions.map((x, index) => ({
+    left: index ? (positions[index - 1] + x) / 2 : Math.max(Number(plotLeft) || 0, x - Math.max(24, (positions[index + 1] - x) / 2 || 24)),
+    right: index + 1 < positions.length
+      ? (x + positions[index + 1]) / 2
+      : Math.min(Number(plotRight) || Number.POSITIVE_INFINITY, x + Math.max(24, (x - positions[index - 1]) / 2 || 24)),
+  }));
+}
+
+function lowestReportedCeilingFt(observation) {
+  const value = observation?.clouds?.ceilingFt;
+  return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value))
+    ? Number(value)
+    : null;
+}
+
+export function meteogramDensityLayout(timeline, xPositions, cellBounds = null, {
+  clusterGapPx = DENSE_EVENT_CLUSTER_GAP_PX,
+  pairGapPx = DENSE_EVENT_PAIR_GAP_PX,
+} = {}) {
+  const observations = Array.isArray(timeline) ? timeline : [];
+  const positions = Array.isArray(xPositions) ? xPositions.map(Number) : [];
+  const bounds = Array.isArray(cellBounds) && cellBounds.length === observations.length
+    ? cellBounds
+    : derivedCellBounds(positions);
+  const spacing = observations.map((_observation, index) => {
+    const gaps = [];
+    if (index > 0 && Number.isFinite(positions[index - 1])) gaps.push(positions[index] - positions[index - 1]);
+    if (index + 1 < positions.length && Number.isFinite(positions[index + 1])) gaps.push(positions[index + 1] - positions[index]);
+    return gaps.length ? Math.max(0, Math.min(...gaps.filter((gap) => gap >= 0))) : Number.POSITIVE_INFINITY;
+  });
+  const modes = observations.map((_observation, index) => {
+    const cellWidth = Math.max(0, Number(bounds[index]?.right) - Number(bounds[index]?.left));
+    return cloudDensityMode(cellWidth, cloudLayersForObservation(observations[index]).length);
+  });
+  const clusters = [];
+  let runStart = null;
+  const finishRun = (runEnd) => {
+    if (runStart === null || runEnd < runStart) {
+      runStart = null;
+      return;
+    }
+    const indexes = Array.from({ length: runEnd - runStart + 1 }, (_value, offset) => runStart + offset);
+    const speciCount = indexes.filter((index) => String(observations[index]?.reportType || "").toUpperCase() === "SPECI").length;
+    const spanPx = positions[runEnd] - positions[runStart];
+    const qualifies = (indexes.length >= 3 && speciCount >= 2)
+      || (indexes.length === 2 && speciCount >= 1 && spanPx <= Number(pairGapPx));
+    if (qualifies) {
+      const ceilingCandidates = indexes
+        .map((index) => ({ index, ceilingFt: lowestReportedCeilingFt(observations[index]) }))
+        .filter(({ ceilingFt }) => ceilingFt !== null)
+        .sort((left, right) => left.ceilingFt - right.ceilingFt || left.index - right.index);
+      const convectiveCandidates = indexes.flatMap((index) => cloudLayersForObservation(observations[index])
+        .filter((layer) => cloudLayerIsConvective(layer) && cloudLayerHasReportedBase(layer))
+        .map((layer) => ({ index, heightFt: Number(layer.heightFt) })))
+        .sort((left, right) => left.heightFt - right.heightFt || left.index - right.index);
+      const thunderCandidates = indexes
+        .filter((index) => meteogramWeatherSceneDefinition(observations[index]).thunder)
+        .map((index) => ({ index, geometry: meteogramLightningGeometry(observations[index]) }))
+        .sort((left, right) => {
+          const leftBase = left.geometry.baseFt !== null && left.geometry.baseFt !== undefined && Number.isFinite(Number(left.geometry.baseFt))
+            ? Number(left.geometry.baseFt)
+            : Number.POSITIVE_INFINITY;
+          const rightBase = right.geometry.baseFt !== null && right.geometry.baseFt !== undefined && Number.isFinite(Number(right.geometry.baseFt))
+            ? Number(right.geometry.baseFt)
+            : Number.POSITIVE_INFINITY;
+          return leftBase - rightBase || left.index - right.index;
+        });
+      const representativeIndex = ceilingCandidates[0]?.index
+        ?? convectiveCandidates[0]?.index
+        ?? thunderCandidates[0]?.index
+        ?? indexes[Math.floor(indexes.length / 2)];
+      const cluster = {
+        id: `dense-event-${clusters.length + 1}`,
+        startIndex: runStart,
+        endIndex: runEnd,
+        indexes,
+        reportCount: indexes.length,
+        speciCount,
+        firstTimeZ: timelineTime(observations[runStart]),
+        lastTimeZ: timelineTime(observations[runEnd]),
+        xStart: positions[runStart],
+        xEnd: positions[runEnd],
+        left: Number(bounds[runStart]?.left),
+        right: Number(bounds[runEnd]?.right),
+        spanPx,
+        representativeIndex,
+        thunderIndexes: thunderCandidates.map(({ index }) => index),
+        thunderRepresentativeIndex: thunderCandidates[0]?.index ?? null,
+      };
+      clusters.push(cluster);
+      indexes.forEach((index) => { modes[index] = "DENSE"; });
+    }
+    runStart = null;
+  };
+  for (let index = 1; index < observations.length; index += 1) {
+    const previous = observations[index - 1];
+    const current = observations[index];
+    const gap = positions[index] - positions[index - 1];
+    const speciEdge = [previous, current].some((observation) => String(observation?.reportType || "").toUpperCase() === "SPECI");
+    const connected = !isForecast(previous) && !isForecast(current) && speciEdge
+      && Number.isFinite(gap) && gap >= 0 && gap < Number(clusterGapPx);
+    if (connected) {
+      if (runStart === null) runStart = index - 1;
+      continue;
+    }
+    finishRun(index - 1);
+  }
+  finishRun(observations.length - 1);
+  const clusterByIndex = observations.map(() => null);
+  clusters.forEach((cluster) => cluster.indexes.forEach((index) => { clusterByIndex[index] = cluster; }));
+  return { modes, spacing, clusters, clusterByIndex };
+}
+
+function selectCollisionFreeLabels(candidates, count) {
+  const visible = Array.from({ length: count }, () => false);
+  const selected = [];
+  for (const candidate of [...candidates].sort((left, right) => right.priority - left.priority || left.index - right.index)) {
+    if (!Number.isFinite(candidate.x)) continue;
+    if (selected.some((other) => Math.abs(other.x - candidate.x) < other.halfWidth + candidate.halfWidth)) continue;
+    visible[candidate.index] = true;
+    selected.push(candidate);
+  }
+  return visible;
+}
+
+export function meteogramTimeLabelMask(timeline, xPositions, densityLayout = null, minimumDistance = TIME_LABEL_MINIMUM_DISTANCE_PX) {
+  const observations = Array.isArray(timeline) ? timeline : [];
+  const positions = Array.isArray(xPositions) ? xPositions : [];
+  const density = densityLayout || meteogramDensityLayout(observations, positions);
+  const candidates = observations.flatMap((observation, index) => {
+    const cluster = density.clusterByIndex[index];
+    if (cluster && index !== cluster.startIndex && index !== cluster.endIndex) return [];
+    const endpoint = index === 0 || index === observations.length - 1;
+    const clusterEndpoint = cluster && (index === cluster.startIndex || index === cluster.endIndex);
+    return [{
+      index,
+      x: Number(positions[index]),
+      halfWidth: Math.max(18, Number(minimumDistance) / 2),
+      priority: (clusterEndpoint ? 10000 : 0) + (endpoint ? 5000 : 0) + visualLabelPriority(observation),
+    }];
+  });
+  return selectCollisionFreeLabels(candidates, observations.length);
+}
+
+export function meteogramSeriesLabelMask(timeline, xPositions, valueAccessor, {
+  minimumDistance = 48,
+  preferMinimum = false,
+  densityLayout = null,
+} = {}) {
+  const observations = Array.isArray(timeline) ? timeline : [];
+  const positions = Array.isArray(xPositions) ? xPositions : [];
+  const density = densityLayout || meteogramDensityLayout(observations, positions);
+  const values = observations.map((observation, index) => {
+    const value = Number(valueAccessor?.(observation, index));
+    return Number.isFinite(value) ? value : null;
+  });
+  const finiteValues = values.filter((value) => value !== null);
+  const maximum = finiteValues.length ? Math.max(...finiteValues) : 0;
+  const minimum = finiteValues.length ? Math.min(...finiteValues) : 0;
+  const span = Math.max(1, maximum - minimum);
+  const candidates = observations.flatMap((observation, index) => {
+    const value = values[index];
+    if (value === null) return [];
+    const previous = values[index - 1];
+    const next = values[index + 1];
+    const localMinimum = preferMinimum && previous !== null && next !== null && value <= previous && value <= next;
+    const localExtremum = previous !== null && next !== null && ((value <= previous && value <= next) || (value >= previous && value >= next));
+    const change = Math.max(previous === null ? 0 : Math.abs(value - previous), next === null ? 0 : Math.abs(value - next));
+    const cluster = density.clusterByIndex[index];
+    const clusterEndpoint = cluster && (index === cluster.startIndex || index === cluster.endIndex);
+    const endpoint = index === 0 || index === observations.length - 1;
+    const minimumBias = preferMinimum ? (maximum - value) / span * 500 : 0;
+    return [{
+      index,
+      x: Number(positions[index]),
+      halfWidth: Math.max(16, Number(minimumDistance) / 2),
+      priority: (localMinimum ? 5000 : 0) + (localExtremum ? 1700 : 0) + (clusterEndpoint ? 1300 : 0) + (endpoint ? 900 : 0) + minimumBias + change / span * 400 + visualLabelPriority(observation) / 100,
+    }];
+  });
+  return selectCollisionFreeLabels(candidates, observations.length);
+}
+
 export function meteogramLightningLabelOffset(labelLayout = [], {
   columnX = 0,
   availableWidth = CLOUD_FORM_SCENE_WIDTH,
@@ -2425,8 +2650,9 @@ function atmosphericPhenomenonMarkup(phenomenon, width, {
 function atmosphericWeatherMarkup(observation, width, cloudMaximumFt = 10000, {
   labelLayout = [],
   columnX = 0,
-  densityMode = "FULL",
+  densityMode = "WIDE",
   lightningGeometry: requestedLightningGeometry = null,
+  renderThunder = true,
 } = {}) {
   const scene = meteogramWeatherSceneDefinition(observation);
   if (!scene.codes.length) return "";
@@ -2436,7 +2662,7 @@ function atmosphericWeatherMarkup(observation, width, cloudMaximumFt = 10000, {
   const firstThunderIndex = scene.phenomena.findIndex((phenomenon) => phenomenon.thunder);
   const accessible = `${scene.groups.map((group) => `${group.provenance}: ${group.phenomena.map((phenomenon) => phenomenon.meaning).join(", ")}`).join("; ")} · qualitative weather illustration; no precipitation amount or producing cloud layer is inferred`;
   return `<g class="aviation-meteogram-atmosphere" data-weather-codes="${escapeMarkup(scene.codes.join(" "))}" data-weather-density="${scene.density}" data-cloud-density-mode="${densityMode}" role="img" aria-label="${escapeMarkup(accessible)}">
-    <title>${escapeMarkup(accessible)}</title>${scene.phenomena.map((phenomenon, index) => atmosphericPhenomenonMarkup(phenomenon, width, { lightningGeometry, labelLayout, columnX, renderThunder: index === firstThunderIndex })).join("")}
+    <title>${escapeMarkup(accessible)}</title>${scene.phenomena.map((phenomenon, index) => atmosphericPhenomenonMarkup(phenomenon, width, { lightningGeometry, labelLayout, columnX, renderThunder: renderThunder && index === firstThunderIndex })).join("")}
   </g>`;
 }
 
@@ -2491,10 +2717,10 @@ function compactCloudHeight(heightFt) {
   return `${Number.isInteger(thousands) ? thousands.toFixed(0) : thousands.toFixed(1)}K`;
 }
 
-function cloudCeilingDisplay(clouds, availableWidth, densityMode = "FULL") {
+function cloudCeilingDisplay(clouds, availableWidth, densityMode = "WIDE") {
   const full = visualCeilingLabel(clouds);
   const width = Math.max(0, Number(availableWidth) || 0);
-  const dense = densityMode !== "FULL";
+  const dense = densityMode !== "WIDE";
   if (clouds?.ceilingFt !== null && clouds?.ceilingFt !== undefined && Number.isFinite(Number(clouds.ceilingFt))) {
     if (dense) return compactCloudHeight(clouds.ceilingFt);
     if (full.length * 6 + 8 <= width) return full;
@@ -2550,23 +2776,33 @@ function cloudDetailConditionLines(label, conditions = {}, { alwaysShowCloud = f
 }
 
 function cloudBucketDetailText(observation, settings, station) {
-  const time = formatMeteogramTime(timelineTime(observation), {
-    mode: settings.timeMode,
-    station,
-  });
-  const displayedTime = settings.timeMode === "Z"
-    ? `${time.date} · ${compactTimeText(time, "Z")}`
-    : `${time.date} · ${time.time} ${time.zone}`;
+  const zuluTime = formatMeteogramTime(timelineTime(observation), { mode: "Z", station });
+  const localTime = formatMeteogramTime(timelineTime(observation), { mode: "LOCAL", station });
+  const displayedTime = localTime?.zone
+    ? `${zuluTime.date} · ${compactTimeText(zuluTime, "Z")} / ${localTime.time} ${localTime.zone}`
+    : `${zuluTime.date} · ${compactTimeText(zuluTime, "Z")}`;
   const overlays = forecastOverlays(observation);
   const prevailingLines = cloudDetailConditionLines("PREVAILING", observation, { alwaysShowCloud: true });
   const overlayLines = overlays.flatMap((entry) => cloudDetailConditionLines(
     visualConditionalTypeLabel(entry),
     entry.conditions || {},
   ));
+  const windKnown = observation?.windSpeedKt !== null && observation?.windSpeedKt !== undefined;
+  const windLine = windKnown
+    ? `WIND: ${windDirectionLabel(observation)} @ ${formatWind(observation.windSpeedKt, settings.windUnit)}${observation.windGustKt === null || observation.windGustKt === undefined ? "" : `G${formatWind(observation.windGustKt, settings.windUnit)}`} ${settings.windUnit}`
+    : "";
+  const liquidAmount = finiteAmount(observation?.precipitation?.liquidEquivalentIn);
+  const precipitationLine = observation?.precipitation?.liquidTrace
+    ? "PRECIP: TRACE"
+    : liquidAmount !== null
+      ? `PRECIP: ${amountDisplay(liquidAmount)} IN`
+      : "";
   return [
     displayedTime,
     String(observation?.reportType || (isForecast(observation) ? "FORECAST" : "OBSERVED")).toUpperCase(),
     ...prevailingLines,
+    windLine,
+    precipitationLine,
     ...overlayLines,
   ].filter(Boolean).join("\n");
 }
@@ -2661,8 +2897,22 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   const rows = METEOGRAM_ROWS;
   const xAt = (index) => xPositions[index];
   const cellWidthAt = (index) => Math.max(0, cellBounds[index].right - cellBounds[index].left);
+  const densityLayout = meteogramDensityLayout(timeline, xPositions, cellBounds);
+  const timeLabelMask = meteogramTimeLabelMask(timeline, xPositions, densityLayout);
   const visualLabelMask = meteogramVisualLabelMask(timeline, xPositions);
   const weatherLabelMask = meteogramWeatherLabelMask(timeline, xPositions);
+  const windLabelMask = meteogramSeriesLabelMask(timeline, xPositions, (observation) => (
+    observation?.windGustKt ?? observation?.windSpeedKt
+  ), { minimumDistance: 64, densityLayout });
+  const pressureLabelMask = meteogramSeriesLabelMask(timeline, xPositions, (observation) => observation?.pressureInHg, {
+    minimumDistance: 52,
+    densityLayout,
+  });
+  const visibilityLabelMask = meteogramSeriesLabelMask(timeline, xPositions, (observation) => observation?.visibilitySm, {
+    minimumDistance: 46,
+    preferMinimum: true,
+    densityLayout,
+  });
   const dividerTime = model.dividerZ || timeline[observedCount]?.validZ;
   const dividerTimestamp = Date.parse(dividerTime);
   const dividerX = hasForecast
@@ -2704,12 +2954,23 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   });
 
   const horizontalLines = Object.values(rows).map((row) => `<line class="aviation-meteogram-grid-line" x1="0" y1="${row.bottom}" x2="${width}" y2="${row.bottom}"/>`).join("");
+  const denseClusterBandMarkup = densityLayout.clusters.map((cluster) => {
+    const centerX = (cluster.left + cluster.right) / 2;
+    return `<g class="aviation-meteogram-dense-cluster" data-dense-cluster-id="${cluster.id}" data-cluster-start-index="${cluster.startIndex}" data-cluster-end-index="${cluster.endIndex}" data-cluster-start-z="${escapeMarkup(cluster.firstTimeZ)}" data-cluster-end-z="${escapeMarkup(cluster.lastTimeZ)}" data-cluster-report-count="${cluster.reportCount}" data-cluster-speci-count="${cluster.speciCount}">
+      <title>${escapeMarkup(`${cluster.firstTimeZ} through ${cluster.lastTimeZ} · ${cluster.reportCount} exact reports (${cluster.speciCount} SPECI) · display cluster only; observations remain separate`)}</title>
+      <rect class="aviation-meteogram-dense-cluster-fill" x="${cluster.left.toFixed(1)}" y="0" width="${Math.max(1, cluster.right - cluster.left).toFixed(1)}" height="${height}"/>
+      <line class="aviation-meteogram-dense-cluster-edge" x1="${cluster.left.toFixed(1)}" y1="0" x2="${cluster.left.toFixed(1)}" y2="${height}"/>
+      <line class="aviation-meteogram-dense-cluster-edge" x1="${cluster.right.toFixed(1)}" y1="0" x2="${cluster.right.toFixed(1)}" y2="${height}"/>
+      <text class="aviation-meteogram-dense-cluster-label" x="${centerX.toFixed(1)}" y="51">${escapeMarkup(`STORM / SPECI ×${cluster.speciCount}`)}</text>
+    </g>`;
+  }).join("");
   const boundaryXs = !timeline.length && boundedTimes.length
     ? boundedTimes.map((value) => dimensions.xForTime(value))
     : [];
   const verticalLines = timeline.map((_, index) => {
     const x = xAt(index);
-    return `<line class="aviation-meteogram-time-line" x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="${height}"/>`;
+    const cluster = densityLayout.clusterByIndex[index];
+    return `<line class="aviation-meteogram-time-line${cluster ? " aviation-meteogram-time-line-dense" : ""}" data-time-tick-index="${index}" data-time-x="${x.toFixed(1)}" data-time-z="${escapeMarkup(timelineTime(timeline[index]))}"${cluster ? ` data-dense-cluster-id="${cluster.id}"` : ""} x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="${cluster ? rows.time.bottom : height}"/>`;
   }).join("") + boundaryXs.map((x) => `<line class="aviation-meteogram-time-line aviation-meteogram-time-boundary" x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="${height}"/>`).join("")
     + `<line class="aviation-meteogram-time-line" x1="${width.toFixed(1)}" y1="0" x2="${width.toFixed(1)}" y2="${height}"/>`;
   const solarLineMarkup = solarEvents.map((event) => {
@@ -2733,9 +2994,11 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     const time = formatMeteogramTime(timelineTime(observation), { mode: normalizedSettings.timeMode, station: model.station });
     const showDate = !previousVisibleTime || previousVisibleTime.date !== time.date;
     const atDivider = hasForecast && index === observedCount;
-    if (visualLabelMask[index]) previousVisibleTime = time;
-    return `<g class="aviation-meteogram-time${isForecast(observation) ? " aviation-meteogram-time-forecast" : ""}${atDivider ? " aviation-meteogram-time-at-divider" : ""}${visualLabelMask[index] ? "" : " aviation-meteogram-label-suppressed"}" transform="translate(${xAt(index).toFixed(1)} 0)">
-      ${visualLabelMask[index] ? `
+    if (timeLabelMask[index]) previousVisibleTime = time;
+    const cluster = densityLayout.clusterByIndex[index];
+    return `<g class="aviation-meteogram-time${isForecast(observation) ? " aviation-meteogram-time-forecast" : ""}${atDivider ? " aviation-meteogram-time-at-divider" : ""}${timeLabelMask[index] ? "" : " aviation-meteogram-label-suppressed"}" data-time-label-index="${index}" data-time-label-visible="${timeLabelMask[index]}" data-time-x="${xAt(index).toFixed(1)}" data-time-z="${escapeMarkup(timelineTime(observation))}"${cluster ? ` data-dense-cluster-id="${cluster.id}"` : ""} transform="translate(${xAt(index).toFixed(1)} 0)">
+      <title>${escapeMarkup(`${compactTimeText(time, normalizedSettings.timeMode)} · exact ${String(observation?.reportType || "observation").toUpperCase()}`)}</title>
+      ${timeLabelMask[index] ? `
       <text x="0" y="${atDivider ? 34 : 22}">${escapeMarkup(compactTimeText(time, normalizedSettings.timeMode))}</text>
       <text class="aviation-meteogram-time-zone" x="0" y="${atDivider ? 49 : 39}">${escapeMarkup(showDate ? `${time.date}${normalizedSettings.timeMode === "Z" ? " UTC" : ` ${time.zone}`}` : normalizedSettings.timeMode === "Z" ? "UTC" : time.zone)}</text>` : ""}
     </g>`;
@@ -2754,12 +3017,23 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   const weatherMarkup = timeline.map((observation, index) => {
     const bounds = cellBounds[index];
     const weatherCategory = meteogramWeatherVisualCategory(observation);
-    return `<g class="aviation-meteogram-observation${isForecast(observation) ? " aviation-meteogram-forecast-column" : ""}${weatherLabelMask[index] ? "" : " aviation-meteogram-label-suppressed"}" transform="translate(${xAt(index).toFixed(1)} 0)">
-    <title>${escapeMarkup(columnTitle(observation, normalizedSettings))}</title>
-    <rect class="aviation-meteogram-column-hover" x="${(bounds.left - xAt(index)).toFixed(1)}" y="0" width="${cellWidthAt(index).toFixed(1)}" height="${height}"/>
-    ${weatherLabelMask[index] ? `${isForecast(observation) ? `<text class="aviation-meteogram-forecast-tag" x="0" y="65">${observation.becoming?.length ? "BECMG" : escapeMarkup(forecastBucketVisualSourceLabel(observation))}</text>` : ""}
+    const cluster = densityLayout.clusterByIndex[index];
+    const clusterSummaryIndex = cluster?.thunderRepresentativeIndex ?? cluster?.representativeIndex;
+    const clusterSummary = Boolean(cluster && clusterSummaryIndex === index);
+    const showWeather = cluster ? clusterSummary : weatherLabelMask[index];
+    const displayX = clusterSummary ? (cluster.left + cluster.right) / 2 : xAt(index);
+    const weatherLabel = clusterSummary && cluster.thunderIndexes.length
+      ? `TS ×${cluster.thunderIndexes.length}`
+      : weatherColumnLabel(observation);
+    const title = clusterSummary
+      ? `${cluster.firstTimeZ} through ${cluster.lastTimeZ} · shared dense-cluster weather cue · ${columnTitle(observation, normalizedSettings)}`
+      : columnTitle(observation, normalizedSettings);
+    return `<g class="aviation-meteogram-observation${isForecast(observation) ? " aviation-meteogram-forecast-column" : ""}${clusterSummary ? " aviation-meteogram-weather-cluster-summary" : ""}${showWeather ? "" : " aviation-meteogram-label-suppressed"}" data-weather-label-visible="${showWeather}" data-weather-source-x="${xAt(index).toFixed(1)}" data-weather-display-x="${displayX.toFixed(1)}"${clusterSummary ? ` data-weather-cluster-summary="true" data-dense-cluster-id="${cluster.id}" data-weather-cluster-report-count="${cluster.reportCount}" data-weather-cluster-thunder-count="${cluster.thunderIndexes.length}"` : ""} transform="translate(${displayX.toFixed(1)} 0)">
+    <title>${escapeMarkup(title)}</title>
+    <rect class="aviation-meteogram-column-hover" x="${(bounds.left - displayX).toFixed(1)}" y="0" width="${cellWidthAt(index).toFixed(1)}" height="${height}"/>
+    ${showWeather ? `${isForecast(observation) ? `<text class="aviation-meteogram-forecast-tag" x="0" y="65">${observation.becoming?.length ? "BECMG" : escapeMarkup(forecastBucketVisualSourceLabel(observation))}</text>` : ""}
     ${weatherIconMarkup(observation, weatherCategory, model.station)}
-    <text class="aviation-meteogram-weather-code" x="0" y="109">${escapeMarkup(weatherColumnLabel(observation))}</text>` : ""}
+    <text class="aviation-meteogram-weather-code" x="0" y="109">${escapeMarkup(weatherLabel)}</text>` : ""}
   </g>`;
   }).join("");
 
@@ -2791,9 +3065,10 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     }).join(" · ");
     const firstLine = calm ? "CALM" : direction;
     const speedLine = calm ? "" : `${speed} ${normalizedSettings.windUnit}`;
-    return `<g class="aviation-meteogram-wind-block${isForecast(observation) ? " aviation-meteogram-wind-forecast" : ""}${visualLabelMask[index] ? "" : " aviation-meteogram-label-suppressed"}" transform="translate(${x.toFixed(1)} 0)">
-      ${visualLabelMask[index] ? `
-      ${directional ? `<g class="aviation-meteogram-wind-arrow" aria-hidden="true" transform="translate(-25 ${rows.wind.top + 25}) rotate(${rotation})"><path d="M0 8V-8M0-8L-4-3M0-8L4-3"/></g>` : ""}
+    const showLabel = windLabelMask[index];
+    return `<g class="aviation-meteogram-wind-block${isForecast(observation) ? " aviation-meteogram-wind-forecast" : ""}${showLabel ? "" : " aviation-meteogram-label-suppressed"}" data-wind-label-visible="${showLabel}" transform="translate(${x.toFixed(1)} 0)">
+      ${directional ? `<g class="aviation-meteogram-wind-arrow${showLabel ? "" : " aviation-meteogram-wind-arrow-exact-compact"}" data-wind-arrow-index="${index}" data-wind-arrow-x="${x.toFixed(1)}" aria-hidden="true" transform="translate(${showLabel ? -25 : 0} ${rows.wind.top + 25}) rotate(${rotation})${showLabel ? "" : " scale(.58)"}"><path d="M0 8V-8M0-8L-4-3M0-8L4-3"/></g>` : ""}
+      ${showLabel ? `
       <text class="aviation-meteogram-wind-heading" x="${directional ? 7 : 0}" y="${rows.wind.top + 29}">${escapeMarkup(firstLine)}</text>
       ${speedLine ? `<text class="aviation-meteogram-wind-speed" x="0" y="${rows.wind.top + 51}">${escapeMarkup(speedLine)}</text>` : ""}
       ${gust ? `<text class="aviation-meteogram-wind-gust" x="0" y="${rows.wind.top + 69}">${escapeMarkup(gust)}</text>` : ""}
@@ -2833,10 +3108,10 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   </g>`;
 
   const firstGfsPressureIndex = timeline.findIndex((observation, index) => (
-    forecastBucketHasGfsPressure(observation) && visualLabelMask[index]
+    forecastBucketHasGfsPressure(observation) && pressureLabelMask[index]
   ));
   const pressureValuesMarkup = timeline.map((observation, index) => {
-    if (!visualLabelMask[index]) return "";
+    if (!pressureLabelMask[index]) return "";
     const referenceTag = index === firstGfsPressureIndex
       ? `<text class="aviation-meteogram-pressure-reference" x="${xAt(index).toFixed(1)}" y="${rows.pressure.top + 12}">FCST MSLP</text>`
       : "";
@@ -2847,6 +3122,18 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   const cloudScale = meteogramCloudScaleDefinition(timeline, {
     maximumFt: scaleOverrides?.cloudMaximumFt,
   });
+  const ceilingProfile = meteogramCeilingProfileGeometry(timeline, xPositions, cloudScale.maximumFt);
+  const ceilingLabelMask = meteogramSeriesLabelMask(timeline, xPositions, (observation) => observation?.clouds?.ceilingFt, {
+    minimumDistance: 40,
+    preferMinimum: true,
+    densityLayout,
+  });
+  const ceilingProfileMarkup = `<g class="aviation-meteogram-ceiling-profile" aria-label="Discrete exact ceiling profile; breaks mean no reported ceiling">
+    ${ceilingProfile.segments.map((segment) => `<path class="aviation-meteogram-ceiling-profile-line${segment.forecast ? " aviation-meteogram-ceiling-profile-line-forecast" : ""}" data-ceiling-profile-start-index="${segment.startIndex}" data-ceiling-profile-end-index="${segment.endIndex}" data-ceiling-profile-start-z="${escapeMarkup(segment.startTimeZ)}" data-ceiling-profile-end-z="${escapeMarkup(segment.endTimeZ)}" data-ceiling-profile-from-ft="${segment.fromFt}" data-ceiling-profile-to-ft="${segment.toFt}" d="${segment.path}"/>`).join("")}
+    ${ceilingProfile.points.map((point, index) => point
+      ? `<circle class="aviation-meteogram-ceiling-profile-point${point.forecast ? " aviation-meteogram-ceiling-profile-point-forecast" : ""}" data-ceiling-profile-index="${point.index}" data-ceiling-profile-x="${point.x.toFixed(1)}" data-ceiling-profile-y="${point.y.toFixed(1)}" data-ceiling-profile-ft="${point.ceilingFt}" data-ceiling-profile-time-z="${escapeMarkup(point.timeZ)}" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="2.8"><title>${escapeMarkup(`${point.timeZ} · ceiling ${point.ceilingFt.toLocaleString("en-US")} FT AGL`)}</title></circle>`
+      : `<g class="aviation-meteogram-ceiling-profile-break" data-ceiling-profile-index="${index}" data-ceiling-profile-time-z="${escapeMarkup(timelineTime(timeline[index]))}" data-ceiling-state="NO_CIG"/>`).join("")}
+  </g>`;
   const cloudAxisBoundary = plotLeft;
   const cloudTickLayout = meteogramCloudTickLayout(cloudScale.ticks, cloudScale.maximumFt);
   const cloudTickGridMarkup = cloudTickLayout.map(({ value: tick, y }) => `<g class="aviation-meteogram-cloud-altitude-tick" data-cloud-grid-ft="${tick}">
@@ -2862,23 +3149,56 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
   const cloudTextMarkup = [];
   const cloudDetailMarkup = [];
   const cloudBucketClipMarkup = [];
+  const clusterThunderCueBoxes = new Map();
+  const denseClusterThunderMarkup = densityLayout.clusters.map((cluster) => {
+    const timelineIndex = cluster.thunderRepresentativeIndex;
+    if (timelineIndex === null || timelineIndex === undefined) return "";
+    const observation = timeline[timelineIndex];
+    const geometry = meteogramLightningGeometry(observation, cloudScale.maximumFt);
+    const x = xAt(timelineIndex);
+    const cueText = cloudLayersForObservation(observation).some((layer) => cloudLayerIsConvective(layer)) ? "TS / CB" : "TS";
+    const cueWidth = cueText === "TS / CB" ? 48 : 28;
+    const cueX = clamp((cluster.left + cluster.right) / 2, cluster.left + cueWidth / 2 + 2, cluster.right - cueWidth / 2 - 2);
+    const cueY = rows.clouds.top + 13;
+    clusterThunderCueBoxes.set(cluster.id, {
+      left: cueX - cueWidth / 2,
+      right: cueX + cueWidth / 2,
+      top: cueY - 7,
+      bottom: cueY + 7,
+    });
+    const baseAttributes = geometry.baseY !== null && geometry.baseY !== undefined && Number.isFinite(Number(geometry.baseY))
+      ? ` data-lightning-base-ft="${geometry.baseFt}" data-lightning-base-y="${geometry.baseY.toFixed(1)}"`
+      : "";
+    const anchorToken = geometry.anchorToken ? ` data-lightning-anchor-token="${escapeMarkup(geometry.anchorToken)}"` : "";
+    return `<g class="aviation-meteogram-dense-cluster-thunder" data-dense-cluster-id="${cluster.id}" data-thunder-source-index="${timelineIndex}" data-thunder-source-z="${escapeMarkup(timelineTime(observation))}" data-thunder-observation-count="${cluster.thunderIndexes.length}">
+      <title>${escapeMarkup(`${timelineTime(observation)} · ${cueText} · cluster summary anchored to the lowest applicable reported cloud base`)}</title>
+      <rect x="${(cueX - cueWidth / 2).toFixed(1)}" y="${(cueY - 7).toFixed(1)}" width="${cueWidth}" height="14" rx="3"/>
+      <text x="${cueX.toFixed(1)}" y="${cueY.toFixed(1)}" dominant-baseline="middle">${escapeMarkup(cueText)}</text>
+      <path class="aviation-meteogram-atmosphere-lightning aviation-meteogram-atmosphere-lightning-cluster" data-weather-lightning="cluster-reported-thunder" data-lightning-size="compact" data-lightning-anchor="${geometry.anchor}" data-lightning-placement="${geometry.placement || "generic-atmosphere"}" data-lightning-offset-x="0.0" data-lightning-left="-2.0" data-lightning-right="7.0" data-lightning-start-y="${geometry.startY.toFixed(1)}" data-lightning-tip-y="${geometry.tipY.toFixed(1)}" data-lightning-path-height="${geometry.pathHeight || LIGHTNING_PATH_HEIGHT}"${baseAttributes}${anchorToken} aria-hidden="true" d="M${(x + 2).toFixed(1)} ${geometry.startY.toFixed(1)}l-4 7h3l-2 6 8-9h-3l3-4Z"/>
+    </g>`;
+  }).join("");
   timeline.forEach((observation, index) => {
     const x = xAt(index);
     const bucketTimeZ = timelineTime(observation);
-    const textX = cloudTextPositions[index];
+    const cluster = densityLayout.clusterByIndex[index];
+    const clusterRepresentative = Boolean(cluster && cluster.representativeIndex === index);
+    const renderBucketSummary = !cluster || clusterRepresentative;
     const ceilingText = visualCeilingLabel(observation.clouds);
     const layers = cloudLayersForObservation(observation);
-    const labelCellLeft = Math.max(cloudAxisBoundary, cellBounds[index].left);
-    const labelCellRight = Math.min(width, cellBounds[index].right);
+    const sourceCellLeft = Math.max(cloudAxisBoundary, cellBounds[index].left);
+    const sourceCellRight = Math.min(width, cellBounds[index].right);
+    const labelCellLeft = clusterRepresentative ? Math.max(cloudAxisBoundary, cluster.left) : sourceCellLeft;
+    const labelCellRight = clusterRepresentative ? Math.min(width, cluster.right) : sourceCellRight;
     const cellWidth = Math.max(0, labelCellRight - labelCellLeft);
     const cellPadding = cloudCellPadding(cellWidth);
-    const nominalWidth = Math.min(columnWidth, cellWidthAt(index)) * 0.88;
+    const textX = clamp(x, labelCellLeft + cellPadding, labelCellRight - cellPadding);
+    const nominalWidth = Math.min(columnWidth, clusterRepresentative ? cellWidth : cellWidthAt(index)) * 0.88;
     const leftArtworkRoom = Math.max(0, (x - cloudAxisBoundary) * 2);
     const rightArtworkRoom = Math.max(0, (width - x) * 2);
     const bucketArtworkRoom = Math.max(0, Math.min((x - labelCellLeft) * 2, (labelCellRight - x) * 2));
     const availableWidth = Math.max(0, Math.min(nominalWidth, leftArtworkRoom, rightArtworkRoom, bucketArtworkRoom));
     const artX = x;
-    const densityMode = cloudDensityMode(cellWidth, layers.length);
+    const densityMode = densityLayout.modes[index] || cloudDensityMode(cellWidth, layers.length);
     const safeCellWidth = Math.max(0, cellWidth - cellPadding * 2);
     const ceilingDisplay = cloudCeilingDisplay(observation.clouds, safeCellWidth, densityMode);
     const ceilingNaturalWidth = Math.max(28, ceilingDisplay.length * 6 + 10);
@@ -2889,8 +3209,11 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     const exactCeilingY = exactCeilingFt !== null && exactCeilingFt !== undefined && Number.isFinite(Number(exactCeilingFt))
       ? meteogramCloudBaseY(exactCeilingFt, cloudScale.maximumFt)
       : null;
-    const ceilingMode = ceilingWidth >= 18
-      ? densityMode === "FULL" ? "TAG" : "VALUE"
+    const showCeilingLabel = !cluster || ceilingLabelMask[index];
+    const ceilingMode = !showCeilingLabel
+      ? exactCeilingY !== null ? "PROFILE" : "OMITTED"
+      : ceilingWidth >= 18
+      ? densityMode === "WIDE" ? "TAG" : "VALUE"
       : exactCeilingY !== null
         ? "PIN"
         : ceilingText === "CIG UNKNOWN"
@@ -2915,7 +3238,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
           ? { visible: true, labelX: textX, labelY: exactCeilingY, tagWidth: 5 }
           : null;
     const weatherScene = meteogramWeatherSceneDefinition(observation);
-    const baseLightningGeometry = weatherScene.thunder && availableWidth >= 15
+    const baseLightningGeometry = !cluster && weatherScene.thunder && availableWidth >= 15
       ? meteogramLightningGeometry(observation, cloudScale.maximumFt)
       : null;
     const initialLightningGeometry = baseLightningGeometry
@@ -2932,13 +3255,25 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
       top: initialLightningGeometry.startY - LIGHTNING_LABEL_CLEARANCE,
       bottom: initialLightningGeometry.tipY + LIGHTNING_LABEL_CLEARANCE,
     }] : [];
-    const bucketLayout = meteogramCloudBucketLayout(layers, cloudScale.maximumFt, {
-      columnX: artX,
-      plotLeft: labelCellLeft,
-      plotRight: labelCellRight,
-      reservedBoxes: lightningReservedBoxes,
-      indicatorLayerToken: initialLightningGeometry?.anchorToken || "",
-    });
+    const clusterCueBox = cluster ? clusterThunderCueBoxes.get(cluster.id) : null;
+    const bucketLayout = renderBucketSummary
+      ? meteogramCloudBucketLayout(layers, cloudScale.maximumFt, {
+        columnX: artX,
+        plotLeft: labelCellLeft,
+        plotRight: labelCellRight,
+        reservedBoxes: [...lightningReservedBoxes, ...(clusterCueBox ? [clusterCueBox] : [])],
+        indicatorLayerToken: initialLightningGeometry?.anchorToken || "",
+        densityMode,
+      })
+      : {
+        mode: "DENSE",
+        layerLayout: layers.map(() => ({ visible: false, selected: false, displayToken: "" })),
+        visibleIndexes: [],
+        collapsedIndexes: layers.map((_layer, layerIndex) => layerIndex),
+        collapsedCount: layers.length,
+        totalCollapsedCount: layers.length,
+        summary: null,
+      };
     const labelLayout = bucketLayout.layerLayout;
     const totalCollapsed = bucketLayout.totalCollapsedCount;
     const summary = bucketLayout.summary;
@@ -2985,8 +3320,8 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
       const markerHalfWidth = labelVisible
         ? Math.max(7, Math.min(13, availableWidth * 0.16))
         : Math.max(3, Math.min(6, availableWidth * 0.1));
-      const markerX1 = Math.max(labelCellLeft + 1, Math.min(x, artX - markerHalfWidth));
-      const markerX2 = Math.min(labelCellRight - 1, Math.max(x, artX + markerHalfWidth));
+      const markerX1 = Math.max(sourceCellLeft + 1, Math.min(x, artX - markerHalfWidth));
+      const markerX2 = Math.min(sourceCellRight - 1, Math.max(x, artX + markerHalfWidth));
       const labelX = Number(label?.labelX);
       const labelY = Number(label?.labelY ?? baseY);
       const tagWidth = Number(label?.tagWidth) || cloudLayerTagWidth(layer);
@@ -3017,16 +3352,28 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     const clipId = `${idPrefix}CloudBucket${index}Clip`;
     cloudBucketClipMarkup.push(`<clipPath id="${clipId}"><rect x="${labelCellLeft.toFixed(1)}" y="${rows.clouds.top}" width="${cellWidth.toFixed(1)}" height="${rows.clouds.bottom - rows.clouds.top}"/></clipPath>`);
     const forecastClass = isForecast(observation) ? " aviation-meteogram-cloud-forecast" : "";
-    cloudArtworkMarkup.push(`<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="${index}" data-cloud-time-z="${escapeMarkup(bucketTimeZ)}" data-cloud-density-mode="${bucketLayout.mode}" data-cloud-cell-left="${labelCellLeft.toFixed(1)}" data-cloud-cell-right="${labelCellRight.toFixed(1)}" data-cloud-cell-width="${cellWidth.toFixed(1)}" data-cloud-art-available-width="${availableWidth.toFixed(1)}" data-cloud-art-layer-count="${artLayers.length}" clip-path="url(#${clipId})"><g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-art-x="${artX.toFixed(1)}" data-cloud-art-offset-x="${(artX - x).toFixed(1)}" transform="translate(${artX.toFixed(1)} 0)">${skyStatusMarkup(observation, availableWidth)}${artLayers.join("")}${atmosphericWeatherMarkup(observation, availableWidth, cloudScale.maximumFt, { labelLayout: collisionLayout, columnX: artX, densityMode: bucketLayout.mode, lightningGeometry: initialLightningGeometry })}</g></g>`);
-    cloudTextMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text${forecastClass}" data-cloud-bucket-index="${index}" data-cloud-time-z="${escapeMarkup(bucketTimeZ)}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-text-x="${textX.toFixed(1)}" data-cloud-density-mode="${bucketLayout.mode}" data-cloud-cell-left="${labelCellLeft.toFixed(1)}" data-cloud-cell-right="${labelCellRight.toFixed(1)}" data-cloud-visible-layer-count="${bucketLayout.visibleIndexes.length}" data-cloud-collapsed-count="${totalCollapsed}" clip-path="url(#${clipId})">
+    const clusterAttributes = cluster
+      ? ` data-dense-cluster-id="${cluster.id}" data-cluster-representative="${clusterRepresentative}"`
+      : "";
+    const atmosphereMarkup = renderBucketSummary
+      ? atmosphericWeatherMarkup(observation, availableWidth, cloudScale.maximumFt, {
+        labelLayout: collisionLayout,
+        columnX: artX,
+        densityMode: bucketLayout.mode,
+        lightningGeometry: initialLightningGeometry,
+        renderThunder: !cluster,
+      })
+      : "";
+    cloudArtworkMarkup.push(`<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="${index}" data-cloud-time-z="${escapeMarkup(bucketTimeZ)}" data-cloud-density-mode="${bucketLayout.mode}" data-cloud-cell-left="${labelCellLeft.toFixed(1)}" data-cloud-cell-right="${labelCellRight.toFixed(1)}" data-cloud-source-cell-left="${sourceCellLeft.toFixed(1)}" data-cloud-source-cell-right="${sourceCellRight.toFixed(1)}" data-cloud-cell-width="${cellWidth.toFixed(1)}" data-cloud-art-available-width="${availableWidth.toFixed(1)}" data-cloud-art-layer-count="${artLayers.length}"${clusterAttributes} clip-path="url(#${clipId})"><g class="aviation-meteogram-cloud aviation-meteogram-cloud-artwork${forecastClass}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-art-x="${artX.toFixed(1)}" data-cloud-art-offset-x="${(artX - x).toFixed(1)}" transform="translate(${artX.toFixed(1)} 0)">${renderBucketSummary ? skyStatusMarkup(observation, availableWidth) : ""}${artLayers.join("")}${atmosphereMarkup}</g></g>`);
+    cloudTextMarkup.push(`<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text${forecastClass}" data-cloud-bucket-index="${index}" data-cloud-time-z="${escapeMarkup(bucketTimeZ)}" data-cloud-time-x="${x.toFixed(1)}" data-cloud-text-x="${textX.toFixed(1)}" data-cloud-density-mode="${bucketLayout.mode}" data-cloud-cell-left="${labelCellLeft.toFixed(1)}" data-cloud-cell-right="${labelCellRight.toFixed(1)}" data-cloud-source-cell-left="${sourceCellLeft.toFixed(1)}" data-cloud-source-cell-right="${sourceCellRight.toFixed(1)}" data-cloud-visible-layer-count="${bucketLayout.visibleIndexes.length}" data-cloud-collapsed-count="${totalCollapsed}"${clusterAttributes} clip-path="url(#${clipId})">
       ${textLayers.join("")}${summaryMarkup}
       <g class="aviation-meteogram-ceiling-summary aviation-meteogram-ceiling-summary-${ceilingMode.toLowerCase()}" data-ceiling-mode="${ceilingMode}" data-ceiling-label="${escapeMarkup(ceilingText)}"${observation.clouds?.ceilingFt !== null && observation.clouds?.ceilingFt !== undefined ? ` data-ceiling-ft="${Number(observation.clouds.ceilingFt)}"` : ""}>
         ${ceilingSummaryMarkup}
       </g>
     </g>`);
-    cloudDetailMarkup.push(`<g class="aviation-meteogram-cloud-detail-sample" data-cloud-detail-sample="${index}" data-cloud-time-z="${escapeMarkup(bucketTimeZ)}" data-cloud-density-mode="${bucketLayout.mode}" data-cloud-collapsed-count="${totalCollapsed}" data-tooltip-x="${x.toFixed(1)}" data-cloud-detail="${multilineAttribute(cloudDetail)}"${printMode ? "" : ` tabindex="0" role="img" aria-label="${escapeMarkup(cloudDetail.replace(/\n/g, " · "))}" aria-describedby="${idPrefix}CloudTooltip"`} clip-path="url(#${clipId})">
+    cloudDetailMarkup.push(`<g class="aviation-meteogram-cloud-detail-sample" data-cloud-detail-sample="${index}" data-cloud-time-z="${escapeMarkup(bucketTimeZ)}" data-cloud-density-mode="${bucketLayout.mode}" data-cloud-collapsed-count="${totalCollapsed}" data-tooltip-x="${x.toFixed(1)}" data-cloud-detail="${multilineAttribute(cloudDetail)}"${clusterAttributes}${printMode ? "" : ` tabindex="0" role="img" aria-label="${escapeMarkup(cloudDetail.replace(/\n/g, " · "))}" aria-describedby="${idPrefix}CloudTooltip"`}>
       <title>${escapeMarkup(cloudDetail)}</title>
-      <rect class="aviation-meteogram-cloud-detail-hit" x="${labelCellLeft.toFixed(1)}" y="${rows.clouds.top}" width="${cellWidth.toFixed(1)}" height="${rows.clouds.bottom - rows.clouds.top}"/>
+      <rect class="aviation-meteogram-cloud-detail-hit" x="${sourceCellLeft.toFixed(1)}" y="${rows.clouds.top}" width="${Math.max(0, sourceCellRight - sourceCellLeft).toFixed(1)}" height="${rows.clouds.bottom - rows.clouds.top}"/>
     </g>`);
   });
 
@@ -3037,8 +3384,8 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
         ? []
         : [`${visualConditionalTypeLabel(entry)} ${value.visibilityDisplay || visibilityLabel(value)}`];
     }).join(" · ");
-    return `<g class="aviation-meteogram-visibility${isForecast(observation) ? " aviation-meteogram-value-forecast" : ""}${visualLabelMask[index] ? "" : " aviation-meteogram-label-suppressed"}">
-      ${visualLabelMask[index] ? `
+    return `<g class="aviation-meteogram-visibility${isForecast(observation) ? " aviation-meteogram-value-forecast" : ""}${visibilityLabelMask[index] ? "" : " aviation-meteogram-label-suppressed"}" data-visibility-label-visible="${visibilityLabelMask[index]}">
+      ${visibilityLabelMask[index] ? `
       <text class="aviation-meteogram-visibility-value" x="${xAt(index).toFixed(1)}" y="${rows.visibility.top + 24}">${escapeMarkup(visibilityLabel(observation))}</text>
       ${conditionalVisibility ? `<text class="aviation-meteogram-conditional-value" x="${xAt(index).toFixed(1)}" y="${rows.visibility.top + 46}">${escapeMarkup(conditionalVisibility)}</text>` : ""}` : ""}
     </g>`;
@@ -3055,19 +3402,33 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
       ? requestedMaximum
       : calculatedMaximum;
     const maximumBarHeight = Math.max(4, row.bottom - row.top - 30);
-    return intervals.map((interval) => {
+    const geometries = intervals.map((interval, index) => {
       const renderStartZ = interval.printRenderStartZ || interval.validStartZ;
       const renderEndZ = interval.printRenderEndZ || interval.validEndZ;
       const endX = renderEndZ ? dimensions.xForTime(renderEndZ) : null;
       const startX = renderStartZ ? dimensions.xForTime(renderStartZ) : null;
-      if (!Number.isFinite(endX)) return "";
       const amount = finiteAmount(interval.amountIn);
       const centerX = Number.isFinite(startX) ? (startX + endX) / 2 : endX;
       const width = Number.isFinite(startX) ? Math.max(1, endX - startX) : 0;
+      const value = interval.trace ? `T${interval.printClipped ? "†" : ""}` : `${amountDisplay(amount, { compact: true })}${interval.printClipped ? "†" : ""}`;
+      return { interval, index, renderStartZ, renderEndZ, endX, startX, amount, centerX, width, value };
+    });
+    const intervalLabelMask = selectCollisionFreeLabels(geometries.flatMap((geometry) => {
+      if (!Number.isFinite(geometry.endX) || !Number.isFinite(geometry.centerX)) return [];
+      const labelWidth = Math.max(18, geometry.value.length * 6 + 8);
+      if (geometry.centerX - labelWidth / 2 < plotLeft || geometry.centerX + labelWidth / 2 > width) return [];
+      return [{
+        index: geometry.index,
+        x: geometry.centerX,
+        halfWidth: labelWidth / 2,
+        priority: (geometry.amount || 0) * 1000 + (geometry.interval.trace ? 50 : 0) + geometry.width / 100,
+      }];
+    }), geometries.length);
+    return geometries.map(({ interval, index, renderStartZ, renderEndZ, endX, startX, amount, centerX, width: intervalWidth, value }) => {
+      if (!Number.isFinite(endX)) return "";
       const barBottom = row.bottom - 5;
       const barHeight = amount === null || amount === 0 ? 0 : clamp((amount / maximum) * maximumBarHeight, 1.5, maximumBarHeight);
       const classes = `aviation-meteogram-interval aviation-meteogram-${type.toLowerCase()}-interval${interval.kind === "FORECAST" ? " aviation-meteogram-interval-forecast" : " aviation-meteogram-interval-observed"}${interval.printClipped ? " aviation-meteogram-interval-print-clipped" : ""}`;
-      const value = interval.trace ? `T${interval.printClipped ? "†" : ""}` : `${amountDisplay(amount, { compact: true })}${interval.printClipped ? "†" : ""}`;
       const typeMeaning = type === "SNOW"
         ? interval.kind === "FORECAST" ? "FORECAST SNOWFALL" : "SNOW DEPTH INCREASE DURING PAST HOUR"
         : "PRECIP";
@@ -3077,10 +3438,10 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
       const visibleSegment = interval.printClipped
         ? ` · VISIBLE PRINT SEGMENT ${compactIntervalLabel(renderStartZ, renderEndZ, model.station)}; AMOUNT REMAINS THE FULL UNSPLIT SOURCE INTERVAL TOTAL`
         : "";
-      return `<g class="${classes}" data-valid-start="${escapeMarkup(interval.validStartZ || "")}" data-valid-end="${escapeMarkup(interval.validEndZ || "")}" data-render-start="${escapeMarkup(renderStartZ || "")}" data-render-end="${escapeMarkup(renderEndZ || "")}" data-amount-in="${amount === null ? "" : amount}">
+      return `<g class="${classes}" data-valid-start="${escapeMarkup(interval.validStartZ || "")}" data-valid-end="${escapeMarkup(interval.validEndZ || "")}" data-render-start="${escapeMarkup(renderStartZ || "")}" data-render-end="${escapeMarkup(renderEndZ || "")}" data-amount-in="${amount === null ? "" : amount}" data-interval-label-visible="${intervalLabelMask[index]}">
         <title>${escapeMarkup(`${typeMeaning} ${interval.trace ? "TRACE" : `${amountDisplay(amount)} IN`} · SOURCE INTERVAL ${validity}${visibleSegment} · ${interval.source || interval.sourceToken || "reported source"}`)}</title>
-        ${barHeight && width ? `<rect class="aviation-meteogram-interval-bar" x="${startX.toFixed(1)}" y="${(barBottom - barHeight).toFixed(1)}" width="${width.toFixed(1)}" height="${barHeight.toFixed(1)}"/>` : amount === 0 && width ? `<line class="aviation-meteogram-interval-zero" x1="${startX.toFixed(1)}" y1="${barBottom}" x2="${endX.toFixed(1)}" y2="${barBottom}"/>` : ""}
-        <text class="aviation-meteogram-interval-value" x="${centerX.toFixed(1)}" y="${row.top + 14}">${escapeMarkup(value)}</text>
+        ${barHeight && intervalWidth ? `<rect class="aviation-meteogram-interval-bar" x="${startX.toFixed(1)}" y="${(barBottom - barHeight).toFixed(1)}" width="${intervalWidth.toFixed(1)}" height="${barHeight.toFixed(1)}"/>` : amount === 0 && intervalWidth ? `<line class="aviation-meteogram-interval-zero" x1="${startX.toFixed(1)}" y1="${barBottom}" x2="${endX.toFixed(1)}" y2="${barBottom}"/>` : ""}
+        ${intervalLabelMask[index] ? `<text class="aviation-meteogram-interval-value" x="${centerX.toFixed(1)}" y="${row.top + 14}">${escapeMarkup(value)}</text>` : ""}
       </g>`;
     }).join("");
   };
@@ -3138,7 +3499,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     ? ` For KMEM, explicit clear-sky columns use calculated daylight or nighttime sun/moon symbols. Subtle SUNRISE and SUNSET lines use KMEM coordinates and the standard apparent-horizon solar definition.${solarEvents.length ? ` Solar events in this displayed domain: ${solarEvents.map((event) => solarEventAccessibleLabel(event, model.station)).join("; ")}.` : " No sunrise or sunset falls inside this displayed domain."}`
     : "";
 
-  return `<svg class="aviation-meteogram-svg${printMode ? " aviation-meteogram-svg-print" : ""}" xmlns="${SVG_NS}" width="${width.toFixed(1)}" height="${height}" viewBox="0 0 ${width.toFixed(1)} ${height}" data-label-width="${labelWidth}" data-axis-width="${axisWidth}" data-plot-left="${plotLeft}" data-cloud-axis-width="${METEOGRAM_CLOUD_AXIS_WIDTH}" role="img" aria-labelledby="${idPrefix}SvgTitle ${idPrefix}SvgDescription">
+  return `<svg class="aviation-meteogram-svg${printMode ? " aviation-meteogram-svg-print" : ""}" xmlns="${SVG_NS}" width="${width.toFixed(1)}" height="${height}" viewBox="0 0 ${width.toFixed(1)} ${height}" data-label-width="${labelWidth}" data-axis-width="${axisWidth}" data-plot-left="${plotLeft}" data-cloud-axis-width="${METEOGRAM_CLOUD_AXIS_WIDTH}" data-dense-cluster-count="${densityLayout.clusters.length}" role="img" aria-labelledby="${idPrefix}SvgTitle ${idPrefix}SvgDescription">
     <title id="${idPrefix}SvgTitle">${escapeMarkup(model.station)} aviation weather meteogram</title>
     <desc id="${idPrefix}SvgDescription">One shared time-proportional timeline of exact METAR and SPECI observations${forecastSources.hasTaf && forecastSources.hasNws ? " followed by current TAF aviation fields and separately sourced NWS grid supplemental values after a NOW divider" : forecastSources.hasTaf ? " followed by current TAF aviation fields after a NOW divider" : forecastSources.hasNws ? " followed by NWS grid supplemental forecast values after a NOW divider; no current TAF aviation fields are represented" : ""}. Temperature and dew point numeric values use separate rows. Their separate adjacent line rows use one identical vertical domain, so physical separation represents temperature-dew-point spread. Sustained wind and reported gusts use one shared zero-based speed scale. Reported gusts use a distinct cap; when sustained wind is available, a whisker connects the sustained and gust values. Adjacent gust-bearing buckets use a dashed connection; missing gusts are not inferred. Forecast precipitation and snowfall amounts retain exact six-hour valid intervals in inches; observed SNINCR values are labeled as one-hour snow-depth increase.${forecastSources.hasGfsPressure ? " Observed pressure is the METAR altimeter setting; the separate dashed forecast is NOAA model mean sea-level pressure via Open-Meteo and is not an altimeter setting. No line joins the two references across NOW." : ""} Missing values are not inferred.${escapeMarkup(solarDescription)}</desc>
     ${definitions}
@@ -3146,7 +3507,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     ${forecastBackground}
     <rect class="aviation-meteogram-label-background" width="${labelWidth}" height="${height}"/>
     <rect class="aviation-meteogram-axis-gutter-background" x="${labelWidth}" width="${axisWidth}" height="${height}"/>
-    ${horizontalLines}${verticalLines}${solarLineMarkup}
+    ${denseClusterBandMarkup}${horizontalLines}${verticalLines}${solarLineMarkup}
     <line class="aviation-meteogram-description-divider" x1="${labelWidth}" y1="0" x2="${labelWidth}" y2="${height}"/>
     <line class="aviation-meteogram-label-divider" x1="${plotLeft}" y1="0" x2="${plotLeft}" y2="${height}"/>
     ${weatherMarkup}${timeMarkup}${boundaryTimeMarkup}
@@ -3162,6 +3523,8 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     ${pathMarkup(forecastPoints(pressurePoints), "aviation-meteogram-pressure-line aviation-meteogram-line-forecast", timeline, 1, pressureReferenceChanged)}
     ${pressureValuesMarkup}${cloudTickGridMarkup}
     <g class="aviation-meteogram-cloud-row aviation-meteogram-cloud-artwork-row" clip-path="url(#${idPrefix}CloudArtworkClip)">${cloudArtworkMarkup.join("")}</g>
+    <g class="aviation-meteogram-cloud-row aviation-meteogram-ceiling-profile-row" clip-path="url(#${idPrefix}CloudTextClip)">${ceilingProfileMarkup}</g>
+    <g class="aviation-meteogram-cloud-row aviation-meteogram-dense-cluster-thunder-row" clip-path="url(#${idPrefix}CloudTextClip)">${denseClusterThunderMarkup}</g>
     <g class="aviation-meteogram-cloud-row aviation-meteogram-cloud-text-row" clip-path="url(#${idPrefix}CloudTextClip)">${cloudTextMarkup.join("")}</g>
     <g class="aviation-meteogram-cloud-row aviation-meteogram-cloud-detail-row" clip-path="url(#${idPrefix}CloudTextClip)">${cloudDetailMarkup.join("")}</g>
     ${cloudAltitudeAxisMarkup(cloudScale, labelWidth, { axisWidth })}
@@ -3213,6 +3576,8 @@ export function renderAviationMeteogram(container, reports, {
     ...defaultSettings,
     ...(initialViewState?.settings || {}),
   }, model);
+  const restoredZoomFactor = Number(initialViewState?.zoomFactor);
+  let zoomFactor = METEOGRAM_ZOOM_FACTORS.includes(restoredZoomFactor) ? restoredZoomFactor : 1;
   const forecastSources = meteogramForecastSourceState(model);
   const section = doc.createElement("section");
   section.className = "aviation-meteogram";
@@ -3242,6 +3607,30 @@ export function renderAviationMeteogram(container, reports, {
       { value: "KT", label: "KT" }, { value: "MPH", label: "MPH" },
     ]),
   );
+  const zoomControls = doc.createElement("div");
+  zoomControls.className = "aviation-meteogram-zoom-controls";
+  zoomControls.setAttribute("role", "group");
+  zoomControls.setAttribute("aria-label", "Meteogram timeline detail zoom");
+  const zoomOutButton = doc.createElement("button");
+  zoomOutButton.type = "button";
+  zoomOutButton.dataset.meteogramZoom = "out";
+  zoomOutButton.title = "Show less timeline detail";
+  zoomOutButton.setAttribute("aria-label", "Zoom meteogram out");
+  zoomOutButton.textContent = "−";
+  const zoomResetButton = doc.createElement("button");
+  zoomResetButton.type = "button";
+  zoomResetButton.dataset.meteogramZoom = "reset";
+  zoomResetButton.className = "aviation-meteogram-zoom-status";
+  zoomResetButton.title = "Reset timeline detail";
+  zoomResetButton.setAttribute("aria-label", "Reset meteogram zoom");
+  const zoomInButton = doc.createElement("button");
+  zoomInButton.type = "button";
+  zoomInButton.dataset.meteogramZoom = "in";
+  zoomInButton.title = "Show more timeline detail";
+  zoomInButton.setAttribute("aria-label", "Zoom meteogram in");
+  zoomInButton.textContent = "+";
+  zoomControls.append(zoomOutButton, zoomResetButton, zoomInButton);
+  controls.appendChild(zoomControls);
   if (!model.timeZone) {
     const localToggle = controls.querySelector?.('[data-meteogram-setting="timeMode"][data-meteogram-value="LOCAL"]');
     if (localToggle) {
@@ -3376,6 +3765,7 @@ export function renderAviationMeteogram(container, reports, {
   let activeCloudTooltipSample = null;
   let cloudTooltipPinned = false;
   let latestDimensions = null;
+  let pendingZoomCenterTime = null;
   function updateStickyTimeRuler() {
     const dimensions = latestDimensions;
     const stage = scroller.querySelector?.(".aviation-meteogram-stage");
@@ -3402,6 +3792,11 @@ export function renderAviationMeteogram(container, reports, {
       button.classList.toggle("aviation-meteogram-toggle-active", selected);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
     }
+    const zoomIndex = METEOGRAM_ZOOM_FACTORS.indexOf(zoomFactor);
+    zoomOutButton.disabled = zoomIndex <= 0;
+    zoomInButton.disabled = zoomIndex >= METEOGRAM_ZOOM_FACTORS.length - 1;
+    zoomResetButton.textContent = zoomFactor === 1 ? "DETAIL 1×" : `DETAIL ${zoomFactor}×`;
+    zoomResetButton.setAttribute("aria-pressed", zoomFactor === 1 ? "true" : "false");
   }
   function draw() {
     if (destroyed) return;
@@ -3416,14 +3811,25 @@ export function renderAviationMeteogram(container, reports, {
       compact,
       measureText: labelMeasurer.measureText,
     });
-    const dimensions = meteogramDimensions(model.timeline, viewportWidth, {
+    const baseDimensions = meteogramDimensions(model.timeline, viewportWidth, {
       extraTimes: intervalExtraTimes(model),
       labelWidth: labelLayout.width,
     });
+    const dimensions = zoomFactor === 1
+      ? baseDimensions
+      : meteogramDimensions(model.timeline, viewportWidth, {
+        extraTimes: intervalExtraTimes(model),
+        labelWidth: labelLayout.width,
+        pixelsPerHour: baseDimensions.pixelsPerHour * zoomFactor,
+      });
     latestDimensions = dimensions;
     const windSpeedGeometry = meteogramWindSpeedGeometry(model, displaySettings, dimensions);
     const cloudScale = meteogramCloudScaleDefinition(model.timeline);
-    const svg = buildMeteogramSvgMarkup(model, settings, { viewportWidth, labelLayout });
+    const svg = buildMeteogramSvgMarkup(model, settings, {
+      viewportWidth,
+      labelLayout,
+      pixelsPerHour: dimensions.pixelsPerHour,
+    });
     activeWindTooltipSample = null;
     windTooltipPinned = false;
     activeCloudTooltipSample = null;
@@ -3458,9 +3864,20 @@ export function renderAviationMeteogram(container, reports, {
               ? dataTableScroller
               : restoredFocusKey.startsWith("toggle:")
                 ? controls.querySelector?.(`[data-meteogram-setting="${restoredFocusKey.split(":")[1]}"][data-meteogram-value="${restoredFocusKey.split(":")[2]}"]`)
+                : restoredFocusKey.startsWith("zoom:")
+                  ? zoomControls.querySelector?.(`[data-meteogram-zoom="${restoredFocusKey.split(":")[1]}"]`)
                 : null;
         focusTarget?.focus?.({ preventScroll: true });
       });
+    } else if (Number.isFinite(pendingZoomCenterTime)) {
+      const visibleTimelineWidth = Math.max(0, Number(scroller.clientWidth || viewportWidth) - dimensions.plotLeft);
+      const centerX = dimensions.xForTime(new Date(pendingZoomCenterTime));
+      scroller.scrollLeft = clamp(
+        centerX - dimensions.plotLeft - visibleTimelineWidth / 2,
+        0,
+        Math.max(0, scroller.scrollWidth - scroller.clientWidth),
+      );
+      pendingZoomCenterTime = null;
     } else {
       scroller.scrollLeft = clamp(previousScrollLeft, 0, Math.max(0, scroller.scrollWidth - scroller.clientWidth));
     }
@@ -3537,6 +3954,31 @@ export function renderAviationMeteogram(container, reports, {
     const setting = button.dataset.meteogramSetting;
     if (!(setting in settings)) return;
     settings[setting] = button.dataset.meteogramValue;
+    draw();
+  });
+  zoomControls.addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-meteogram-zoom]");
+    if (!button || !latestDimensions) return;
+    const currentIndex = METEOGRAM_ZOOM_FACTORS.indexOf(zoomFactor);
+    const nextIndex = button.dataset.meteogramZoom === "reset"
+      ? 0
+      : button.dataset.meteogramZoom === "in"
+        ? Math.min(METEOGRAM_ZOOM_FACTORS.length - 1, currentIndex + 1)
+        : Math.max(0, currentIndex - 1);
+    const nextFactor = METEOGRAM_ZOOM_FACTORS[nextIndex];
+    if (nextFactor === zoomFactor) return;
+    const scale = Number(latestDimensions.pixelsPerHour) / (60 * 60 * 1000);
+    const firstPointX = Number(latestDimensions.plotLeft) + Number(latestDimensions.columnWidth) / 2;
+    const visibleTimelineWidth = Math.max(0, Number(scroller.clientWidth || latestDimensions.viewportWidth) - latestDimensions.plotLeft);
+    const visibleCenterX = Number(scroller.scrollLeft || 0) + latestDimensions.plotLeft + visibleTimelineWidth / 2;
+    pendingZoomCenterTime = Number.isFinite(scale) && scale > 0
+      ? clamp(
+        Number(latestDimensions.firstTime) + (visibleCenterX - firstPointX) / scale,
+        Number(latestDimensions.firstTime),
+        Number(latestDimensions.lastTime),
+      )
+      : null;
+    zoomFactor = nextFactor;
     draw();
   });
   for (const button of mobileNavigationButtons) {
@@ -3689,9 +4131,12 @@ export function renderAviationMeteogram(container, reports, {
             ? "table-scroll"
             : activeElement?.dataset?.meteogramSetting && activeElement?.dataset?.meteogramValue
               ? `toggle:${activeElement.dataset.meteogramSetting}:${activeElement.dataset.meteogramValue}`
+              : activeElement?.dataset?.meteogramZoom
+                ? `zoom:${activeElement.dataset.meteogramZoom}`
               : "";
       return {
         settings: { ...settings },
+        zoomFactor,
         scrollLeft: scroller.scrollLeft,
         dataTableOpen: Boolean(dataDetails.open),
         dataTableScrollLeft: dataTableScroller.scrollLeft,
