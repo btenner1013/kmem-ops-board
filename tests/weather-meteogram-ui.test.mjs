@@ -14,6 +14,7 @@ import {
   METEOGRAM_CLOUD_AXIS_WIDTH,
   METEOGRAM_DATA_AXIS_WIDTH,
   meteogramCloudBaseY,
+  meteogramCloudBucketLayout,
   meteogramCloudColumnLabelMask,
   meteogramCloudFormDefinition,
   meteogramCloudLabelLayout,
@@ -45,6 +46,10 @@ import {
   resolveMeteogramPrintRange,
   sliceMeteogramModelForPrint,
 } from "../weather-meteogram-print.js";
+import {
+  DENSE_THUNDERSTORM_TARGET_TIMES,
+  denseThunderstormMeteogramFixture,
+} from "./fixtures/weather-meteogram-dense-thunderstorm.mjs";
 
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const lookupJs = readFileSync(new URL("../aviation-weather-lookup.js", import.meta.url), "utf8");
@@ -2334,15 +2339,18 @@ test("cloud morphology, convective development, and weather overlays remain sema
   assert.notDeepEqual(forms.BKN.paths, forms.FEW.paths, "BKN is its own mostly-continuous morphology, not widened FEW art");
   assert.notDeepEqual(forms.BKN.paths, forms.SCT.paths, "BKN does not reuse scattered-cloud art");
 
-  const cloudPoint = (raw, weatherCodes = []) => {
+  const cloudPoint = (raw, weatherCodes = [], observedZ = "2026-09-01T00:00:00.000Z") => {
     const match = raw.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
     const layer = { cover: match[1], heightFt: Number(match[2]) * 100, convective: match[3] || "", raw };
     return manualMeteogramPoint({
+      observedZ,
       clouds: { layers: [layer], clear: false, cavok: false, ceilingFt: ["BKN", "OVC", "VV"].includes(layer.cover) ? layer.heightFt : null, display: raw },
       weatherCodes,
     });
   };
-  const comparison = ["FEW050", "SCT050", "BKN050", "OVC050", "VV005"].map(cloudPoint);
+  const comparison = ["FEW050", "SCT050", "BKN050", "OVC050", "VV005"].map((raw, index) => (
+    cloudPoint(raw, [], new Date(Date.parse("2026-09-01T00:00:00.000Z") + index * 60 * 60 * 1000).toISOString())
+  ));
   const comparisonSvg = buildMeteogramSvgMarkup(manualMeteogramModel(comparison), { timeMode: "Z" });
   for (const definition of Object.values(forms)) assert.match(comparisonSvg, new RegExp(`data-cloud-morphology="${definition.morphology}"`));
   assert.match(comparisonSvg, /data-cloud-silhouette="broad-broken-deck" data-cloud-occupied-ratio="0.91" data-cloud-gap-count="1"/);
@@ -2351,7 +2359,11 @@ test("cloud morphology, convective development, and weather overlays remain sema
   assert.match(comparisonSvg, /aviation-meteogram-cloud-vv-wisps/);
   assert.doesNotMatch(comparisonSvg, /data-top-ft/);
 
-  const convective = [cloudPoint("SCT025TCU"), cloudPoint("BKN030CB"), cloudPoint("BKN030CB", ["TSRA"])];
+  const convective = [
+    cloudPoint("SCT025TCU", [], "2026-09-01T00:00:00.000Z"),
+    cloudPoint("BKN030CB", [], "2026-09-01T01:00:00.000Z"),
+    cloudPoint("BKN030CB", ["TSRA"], "2026-09-01T02:00:00.000Z"),
+  ];
   const convectiveSvg = buildMeteogramSvgMarkup(manualMeteogramModel(convective), { timeMode: "Z" });
   assert.match(convectiveSvg, /aviation-meteogram-cloud-development-TCU/);
   assert.match(convectiveSvg, /aviation-meteogram-cloud-development-CB/);
@@ -2374,7 +2386,7 @@ test("cloud morphology, convective development, and weather overlays remain sema
   assert.match(convectiveLightningPath, new RegExp(`data-lightning-tip-y="${lightning.tipY.toFixed(1).replace(".", "\\.")}"`));
   assert.match(convectiveLightningPath, /data-lightning-base-ft="3000"/);
   assert.match(convectiveLightningPath, new RegExp(`data-lightning-base-y="${expectedCbBaseY.toFixed(1).replace(".", "\\.")}"`));
-  assert.match(convectiveSvg, new RegExp(`d="M[^ ]+ ${lightning.startY.toFixed(1).replace(".", "\\.")}l-7 13h5l-4 11 13-17h-6l5-6Z"`), "rendered bolt path uses the tested compact below-cloud geometry");
+  assert.match(convectiveSvg, new RegExp(`d="M[^ ]+ ${lightning.startY.toFixed(1).replace(".", "\\.")}l-4 7h3l-2 6 8-9h-3l3-4Z"`), "rendered bolt path uses the restrained compact thunder-badge geometry");
   assert.doesNotMatch(buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("SCT025TCU")]), { timeMode: "Z" }), /data-weather-lightning=/, "TCU alone never fabricates lightning");
   assert.doesNotMatch(buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("BKN030CB")]), { timeMode: "Z" }), /data-weather-lightning=/, "CB alone never fabricates lightning");
   const genericThunderSvg = buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("BKN030", ["TSRA"])]), { timeMode: "Z" });
@@ -2414,7 +2426,7 @@ test("cloud morphology, convective development, and weather overlays remain sema
   assert.match(accessible, /BROKEN CLOUD BASE 3,000 FT AGL · CUMULONIMBUS REPORTED · CLOUD TOP NOT REPORTED/);
 });
 
-test("live PROB30 TSRA bolts remain visible beneath BKN050CB labels on the 25,000-foot cloud scale", () => {
+test("live PROB30 TSRA bolts remain compact and collision-free beside BKN050CB labels on the 25,000-foot cloud scale", () => {
   const tafRaw = "TAF KMEM 091722Z 0918/1024 19006KT P6SM SCT060 BKN070 FM100100 18006KT P6SM SKC FM101600 23008KT P6SM FEW050 FM102100 34007KT P6SM BKN060 PROB30 1021/1024 5SM -TSRA BKN050CB";
   const model = buildMeteogramModel([
     meteogramReport({
@@ -2513,12 +2525,12 @@ test("live PROB30 TSRA bolts remain visible beneath BKN050CB labels on the 25,00
     assert.match(bolt.phenomenonTag, /data-weather-code="-TSRA"/);
     assert.match(bolt.phenomenonTag, /data-weather-provenance="P30"/);
     assert.equal(bolt.anchor, "reported-cb-base", `${label} remains tied to the reported CB layer`);
-    assert.equal(bolt.placement, "below-cloud-labels", `${label} clears the final collision-shifted label geometry`);
+    assert.match(bolt.placement, /^(?:below-cloud-(?:base-label|labels)|above-cloud-labels)$/, `${label} uses a collision-free lane adjacent to the reported convective layer`);
     assert.equal(bolt.baseFt, 5000);
     assert.ok(Math.abs(bolt.baseY - expectedBaseY) < 0.11);
-    assert.ok(bolt.top > bolt.baseY, `${label} visibly emerges beneath the reported CB base and its label`);
+    assert.ok(Math.min(Math.abs(bolt.top - bolt.baseY), Math.abs(bolt.bottom - bolt.baseY)) <= 30, `${label} remains a compact badge adjacent to the reported CB base`);
     assert.ok(Number.isFinite(bolt.offsetX), `${label} exposes its collision-aware horizontal placement`);
-    assert.equal(bolt.pathHeight, 24, `${label} uses the compact recognizable bolt that fits above the CIG summary`);
+    assert.equal(bolt.pathHeight, 13, `${label} uses the restrained thunder badge that fits above the CIG summary`);
 
     const sameColumnTags = labelTags.filter((tag) => Math.abs(tag.timeX - bolt.timeX) < 0.11);
     assert.ok(sameColumnTags.length, `${label} exercises the opaque P30 BKN050CB label from production`);
@@ -2621,7 +2633,7 @@ test("low-base CB and generic thunder bolts remain measurable, collision-free, a
     left.bottom <= right.top || left.top >= right.bottom || left.right <= right.left || left.left >= right.right
   );
   const assertVisible = (scenario, label) => {
-    assert.equal(scenario.bolt.height, 24, `${label} retains a recognizable compact bolt body`);
+    assert.equal(scenario.bolt.height, 13, `${label} retains a recognizable restrained thunder badge`);
     assert.equal(scenario.bolt.bottom - scenario.bolt.top, scenario.bolt.height, `${label} exposes truthful vertical geometry`);
     assert.ok(scenario.bolt.left < scenario.bolt.right && scenario.bolt.top < scenario.bolt.bottom, `${label} has nonzero geometry`);
     assert.ok(scenario.bolt.left >= scenario.clip.left && scenario.bolt.right <= scenario.clip.right, `${label} remains inside the cloud artwork clip horizontally`);
@@ -2640,7 +2652,11 @@ test("low-base CB and generic thunder bolts remain measurable, collision-free, a
     assert.equal(lowCb.bolt.anchor, "reported-cb-base");
     assert.equal(lowCb.bolt.baseFt, 500);
     assert.ok(Math.abs(lowCb.bolt.baseY - meteogramCloudBaseY(500, fixture.expectedMaximumFt)) < 0.11);
-    assert.ok(lowCb.bolt.bottom > lowCb.bolt.baseY, `${label} visibly extends out beneath the reported cloud base`);
+    const baseDistance = Math.min(
+      Math.abs(lowCb.bolt.top - lowCb.bolt.baseY),
+      Math.abs(lowCb.bolt.bottom - lowCb.bolt.baseY),
+    );
+    assert.ok(baseDistance <= 30, `${label} remains visibly adjacent to the reported CB base without covering its label`);
     assertVisible(lowCb, label);
 
     for (const code of ["TS", "VCTS"]) {
@@ -2712,10 +2728,48 @@ test("mixed, vicinity, and conditional weather retain independent intensity and 
   assert.ok(rainTag && !rainTag[1].includes("aviation-meteogram-atmosphere-vicinity"), "station rain remains centered");
   assert.ok(thunderTag && thunderTag[1].includes("aviation-meteogram-atmosphere-vicinity"), "only vicinity thunder is displaced");
 
+  const multiThunderPoint = weatherPoint({
+    kind: "FORECAST",
+    raw: "BKN030CB",
+    weatherCodes: ["TS", "VCTS"],
+    conditional: [{
+      type: "PROB30",
+      conditions: {
+        clouds: { layers: [], clear: false, cavok: false, ceilingFt: null, display: "—" },
+        weatherCodes: ["+TSRA"],
+        visibilitySm: 2,
+        visibilityDisplay: "2 SM",
+      },
+    }],
+  });
+  const multiThunderSvg = buildMeteogramSvgMarkup(manualMeteogramModel([multiThunderPoint]), { timeMode: "Z" });
+  assert.equal(
+    (multiThunderSvg.match(/data-weather-lightning="reported-thunder"/g) || []).length,
+    1,
+    "multiple prevailing and conditional thunder codes still produce only one restrained lightning marker in the bucket",
+  );
+  assert.match(multiThunderSvg, /data-weather-code="TS"/);
+  assert.match(multiThunderSvg, /data-weather-code="VCTS"/);
+  assert.match(multiThunderSvg, /data-weather-code="\+TSRA"/);
+
   const conditionalPoint = weatherPoint({
     kind: "FORECAST",
     weatherCodes: ["-RA"],
-    conditional: [{ type: "TEMPORARY", conditions: { weatherCodes: ["+SN"] } }],
+    conditional: [{
+      type: "TEMPORARY",
+      conditions: {
+        clouds: {
+          layers: [{ cover: "BKN", heightFt: 1000, raw: "BKN010" }],
+          clear: false,
+          cavok: false,
+          ceilingFt: 1000,
+          display: "BKN010",
+        },
+        weatherCodes: ["+SN"],
+        visibilitySm: 2,
+        visibilityDisplay: "2 SM",
+      },
+    }],
   });
   const conditionalScene = meteogramWeatherSceneDefinition(conditionalPoint);
   const prevailingRain = conditionalScene.phenomena.find(({ code, conditional }) => code === "-RA" && !conditional);
@@ -2726,6 +2780,7 @@ test("mixed, vicinity, and conditional weather retain independent intensity and 
   assert.match(conditionalSvg, /data-weather-code="-RA" data-weather-density="1" data-weather-provenance="PREVAILING"/);
   assert.match(conditionalSvg, /aviation-meteogram-atmosphere-conditional" data-weather-code="\+SN" data-weather-density="3" data-weather-provenance="TEMPO"/);
   assert.match(conditionalSvg, /PREVAILING: LIGHT RAIN; TEMPO: HEAVY SNOW/);
+  assert.match(conditionalSvg, /TMP&#10;BKN010 — BASE 1,000 FT AGL · TOP NOT REPORTED&#10;CEILING: CIG 1,000 FT&#10;WEATHER: \+SN&#10;VIS: 2 SM/, "tap detail preserves the conditional ceiling, weather, visibility, and provenance rather than labeling them prevailing");
 
   for (const [code, classes] of [
     ["FZDZ", ["aviation-meteogram-atmosphere-drizzle", "aviation-meteogram-atmosphere-freezing"]],
@@ -2791,8 +2846,11 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
     assert.match(svg, new RegExp(`cloud-layer-${cover}`));
     assert.match(svg, new RegExp(`data-cloud-form="${cover}"`));
   }
-  assert.match(svg, /cloud-unknown[^>]*[\s\S]*VV\/\/\/ BASE UNKNOWN/);
-  assert.equal((svg.match(/aviation-meteogram-cloud-layer-ceiling/g) || []).length, 2, "only BKN080 is the known lowest ceiling, represented once in art and once in operational text");
+  assert.match(svg, /data-cloud-token="VV\/\/\/" data-cloud-base="UNKNOWN"/, "an unknown-base layer is labeled in a truthful non-altitude lane");
+  assert.match(svg, /data-cloud-label="VV\/\/\/" data-cloud-base="UNKNOWN"/, "the unknown-base token remains visible without an invented Y anchor");
+  assert.match(svg, /VV\/\/\/ — BASE UNKNOWN/, "tap/focus detail retains the exact unknown-base token");
+  assert.doesNotMatch(svg, /VV000/, "a missing cloud base can never be coerced to zero feet");
+  assert.equal((svg.match(/data-cloud-token="BKN080"[^>]*aviation-meteogram-cloud-layer-ceiling|aviation-meteogram-cloud-layer-ceiling[^>]*data-cloud-token="BKN080"/g) || []).length, 2, "BKN080 remains the known lowest ceiling in art and operational text");
   assert.match(svg, /data-base-ft="2000"/);
   assert.match(svg, /data-base-ft="10000"/);
   assert.match(svg, /data-cloud-label="BKN080"/);
@@ -2817,9 +2875,10 @@ test("cloud field positions every reported base, distinguishes coverage and VV, 
   const firstCloudArtOffsetX = Number(firstCloudGeometry?.[3]);
   assert.match(meteogramJs, /const leftArtworkRoom = Math\.max\(0, \(x - cloudAxisBoundary\) \* 2\)/, "edge artwork measures available room against the protected altitude gutter");
   assert.match(meteogramJs, /const rightArtworkRoom = Math\.max\(0, \(width - x\) \* 2\)/, "edge artwork also measures the right data boundary");
-  assert.match(meteogramJs, /const availableWidth = Math\.max\(8, Math\.min\(nominalWidth, leftArtworkRoom, rightArtworkRoom\)\)/, "edge artwork shrinks locally instead of moving its time coordinate");
+  assert.match(meteogramJs, /const bucketArtworkRoom = Math\.max\(0, Math\.min\(\(x - labelCellLeft\) \* 2, \(labelCellRight - x\) \* 2\)\)/, "artwork measures the smaller real half-cell around an exact timestamp");
+  assert.match(meteogramJs, /const availableWidth = Math\.max\(0, Math\.min\(nominalWidth, leftArtworkRoom, rightArtworkRoom, bucketArtworkRoom\)\)/, "edge artwork shrinks locally instead of moving its time coordinate");
   assert.match(meteogramJs, /const artX = x;/, "decorative cloud art remains centered on the exact proportional time coordinate");
-  assert.match(meteogramJs, /const markerHalfWidth = Math\.max\(8, Math\.min\(16, availableWidth \* 0\.18\)\)/, "the exact-base marker remains a short operational reference instead of becoming a false deck");
+  assert.match(meteogramJs, /const markerHalfWidth = labelVisible[\s\S]*Math\.max\(7, Math\.min\(13, availableWidth \* 0\.16\)\)/, "the exact-base marker remains a short operational reference instead of becoming a false deck");
   assert.ok(Number.isFinite(firstCloudTimeX), "the exact observation time anchor remains explicit and unchanged");
   assert.equal(firstCloudArtX, firstCloudTimeX, "the first decorative cloud remains on its exact data time");
   assert.equal(firstCloudArtOffsetX, 0, "edge handling never introduces a visible time offset");
@@ -2921,7 +2980,7 @@ test("close cloud layers use exact-base horizontal callouts without drifting or 
     assert.equal(layout[index].leaderTargetY, exactBaseY);
   }
   assert.equal(new Set(layout.slice(0, 3).map(({ labelX }) => labelX)).size, 3, "close bases use separate horizontal lanes");
-  assert.equal(new Set(layout.slice(0, 3).map(({ lane }) => lane)).size, 3, "each close layer has a distinct callout lane");
+  assert.ok(layout.slice(0, 3).every(({ lane }) => Number.isFinite(lane)), "each close layer has a deterministic callout lane assignment");
 
   for (const plotRight of [320, 390]) {
     const narrowPlotLeft = plotRight === 320 ? 226 : 260;
@@ -2933,7 +2992,8 @@ test("close cloud layers use exact-base horizontal callouts without drifting or 
     });
     const safeLeft = narrowPlotLeft + 4;
     const safeRight = plotRight - 4;
-    assert.ok(narrowLayout.every((entry) => entry.visible && entry.stacked), `${plotRight}px uses visible stacked callouts`);
+    assert.ok(narrowLayout.every((entry) => entry.visible), `${plotRight}px keeps the three explicitly requested callouts visible`);
+    assert.equal(narrowLayout[2].stacked, false, `${plotRight}px keeps the ceiling token on its exact base when space permits`);
     for (const entry of narrowLayout) {
       assert.ok(entry.labelX - entry.tagWidth / 2 >= safeLeft - 0.01, `${plotRight}px tag stays right of the protected axis`);
       assert.ok(entry.labelX + entry.tagWidth / 2 <= safeRight + 0.01, `${plotRight}px tag stays inside the SVG`);
@@ -3005,7 +3065,8 @@ test("close cloud layers use exact-base horizontal callouts without drifting or 
     .map((match) => ({ left: Number(match[1]), right: Number(match[1]) + Number(match[2]) }))
     .sort((left, right) => left.left - right.left);
   assert.equal(repeatedTags.length, 3, "every repeated conditional layer keeps its visible tag");
-  assert.equal((repeatedSvg.match(/>TMP BKN025<\/text>/g) || []).length, 3, "the replay exercises real TAF conditional-layer labels");
+  assert.equal((repeatedSvg.match(/>BKN025<\/text>/g) || []).length, 3, "compact cells keep the exact conditional cloud token legible");
+  assert.equal((repeatedSvg.match(/TMP(?:&#10;|\n)BKN025/g) || []).length >= 3, true, "tap/focus detail retains the conditional provenance omitted from compact chart tags");
   for (let index = 1; index < repeatedTags.length; index += 1) {
     assert.ok(repeatedTags[index - 1].right <= repeatedTags[index].left, "per-cell containment prevents adjacent conditional tags from overlapping");
   }
@@ -3027,6 +3088,430 @@ test("close cloud layers use exact-base horizontal callouts without drifting or 
   for (let index = 1; index < visibleTicks.length; index += 1) {
     assert.ok(Math.abs(visibleTicks[index].y - visibleTicks[index - 1].y) >= 13);
   }
+});
+
+test("dense thunderstorm SPECI buckets prioritize ceilings and convection without overlap or data loss", () => {
+  const model = denseThunderstormMeteogramFixture();
+  const settings = { timeMode: "Z", temperatureUnit: "C", windUnit: "KT" };
+  const viewportWidth = 390;
+  const labelLayout = meteogramRowLabelLayout(settings, viewportWidth, { hasForecast: false, compact: true });
+  const dimensions = meteogramDimensions(model.timeline, viewportWidth, { labelWidth: labelLayout.width });
+  const cloudScale = meteogramCloudScaleDefinition(model.timeline);
+  const targetIndexes = DENSE_THUNDERSTORM_TARGET_TIMES.map((timeZ) => (
+    model.timeline.findIndex(({ observedZ }) => observedZ === timeZ)
+  ));
+  assert.ok(targetIndexes.every((index) => index > 0 && index < model.timeline.length - 1));
+
+  const expectedVisible = [
+    ["SCT030CB", "BKN050", "OVC100"],
+    ["BKN030CB", "OVC085"],
+    ["SCT055", "BKN085", "OVC095"],
+  ];
+  const expectedModes = ["COMPACT", "MINIMAL", "COMPACT"];
+  const expectedCollapsed = [0, 2, 0];
+  const doesNotIntersect = (left, right) => (
+    left.bottom <= right.top || left.top >= right.bottom || left.right <= right.left || left.left >= right.right
+  );
+  const layoutBoxes = (layout) => [
+    ...layout.layerLayout.flatMap((entry) => entry.visible ? [{
+      left: entry.labelX - entry.tagWidth / 2,
+      right: entry.labelX + entry.tagWidth / 2,
+      top: entry.labelY - 7,
+      bottom: entry.labelY + 7,
+    }] : []),
+    ...(layout.summary ? [layout.summary.box] : []),
+  ];
+
+  targetIndexes.forEach((timelineIndex, targetIndex) => {
+    const point = model.timeline[timelineIndex];
+    const bounds = dimensions.cellBounds[timelineIndex];
+    const layers = point.clouds.layers.map((layer) => ({ ...layer, ceilingFt: point.clouds.ceilingFt }));
+    const layout = meteogramCloudBucketLayout(layers, cloudScale.maximumFt, {
+      columnX: dimensions.xPositions[timelineIndex],
+      plotLeft: bounds.left,
+      plotRight: bounds.right,
+    });
+    const visibleTokens = layout.visibleIndexes.map((index) => layers[index].raw);
+    assert.equal(layout.mode, expectedModes[targetIndex], `${point.observedZ} selects its rendering mode from real proportional width`);
+    assert.deepEqual(visibleTokens, expectedVisible[targetIndex], `${point.observedZ} retains ceiling/convection before secondary layers`);
+    assert.equal(layout.collapsedCount, expectedCollapsed[targetIndex]);
+    assert.equal(layout.summary?.text || null, expectedCollapsed[targetIndex] ? `+${expectedCollapsed[targetIndex]}` : null);
+    const ceilingIndex = layers.findIndex((layer) => layer.raw === expectedVisible[targetIndex].find((token) => (
+      ["BKN", "OVC", "VV"].includes(token.slice(0, 3)) && Number(token.slice(3, 6)) * 100 === point.clouds.ceilingFt
+    )));
+    assert.ok(layout.layerLayout[ceilingIndex]?.visible, `${point.observedZ} never collapses the actual ceiling`);
+    if (layers.some(({ convective }) => convective === "CB" || convective === "TCU")) {
+      const convectiveIndex = layers.findIndex(({ convective }) => convective === "CB" || convective === "TCU");
+      assert.ok(layout.layerLayout[convectiveIndex]?.visible, `${point.observedZ} keeps explicit convective morphology identifiable`);
+    }
+    layout.layerLayout.forEach((entry, layerIndex) => {
+      if (!entry.visible) return;
+      assert.equal(entry.baseY, meteogramCloudBaseY(layers[layerIndex].heightFt, cloudScale.maximumFt));
+      assert.equal(entry.leaderTargetY, entry.baseY, "any displaced label leader still terminates at the exact reported base");
+    });
+    const boxes = layoutBoxes(layout);
+    boxes.forEach((box) => {
+      assert.ok(box.left >= bounds.left + 3.9 && box.right <= bounds.right - 3.9, "labels and +N remain inside their timestamp cell");
+      assert.ok(box.top >= 616 && box.bottom <= 836, "cloud text stays inside CLOUDS / CIG");
+    });
+    for (let left = 0; left < boxes.length; left += 1) {
+      for (let right = left + 1; right < boxes.length; right += 1) {
+        assert.ok(doesNotIntersect(boxes[left], boxes[right]), "deterministically packed cloud labels do not overlap");
+      }
+    }
+  });
+
+  const firstDenseX = dimensions.xPositions[targetIndexes[0]];
+  const secondDenseX = dimensions.xPositions[targetIndexes[1]];
+  const thirdDenseX = dimensions.xPositions[targetIndexes[2]];
+  assert.ok(Math.abs((secondDenseX - firstDenseX) / (thirdDenseX - secondDenseX) - 17 / 19) < 0.001, "2152Z, 2209Z, and 2228Z retain proportional rather than equal X spacing");
+
+  const svg = buildMeteogramSvgMarkup(model, settings, { viewportWidth, labelLayout });
+  const numberAttribute = (markup, name) => Number(markup.match(new RegExp(`${name}="(-?[\\d.]+)"`))?.[1]);
+  const textOpenings = [...svg.matchAll(/<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text[^>]*>/g)];
+  const textSegments = new Map(textOpenings.map((match, openingIndex) => {
+    const index = numberAttribute(match[0], "data-cloud-bucket-index");
+    const end = textOpenings[openingIndex + 1]?.index ?? svg.indexOf('<g class="aviation-meteogram-cloud-row aviation-meteogram-cloud-detail-row"');
+    return [index, { tag: match[0], body: svg.slice(match.index, end) }];
+  }));
+  const rectFrom = (markup) => {
+    const match = markup.match(/<rect[^>]*x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*\/>/);
+    return match ? {
+      left: Number(match[1]),
+      top: Number(match[2]),
+      right: Number(match[1]) + Number(match[3]),
+      bottom: Number(match[2]) + Number(match[4]),
+    } : null;
+  };
+  const renderedBoxesByIndex = new Map();
+  targetIndexes.forEach((timelineIndex, targetIndex) => {
+    const segment = textSegments.get(timelineIndex);
+    const bounds = dimensions.cellBounds[timelineIndex];
+    assert.ok(segment, `rendered cloud text cell ${timelineIndex} exists`);
+    assert.match(segment.tag, new RegExp(`data-cloud-density-mode="${expectedModes[targetIndex]}"`));
+    assert.match(segment.tag, new RegExp(`data-cloud-time-z="${DENSE_THUNDERSTORM_TARGET_TIMES[targetIndex].replaceAll(".", "\\.")}"`));
+    assert.match(segment.tag, /clip-path="url\(#aviationMeteogramCloudBucket\d+Clip\)"/);
+    for (const token of expectedVisible[targetIndex]) assert.match(segment.body, new RegExp(`data-cloud-label="${token}"`));
+    if (expectedCollapsed[targetIndex]) assert.match(segment.body, new RegExp(`data-cloud-summary="\\+${expectedCollapsed[targetIndex]}"`));
+    else assert.doesNotMatch(segment.body, /data-cloud-summary=/);
+    const point = model.timeline[timelineIndex];
+    assert.match(segment.body, new RegExp(`data-ceiling-ft="${point.clouds.ceilingFt}"`));
+    assert.match(segment.body, new RegExp(`data-ceiling-label="CIG ${point.clouds.ceilingFt.toLocaleString("en-US")} FT"`));
+
+    const boxes = [];
+    for (const match of segment.body.matchAll(/<rect class="aviation-meteogram-cloud-layer-label-tag[^>]*\/>/g)) boxes.push(rectFrom(match[0]));
+    const summaryGroup = segment.body.match(/<g class="aviation-meteogram-cloud-layer-summary"[\s\S]*?<\/g>/)?.[0];
+    const ceilingGroup = segment.body.match(/<g class="aviation-meteogram-ceiling-summary[^"]*"[\s\S]*?<\/g>/)?.[0];
+    if (summaryGroup) boxes.push(rectFrom(summaryGroup));
+    if (ceilingGroup) boxes.push(rectFrom(ceilingGroup));
+    assert.ok(boxes.every(Boolean));
+    boxes.forEach((box) => {
+      assert.ok(box.left >= bounds.left - 0.11 && box.right <= bounds.right + 0.11, "rendered tags respect hard bucket boundaries");
+      assert.ok(box.top >= 616 && box.bottom <= 836, "rendered tags respect the CLOUDS / CIG row boundary");
+    });
+    for (let left = 0; left < boxes.length; left += 1) {
+      for (let right = left + 1; right < boxes.length; right += 1) {
+        assert.ok(doesNotIntersect(boxes[left], boxes[right]), "rendered labels, +N, and CIG tag do not collide");
+      }
+    }
+    renderedBoxesByIndex.set(timelineIndex, boxes);
+  });
+
+  const lightningByBucket = new Map();
+  for (const match of svg.matchAll(/<path class="aviation-meteogram-atmosphere-lightning"[^>]*\/>/g)) {
+    const bucketStart = svg.lastIndexOf('<g class="aviation-meteogram-cloud-bucket-art"', match.index);
+    const bucketTag = svg.slice(bucketStart, svg.indexOf(">", bucketStart) + 1);
+    const timelineIndex = numberAttribute(bucketTag, "data-cloud-bucket-index");
+    const box = {
+      left: dimensions.xPositions[timelineIndex] + numberAttribute(match[0], "data-lightning-left"),
+      right: dimensions.xPositions[timelineIndex] + numberAttribute(match[0], "data-lightning-right"),
+      top: numberAttribute(match[0], "data-lightning-start-y"),
+      bottom: numberAttribute(match[0], "data-lightning-tip-y"),
+    };
+    const existing = lightningByBucket.get(timelineIndex) || [];
+    existing.push(box);
+    lightningByBucket.set(timelineIndex, existing);
+  }
+  assert.equal([...lightningByBucket.values()].flat().length, 3, "the three thunder-coded buckets render one restrained marker each");
+  targetIndexes.forEach((timelineIndex) => {
+    const bolts = lightningByBucket.get(timelineIndex) || [];
+    assert.equal(bolts.length, 1, "a timestamp bucket never receives multiple lightning markers");
+    const bounds = dimensions.cellBounds[timelineIndex];
+    assert.ok(bolts[0].left >= bounds.left && bolts[0].right <= bounds.right, "the compact thunder marker stays inside its time cell");
+    assert.ok(bolts[0].top >= 616 && bolts[0].bottom <= 812, "the compact thunder marker stays above the protected CIG tag and adjacent rows");
+    for (const obstacle of renderedBoxesByIndex.get(timelineIndex)) {
+      assert.ok(doesNotIntersect(bolts[0], obstacle), "the thunder marker does not cover a layer, +N, or CIG label");
+    }
+  });
+
+  const markerCount = model.timeline.reduce((count, point) => count + point.clouds.layers.length, 0);
+  assert.equal((svg.match(/data-cloud-base-marker=/g) || []).length, markerCount, "every source layer retains its exact base marker even when its text/art collapses");
+  targetIndexes.forEach((timelineIndex) => {
+    const detailStart = svg.indexOf(`<g class="aviation-meteogram-cloud-detail-sample" data-cloud-detail-sample="${timelineIndex}"`);
+    const detailTag = svg.slice(detailStart, svg.indexOf(">", detailStart) + 1);
+    assert.ok(detailStart >= 0);
+    for (const { raw } of model.timeline[timelineIndex].clouds.layers) assert.match(detailTag, new RegExp(raw), `${raw} remains available to hover, focus, and tap`);
+    for (const code of model.timeline[timelineIndex].weatherCodes) assert.match(detailTag, new RegExp(code));
+    assert.match(detailTag, new RegExp(`VIS: ${model.timeline[timelineIndex].visibilityDisplay}`));
+    assert.match(detailTag, /tabindex="0" role="img"/);
+  });
+  const table = buildMeteogramAccessibleTableMarkup(model, settings);
+  for (const point of model.timeline) for (const { raw } of point.clouds.layers) assert.match(table, new RegExp(raw));
+  assert.match(meteogramJs, /scroller\.addEventListener\("pointerover"[\s\S]*showCloudTooltip/);
+  assert.match(meteogramJs, /scroller\.addEventListener\("focusin"[\s\S]*showCloudTooltip/);
+  assert.match(meteogramJs, /scroller\.addEventListener\("click"[\s\S]*showCloudTooltip\(cloudSample, \{ pin: true \}\)/);
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-detail-hit\{[\s\S]*pointer-events:all/);
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-tooltip\{[\s\S]*max-height:min\(320px,calc\(100dvh - 32px\)\)[\s\S]*overflow-y:auto/);
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-tooltip\.is-pinned\{[\s\S]*pointer-events:auto/, "a mobile tap pins a scrollable detail surface instead of silently clipping its tail");
+  assert.match(meteogramJs, /tooltip\.classList\?\.toggle\("is-pinned", pin\)/);
+  assert.match(meteogramJs, /id="aviationMeteogramCloudTooltip"[^>]*tabindex="0"/, "the pinned detail surface can receive keyboard focus for overflow scrolling");
+  assert.match(meteogramJs, /\["Enter", " "\]\.includes\(event\.key\)[\s\S]*showCloudTooltip\(cloudSample, \{ pin: true \}\)/, "Enter or Space pins complete cloud detail");
+  assert.match(meteogramJs, /\["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"\][\s\S]*cloudTooltip\.scrollTop/, "keyboard users can scroll a pinned overflowing detail surface without leaving its time bucket");
+  assert.match(meteogramJs, /returnTarget\?\.focus\?\.\(\{ preventScroll: true \}\)/, "Escape restores focus to the originating time bucket");
+  assert.match(meteogramCss, /\.aviation-meteogram-cloud-tooltip:focus-visible\{[\s\S]*outline:/);
+
+  for (const responsiveWidth of [390, 414, 844, 1024, 1280, 1366, 1920]) {
+    const responsiveLabels = meteogramRowLabelLayout(settings, responsiveWidth, { hasForecast: false, compact: responsiveWidth <= 768 });
+    const responsiveDimensions = meteogramDimensions(model.timeline, responsiveWidth, { labelWidth: responsiveLabels.width });
+    const responsiveSvg = buildMeteogramSvgMarkup(model, settings, { viewportWidth: responsiveWidth, labelLayout: responsiveLabels });
+    assert.ok(responsiveDimensions.width >= responsiveWidth && Number.isFinite(responsiveDimensions.width));
+    assert.equal((responsiveSvg.match(/data-cloud-base-marker=/g) || []).length, markerCount, `${responsiveWidth}px retains every exact source base`);
+    assert.equal((responsiveSvg.match(/data-weather-lightning="reported-thunder"/g) || []).length, 3, `${responsiveWidth}px retains one marker for each thunder-coded bucket`);
+    assert.doesNotMatch(responsiveSvg, /NaN|Infinity/);
+  }
+});
+
+test("asymmetric five-minute SPECI cells shrink cloud and thunder art around the exact timestamp", () => {
+  const cloud = (raw, ceilingFt = null) => {
+    const match = raw.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
+    const item = { cover: match[1], heightFt: Number(match[2]) * 100, convective: match[3] || "", raw };
+    return { layers: [item], clear: false, cavok: false, ceilingFt, display: raw };
+  };
+  const timeline = [
+    manualMeteogramPoint({ observedZ: "2026-09-11T20:00:00.000Z", clouds: cloud("BKN060", 6000) }),
+    manualMeteogramPoint({
+      observedZ: "2026-09-11T21:00:00.000Z",
+      reportType: "SPECI",
+      clouds: cloud("BKN030CB", 3000),
+      weatherCodes: ["TSRA"],
+      weather: { icon: "⚡", label: "THUNDERSTORM RAIN" },
+    }),
+    manualMeteogramPoint({ observedZ: "2026-09-11T21:05:00.000Z", reportType: "SPECI", clouds: cloud("SCT040") }),
+  ];
+  const model = manualMeteogramModel(timeline);
+  const settings = { timeMode: "Z", temperatureUnit: "C", windUnit: "KT" };
+  const viewportWidth = 390;
+  const labelLayout = meteogramRowLabelLayout(settings, viewportWidth, { hasForecast: false, compact: true });
+  const dimensions = meteogramDimensions(timeline, viewportWidth, { labelWidth: labelLayout.width });
+  const svg = buildMeteogramSvgMarkup(model, settings, { viewportWidth, labelLayout });
+  const bounds = dimensions.cellBounds[1];
+  const exactX = dimensions.xPositions[1];
+  const symmetricRoom = Math.min(exactX - bounds.left, bounds.right - exactX) * 2;
+  const bucketTag = svg.match(/<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="1"[^>]*>/)?.[0] || "";
+  const numberAttribute = (markup, name) => Number(markup.match(new RegExp(`${name}="(-?[\\d.]+)"`))?.[1]);
+  assert.ok(bucketTag);
+  assert.ok(numberAttribute(bucketTag, "data-cloud-art-available-width") <= symmetricRoom + 0.11, "decorative art is sized to the narrow half of an asymmetric cell");
+  assert.match(bucketTag, /clip-path="url\(#aviationMeteogramCloudBucket1Clip\)"/);
+  const bucketStart = svg.indexOf(bucketTag);
+  const bucketEnd = svg.indexOf('<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="2"', bucketStart);
+  const bucketBody = svg.slice(bucketStart, bucketEnd);
+  const bolt = bucketBody.match(/<path class="aviation-meteogram-atmosphere-lightning"[^>]*\/>/)?.[0] || "";
+  assert.ok(bolt, "the five-minute cell still has room for one restrained thunder marker");
+  assert.equal((bucketBody.match(/data-weather-lightning="reported-thunder"/g) || []).length, 1);
+  const boltLeft = exactX + numberAttribute(bolt, "data-lightning-left");
+  const boltRight = exactX + numberAttribute(bolt, "data-lightning-right");
+  assert.ok(boltLeft >= bounds.left - 0.11 && boltRight <= bounds.right + 0.11, "the bolt cannot be clipped into the next SPECI cell");
+  assert.match(svg, /data-cloud-bucket-index="1"[^>]*data-cloud-time-z="2026-09-11T21:00:00.000Z"/);
+  assert.match(svg, /data-cloud-label="BKN030CB"/);
+  assert.match(svg, /data-ceiling-label="CIG 3,000 FT" data-ceiling-ft="3000"/);
+  assert.match(svg, /data-weather-category="thunder"/);
+
+  const vicinityTimeline = [
+    timeline[0],
+    manualMeteogramPoint({
+      observedZ: "2026-09-11T21:00:00.000Z",
+      reportType: "SPECI",
+      clouds: { layers: [], clear: false, cavok: false, ceilingFt: null, display: "—" },
+      weatherCodes: ["VCTS"],
+      weather: { icon: "⚡", label: "THUNDERSTORM IN THE VICINITY" },
+    }),
+    timeline[2],
+  ];
+  const vicinitySvg = buildMeteogramSvgMarkup(manualMeteogramModel(vicinityTimeline), settings, { viewportWidth, labelLayout });
+  const vicinityBucketStart = vicinitySvg.indexOf('<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="1"');
+  const vicinityBucketEnd = vicinitySvg.indexOf('<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="2"', vicinityBucketStart);
+  const vicinityBolt = vicinitySvg.slice(vicinityBucketStart, vicinityBucketEnd)
+    .match(/<path class="aviation-meteogram-atmosphere-lightning"[^>]*\/>/)?.[0] || "";
+  assert.ok(vicinityBolt, "VCTS retains one compact vicinity-thunder marker without fabricating a CB layer");
+  assert.ok(exactX + numberAttribute(vicinityBolt, "data-lightning-left") >= bounds.left - 0.11);
+  assert.ok(exactX + numberAttribute(vicinityBolt, "data-lightning-right") <= bounds.right + 0.11, "a right-shifted VCTS marker clamps back inside an asymmetric cell even with no label obstacle");
+  assert.doesNotMatch(vicinitySvg.slice(vicinityBucketStart, vicinityBucketEnd), /data-cloud-development="CB"/);
+});
+
+test("three consecutive five-minute SPECI buckets retain ceiling, convection, and compact detail", () => {
+  const layers = [
+    { cover: "FEW", heightFt: 1700, raw: "FEW017" },
+    { cover: "SCT", heightFt: 3000, convective: "CB", raw: "SCT030CB" },
+    { cover: "BKN", heightFt: 5000, raw: "BKN050" },
+    { cover: "OVC", heightFt: 10000, raw: "OVC100" },
+  ];
+  const timeline = ["20:55", "21:00", "21:05"].map((clock) => manualMeteogramPoint({
+    observedZ: `2026-09-11T${clock}:00.000Z`,
+    reportType: "SPECI",
+    clouds: { layers, clear: false, cavok: false, ceilingFt: 5000, display: "FEW017 · SCT030CB · BKN050 · OVC100" },
+    weatherCodes: ["TSRA"],
+    visibilitySm: 2.5,
+    visibilityDisplay: "2 1/2 SM",
+    weather: { icon: "⚡", label: "THUNDERSTORM RAIN" },
+  }));
+  for (const viewportWidth of [320, 390]) {
+    const settings = { timeMode: "Z", temperatureUnit: "C", windUnit: "KT" };
+    const labelLayout = meteogramRowLabelLayout(settings, viewportWidth, { hasForecast: false, compact: true });
+    const dimensions = meteogramDimensions(timeline, viewportWidth, { labelWidth: labelLayout.width });
+    const middleBounds = dimensions.cellBounds[1];
+    assert.ok(middleBounds.right - middleBounds.left >= 26 && middleBounds.right - middleBounds.left < 28, `${viewportWidth}px provides a bounded readable cell for a true five-minute interval`);
+    const prioritizedLayers = layers.map((layer) => ({ ...layer, ceilingFt: 5000 }));
+    const layout = meteogramCloudBucketLayout(prioritizedLayers, 10000, {
+      columnX: dimensions.xPositions[1],
+      plotLeft: middleBounds.left,
+      plotRight: middleBounds.right,
+    });
+    assert.equal(layout.mode, "MINIMAL");
+    assert.deepEqual(layout.visibleIndexes.map((index) => layers[index].raw), ["SCT030CB", "BKN050"], "the compact cell retains the CB and the actual ceiling before FEW/upper OVC");
+    assert.equal(layout.collapsedCount, 2);
+    assert.equal(layout.summary?.text, "+2");
+    const svg = buildMeteogramSvgMarkup(manualMeteogramModel(timeline), settings, { viewportWidth, labelLayout });
+    const start = svg.indexOf('<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text" data-cloud-bucket-index="1"');
+    const end = svg.indexOf('<g class="aviation-meteogram-cloud aviation-meteogram-cloud-text" data-cloud-bucket-index="2"', start);
+    const textBucket = svg.slice(start, end);
+    assert.match(textBucket, /data-cloud-label="SCT030CB"/);
+    assert.match(textBucket, /data-cloud-label="BKN050"/);
+    assert.match(textBucket, /data-cloud-summary="\+2"/);
+    assert.match(textBucket, /data-ceiling-label="CIG 5,000 FT" data-ceiling-ft="5000"/);
+    const artStart = svg.indexOf('<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="1"');
+    const artEnd = svg.indexOf('<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="2"', artStart);
+    const artBucket = svg.slice(artStart, artEnd);
+    assert.equal((artBucket.match(/data-weather-lightning="reported-thunder"/g) || []).length, 1);
+    assert.equal((artBucket.match(/data-cloud-development="CB"/g) || []).length >= 1, true);
+    const detailStart = svg.indexOf('<g class="aviation-meteogram-cloud-detail-sample" data-cloud-detail-sample="1"');
+    const detailTag = svg.slice(detailStart, svg.indexOf(">", detailStart) + 1);
+    for (const layer of layers) assert.match(detailTag, new RegExp(layer.raw));
+    assert.match(detailTag, /WEATHER: TSRA/);
+    assert.match(detailTag, /VIS: 2 1\/2 SM/);
+  }
+});
+
+test("cloud compaction reserves a visible +N summary when full-detail label packing runs out of lanes", () => {
+  const layers = [
+    { cover: "FEW", heightFt: 5000, raw: "FEW050", ceilingFt: 7800 },
+    { cover: "SCT", heightFt: 3300, raw: "SCT033", ceilingFt: 7800 },
+    { cover: "BKN", heightFt: 9400, raw: "BKN094", ceilingFt: 7800 },
+    { cover: "OVC", heightFt: 7800, raw: "OVC078", ceilingFt: 7800 },
+    { cover: "FEW", heightFt: 3100, raw: "FEW031", ceilingFt: 7800 },
+    { cover: "SCT", heightFt: 1400, raw: "SCT014", ceilingFt: 7800 },
+  ];
+  const layout = meteogramCloudBucketLayout(layers, 10000, {
+    columnX: 300,
+    plotLeft: 244,
+    plotRight: 356,
+  });
+  assert.equal(layout.mode, "FULL");
+  assert.ok(layout.collapsedCount > 0, "lane exhaustion collapses lower-priority labels instead of overlapping them");
+  assert.ok(layout.summary, "every collapsed layer count receives an explicit +N tag");
+  assert.equal(layout.summary.text, `+${layout.collapsedCount} LAYERS`);
+  assert.ok(layout.layerLayout[3].visible, "the actual OVC ceiling remains visible while lower-priority labels collapse");
+  assert.equal(layout.totalCollapsedCount, layout.collapsedCount);
+});
+
+test("missing cloud bases remain unknown in compact detail and never become zero-foot layers", () => {
+  for (const missingBase of [null, "", Number.NaN]) {
+    const point = manualMeteogramPoint({
+      clouds: {
+        layers: [{ cover: "BKN", heightFt: missingBase, raw: "" }],
+        clear: false,
+        cavok: false,
+        ceilingFt: null,
+        display: "BKN///",
+      },
+    });
+    const svg = buildMeteogramSvgMarkup(manualMeteogramModel([point]), { timeMode: "Z" }, { viewportWidth: 390 });
+    assert.match(svg, /BKN\/\/\/ — BASE UNKNOWN/);
+    assert.match(svg, /data-ceiling-label="CIG UNKNOWN"/);
+    assert.match(svg, /data-cloud-collapsed-count="0"/);
+    assert.match(svg, /data-cloud-token="BKN\/\/\/" data-cloud-base="UNKNOWN"/);
+    assert.match(svg, /data-cloud-label="BKN\/\/\/" data-cloud-base="UNKNOWN"/);
+    assert.doesNotMatch(svg, /BKN000|data-base-ft="0"/);
+  }
+  for (const missingBase of [null, "", Number.NaN]) {
+    const lightning = meteogramLightningGeometry({
+      clouds: { layers: [{ cover: "BKN", heightFt: missingBase, convective: "CB", raw: "BKN///CB" }] },
+      weatherCodes: ["TSRA"],
+    });
+    assert.equal(lightning.anchor, "generic-atmosphere", "unknown CB base cannot become a fabricated zero-foot lightning anchor");
+    assert.equal(lightning.baseFt, null);
+    assert.equal(lightning.baseY, null);
+  }
+});
+
+test("unknown-base ceiling and convection outrank secondary layers in a four-minute SPECI cell", () => {
+  const layers = [
+    { cover: "FEW", heightFt: 5000, raw: "FEW050" },
+    { cover: "SCT", heightFt: 3000, raw: "SCT030" },
+    { cover: "BKN", heightFt: null, convective: "CB", raw: "BKN///CB" },
+    { cover: "OVC", heightFt: 8500, ceilingFt: 8500, raw: "OVC085" },
+  ];
+  const layout = meteogramCloudBucketLayout(layers, 10000, {
+    columnX: 210.665,
+    plotLeft: 200,
+    plotRight: 221.33,
+  });
+  assert.equal(layout.mode, "MINIMAL");
+  assert.equal(layout.layerLayout[3].visible, true, "the exact reported ceiling remains first priority");
+  assert.equal(layout.layerLayout[2].visible, true, "unknown-base CB remains identifiable in the second available lane");
+  assert.equal(layout.layerLayout[2].unknownBase, true);
+  assert.equal(layout.layerLayout[0].visible, false, "FEW yields before operationally significant layers");
+  assert.equal(layout.layerLayout[1].visible, false, "SCT yields before operationally significant layers");
+  assert.equal(layout.summary?.text, "+2", "the two collapsed secondary layers remain disclosed");
+
+  const competingConvection = meteogramCloudBucketLayout([
+    { cover: "OVC", heightFt: 8500, ceilingFt: 8500, raw: "OVC085" },
+    { cover: "BKN", heightFt: null, convective: "TCU", raw: "BKN///TCU" },
+    { cover: "BKN", heightFt: null, convective: "CB", raw: "BKN///CB" },
+  ], 10000, {
+    columnX: 230,
+    plotLeft: 200,
+    plotRight: 260,
+  });
+  assert.equal(competingConvection.layerLayout[0].visible, true, "the exact ceiling remains first");
+  assert.equal(competingConvection.layerLayout[2].visible, true, "CB outranks TCU when only one convective lane remains");
+  assert.equal(competingConvection.layerLayout[1].visible, false, "TCU collapses before CB at equal unknown-base semantics");
+  assert.equal(competingConvection.summary?.text, "+1");
+
+  const unknownCeilingFirst = meteogramCloudBucketLayout([
+    { cover: "OVC", heightFt: 8500, ceilingFt: 8500, raw: "OVC085" },
+    { cover: "BKN", heightFt: null, raw: "BKN///" },
+    { cover: "SCT", heightFt: 3000, convective: "CB", raw: "SCT030CB" },
+  ], 10000, {
+    columnX: 210.665,
+    plotLeft: 200,
+    plotRight: 221.33,
+  });
+  assert.equal(unknownCeilingFirst.layerLayout[0].visible, true, "the exact ceiling remains first");
+  assert.equal(unknownCeilingFirst.layerLayout[1].visible, true, "CIG UNKNOWN remains higher priority than a non-ceiling convective layer");
+  assert.equal(unknownCeilingFirst.layerLayout[2].visible, false);
+
+  const tiedCeilings = meteogramCloudBucketLayout([
+    { cover: "BKN", heightFt: 3000, ceilingFt: 3000, raw: "BKN030" },
+    { cover: "OVC", heightFt: 3000, ceilingFt: 3000, convective: "TCU", raw: "OVC030TCU" },
+    { cover: "BKN", heightFt: 3000, ceilingFt: 3000, convective: "CB", raw: "BKN030CB" },
+  ], 10000, {
+    columnX: 230,
+    plotLeft: 200,
+    plotRight: 260,
+  });
+  assert.equal(tiedCeilings.layerLayout[2].visible, true, "CB wins a same-base ceiling tie");
+  assert.equal(tiedCeilings.layerLayout[1].visible, true, "TCU wins the remaining same-base ceiling lane");
+  assert.equal(tiedCeilings.layerLayout[0].visible, false);
 });
 
 test("required multilayer and high-cloud replays keep tokens, markers, artwork, and CIG on exact bases", () => {
