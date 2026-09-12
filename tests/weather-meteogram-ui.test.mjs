@@ -2372,16 +2372,17 @@ test("cloud morphology, convective development, and weather overlays remain sema
   const convectiveScale = meteogramCloudScaleDefinition(convective).maximumFt;
   const expectedCbBaseY = meteogramCloudBaseY(3000, convectiveScale);
   const lightning = meteogramLightningGeometry(convective[2], convectiveScale);
-  assert.equal(lightning.anchor, "reported-cb-base");
-  assert.equal(lightning.placement, "below-cloud-base-label");
+  assert.equal(lightning.anchor, "reported-convective-base");
+  assert.equal(lightning.anchorToken, "BKN030CB");
+  assert.equal(lightning.placement, "emanates-from-base");
   assert.equal(lightning.baseFt, 3000);
   assert.equal(lightning.baseY, expectedCbBaseY, "lightning uses the exact reported CB base geometry");
-  assert.ok(lightning.startY > lightning.baseY, "the recognizable bolt begins beneath the exact cloud-base label");
-  assert.ok(lightning.startY - lightning.baseY >= 9, "the bolt clears the opaque base-label tag instead of hiding behind it");
-  assert.ok(lightning.tipY <= 818, "lightning remains above the protected CIG summary area");
+  assert.equal(lightning.startY, lightning.baseY, "the bolt begins on, rather than floating away from, the reported cloud base");
+  assert.equal(lightning.tipY, lightning.baseY + 13);
   const convectiveLightningPath = convectiveSvg.match(/<path class="aviation-meteogram-atmosphere-lightning"[^>]*\/>/)?.[0] || "";
-  assert.match(convectiveLightningPath, /data-lightning-anchor="reported-cb-base"/);
-  assert.match(convectiveLightningPath, /data-lightning-placement="below-cloud-(?:base-label|labels)"/);
+  assert.match(convectiveLightningPath, /data-lightning-anchor="reported-convective-base"/);
+  assert.match(convectiveLightningPath, /data-lightning-anchor-token="BKN030CB"/);
+  assert.match(convectiveLightningPath, /data-lightning-placement="emanates-from-base"/);
   assert.match(convectiveLightningPath, new RegExp(`data-lightning-start-y="${lightning.startY.toFixed(1).replace(".", "\\.")}"`));
   assert.match(convectiveLightningPath, new RegExp(`data-lightning-tip-y="${lightning.tipY.toFixed(1).replace(".", "\\.")}"`));
   assert.match(convectiveLightningPath, /data-lightning-base-ft="3000"/);
@@ -2390,8 +2391,8 @@ test("cloud morphology, convective development, and weather overlays remain sema
   assert.doesNotMatch(buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("SCT025TCU")]), { timeMode: "Z" }), /data-weather-lightning=/, "TCU alone never fabricates lightning");
   assert.doesNotMatch(buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("BKN030CB")]), { timeMode: "Z" }), /data-weather-lightning=/, "CB alone never fabricates lightning");
   const genericThunderSvg = buildMeteogramSvgMarkup(manualMeteogramModel([cloudPoint("BKN030", ["TSRA"])]), { timeMode: "Z" });
-  assert.match(genericThunderSvg, /data-lightning-anchor="generic-atmosphere"/);
-  assert.doesNotMatch(genericThunderSvg, /data-lightning-base-(?:ft|y)=/, "thunder without explicit CB does not fabricate a cloud-base association");
+  assert.match(genericThunderSvg, /data-lightning-anchor="reported-cloud-base"/);
+  assert.match(genericThunderSvg, /data-lightning-base-ft="3000"/, "thunder without an explicit convective layer falls back to the lowest reported cloud base");
   const lightningIndex = convectiveSvg.indexOf("data-weather-lightning=\"reported-thunder\"");
   const cbMarkerIndex = convectiveSvg.indexOf("data-cloud-base-marker=\"BKN030CB\"");
   const cbLabelIndex = convectiveSvg.indexOf("data-cloud-label=\"BKN030CB\"");
@@ -2424,6 +2425,60 @@ test("cloud morphology, convective development, and weather overlays remain sema
   }
   const accessible = buildMeteogramAccessibleTableMarkup(manualMeteogramModel([cloudPoint("BKN030CB", ["TSRA"])]), { timeMode: "Z" });
   assert.match(accessible, /BROKEN CLOUD BASE 3,000 FT AGL · CUMULONIMBUS REPORTED · CLOUD TOP NOT REPORTED/);
+});
+
+test("one thunder marker starts at the lowest applicable convective or reported cloud base", () => {
+  const clouds = {
+    layers: [
+      { cover: "SCT", heightFt: 3000, convective: "CB", raw: "SCT030CB" },
+      { cover: "FEW", heightFt: 1800, convective: "TCU", raw: "FEW018TCU" },
+      { cover: "BKN", heightFt: 5000, convective: "", raw: "BKN050" },
+    ],
+    clear: false,
+    cavok: false,
+    ceilingFt: 5000,
+    display: "SCT030CB · FEW018TCU · BKN050",
+  };
+  const storm = manualMeteogramPoint({ clouds, weatherCodes: ["TS", "VCTS", "+TSRA"] });
+  const geometry = meteogramLightningGeometry(storm, 10000);
+  assert.equal(geometry.anchor, "reported-convective-base");
+  assert.equal(geometry.anchorToken, "FEW018TCU");
+  assert.equal(geometry.baseFt, 1800);
+  assert.equal(geometry.startY, meteogramCloudBaseY(1800, 10000));
+  assert.equal(geometry.tipY - geometry.startY, 13);
+  const denseLayout = meteogramCloudBucketLayout(clouds.layers.map((layer) => ({ ...layer, ceilingFt: 5000 })), 10000, {
+    columnX: 30,
+    plotLeft: 0,
+    plotRight: 60,
+  });
+  assert.deepEqual(denseLayout.visibleIndexes, [1, 2], "dense cells keep the lowest convective base alongside the ceiling-driving layer");
+  assert.equal(denseLayout.summary?.text, "+1");
+
+  const svg = buildMeteogramSvgMarkup(manualMeteogramModel([storm]), { timeMode: "Z" }, { viewportWidth: 390 });
+  assert.equal((svg.match(/data-weather-lightning="reported-thunder"/g) || []).length, 1, "multiple thunder codes still yield one bolt");
+  assert.match(svg, /data-lightning-anchor-token="FEW018TCU"/);
+  assert.match(svg, new RegExp(`data-lightning-start-y="${geometry.startY.toFixed(1).replace(".", "\\.")}"`));
+
+  const fallbackClouds = {
+    ...clouds,
+    layers: clouds.layers.map(({ convective: _convective, ...layer }) => ({ ...layer, raw: layer.raw.replace(/(?:CB|TCU)$/, "") })),
+  };
+  const fallback = meteogramLightningGeometry(manualMeteogramPoint({ clouds: fallbackClouds, weatherCodes: ["TSRA"] }), 10000);
+  assert.equal(fallback.anchor, "reported-cloud-base");
+  assert.equal(fallback.anchorToken, "FEW018");
+  assert.equal(fallback.baseFt, 1800);
+  assert.equal(fallback.startY, fallback.baseY);
+
+  const noBase = meteogramLightningGeometry(manualMeteogramPoint({
+    clouds: { layers: [{ cover: "BKN", heightFt: null, convective: "CB", raw: "BKN///CB" }], clear: false, cavok: false, ceilingFt: null, display: "BKN///CB" },
+    weatherCodes: ["VCTS"],
+  }), 10000);
+  assert.equal(noBase.anchor, "generic-atmosphere");
+  assert.equal(noBase.baseFt, null);
+  assert.equal(noBase.baseY, null);
+
+  const quietSvg = buildMeteogramSvgMarkup(manualMeteogramModel([manualMeteogramPoint({ clouds, weatherCodes: [] })]), { timeMode: "Z" });
+  assert.doesNotMatch(quietSvg, /data-weather-lightning=/, "CB and TCU without thunder never create lightning");
 });
 
 test("live PROB30 TSRA bolts remain compact and collision-free beside BKN050CB labels on the 25,000-foot cloud scale", () => {
@@ -2524,11 +2579,11 @@ test("live PROB30 TSRA bolts remain compact and collision-free beside BKN050CB l
     assert.match(bolt.phenomenonTag, /aviation-meteogram-atmosphere-conditional/);
     assert.match(bolt.phenomenonTag, /data-weather-code="-TSRA"/);
     assert.match(bolt.phenomenonTag, /data-weather-provenance="P30"/);
-    assert.equal(bolt.anchor, "reported-cb-base", `${label} remains tied to the reported CB layer`);
-    assert.match(bolt.placement, /^(?:below-cloud-(?:base-label|labels)|above-cloud-labels)$/, `${label} uses a collision-free lane adjacent to the reported convective layer`);
+    assert.equal(bolt.anchor, "reported-convective-base", `${label} remains tied to the reported CB layer`);
+    assert.equal(bolt.placement, "emanates-from-base", `${label} begins at the reported convective base while horizontal packing clears its label`);
     assert.equal(bolt.baseFt, 5000);
     assert.ok(Math.abs(bolt.baseY - expectedBaseY) < 0.11);
-    assert.ok(Math.min(Math.abs(bolt.top - bolt.baseY), Math.abs(bolt.bottom - bolt.baseY)) <= 30, `${label} remains a compact badge adjacent to the reported CB base`);
+    assert.ok(Math.abs(bolt.top - bolt.baseY) < 0.11, `${label} starts exactly on the reported CB base`);
     assert.ok(Number.isFinite(bolt.offsetX), `${label} exposes its collision-aware horizontal placement`);
     assert.equal(bolt.pathHeight, 13, `${label} uses the restrained thunder badge that fits above the CIG summary`);
 
@@ -2556,7 +2611,7 @@ test("live PROB30 TSRA bolts remain compact and collision-free beside BKN050CB l
   );
 });
 
-test("low-base CB and generic thunder bolts remain measurable, collision-free, and truthful at 10,000- and 25,000-foot scales", () => {
+test("low-base convective and reported-cloud fallback bolts remain measurable, connected, and truthful at 10,000- and 25,000-foot scales", () => {
   const layer = (raw) => {
     const match = raw.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
     assert.ok(match, `valid deterministic cloud token ${raw}`);
@@ -2649,24 +2704,20 @@ test("low-base CB and generic thunder bolts remain measurable, collision-free, a
     const lowCb = render({ raw: "BKN005CB", code: "TSRA", ...fixture });
     const label = `BKN005CB TSRA on ${fixture.expectedMaximumFt / 1000}K scale at ${fixture.viewportWidth}px`;
     assert.equal(lowCb.maximumFt, fixture.expectedMaximumFt);
-    assert.equal(lowCb.bolt.anchor, "reported-cb-base");
+    assert.equal(lowCb.bolt.anchor, "reported-convective-base");
     assert.equal(lowCb.bolt.baseFt, 500);
     assert.ok(Math.abs(lowCb.bolt.baseY - meteogramCloudBaseY(500, fixture.expectedMaximumFt)) < 0.11);
-    const baseDistance = Math.min(
-      Math.abs(lowCb.bolt.top - lowCb.bolt.baseY),
-      Math.abs(lowCb.bolt.bottom - lowCb.bolt.baseY),
-    );
-    assert.ok(baseDistance <= 30, `${label} remains visibly adjacent to the reported CB base without covering its label`);
+    assert.ok(Math.abs(lowCb.bolt.top - lowCb.bolt.baseY) < 0.11, `${label} visibly starts on the reported CB base`);
     assertVisible(lowCb, label);
 
     for (const code of ["TS", "VCTS"]) {
       const generic = render({ raw: "BKN030", code, ...fixture });
       const genericLabel = `BKN030 ${code} on ${fixture.expectedMaximumFt / 1000}K scale at ${fixture.viewportWidth}px`;
       assert.equal(generic.maximumFt, fixture.expectedMaximumFt);
-      assert.equal(generic.bolt.anchor, "generic-atmosphere", `${genericLabel} never invents a CB-base association`);
-      assert.equal(generic.bolt.baseFt, null);
-      assert.equal(generic.bolt.baseY, null);
-      assert.doesNotMatch(generic.path, /data-lightning-base-(?:ft|y)=/);
+      assert.equal(generic.bolt.anchor, "reported-cloud-base", `${genericLabel} uses the lowest reported layer when no CB/TCU base exists`);
+      assert.equal(generic.bolt.baseFt, 3000);
+      assert.ok(Math.abs(generic.bolt.baseY - meteogramCloudBaseY(3000, fixture.expectedMaximumFt)) < 0.11);
+      assert.ok(Math.abs(generic.bolt.top - generic.bolt.baseY) < 0.11);
       if (code === "VCTS") assert.match(generic.svg, /aviation-meteogram-atmosphere-vicinity/);
       assertVisible(generic, genericLabel);
     }
@@ -3103,12 +3154,12 @@ test("dense thunderstorm SPECI buckets prioritize ceilings and convection withou
   assert.ok(targetIndexes.every((index) => index > 0 && index < model.timeline.length - 1));
 
   const expectedVisible = [
-    ["SCT030CB", "BKN050", "OVC100"],
-    ["BKN030CB", "OVC085"],
-    ["SCT055", "BKN085", "OVC095"],
+    ["SCT030CB", "BKN050"],
+    ["BKN030CB"],
+    ["SCT055", "BKN085"],
   ];
   const expectedModes = ["COMPACT", "MINIMAL", "COMPACT"];
-  const expectedCollapsed = [0, 2, 0];
+  const expectedCollapsed = [1, 3, 1];
   const doesNotIntersect = (left, right) => (
     left.bottom <= right.top || left.top >= right.bottom || left.right <= right.left || left.left >= right.right
   );
@@ -3130,6 +3181,7 @@ test("dense thunderstorm SPECI buckets prioritize ceilings and convection withou
       columnX: dimensions.xPositions[timelineIndex],
       plotLeft: bounds.left,
       plotRight: bounds.right,
+      indicatorLayerToken: meteogramLightningGeometry(point, cloudScale.maximumFt).anchorToken || "",
     });
     const visibleTokens = layout.visibleIndexes.map((index) => layers[index].raw);
     assert.equal(layout.mode, expectedModes[targetIndex], `${point.observedZ} selects its rendering mode from real proportional width`);
@@ -3197,13 +3249,18 @@ test("dense thunderstorm SPECI buckets prioritize ceilings and convection withou
     const point = model.timeline[timelineIndex];
     assert.match(segment.body, new RegExp(`data-ceiling-ft="${point.clouds.ceilingFt}"`));
     assert.match(segment.body, new RegExp(`data-ceiling-label="CIG ${point.clouds.ceilingFt.toLocaleString("en-US")} FT"`));
+    assert.match(segment.body, new RegExp(`>${point.clouds.ceilingFt / 1000}K<`), "dense numeric ceiling repeats only its compact bottom value");
+    assert.doesNotMatch(segment.body, />CIG (?:\d|\?)/, "dense cells do not repeat a boxed CIG prefix");
 
     const boxes = [];
     for (const match of segment.body.matchAll(/<rect class="aviation-meteogram-cloud-layer-label-tag[^>]*\/>/g)) boxes.push(rectFrom(match[0]));
     const summaryGroup = segment.body.match(/<g class="aviation-meteogram-cloud-layer-summary"[\s\S]*?<\/g>/)?.[0];
     const ceilingGroup = segment.body.match(/<g class="aviation-meteogram-ceiling-summary[^"]*"[\s\S]*?<\/g>/)?.[0];
     if (summaryGroup) boxes.push(rectFrom(summaryGroup));
-    if (ceilingGroup) boxes.push(rectFrom(ceilingGroup));
+    const ceilingRect = ceilingGroup ? rectFrom(ceilingGroup) : null;
+    if (ceilingRect) boxes.push(ceilingRect);
+    assert.match(ceilingGroup || "", /data-ceiling-mode="VALUE"/);
+    assert.doesNotMatch(ceilingGroup || "", /<rect\b/, "dense ceiling values are unboxed");
     assert.ok(boxes.every(Boolean));
     boxes.forEach((box) => {
       assert.ok(box.left >= bounds.left - 0.11 && box.right <= bounds.right + 0.11, "rendered tags respect hard bucket boundaries");
@@ -3238,7 +3295,13 @@ test("dense thunderstorm SPECI buckets prioritize ceilings and convection withou
     assert.equal(bolts.length, 1, "a timestamp bucket never receives multiple lightning markers");
     const bounds = dimensions.cellBounds[timelineIndex];
     assert.ok(bolts[0].left >= bounds.left && bolts[0].right <= bounds.right, "the compact thunder marker stays inside its time cell");
-    assert.ok(bolts[0].top >= 616 && bolts[0].bottom <= 812, "the compact thunder marker stays above the protected CIG tag and adjacent rows");
+    const point = model.timeline[timelineIndex];
+    const convectiveBases = point.clouds.layers.filter(({ convective, heightFt }) => ["CB", "TCU"].includes(convective) && Number.isFinite(heightFt)).map(({ heightFt }) => heightFt);
+    const reportedBases = point.clouds.layers.filter(({ heightFt }) => Number.isFinite(heightFt)).map(({ heightFt }) => heightFt);
+    const expectedAnchorFt = Math.min(...(convectiveBases.length ? convectiveBases : reportedBases));
+    const expectedAnchorY = meteogramCloudBaseY(expectedAnchorFt, cloudScale.maximumFt);
+    assert.ok(Math.abs(bolts[0].top - expectedAnchorY) < 0.11, "the bolt visibly starts at the lowest applicable reported cloud base");
+    assert.ok(bolts[0].top >= 616 && bolts[0].bottom <= 836, "the compact thunder marker stays inside CLOUDS / CIG");
     for (const obstacle of renderedBoxesByIndex.get(timelineIndex)) {
       assert.ok(doesNotIntersect(bolts[0], obstacle), "the thunder marker does not cover a layer, +N, or CIG label");
     }
@@ -3277,6 +3340,24 @@ test("dense thunderstorm SPECI buckets prioritize ceilings and convection withou
     assert.ok(responsiveDimensions.width >= responsiveWidth && Number.isFinite(responsiveDimensions.width));
     assert.equal((responsiveSvg.match(/data-cloud-base-marker=/g) || []).length, markerCount, `${responsiveWidth}px retains every exact source base`);
     assert.equal((responsiveSvg.match(/data-weather-lightning="reported-thunder"/g) || []).length, 3, `${responsiveWidth}px retains one marker for each thunder-coded bucket`);
+    targetIndexes.forEach((timelineIndex) => {
+      const artStart = responsiveSvg.indexOf(`<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="${timelineIndex}"`);
+      const artEnd = responsiveSvg.indexOf(`<g class="aviation-meteogram-cloud-bucket-art" data-cloud-bucket-index="${timelineIndex + 1}"`, artStart);
+      const artBucket = responsiveSvg.slice(artStart, artEnd < 0 ? responsiveSvg.length : artEnd);
+      const bolt = artBucket.match(/<path class="aviation-meteogram-atmosphere-lightning"[^>]*\/>/)?.[0] || "";
+      assert.ok(bolt, `${responsiveWidth}px storm bucket ${timelineIndex} retains its compact thunder marker`);
+      const point = model.timeline[timelineIndex];
+      const convective = point.clouds.layers.filter(({ convective, heightFt }) => ["CB", "TCU"].includes(convective) && Number.isFinite(heightFt));
+      const applicable = convective.length ? convective : point.clouds.layers.filter(({ heightFt }) => Number.isFinite(heightFt));
+      const baseFt = Math.min(...applicable.map(({ heightFt }) => heightFt));
+      const baseY = meteogramCloudBaseY(baseFt, cloudScale.maximumFt);
+      assert.ok(Math.abs(numberAttribute(bolt, "data-lightning-start-y") - baseY) < 0.11, `${responsiveWidth}px bolt starts on its selected base`);
+      assert.ok(Math.abs(numberAttribute(bolt, "data-lightning-base-y") - baseY) < 0.11);
+      const bounds = responsiveDimensions.cellBounds[timelineIndex];
+      const timeX = responsiveDimensions.xPositions[timelineIndex];
+      assert.ok(timeX + numberAttribute(bolt, "data-lightning-left") >= bounds.left - 0.11);
+      assert.ok(timeX + numberAttribute(bolt, "data-lightning-right") <= bounds.right + 0.11, `${responsiveWidth}px bolt stays inside the right cell edge`);
+    });
     assert.doesNotMatch(responsiveSvg, /NaN|Infinity/);
   }
 });
@@ -3497,8 +3578,8 @@ test("unknown-base ceiling and convection outrank secondary layers in a four-min
     plotRight: 221.33,
   });
   assert.equal(unknownCeilingFirst.layerLayout[0].visible, true, "the exact ceiling remains first");
-  assert.equal(unknownCeilingFirst.layerLayout[1].visible, true, "CIG UNKNOWN remains higher priority than a non-ceiling convective layer");
-  assert.equal(unknownCeilingFirst.layerLayout[2].visible, false);
+  assert.equal(unknownCeilingFirst.layerLayout[1].visible, false, "a second unknown ceiling collapses before the one compact convective indicator");
+  assert.equal(unknownCeilingFirst.layerLayout[2].visible, true);
 
   const tiedCeilings = meteogramCloudBucketLayout([
     { cover: "BKN", heightFt: 3000, ceilingFt: 3000, raw: "BKN030" },
@@ -3510,8 +3591,9 @@ test("unknown-base ceiling and convection outrank secondary layers in a four-min
     plotRight: 260,
   });
   assert.equal(tiedCeilings.layerLayout[2].visible, true, "CB wins a same-base ceiling tie");
-  assert.equal(tiedCeilings.layerLayout[1].visible, true, "TCU wins the remaining same-base ceiling lane");
+  assert.equal(tiedCeilings.layerLayout[1].visible, false, "dense cells keep one compact convective/ceiling indicator instead of repeating tied layers");
   assert.equal(tiedCeilings.layerLayout[0].visible, false);
+  assert.equal(tiedCeilings.summary?.text, "+2");
 });
 
 test("required multilayer and high-cloud replays keep tokens, markers, artwork, and CIG on exact bases", () => {
