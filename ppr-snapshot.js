@@ -1,7 +1,10 @@
 import {
+  buildPprSnapshotText,
   buildRimSlideLines,
   formatPprDate,
+  formatPprRoute,
   formatPprTime,
+  normalizePprOperation,
   parsePprSnapshotCsv
 } from "./ppr-snapshot-core.js";
 
@@ -35,6 +38,8 @@ const dom = {
   chooseButton: document.querySelector("#chooseCsvButton"),
   fileInput: document.querySelector("#pprCsvInput"),
   importStatus: document.querySelector("#importStatus"),
+  copySnapshotButton: document.querySelector("#copySnapshotButton"),
+  copySnapshotStatus: document.querySelector("#copySnapshotStatus"),
   snapshotButton: document.querySelector("#snapshotModeButton"),
   loadAnotherButton: document.querySelector("#loadAnotherButton"),
   clearButton: document.querySelector("#clearPprButton"),
@@ -48,6 +53,7 @@ const dom = {
 
 const session = {
   records: [],
+  snapshotText: "",
   rimText: "",
   busy: false,
   loadEpoch: 0
@@ -129,10 +135,13 @@ function renderPprCard(record) {
 
   const body = document.createElement("div");
   body.className = "ppr-entry-body";
-  const identity = joinVisible([record.callsign, record.aircraftType, record.requestType], " · ");
+  const identity = joinVisible(
+    [record.callsign, record.aircraftType, normalizePprOperation(record.requestType)],
+    " · "
+  );
   if (identity) body.append(textElement("p", "identity-line", identity));
 
-  const route = joinVisible([record.origin, record.destination], " → ");
+  const route = formatPprRoute(record);
   if (route) body.append(textElement("p", "route-line", route));
 
   const scope = record.estimatedScope;
@@ -179,6 +188,10 @@ function renderRecords(records) {
   }
   dom.cards.replaceChildren(...stagedCards.children);
 
+  session.snapshotText = buildPprSnapshotText(allowedRecords);
+  dom.copySnapshotButton.disabled = !session.snapshotText;
+  dom.copySnapshotStatus.textContent = "";
+
   const rimLines = buildRimSlideLines(allowedRecords);
   session.rimText = rimLines.join("\n");
   dom.rimLines.replaceChildren(...rimLines.map(line => textElement("p", "rim-line", line)));
@@ -211,9 +224,12 @@ function releasePprSession({ showImport = true } = {}) {
   session.loadEpoch += 1;
   leaveSnapshotMode();
   session.records = [];
+  session.snapshotText = "";
   session.rimText = "";
   session.busy = false;
   dom.cards.replaceChildren();
+  dom.copySnapshotButton.disabled = true;
+  dom.copySnapshotStatus.textContent = "";
   dom.rimLines.replaceChildren();
   dom.rimSection.hidden = true;
   dom.copyRimButton.disabled = true;
@@ -249,7 +265,7 @@ function isCsvFile(file) {
 async function loadCsvFile(file) {
   if (session.busy) return;
   if (!isCsvFile(file)) {
-    dom.importStatus.textContent = "Select one CSV file exported from the PPR SharePoint list.";
+    dom.importStatus.textContent = "Select one PPR CSV file.";
     dom.fileInput.value = "";
     return;
   }
@@ -344,6 +360,15 @@ dom.dropZone.addEventListener("drop", event => {
   void loadCsvFile(files[0]);
 });
 
+dom.copySnapshotButton.addEventListener("click", async () => {
+  if (!session.snapshotText) return;
+  try {
+    await navigator.clipboard.writeText(session.snapshotText);
+    dom.copySnapshotStatus.textContent = "Snapshot copied.";
+  } catch {
+    dom.copySnapshotStatus.textContent = "Copy was unavailable. Select the snapshot text and copy it manually.";
+  }
+});
 dom.snapshotButton.addEventListener("click", () => void enterSnapshotMode());
 dom.copyRimButton.addEventListener("click", async () => {
   if (!session.rimText) return;

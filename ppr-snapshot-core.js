@@ -168,8 +168,8 @@ const MONTH_ABBREVIATIONS = Object.freeze([
 ]);
 
 export const PPR_OPERATION = Object.freeze({
-  INBOUND: "INBOUND",
-  OUTBOUND: "OUTBOUND",
+  INBOUND: "INBOUND ONLY",
+  OUTBOUND: "OUTBOUND ONLY",
   INBOUND_OUTBOUND: "INBOUND + OUTBOUND",
   OUTBOUND_INBOUND: "OUTBOUND + INBOUND",
 });
@@ -632,15 +632,14 @@ function composeHazmat(read) {
   const explosiveDetails = meaningfulHazmatValue(read("explosiveDetails"));
   const otherDetails = meaningfulHazmatValue(read("otherHazmatDetails"));
   const parts = [];
-  if (declared) {
-    parts.push(`EXPLOSIVES DECLARED: ${declared}`);
-  }
+  if (declared && !/^(?:yes|true)$/i.test(declared)) parts.push(declared);
   if (explosiveDetails) {
-    parts.push(`EXPLOSIVE DETAILS: ${explosiveDetails}`);
+    parts.push(explosiveDetails);
   }
   if (otherDetails) {
-    parts.push(`OTHER HAZMAT: ${otherDetails}`);
+    parts.push(otherDetails);
   }
+  if (declared && parts.length === 0) parts.push("EXPLOSIVES DECLARED");
   return parts.join(" · ");
 }
 
@@ -668,7 +667,7 @@ function buildRecord(row, rowNumber, indices, status) {
     sequence,
     callsign: display("callsign"),
     aircraftType: display("aircraftType"),
-    requestType: display("requestType"),
+    requestType: normalizePprOperation(display("requestType")),
     origin: display("origin"),
     destination: display("destination"),
     arrival: {
@@ -723,19 +722,124 @@ function compareRecords(left, right) {
   return left.sourceRowNumber - right.sourceRowNumber;
 }
 
-function externalRimLocation(label, value) {
+function externalLocation(value) {
   const location = meaningfulOrEmpty(value);
-  if (!location || location.toLocaleUpperCase("en-US") === "KMEM") return "";
-  return `${label} ${location}`;
+  return location && location.toLocaleUpperCase("en-US") !== "KMEM" ? location : "";
 }
 
-function formatRimTiming(label, timing) {
+function compactRoute(parts) {
+  const route = [];
+  for (const part of parts) {
+    const location = meaningfulOrEmpty(part);
+    if (!location || route.at(-1)?.toLocaleUpperCase("en-US") === location.toLocaleUpperCase("en-US")) {
+      continue;
+    }
+    route.push(location);
+  }
+  return route.length >= 2 ? route.join(" → ") : "";
+}
+
+/** Build the concise KMEM-centered route appropriate to the record's operation. */
+export function formatPprRoute(record) {
+  if (!record) return "";
+  const operation = normalizePprOperation(record.requestType);
+  const origin = externalLocation(record.origin);
+  const destination = externalLocation(record.destination);
+
+  if (operation === PPR_OPERATION.INBOUND) {
+    return origin ? compactRoute([origin, "KMEM"]) : "";
+  }
+  if (operation === PPR_OPERATION.OUTBOUND) {
+    return destination ? compactRoute(["KMEM", destination]) : "";
+  }
+  if (operation === PPR_OPERATION.INBOUND_OUTBOUND) {
+    return compactRoute([origin, "KMEM", destination]);
+  }
+  if (operation === PPR_OPERATION.OUTBOUND_INBOUND) {
+    if (origin && destination && origin.toLocaleUpperCase("en-US") !== destination.toLocaleUpperCase("en-US")) {
+      return `${compactRoute(["KMEM", destination])} · ${compactRoute([origin, "KMEM"])}`;
+    }
+    return compactRoute(["KMEM", destination || origin, "KMEM"]);
+  }
+
+  return "";
+}
+
+function formatTimingValue(timing, { rim = false } = {}) {
   const date = formatPprDate(timing?.dateLocal);
   const local = formatPprTime(timing?.timeLocal, "L");
   const zulu = formatPprTime(timing?.timeZulu, "Z");
   const clocks = [local, zulu].filter(Boolean).join(" / ");
-  const value = [date, clocks].filter(Boolean).join(" ");
-  return value ? `${label} ${value}` : "";
+  return [date, clocks].filter(Boolean).join(rim ? " " : " · ");
+}
+
+function estimatedMovement(record) {
+  return record?.estimatedScope ?? null;
+}
+
+function formatSnapshotTiming(label, timing, estimated) {
+  const value = formatTimingValue(timing);
+  if (!value) return "";
+  return `${label}: ${value}${estimated ? " · ESTIMATED" : ""}`;
+}
+
+function formatRimTiming(label, timing, estimated) {
+  const value = formatTimingValue(timing, { rim: true });
+  if (!value) return "";
+  return `${label} ${value}${estimated ? " · ESTIMATED" : ""}`;
+}
+
+function recordIdentity(record) {
+  return [
+    meaningfulOrEmpty(record?.callsign),
+    meaningfulOrEmpty(record?.aircraftType),
+    normalizePprOperation(record?.requestType),
+  ].filter(Boolean).join(" · ");
+}
+
+/** Build one compact, copy-ready main snapshot entry from allowlisted fields. */
+export function formatPprSnapshotEntry(record) {
+  if (!record || ![PPR_STATUS.APPROVED, PPR_STATUS.CANCELLED].includes(record.status)) return "";
+  const cancelled = record.status === PPR_STATUS.CANCELLED;
+  const pprNumber = meaningfulOrEmpty(record.pprNumber);
+  const estimate = estimatedMovement(record);
+  const lines = [
+    `${cancelled ? "🔴 CANCELLED" : "🟢 APPROVED"}${pprNumber ? ` · PPR ${pprNumber}` : ""}`,
+    recordIdentity(record),
+    formatPprRoute(record),
+    formatSnapshotTiming("ARR", record.arrival, estimate === "arrival" || estimate === "both"),
+    formatSnapshotTiming("DEP", record.departure, estimate === "departure" || estimate === "both"),
+  ];
+  if (estimate === "neutral") lines.push("ESTIMATED");
+
+  if (!cancelled) {
+    const homeTail = [
+      meaningfulOrEmpty(record.homeStation) ? `HOME: ${meaningfulOrEmpty(record.homeStation)}` : "",
+      meaningfulOrEmpty(record.tailNumbers) ? `TAIL: ${meaningfulOrEmpty(record.tailNumbers)}` : "",
+    ].filter(Boolean).join(" · ");
+    lines.push(
+      homeTail,
+      meaningfulOrEmpty(record.vipCode) ? `VIP: ${meaningfulOrEmpty(record.vipCode)}` : "",
+      meaningfulOrEmpty(record.fuel) ? `FUEL: ${meaningfulOrEmpty(record.fuel)}` : "",
+      meaningfulOrEmpty(record.transportation) ? `TRANS: ${meaningfulOrEmpty(record.transportation)}` : "",
+      meaningfulOrEmpty(record.passengers) ? `PAX: ${meaningfulOrEmpty(record.passengers)}` : "",
+      meaningfulOrEmpty(record.specialRequirements) ? `SPECIAL: ${meaningfulOrEmpty(record.specialRequirements)}` : "",
+      meaningfulOrEmpty(record.hazmat) ? `HAZMAT: ${meaningfulOrEmpty(record.hazmat)}` : "",
+    );
+  }
+  if (meaningfulOrEmpty(record.notes)) lines.push(`NOTES: ${meaningfulOrEmpty(record.notes)}`);
+  return lines.filter(Boolean).join("\n");
+}
+
+/** Return the sorted main snapshot as plain text with one blank line between entries. */
+export function buildPprSnapshotText(records) {
+  if (!Array.isArray(records)) return "";
+  return records
+    .filter((record) => [PPR_STATUS.APPROVED, PPR_STATUS.CANCELLED].includes(record?.status))
+    .sort(compareRecords)
+    .map(formatPprSnapshotEntry)
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 /** Build one approved RIM slide line from display-allowlisted record fields only. */
@@ -744,34 +848,17 @@ export function formatRimSlideLine(record) {
   const pprNumber = meaningfulOrEmpty(record.pprNumber);
   const callsign = meaningfulOrEmpty(record.callsign);
   const operation = normalizePprOperation(record.requestType);
-  if (!pprNumber || !callsign || !operation) return "";
 
-  const segments = [`PPR ${pprNumber}`, callsign, operation];
-  if (operation === PPR_OPERATION.INBOUND) {
-    segments.push(
-      externalRimLocation("ORIG", record.origin),
-      formatRimTiming("ARR", record.arrival),
-    );
-  } else if (operation === PPR_OPERATION.OUTBOUND) {
-    segments.push(
-      externalRimLocation("DEST", record.destination),
-      formatRimTiming("DEP", record.departure),
-    );
-  } else if (operation === PPR_OPERATION.INBOUND_OUTBOUND) {
-    segments.push(
-      externalRimLocation("ORIG", record.origin),
-      externalRimLocation("DEST", record.destination),
-      formatRimTiming("ARR", record.arrival),
-      formatRimTiming("DEP", record.departure),
-    );
-  } else {
-    segments.push(
-      externalRimLocation("DEST", record.destination),
-      externalRimLocation("ORIG", record.origin),
-      formatRimTiming("DEP", record.departure),
-      formatRimTiming("ARR", record.arrival),
-    );
-  }
+  const estimate = estimatedMovement(record);
+  const segments = [
+    pprNumber ? `PPR ${pprNumber}` : "",
+    callsign,
+    operation,
+    formatPprRoute(record),
+    formatRimTiming("ARR", record.arrival, estimate === "arrival" || estimate === "both"),
+    formatRimTiming("DEP", record.departure, estimate === "departure" || estimate === "both"),
+    estimate === "neutral" ? "ESTIMATED" : "",
+  ];
   return segments.filter(Boolean).join(" · ");
 }
 

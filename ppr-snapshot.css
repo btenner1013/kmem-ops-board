@@ -12,7 +12,7 @@
   --cancel-red-dark: #801820;
   --cancel-red-soft: #fdebed;
   --focus: #006dce;
-  font-family: "Segoe UI", Arial, sans-serif;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 * {
@@ -256,16 +256,16 @@ a:focus-visible,
 .snapshot-board {
   width: 100%;
   min-width: 0;
-  padding: clamp(20px, 3vw, 38px);
+  padding: clamp(18px, 2.5vw, 30px);
   background: var(--paper);
 }
 
 .snapshot-board > h2 {
-  margin: 0 0 clamp(18px, 3vw, 30px);
-  padding-bottom: 12px;
-  border-bottom: 3px solid #162a23;
+  margin: 0 0 clamp(14px, 2vw, 20px);
+  padding-bottom: 9px;
+  border-bottom: 2px solid #162a23;
   color: #111c18;
-  font-size: clamp(1.55rem, 3.2vw, 2.5rem);
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
   line-height: 1.05;
   letter-spacing: .045em;
 }
@@ -273,16 +273,15 @@ a:focus-visible,
 .ppr-entry-grid {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  column-gap: clamp(28px, 4vw, 54px);
-  row-gap: clamp(18px, 2.5vw, 30px);
+  row-gap: 14px;
 }
 
 .ppr-entry {
   min-width: 0;
   break-inside: avoid;
-  padding: 0 0 clamp(16px, 2vw, 24px);
+  padding: 0 0 14px;
   border-bottom: 1px solid #c8cfcc;
   background: #fff;
   color: #17231f;
@@ -297,7 +296,7 @@ a:focus-visible,
   flex-wrap: wrap;
   gap: 4px 7px;
   color: #14221d;
-  font-size: .91rem;
+  font-size: .88rem;
   font-weight: 900;
   letter-spacing: .035em;
   text-transform: uppercase;
@@ -323,7 +322,7 @@ a:focus-visible,
 
 .ppr-entry-body {
   min-width: 0;
-  padding-top: 7px;
+  padding-top: 5px;
 }
 
 .identity-line,
@@ -334,13 +333,13 @@ a:focus-visible,
 .identity-line {
   margin: 0;
   color: #10251e;
-  font-size: clamp(.96rem, 1.6vw, 1.08rem);
+  font-size: clamp(.9rem, 1.4vw, 1rem);
   font-weight: 800;
   line-height: 1.35;
 }
 
 .route-line {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   color: #2e4c42;
   font-size: .95rem;
   font-weight: 700;
@@ -349,7 +348,7 @@ a:focus-visible,
 .timing-line {
   display: flex;
   min-width: 0;
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 7px;
@@ -382,17 +381,17 @@ a:focus-visible,
 
 .neutral-estimate {
   display: inline-block;
-  margin-top: 5px;
+  margin-top: 4px;
 }
 
 .detail-lines {
   min-width: 0;
-  margin-top: 7px;
+  margin-top: 5px;
 }
 
 .detail-line {
   min-width: 0;
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   overflow-wrap: anywhere;
   color: #26342f;
   font-size: .84rem;
@@ -401,7 +400,7 @@ a:focus-visible,
 }
 
 .notes-line {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .rim-section {
@@ -451,11 +450,16 @@ a:focus-visible,
   overflow-wrap: anywhere;
 }
 
+.copy-status,
 .copy-rim-status {
   min-height: 1.25em;
   margin: 8px 0 0;
   color: var(--muted);
   font-size: .78rem;
+}
+
+.copy-status:empty {
+  display: none;
 }
 
 .empty-snapshot {
@@ -524,10 +528,6 @@ body.is-snapshot-mode .snapshot-board {
 
   .session-controls button {
     width: 100%;
-  }
-
-  .ppr-entry-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .snapshot-board {

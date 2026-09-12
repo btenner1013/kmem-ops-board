@@ -37,9 +37,11 @@ test("PPR data has no application persistence, cache, filesystem, or download pa
   assert.doesNotMatch(combined, /showOpenFilePicker|showSaveFilePicker|FileSystemFileHandle|createObjectURL|download\s*=|new\s+Blob/i);
   assert.doesNotMatch(combined, /\.submit\s*\(|requestSubmit\s*\(/);
   assert.doesNotMatch(combined, /window\.print|@media\s+print/i);
+  assert.doesNotMatch(combined, /SharePoint|generated at|file name|download|export/i);
   assert.match(appJs, /localCsvText = await file\.text\(\)[\s\S]*?parsePprSnapshotCsv\(localCsvText\)/);
   assert.match(appJs, /finally\s*{[\s\S]*?localCsvText = null/);
   assert.doesNotMatch(appJs, /session\.rawCsvText/);
+  assert.match(appJs, /session\.snapshotText = buildPprSnapshotText\(allowedRecords\)/);
 });
 
 test("one local CSV picker and drag-and-drop share the same in-memory loader", () => {
@@ -71,6 +73,8 @@ test("clear and navigation release raw text, normalized records, card DOM, and f
     appJs.indexOf("function setBusy"),
   );
   assert.match(clearBody, /session\.records = \[\]/);
+  assert.match(clearBody, /session\.snapshotText = ""/);
+  assert.match(clearBody, /session\.rimText = ""/);
   assert.match(clearBody, /session\.loadEpoch \+= 1/);
   assert.match(clearBody, /dom\.cards\.replaceChildren\(\)/);
   assert.match(clearBody, /dom\.fileInput\.value = ""/);
@@ -105,6 +109,14 @@ test("screenshot mode exposes only the white board heading and rendered entries"
   assert.match(toolCss, /body\.is-snapshot-mode \.snapshot-board\s*{[\s\S]*min-height:\s*100vh/);
   assert.match(toolCss, /--paper:\s*#ffffff/);
   assert.doesNotMatch(snapshotHtml, /RIM SLIDE LINES|COPY|EXPORT|DOWNLOAD|GENERATED AT|ROW COUNT|FILE NAME|PRIVACY/i);
+});
+
+test("main snapshot has one explicit plain-text copy control outside screenshot mode", () => {
+  assert.match(toolHtml, /id="copySnapshotButton"[^>]*>COPY SNAPSHOT</);
+  assert.match(toolHtml, /id="copySnapshotStatus"[^>]*aria-live="polite"/);
+  assert.match(appJs, /buildPprSnapshotText\(allowedRecords\)/);
+  assert.match(appJs, /navigator\.clipboard\.writeText\(session\.snapshotText\)/);
+  assert.match(toolCss, /body\.is-snapshot-mode \.session-controls[\s\S]*display:\s*none !important/);
 });
 
 test("approved and cancelled entries use compact dot-plus-text status lines", () => {
@@ -142,9 +154,10 @@ test("RIM section is approved-only plain text with one explicit copy control", (
   assert.doesNotMatch(rimLineRule, /border-radius|box-shadow|background:/);
 });
 
-test("responsive sheet uses two desktop columns, one mobile column, and protects long text from overflow", () => {
-  assert.match(toolCss, /\.ppr-entry-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(toolCss, /@media \(max-width: 720px\)[\s\S]*\.ppr-entry-grid\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+test("snapshot uses one compact monospaced column and protects long text from overflow", () => {
+  assert.match(toolCss, /:root\s*{[\s\S]*font-family:\s*ui-monospace/);
+  assert.match(toolCss, /\.ppr-entry-grid\s*{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.doesNotMatch(toolCss, /grid-template-columns:\s*repeat\(2/);
   assert.match(toolCss, /html,[\s\S]*body\s*{[\s\S]*overflow-x:\s*hidden/);
   assert.match(toolCss, /\.ppr-entry\s*{[\s\S]*min-width:\s*0/);
   assert.match(toolCss, /\.notes-line\s*{[\s\S]*margin-top:/);

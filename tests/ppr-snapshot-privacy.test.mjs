@@ -39,6 +39,8 @@ const SELECTORS = [
   "#chooseCsvButton",
   "#pprCsvInput",
   "#importStatus",
+  "#copySnapshotButton",
+  "#copySnapshotStatus",
   "#snapshotModeButton",
   "#loadAnotherButton",
   "#clearPprButton",
@@ -410,7 +412,8 @@ test("runtime import renders only allowed synthetic data and CLEAR releases the 
 
     const rendered = elements.get("#pprCards").textContent;
     assert.match(rendered, /TEST123/);
-    assert.match(rendered, /KAAA.*KBBB/);
+    assert.match(rendered, /TEST123.*C17.*INBOUND ONLY/s);
+    assert.match(rendered, /KAAA.*KMEM/s);
     assert.match(rendered, /🟢\s*APPROVED\s*·\s*PPR 255-001/u);
     assert.match(rendered, /ARR:\s*12 SEP\s*·\s*0815L\s*\/\s*1315Z\s*ESTIMATED/i);
     assert.match(rendered, /DEP:\s*12 SEP\s*·\s*1030L\s*\/\s*1530Z/i);
@@ -436,18 +439,90 @@ test("runtime import renders only allowed synthetic data and CLEAR releases the 
     assert.deepEqual(clipboardWrites, []);
     assert.deepEqual(privacyHits, []);
 
+    elements.get("#copySnapshotButton").click();
+    await settle();
+    assert.equal(clipboardWrites.length, 1);
+    assert.match(clipboardWrites[0], /^🟢 APPROVED · PPR 255-001/u);
+    assert.match(clipboardWrites[0], /TEST123 · C17 · INBOUND ONLY/);
+    assert.match(clipboardWrites[0], /KAAA → KMEM/);
+    assert.doesNotMatch(clipboardWrites[0], /private\.person|SP-SECRET|Private Requester/i);
+    assert.match(elements.get("#copySnapshotStatus").textContent, /copied/i);
+
     elements.get("#clearPprButton").click();
     assert.equal(elements.get("#pprCards").childElementCount, 0);
     assert.equal(elements.get("#rimLines").childElementCount, 0);
     assert.equal(elements.get("#copyRimLinesButton").disabled, true);
+    assert.equal(elements.get("#copySnapshotButton").disabled, true);
     assert.equal(elements.get("#pprCards").textContent, "");
     assert.equal(elements.get("#rimLines").textContent, "");
     assert.equal(elements.get("#copyRimStatus").textContent, "");
+    assert.equal(elements.get("#copySnapshotStatus").textContent, "");
     assert.equal(elements.get("#loadedView").hidden, true);
     assert.equal(elements.get("#importView").hidden, false);
     assert.equal(elements.get("#snapshotModeButton").disabled, true);
     assert.equal(elements.get("#pprCsvInput").value, "");
-    assert.deepEqual(clipboardWrites, []);
+    assert.equal(clipboardWrites.length, 1);
+    assert.deepEqual(privacyHits, []);
+  });
+});
+
+test("an unscoped estimated note renders and copies one neutral timing-block indicator", async () => {
+  await withRuntime(async ({ elements, privacyHits, clipboardWrites }) => {
+    const csv = syntheticCsv({ "Notes:": "Timing is ESTIMATED; awaiting confirmation" });
+    const fileInput = elements.get("#pprCsvInput");
+    fileInput.files = [{
+      name: "synthetic-neutral-estimate.csv",
+      type: "text/csv",
+      size: Buffer.byteLength(csv),
+      text: async () => csv,
+    }];
+
+    fileInput.dispatch("change");
+    await settle();
+
+    const renderedEntry = elementsWithClass(elements.get("#pprCards"), "ppr-entry")[0];
+    const timingLines = elementsWithClass(renderedEntry, "timing-line");
+    const neutralBadges = elementsWithClass(renderedEntry, "neutral-estimate");
+    assert.equal(neutralBadges.length, 1);
+    assert.equal(neutralBadges[0].textContent, "ESTIMATED");
+    assert.ok(timingLines.every((line) => !/ESTIMATED/.test(line.textContent)));
+
+    elements.get("#copySnapshotButton").click();
+    await settle();
+    assert.equal(clipboardWrites.length, 1);
+    assert.match(clipboardWrites[0], /DEP: 12 SEP · 1030L \/ 1530Z\nESTIMATED\nHOME:/);
+    assert.equal(clipboardWrites[0].split("\n").filter((line) => line === "ESTIMATED").length, 1);
+    assert.deepEqual(privacyHits, []);
+  });
+});
+
+test("an approved record with no recognized operation still renders a RIM line", async () => {
+  await withRuntime(async ({ elements, privacyHits }) => {
+    const csv = syntheticCsv({
+      Callsign: "TESTNOOP",
+      "Request Type": "unrecognized synthetic operation",
+      Origin: "KAAA",
+      Destination: "KMEM",
+    });
+    const fileInput = elements.get("#pprCsvInput");
+    fileInput.files = [{
+      name: "synthetic-missing-operation.csv",
+      type: "text/csv",
+      size: Buffer.byteLength(csv),
+      text: async () => csv,
+    }];
+
+    fileInput.dispatch("change");
+    await settle();
+
+    const rimLines = elementsWithClass(elements.get("#rimLines"), "rim-line");
+    assert.equal(rimLines.length, 1);
+    assert.equal(
+      rimLines[0].textContent,
+      "PPR 255-001 · TESTNOOP · ARR 12 SEP 0815L / 1315Z · DEP 12 SEP 1030L / 1530Z",
+    );
+    assert.equal(elements.get("#rimSection").hidden, false);
+    assert.equal(elements.get("#copyRimLinesButton").disabled, false);
     assert.deepEqual(privacyHits, []);
   });
 });
@@ -534,7 +609,7 @@ test("cancelled entries stay lean and RIM copy contains only chronologically sor
     const cancelled = entries.find((entry) => entry.classList.contains("is-cancelled"));
     assert.ok(cancelled);
     assert.match(cancelled.textContent, /🔴\s*CANCELLED\s*·\s*PPR 255-003/u);
-    assert.match(cancelled.textContent, /TEST789.*C17.*ARRIVAL/s);
+    assert.match(cancelled.textContent, /TEST789.*C17.*INBOUND ONLY/s);
     assert.match(cancelled.textContent, /KCCC.*KMEM/s);
     assert.match(cancelled.textContent, /ARR:\s*10 SEP\s*·\s*0645L\s*\/\s*1145Z/i);
     assert.match(cancelled.textContent, /DEP:\s*10 SEP\s*·\s*0800L\s*\/\s*1300Z/i);
@@ -554,21 +629,30 @@ test("cancelled entries stay lean and RIM copy contains only chronologically sor
     assert.doesNotMatch(elements.get("#pprCards").textContent, /TEST000|coordination row/i);
 
     const expectedRimLines = [
-      "PPR 255-001 · TEST456 · OUTBOUND · DEST KBBB · DEP 11 SEP 0930L / 1430Z",
-      "PPR 255-002 · TEST123 · INBOUND · ORIG KAAA · ARR 12 SEP 0815L / 1315Z",
+      "PPR 255-001 · TEST456 · OUTBOUND ONLY · KMEM → KBBB · ARR 11 SEP 0700L / 1200Z · DEP 11 SEP 0930L / 1430Z",
+      "PPR 255-002 · TEST123 · INBOUND ONLY · KAAA → KMEM · ARR 12 SEP 0815L / 1315Z",
     ];
     const rimLineElements = elementsWithClass(elements.get("#rimLines"), "rim-line");
     assert.deepEqual(rimLineElements.map((line) => line.textContent), expectedRimLines);
     const renderedRim = rimLineElements.map((line) => line.textContent).join("\n");
-    assert.doesNotMatch(renderedRim, /KMEM|TEST789|TEST000|CANCELLED|COORDINATION/i);
+    assert.doesNotMatch(renderedRim, /TEST789|TEST000|CANCELLED|COORDINATION/i);
     assert.doesNotMatch(renderedRim, /HOME|TAIL|VIP|FUEL|TRANS|PAX|SPECIAL|HAZMAT|NOTES|SYNTHETIC FUEL/i);
     assert.deepEqual(clipboardWrites, []);
 
+    elements.get("#copySnapshotButton").click();
+    await settle();
+    assert.equal(clipboardWrites.length, 1);
+    assert.match(clipboardWrites[0], /^🟢 APPROVED · PPR 255-001/u);
+    assert.match(clipboardWrites[0], /\n\n🟢 APPROVED · PPR 255-002/u);
+    assert.match(clipboardWrites[0], /\n\n🔴 CANCELLED · PPR 255-003/u);
+    assert.doesNotMatch(clipboardWrites[0], /CANCELLED SECRET|TEST000|coordination row/i);
+    assert.match(elements.get("#copySnapshotStatus").textContent, /copied/i);
+
     elements.get("#copyRimLinesButton").click();
     await settle();
-    assert.deepEqual(clipboardWrites, [expectedRimLines.join("\n")]);
+    assert.deepEqual(clipboardWrites, [clipboardWrites[0], expectedRimLines.join("\n")]);
     assert.match(elements.get("#copyRimStatus").textContent, /copied/i);
-    assert.doesNotMatch(clipboardWrites[0], /RIM SLIDE LINES/);
+    assert.doesNotMatch(clipboardWrites[1], /RIM SLIDE LINES/);
     assert.deepEqual(privacyHits, []);
   });
 });

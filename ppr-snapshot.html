@@ -20,7 +20,7 @@
     <div>
       <p class="eyebrow">KMEM OPS BOARD</p>
       <h1>PPR SNAPSHOT</h1>
-      <p class="header-copy">Build a clean, current PPR board from a SharePoint CSV selected on this device.</p>
+      <p class="header-copy">Open one local PPR CSV for a compact, copy-ready snapshot.</p>
     </div>
     <a class="board-link" href="./index.html" aria-label="Return to KMEM Ops Board">
       <span aria-hidden="true">&#8592;</span> RETURN TO BOARD
@@ -31,27 +31,26 @@
     <section id="importView" class="import-panel" aria-labelledby="importTitle">
       <p class="section-kicker">LOCAL BROWSER SESSION</p>
       <h2 id="importTitle">Select the current PPR CSV</h2>
-      <p class="privacy-copy">
-        The file is read only by this page and is not uploaded or saved by the application.
-        Closing, clearing, or replacing the page drops the active application references.
-      </p>
+      <p class="privacy-copy">The CSV stays in this browser tab and is cleared when you leave.</p>
 
       <div id="csvDropZone" class="drop-zone" tabindex="0" role="button" aria-controls="pprCsvInput" aria-describedby="fileRules">
         <span class="drop-icon" aria-hidden="true">&#128197;</span>
-        <strong>DROP SHAREPOINT CSV HERE</strong>
+        <strong>DROP PPR CSV HERE</strong>
         <span>or choose one local file</span>
         <button id="chooseCsvButton" class="primary-button" type="button">CHOOSE CSV</button>
       </div>
       <input id="pprCsvInput" class="visually-hidden" type="file" accept=".csv,text/csv" tabindex="-1">
-      <p id="fileRules" class="file-rules">CSV only. One active snapshot at a time. No upload, saved board, history, or export is created.</p>
+      <p id="fileRules" class="file-rules">CSV only. One active snapshot at a time.</p>
       <p id="importStatus" class="import-status" role="alert" aria-live="assertive"></p>
     </section>
 
     <section id="loadedView" class="loaded-view" hidden>
       <nav id="sessionControls" class="session-controls" aria-label="PPR Snapshot controls">
+        <button id="copySnapshotButton" class="primary-button" type="button">COPY SNAPSHOT</button>
         <button id="snapshotModeButton" class="primary-button" type="button">SCREENSHOT VIEW</button>
         <button id="loadAnotherButton" class="secondary-button" type="button">LOAD ANOTHER CSV</button>
         <button id="clearPprButton" class="danger-button" type="button">CLEAR PPR DATA</button>
+        <span id="copySnapshotStatus" class="copy-status" role="status" aria-live="polite"></span>
         <span class="escape-note">Press Esc to leave screenshot view.</span>
       </nav>
 

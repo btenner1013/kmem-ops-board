@@ -8,9 +8,12 @@ import {
   PPR_REQUIRED_FIELDS,
   PPR_STATUS,
   PprCsvError,
+  buildPprSnapshotText,
   buildRimSlideLines,
   estimatedScopeFromNotes,
   formatPprDate,
+  formatPprRoute,
+  formatPprSnapshotEntry,
   formatPprTime,
   formatRimSlideLine,
   isMeaningfulDisplayValue,
@@ -240,14 +243,14 @@ test("request types normalize to exactly the four RIM operation labels", () => {
   assert.equal(normalizePprOperation("Departure then Arrival"), PPR_OPERATION.OUTBOUND_INBOUND);
   assert.equal(normalizePprOperation("unrecognized synthetic operation"), "");
   assert.deepEqual(Object.values(PPR_OPERATION), [
-    "INBOUND",
-    "OUTBOUND",
+    "INBOUND ONLY",
+    "OUTBOUND ONLY",
     "INBOUND + OUTBOUND",
     "OUTBOUND + INBOUND",
   ]);
 });
 
-test("RIM lines use exact movement-specific location and timing order", () => {
+test("routes and RIM lines use concise KMEM-centered movement wording", () => {
   const parsed = parsePprSnapshotCsv(
     fixture([
       record({
@@ -299,26 +302,150 @@ test("RIM lines use exact movement-specific location and timing order", () => {
     ]),
   ).records;
 
+  const recordsBySequence = new Map(parsed.map((entry) => [entry.sequence, entry]));
   const bySequence = new Map(parsed.map((entry) => [entry.sequence, formatRimSlideLine(entry)]));
   assert.equal(
     bySequence.get("001"),
-    "PPR 255-001 · TESTIN · INBOUND · ORIG KADW · ARR 12 SEP 2230L / 0330Z",
+    "PPR 255-001 · TESTIN · INBOUND ONLY · KADW → KMEM · ARR 12 SEP 2230L / 0330Z · DEP 12 SEP 1030L / 1530Z",
   );
   assert.equal(
     bySequence.get("002"),
-    "PPR 255-002 · TESTOUT · OUTBOUND · DEST KSUU · DEP 19 SEP 1630L / 2130Z",
+    "PPR 255-002 · TESTOUT · OUTBOUND ONLY · KMEM → KSUU · ARR 12 SEP 0815L / 1315Z · DEP 19 SEP 1630L / 2130Z",
   );
   assert.equal(
     bySequence.get("003"),
-    "PPR 255-003 · TESTTURN · INBOUND + OUTBOUND · ORIG KCHS · DEST KSKF · ARR 15 SEP 0830L / 1330Z · DEP 15 SEP 1100L / 1600Z",
+    "PPR 255-003 · TESTTURN · INBOUND + OUTBOUND · KCHS → KMEM → KSKF · ARR 15 SEP 0830L / 1330Z · DEP 15 SEP 1100L / 1600Z",
   );
   assert.equal(
     bySequence.get("004"),
-    "PPR 255-004 · TESTROUND · OUTBOUND + INBOUND · DEST KSKF · ORIG KADW · DEP 20 SEP 0900L / 1400Z · ARR 20 SEP 1730L / 2230Z",
+    "PPR 255-004 · TESTROUND · OUTBOUND + INBOUND · KMEM → KSKF · KADW → KMEM · ARR 20 SEP 1730L / 2230Z · DEP 20 SEP 0900L / 1400Z",
+  );
+  assert.equal(formatPprRoute(recordsBySequence.get("001")), "KADW → KMEM");
+  assert.equal(formatPprRoute(recordsBySequence.get("002")), "KMEM → KSUU");
+  assert.equal(formatPprRoute(recordsBySequence.get("003")), "KCHS → KMEM → KSKF");
+  assert.equal(formatPprRoute(recordsBySequence.get("004")), "KMEM → KSKF · KADW → KMEM");
+});
+
+test("approved RIM lines retain available data when operation or callsign is missing", () => {
+  const [missingOperation, missingCallsign] = parsePprSnapshotCsv(
+    fixture([
+      record({
+        Sequence: "001",
+        Callsign: "TESTNOOP",
+        "Request Type": "unrecognized synthetic operation",
+        Origin: "KAAA",
+        Destination: "KMEM",
+      }),
+      record({
+        Sequence: "002",
+        Callsign: "NONE",
+        "Request Type": "Inbound Only",
+        Origin: "KBBB",
+        Destination: "KMEM",
+      }),
+    ]),
+  ).records;
+
+  assert.equal(missingOperation.requestType, "");
+  assert.equal(formatPprRoute(missingOperation), "");
+  assert.equal(
+    formatRimSlideLine(missingOperation),
+    "PPR 255-001 · TESTNOOP · ARR 12 SEP 0815L / 1315Z · DEP 12 SEP 1030L / 1530Z",
+  );
+  assert.doesNotMatch(formatPprSnapshotEntry(missingOperation), /\nKAAA → KMEM\n/);
+
+  assert.equal(missingCallsign.callsign, "");
+  assert.equal(
+    formatRimSlideLine(missingCallsign),
+    "PPR 255-002 · INBOUND ONLY · KBBB → KMEM · ARR 12 SEP 0815L / 1315Z · DEP 12 SEP 1030L / 1530Z",
   );
 });
 
-test("RIM line generation is approved-only, chronological, KMEM-free, and support-detail-free", () => {
+test("main snapshot text follows the compact approved and lean cancelled formats", () => {
+  const records = parsePprSnapshotCsv(
+    fixture([
+      record({
+        "Email Status": "Cancelled / Denied",
+        Julian: "6253",
+        Sequence: "1",
+        Callsign: "RCH199",
+        "Aircraft Type": "C-17",
+        "Request Type": "Inbound Only",
+        Origin: "KWRI",
+        Destination: "KMEM",
+        "Arrival Date (L)": "09/09/2026",
+        "Arrival Time (L)": "9:12 PM",
+        "Arrival Time (z)": "0212Z",
+        "Departure Date (L)": "09/09/2026",
+        "Departure Time (L)": "11:00 PM",
+        "Departure Time (z)": "0400Z",
+        "Fuel:": "SUPPRESSED FUEL",
+        "Trans:": "SUPPRESSED TRANS",
+        "Notes:": "Mission cancelled by controlling agency",
+      }),
+      record({
+        Julian: "6256",
+        Sequence: "02",
+        Callsign: "RCH4556",
+        "Aircraft Type": "C-17",
+        "Request Type": "Inbound Only",
+        Origin: "KADW",
+        Destination: "KMEM",
+        "Arrival Date (L)": "09/12/2026",
+        "Arrival Time (L)": "10:30 PM",
+        "Arrival Time (z)": "0330Z",
+        "Departure Date (L)": "09/13/2026",
+        "Departure Time (L)": "1:00 AM",
+        "Departure Time (z)": "0600Z",
+        "Acft Homestation": "MEM",
+        "Tail/Reg Number(s)": "92-3291",
+        "VIP Code": "C",
+        "Fuel:": "35K",
+        "Trans:": "7 CREW",
+        "Pax:": "14",
+        "Special Requirements:": "AIRCREW TRANSPORT",
+        "Explosives Declared": "Yes",
+        "Explosive Details": "1.4 EXPLOSIVES · 450 LB MEQ",
+        "Notes:": "MEM crew. MEM tail. Due to hours TACC requesting PPR",
+      }),
+    ]),
+  ).records;
+
+  const expectedApproved = [
+    "🟢 APPROVED · PPR 6256-02",
+    "RCH4556 · C-17 · INBOUND ONLY",
+    "KADW → KMEM",
+    "ARR: 12 SEP · 2230L / 0330Z",
+    "DEP: 13 SEP · 0100L / 0600Z",
+    "HOME: MEM · TAIL: 92-3291",
+    "VIP: C",
+    "FUEL: 35K",
+    "TRANS: 7 CREW",
+    "PAX: 14",
+    "SPECIAL: AIRCREW TRANSPORT",
+    "HAZMAT: 1.4 EXPLOSIVES · 450 LB MEQ",
+    "NOTES: MEM crew. MEM tail. Due to hours TACC requesting PPR",
+  ].join("\n");
+  const expectedCancelled = [
+    "🔴 CANCELLED · PPR 6253-1",
+    "RCH199 · C-17 · INBOUND ONLY",
+    "KWRI → KMEM",
+    "ARR: 09 SEP · 2112L / 0212Z",
+    "DEP: 09 SEP · 2300L / 0400Z",
+    "NOTES: Mission cancelled by controlling agency",
+  ].join("\n");
+
+  assert.equal(formatPprSnapshotEntry(records[0]), expectedApproved);
+  assert.equal(formatPprSnapshotEntry(records[1]), expectedCancelled);
+  assert.equal(buildPprSnapshotText([...records].reverse()), `${expectedApproved}\n\n${expectedCancelled}`);
+  assert.doesNotMatch(buildPprSnapshotText(records), /SUPPRESSED FUEL|SUPPRESSED TRANS/);
+  assert.equal(
+    formatRimSlideLine(records[0]),
+    "PPR 6256-02 · RCH4556 · INBOUND ONLY · KADW → KMEM · ARR 12 SEP 2230L / 0330Z · DEP 13 SEP 0100L / 0600Z",
+  );
+});
+
+test("RIM line generation is approved-only, chronological, route-complete, and support-detail-free", () => {
   const parsed = parsePprSnapshotCsv(
     fixture([
       record({
@@ -365,9 +492,9 @@ test("RIM line generation is approved-only, chronological, KMEM-free, and suppor
   const text = lines.join("\n");
 
   assert.equal(lines.length, 2);
-  assert.match(lines[0], /^PPR 255-002 · TESTEARLY · OUTBOUND · DEST KAAA · DEP 11 SEP /);
-  assert.match(lines[1], /^PPR 255-003 · TESTLATE · INBOUND · ORIG KBBB · ARR 13 SEP /);
-  assert.doesNotMatch(text, /TESTCOORD|TESTCANCEL|KMEM/);
+  assert.match(lines[0], /^PPR 255-002 · TESTEARLY · OUTBOUND ONLY · KMEM → KAAA · ARR 11 SEP /);
+  assert.match(lines[1], /^PPR 255-003 · TESTLATE · INBOUND ONLY · KBBB → KMEM · ARR 13 SEP /);
+  assert.doesNotMatch(text, /TESTCOORD|TESTCANCEL/);
   assert.doesNotMatch(text, /FUEL|TRANSPORT|PAX|SUPPORT|HAZMAT|secret note/i);
   assert.equal(formatRimSlideLine(parsed.find(({ status }) => status === PPR_STATUS.CANCELLED)), "");
   assert.equal(reversed[0].status, PPR_STATUS.CANCELLED, "the caller's array order must remain unchanged");
@@ -426,7 +553,7 @@ test("HAZMAT output is composed exclusively from the three approved fields", () 
 
   assert.equal(
     parsed.hazmat,
-    "EXPLOSIVES DECLARED: Yes · EXPLOSIVE DETAILS: Class 1 synthetic item · OTHER HAZMAT: Battery declaration",
+    "Class 1 synthetic item · Battery declaration",
   );
   assert.doesNotMatch(parsed.hazmat, /reinterpret/i);
 });
@@ -443,6 +570,20 @@ test("ESTIMATED is case-insensitive and is attached only when the note establish
   ).records[0];
   assert.equal(parsed.estimatedScope, "arrival");
   assert.equal(parsed.notes, "Estimated arrival; retain this note.");
+  assert.match(formatPprSnapshotEntry(parsed), /ARR: 12 SEP · 0815L \/ 1315Z · ESTIMATED/);
+  assert.match(formatRimSlideLine(parsed), /ARR 12 SEP 0815L \/ 1315Z · ESTIMATED/);
+
+  const neutral = parsePprSnapshotCsv(
+    fixture([record({ "Notes:": "Timing is EsTiMaTeD; awaiting confirmation" })]),
+  ).records[0];
+  const neutralSnapshot = formatPprSnapshotEntry(neutral);
+  const neutralRim = formatRimSlideLine(neutral);
+  assert.doesNotMatch(neutralSnapshot, /ARR:.*ESTIMATED/);
+  assert.doesNotMatch(neutralSnapshot, /DEP:.*ESTIMATED/);
+  assert.match(neutralSnapshot, /DEP: 12 SEP · 1030L \/ 1530Z\nESTIMATED\nHOME:/);
+  assert.equal(neutralSnapshot.split("\n").filter((line) => line === "ESTIMATED").length, 1);
+  assert.match(neutralRim, /DEP 12 SEP 1030L \/ 1530Z · ESTIMATED$/);
+  assert.equal(neutralRim.split(" · ").filter((segment) => segment === "ESTIMATED").length, 1);
 });
 
 test("allowed free-text fields redact contact, fiscal, and internal identifiers", () => {
@@ -512,6 +653,7 @@ test("normalized record contains only the explicit display allowlist", () => {
   assert.doesNotMatch(serialized, /private\.person@example\.test/i);
   assert.doesNotMatch(serialized, /SP-SECRET-42/i);
   assert.doesNotMatch(serialized, /Private Requester/i);
+  assert.equal(parsed.requestType, "INBOUND ONLY");
 });
 
 test("core module has no browser network, storage, persistence, or file APIs", async () => {
