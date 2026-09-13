@@ -19,6 +19,9 @@ $projectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $updateBat = Join-Path $projectDir "run_kmem_update.bat"
 $hiddenUpdateVbs = Join-Path $projectDir "run_kmem_update_hidden.vbs"
 $hiddenUpdatePowerShell = Join-Path $projectDir "run_kmem_update_hidden.ps1"
+$checkIntervalMinutes = if ($Role -eq "BACKUP") { 5 } else { 10 }
+$enableAtLogOn = $AtLogOn -or $Role -eq "BACKUP"
+$enableWakeToRun = $WakeToRun -or $Role -eq "BACKUP"
 
 foreach ($requiredFile in @($updateBat, $hiddenUpdateVbs, $hiddenUpdatePowerShell)) {
     if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
@@ -81,7 +84,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
     -RestartCount 2 `
     -RestartInterval (New-TimeSpan -Minutes 2) `
-    -WakeToRun:$WakeToRun
+    -WakeToRun:$enableWakeToRun
 
 $wscriptPath = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::System)) "wscript.exe"
 if (-not (Test-Path -LiteralPath $wscriptPath -PathType Leaf)) {
@@ -91,18 +94,19 @@ $arguments = "//B //NoLogo `"$hiddenUpdateVbs`" $Role"
 $action = New-ScheduledTaskAction -Execute $wscriptPath -Argument $arguments -WorkingDirectory $projectDir
 $trigger = @(
     New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(1)) `
-        -RepetitionInterval (New-TimeSpan -Minutes 10)
+        -RepetitionInterval (New-TimeSpan -Minutes $checkIntervalMinutes)
 )
-if ($AtLogOn) {
-    # The 10-minute repetition above resumes on its own after a reboot; this
-    # extra trigger only makes the first standby evaluation prompt at sign-in.
+if ($enableAtLogOn) {
+    # The repeating trigger resumes after a reboot once this interactive user
+    # signs in. BACKUP also evaluates immediately at sign-in instead of waiting
+    # for the next repetition slot.
     # IgnoreNew prevents the two triggers from overlapping.
     $trigger += New-ScheduledTaskTrigger -AtLogOn -User $currentUser
 }
 $description = if ($Role -eq "PRIMARY") {
     "Runs the preferred KMEM updater every 10 minutes with safe self-sync and remote lease protection."
 } else {
-    "Checks PRIMARY health every 10 minutes and runs the KMEM updater only after safe standby takeover."
+    "Checks PRIMARY health every 5 minutes and runs the KMEM updater only after safe standby takeover."
 }
 
 $registration = @{
@@ -128,9 +132,9 @@ if ($StartNow) {
 
 Write-Host "Installed '$TaskName'." -ForegroundColor Green
 Write-Host "Role: $Role"
-Write-Host "Cadence: 10 minutes"
+Write-Host "Cadence: $checkIntervalMinutes minutes"
 Write-Host "Overlap policy: IgnoreNew"
-Write-Host ("Sign-in trigger: {0}" -f $(if ($AtLogOn) { "enabled" } else { "disabled" }))
-Write-Host ("Wake to run: {0}" -f $(if ($WakeToRun) { "enabled" } else { "disabled" }))
+Write-Host ("Sign-in trigger: {0}" -f $(if ($enableAtLogOn) { "enabled" } else { "disabled" }))
+Write-Host ("Wake to run: {0}" -f $(if ($enableWakeToRun) { "enabled" } else { "disabled" }))
 Write-Host "Scheduled launcher: hidden/background"
 Write-Host "Working directory: $projectDir"

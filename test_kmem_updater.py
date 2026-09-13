@@ -2259,11 +2259,12 @@ class NotamFailoverScheduleSimulationTests(unittest.TestCase):
             return self.world.read(name)
 
     class Host:
-        def __init__(self, sim, role, offset_minutes, *, fetch_minutes, generation_minutes, nms_ok, probe_minutes=2.0):
+        def __init__(self, sim, role, offset_minutes, *, fetch_minutes, generation_minutes, nms_ok, probe_minutes=2.0, interval_minutes=10):
             self.sim = sim
             self.world = sim.world
             self.role = role
             self.offset = offset_minutes
+            self.interval = interval_minutes
             self.fetch_minutes = fetch_minutes
             self.generation_minutes = generation_minutes
             self.nms_ok = nms_ok  # callable(now) -> bool
@@ -2435,7 +2436,7 @@ class NotamFailoverScheduleSimulationTests(unittest.TestCase):
             when = FIXED_NOW + timedelta(minutes=host.offset)
             while when <= horizon:
                 self.world.schedule(when, host)
-                when += timedelta(minutes=10)
+                when += timedelta(minutes=host.interval)
         self.world.advance_to(horizon)
 
     def notam_staleness(self, publishes, horizon_minutes):
@@ -2511,6 +2512,36 @@ class NotamFailoverScheduleSimulationTests(unittest.TestCase):
         self.assertTrue(after)
         self.assertTrue(all(p[1] == "PRIMARY" for p in after), "BACKUP must stand down after PRIMARY resumes")
         self.assertLessEqual(self.notam_staleness(publishes, 300), 60)
+
+    def test_five_minute_backup_observer_closes_threshold_scheduler_gap(self):
+        # The coordinator threshold remains 25 minutes. A five-minute standby
+        # observer bounds the scheduler-only delay after that threshold while
+        # the existing handoff window still prevents rapid active publication.
+        for offset in range(5):
+            with self.subTest(backup_offset_minutes=offset):
+                self.setUp()
+                self.seed_primary_publish(minutes_ago=1.0)
+                self.host(
+                    "BACKUP",
+                    offset,
+                    fetch_minutes=0.05,
+                    generation_minutes=0.3,
+                    nms_ok=lambda now: True,
+                    interval_minutes=5,
+                )
+                self.run_minutes(90)
+                backup_publishes = [item for item in self.world.publishes if item[1] == "BACKUP"]
+                self.assertTrue(backup_publishes)
+                first_delay = (backup_publishes[0][0] - FIXED_NOW).total_seconds() / 60.0
+                self.assertLessEqual(first_delay, 30.5, f"first BACKUP publish at {first_delay:.1f} min")
+                gaps = [
+                    (later[0] - earlier[0]).total_seconds() / 60.0
+                    for earlier, later in zip(backup_publishes, backup_publishes[1:])
+                ]
+                self.assertTrue(gaps)
+                self.assertGreaterEqual(min(gaps), 10.0, f"active BACKUP pulled too frequently: {gaps}")
+                self.assertLessEqual(max(gaps), 15.0, f"active BACKUP publication gap: {gaps}")
+                self.tearDown()
 
     def test_both_hosts_failing_nms_keeps_other_feeds_and_avoids_ping_pong(self):
         # K: neither host can reach NMS for 4 hours.
