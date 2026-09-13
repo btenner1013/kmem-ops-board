@@ -168,6 +168,18 @@ test("structured METAR parsing preserves exact observed fields and precipitation
   assert.equal(parsed.precipitation.snowDepthIn, 3);
 });
 
+test("meteogram parses a direction-speed separator slash at the reported time", () => {
+  const parsed = parseMeteogramObservation(report({
+    timestamp: "2026-09-13T10:54:00Z",
+    raw: "METAR KMEM 131054Z 180/04KT 10SM R36L/P6000FT OVC250 24/22 A2999 RMK AO2",
+  }));
+  assert.equal(parsed.observedZ, "2026-09-13T10:54:00.000Z");
+  assert.equal(parsed.windDirectionDeg, 180);
+  assert.equal(parsed.windVariable, false);
+  assert.equal(parsed.windSpeedKt, 4);
+  assert.equal(parsed.windGustKt, null);
+});
+
 test("international QNH, metric visibility, variable wind, negative temperature, and clear sky remain truthful", () => {
   const parsed = parseMeteogramObservation({
     station: "EGLL",

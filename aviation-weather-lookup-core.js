@@ -173,7 +173,7 @@ function signedTemperature(value) {
 }
 
 function decodeWindToken(token) {
-  const match = String(token || "").toUpperCase().match(/^(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)$/);
+  const match = String(token || "").toUpperCase().match(/^(\d{3}|VRB)\/?(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)$/);
   if (!match) return null;
   const speed = Number(match[2]);
   const gust = match[3] ? Number(match[3]) : null;

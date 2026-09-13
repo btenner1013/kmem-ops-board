@@ -50,6 +50,20 @@ class AtisOperationsTests(unittest.TestCase):
     def setUp(self):
         self.now = datetime(2026, 8, 21, 10, 18, tzinfo=timezone.utc)
 
+    def test_separator_slash_metar_wind_remains_available_when_atis_is_unavailable(self):
+        metar = "METAR KMEM 131054Z 180/04KT 10SM R36L/P6000FT OVC250 24/22 A2999 RMK AO2"
+        parsed = u.parse_wind(metar)
+        self.assertEqual(parsed["windRaw"], "180/04KT")
+        self.assertEqual(parsed["windDisplay"], "18004KT")
+        self.assertEqual(parsed["windDirDeg"], 180)
+        self.assertEqual(parsed["windSpeedKt"], 4)
+        self.assertIsNone(parsed["windGustKt"])
+        self.assertEqual(parsed["windArrow"], "↑")
+
+        selected = u.parse_best_observation_values(metar, "", "WARN_SOURCE")
+        self.assertEqual(selected["obsFieldSources"]["wind"], "METAR")
+        self.assertEqual(selected["windData"]["windDisplay"], "18004KT")
+
     def test_exact_zulu_broadcast_parses_all_active_runways(self):
         self.assertEqual(u.parse_atis_letter(FULL_ZULU_ATIS), "Z")
         self.assertEqual(u.phonetic_for_letter("Z"), "ZULU")

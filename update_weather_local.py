@@ -1978,8 +1978,11 @@ def parse_metar_visibility_display(metar):
 def parse_wind(metar):
     txt = metar or ""
 
-    # Standard METAR wind token examples: 13007KT, 18012G22KT, VRB04KT, 00000KT
-    match = re.search(r"\b(?P<dir>\d{3}|VRB)(?P<speed>\d{2,3})(?:G(?P<gust>\d{2,3}))?KT\b", txt.upper())
+    # Standard METAR wind token examples: 13007KT, 18012G22KT, VRB04KT, 00000KT.
+    # Some otherwise valid source reports insert one separator slash between
+    # direction and speed (for example 180/04KT). It remains unambiguous wind
+    # data, so accept that exact variant without relaxing any other token shape.
+    match = re.search(r"\b(?P<dir>\d{3}|VRB)/?(?P<speed>\d{2,3})(?:G(?P<gust>\d{2,3}))?KT\b", txt.upper())
 
     if not match:
         return {
@@ -1993,6 +1996,7 @@ def parse_wind(metar):
         }
 
     raw = match.group(0)
+    display_raw = raw.replace("/", "", 1)
     direction = match.group("dir")
     speed = int(match.group("speed"))
     gust = int(match.group("gust")) if match.group("gust") else None
@@ -2011,7 +2015,7 @@ def parse_wind(metar):
     if direction == "VRB":
         return {
             "windRaw": raw,
-            "windDisplay": raw,
+            "windDisplay": display_raw,
             "windDirDeg": None,
             "windSpeedKt": speed,
             "windGustKt": gust,
@@ -2023,7 +2027,7 @@ def parse_wind(metar):
 
     return {
         "windRaw": raw,
-        "windDisplay": raw,
+        "windDisplay": display_raw,
         "windDirDeg": direction_degrees,
         "windSpeedKt": speed,
         "windGustKt": gust,

@@ -1068,7 +1068,7 @@ export function parseMeteogramObservation(report) {
   if (!isValidIcao(station) || !Number.isFinite(observed.getTime()) || !raw) return null;
 
   const rawBody = raw.split(/\s+RMK\b/i)[0];
-  const windMatch = /\b(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)\b/.exec(rawBody);
+  const windMatch = /\b(\d{3}|VRB)\/?(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)\b/.exec(rawBody);
   const windFactor = windMatch?.[4] === "MPS" ? KNOTS_PER_METRE_PER_SECOND : 1;
   const temperatureMatch = /\b(M?\d{2}|\/\/)\/(M?\d{2}|\/\/)\b/.exec(rawBody);
   const altimeter = /\bA(\d{4})\b/.exec(rawBody);

@@ -242,6 +242,19 @@ test("METAR decoder preserves raw data and decodes the KVOK calm-wind regression
   assert.ok(decoded.sections.every((section) => Array.isArray(section.lines)));
 });
 
+test("METAR decoder accepts one direction-speed separator slash without losing the raw report", () => {
+  const raw = "METAR KMEM 131054Z 180/04KT 10SM R36L/P6000FT OVC250 24/22 A2999 RMK AO2";
+  const decoded = decodeMetarReport({
+    product: "METAR",
+    station: "KMEM",
+    timestamp: "2026-09-13T10:54:00Z",
+    raw,
+  });
+  assert.equal(decoded.raw, raw);
+  assert.equal(decoded.conditions.winds[0], "180° true at 4 kt");
+  assert.doesNotMatch(decoded.undecoded.join(" "), /180\/04KT/);
+});
+
 test("SPECI decoder tolerates mixed recognized and unknown groups without guessing", () => {
   const raw = "SPECI KJFK 271730Z 18012G22KT 140V220 1 1/2SM R04/2400FT VCTS +TSRA BKN020CB OVC080 M02/M05 Q1013 RMK AO1 PK WND 18030/1720 WSHFT 1715 PRESFR VIS 2 NE MYSTERY";
   const decoded = decodeMetarReport(raw, { referenceTime: "2026-08-27T18:00:00Z" });
