@@ -18,6 +18,7 @@ from host_health_history import DEFAULT_MAX_SERIALIZED_BYTES
 import kmem_updater
 from kmem_updater import (
     ACQUIRE_DEADLINE_SECONDS,
+    BACKUP_FAILOVER_RECHECK_MAX_WAIT_SECONDS,
     BACKUP_HANDOFF_MINUTES,
     BackupObservation,
     GENERATED_FILES,
@@ -1634,6 +1635,26 @@ class HeartbeatAndRoleTests(unittest.TestCase):
             )
             self.assertTrue(forced._backup_should_run(self.status(5)))
 
+    def test_backup_waits_through_only_the_final_failover_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime"
+            runtime.mkdir()
+            coordinator = UpdaterCoordinator(
+                repo=None,
+                role="BACKUP",
+                runtime_root=runtime,
+                now_fn=lambda: FIXED_NOW,
+            )
+            self.assertIsNone(coordinator._backup_recheck_wait_seconds(self.status(19)))
+            self.assertEqual(
+                coordinator._backup_recheck_wait_seconds(self.status(20)),
+                BACKUP_FAILOVER_RECHECK_MAX_WAIT_SECONDS,
+            )
+            self.assertEqual(coordinator._backup_recheck_wait_seconds(self.status(24)), 61)
+            self.assertEqual(coordinator._backup_recheck_wait_seconds(self.status(25)), 1)
+            self.assertIsNone(coordinator._backup_recheck_wait_seconds(self.status(26)))
+            self.assertIsNone(coordinator._backup_recheck_wait_seconds(self.status(20, role="NONE")))
+
     def test_invalid_lease_quarantine_is_bounded_and_resets_when_value_changes(self):
         with tempfile.TemporaryDirectory() as directory:
             tracker = InvalidLeaseObservation(Path(directory) / "invalid-lease.json")
@@ -2334,7 +2355,7 @@ class NotamFailoverScheduleSimulationTests(unittest.TestCase):
                 if world.lease_active():
                     return
                 if not coordinator._backup_should_run(snapshot.status, snapshot.weather):
-                    wait = coordinator._backup_handoff_wait_seconds(snapshot.status)
+                    wait = coordinator._backup_recheck_wait_seconds(snapshot.status)
                     if wait is None:
                         return
                     coordinator.sleep_fn(wait)
@@ -2541,6 +2562,29 @@ class NotamFailoverScheduleSimulationTests(unittest.TestCase):
                 self.assertTrue(gaps)
                 self.assertGreaterEqual(min(gaps), 10.0, f"active BACKUP pulled too frequently: {gaps}")
                 self.assertLessEqual(max(gaps), 15.0, f"active BACKUP publication gap: {gaps}")
+                self.tearDown()
+
+    def test_ten_minute_backup_rechecks_near_threshold_before_next_trigger(self):
+        # No task re-registration is required for this safety net: an invocation
+        # already inside the final five minutes waits to the unchanged cutoff,
+        # fetches remote state again, and proceeds only if PRIMARY is still
+        # silent. Across every scheduler phase, takeover remains bounded.
+        for offset in range(10):
+            with self.subTest(backup_offset_minutes=offset):
+                self.setUp()
+                self.seed_primary_publish(minutes_ago=1.0)
+                self.host(
+                    "BACKUP",
+                    offset,
+                    fetch_minutes=0.05,
+                    generation_minutes=0.3,
+                    nms_ok=lambda now: True,
+                )
+                self.run_minutes(90)
+                backup_publishes = [item for item in self.world.publishes if item[1] == "BACKUP"]
+                self.assertTrue(backup_publishes)
+                first_delay = (backup_publishes[0][0] - FIXED_NOW).total_seconds() / 60.0
+                self.assertLessEqual(first_delay, 29.5, f"first BACKUP publish at {first_delay:.1f} min")
                 self.tearDown()
 
     def test_both_hosts_failing_nms_keeps_other_feeds_and_avoids_ping_pong(self):

@@ -96,6 +96,12 @@ NMS_PROBE_RESULT_MAX_AGE_MINUTES = 15
 # Generation must never start with less than its own deadline (plus push
 # margin) left in the worker budget; a slow probe/fetch skips this cycle.
 ACQUIRE_DEADLINE_SECONDS = WORKER_TIMEOUT_SECONDS - GENERATOR_TIMEOUT_SECONDS - 120
+# A 10-minute scheduled BACKUP check can land shortly before the strict
+# heartbeat cutoff and otherwise miss takeover until its next trigger. Allow
+# that already-running check to wait through only the final five minutes, then
+# fetch and classify the authoritative remote heartbeat again. This preserves
+# the 25-minute threshold while bounding scheduler-only takeover delay.
+BACKUP_FAILOVER_RECHECK_MAX_WAIT_SECONDS = 5 * 60 + 1
 PUBLISH_REASONS = {
     "SCHEDULED",
     "HEARTBEAT_FAILOVER",
@@ -1128,11 +1134,18 @@ class UpdaterCoordinator:
             self.publish_reason = "HEARTBEAT_FAILOVER"
         return eligible
 
-    def _backup_handoff_wait_seconds(self, status: Optional[dict]) -> Optional[float]:
+    def _backup_recheck_wait_seconds(self, status: Optional[dict]) -> Optional[float]:
         if self.force_failover:
             return None
         state = classify_host_heartbeat(status, self.now_fn())
-        if state.role != "BACKUP" or state.age_minutes is None:
+        if state.age_minutes is None:
+            return None
+        if state.role == "PRIMARY" and state.state == "DELAYED":
+            remaining = ((HOST_FAILOVER_MINUTES - state.age_minutes) * 60.0) + 1.0
+            if 0 < remaining <= BACKUP_FAILOVER_RECHECK_MAX_WAIT_SECONDS:
+                return remaining
+            return None
+        if state.role != "BACKUP":
             return None
         remaining = ((BACKUP_HANDOFF_MINUTES - state.age_minutes) * 60.0) + 1.0
         if 0 < remaining <= BACKUP_HANDOFF_MAX_WAIT_SECONDS:
@@ -1850,11 +1863,11 @@ class UpdaterCoordinator:
                 LOGGER.info("Active remote lease found; BACKUP exits.")
                 return self.skipped_cycle_result()
             if not self._backup_should_run(snapshot.status, snapshot.weather):
-                wait_seconds = self._backup_handoff_wait_seconds(snapshot.status)
+                wait_seconds = self._backup_recheck_wait_seconds(snapshot.status)
                 if wait_seconds is None:
                     return self.skipped_cycle_result()
                 LOGGER.info(
-                    "BACKUP handoff recheck scheduled in %s seconds.",
+                    "BACKUP authoritative-state recheck scheduled in %s seconds.",
                     int(wait_seconds),
                 )
                 self.sleep_fn(wait_seconds)
