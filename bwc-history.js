@@ -19,6 +19,7 @@ import {
   summarizeBwcHistory,
   zoomBwcTimeDomain,
 } from "./bwc-history-core.js";
+import { initializeBwcHistoryReport } from "./bwc-history-report.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const RANGE_KEYS = new Set(["24h", "7d", "30d", "90d", "365d"]);
@@ -1675,6 +1676,10 @@ export function initializeBwcHistory(doc = document) {
   let summaryMode = "daily";
   let selectedTimeline = null;
   let selectedSummary = null;
+  const reportController = initializeBwcHistoryReport(doc, {
+    getHistory: () => history,
+    getNowMs: () => currentBoardNowMs(view),
+  });
 
   renderLegend(doc, legend);
   updateRangeButtons(rangeButtons, activeRange);
@@ -1813,6 +1818,7 @@ export function initializeBwcHistory(doc = document) {
     detail.textContent = message;
     archive.append(heading, detail);
     exportButton.disabled = true;
+    reportController?.setHistoryAvailable(false);
     exportStatus.textContent = "";
     updateSummaryPresentation();
     updateViewportControls();
@@ -1862,6 +1868,7 @@ export function initializeBwcHistory(doc = document) {
     // only the chart and tooltip consume the zoomed visible range.
     const statistics = calculateBwcStatistics(masterTimeline);
     selectedTimeline = masterTimeline;
+    reportController?.setHistoryAvailable(true);
     try {
       selectedSummary = summarizeBwcHistory(masterTimeline);
     } catch {
@@ -1922,6 +1929,7 @@ export function initializeBwcHistory(doc = document) {
   }
 
   function close() {
+    reportController?.closeAll();
     if (renderFrame && view.cancelAnimationFrame) view.cancelAnimationFrame(renderFrame);
     renderFrame = 0;
     cancelScheduledViewportRender();
@@ -2099,6 +2107,7 @@ export function initializeBwcHistory(doc = document) {
     get summaryMode() { return summaryMode; },
     get timeDomain() { return timeDomain; },
     get historyLoaded() { return Boolean(history); },
+    get reportController() { return reportController; },
   };
 }
 

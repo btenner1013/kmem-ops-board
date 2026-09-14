@@ -993,6 +993,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 <link rel="stylesheet" href="./aviation-weather-lookup.css">
 <link rel="stylesheet" href="./weather-meteogram.css">
 <link rel="stylesheet" href="./bwc-history.css">
+<link rel="stylesheet" href="./bwc-history-report.css">
 <link rel="stylesheet" href="./host-health.css">
 </head>
 
@@ -1017,7 +1018,10 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
         <h2 id="bwcHistoryTitle" class="bwc-history-title">🦅 BWC HISTORY</h2>
         <p id="bwcHistoryDisclaimer" class="bwc-history-disclaimer">USAHAS AHAS RISK — NOT OFFICIAL AIRFIELD BWC</p>
       </div>
-      <button id="bwcHistoryCloseButton" class="bwc-history-close" type="button" aria-label="Close BWC History">×</button>
+      <div class="bwc-history-header-actions">
+        <button id="bwcHistoryPrintReport" class="bwc-history-print-report" type="button" disabled>🖨️ PRINT REPORT</button>
+        <button id="bwcHistoryCloseButton" class="bwc-history-close" type="button" aria-label="Close BWC History">×</button>
+      </div>
     </header>
     <div class="bwc-history-range-strip" role="group" aria-label="BWC history time range">
       <button class="bwc-history-range-button bwc-history-range-active" type="button" data-bwc-range="24h" aria-pressed="true">24 HR</button>
@@ -1072,6 +1076,54 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
     </div>
   </section>
 </div>
+
+<div id="bwcReportSetupOverlay" class="bwc-report-setup-overlay" hidden aria-hidden="true">
+  <section id="bwcReportSetupPanel" class="bwc-report-setup-panel" role="dialog" aria-modal="true" aria-labelledby="bwcReportSetupTitle" aria-describedby="bwcReportSetupSubtitle">
+    <header>
+      <div>
+        <h2 id="bwcReportSetupTitle">🖨️ PRINT BWC REPORT</h2>
+        <p id="bwcReportSetupSubtitle">DECISION-SUPPORT SUMMARY · NATIVE BROWSER PRINT / SAVE AS PDF</p>
+      </div>
+      <button id="bwcReportSetupClose" class="bwc-report-setup-close" type="button" aria-label="Close BWC report setup">×</button>
+    </header>
+    <form id="bwcReportSetupForm" class="bwc-report-setup-form" novalidate>
+      <fieldset class="bwc-report-options">
+        <legend>REPORT RANGE</legend>
+        <label><input type="radio" name="bwcReportRange" value="24h"> 24 HR</label>
+        <label><input type="radio" name="bwcReportRange" value="7d" checked> 7 DAYS</label>
+        <label><input type="radio" name="bwcReportRange" value="30d"> 30 DAYS</label>
+        <label><input type="radio" name="bwcReportRange" value="90d"> 90 DAYS</label>
+        <label><input type="radio" name="bwcReportRange" value="365d"> 1 YEAR</label>
+        <label><input type="radio" name="bwcReportRange" value="custom"> CUSTOM DATES</label>
+      </fieldset>
+      <div id="bwcReportCustomFields" class="bwc-report-custom-fields" hidden>
+        <label>START DATE · AMERICA/CHICAGO<input id="bwcReportStartDate" type="date"></label>
+        <label>FINAL DATE · AMERICA/CHICAGO<input id="bwcReportEndDate" type="date"></label>
+      </div>
+      <p id="bwcReportRangePreview" class="bwc-report-range-preview" aria-live="polite"></p>
+      <div class="bwc-report-checks">
+        <label><input id="bwcReportComparison" type="checkbox"> COMPARE PRECEDING EQUAL PERIOD</label>
+        <label><input id="bwcReportAppendix" type="checkbox"> INCLUDE DAILY DETAIL APPENDIX</label>
+      </div>
+      <div id="bwcReportSetupStatus" class="bwc-report-setup-status" role="status" aria-live="polite"></div>
+      <footer>
+        <button id="bwcReportSetupCancel" type="button">CANCEL</button>
+        <button type="submit">PREVIEW REPORT</button>
+      </footer>
+    </form>
+  </section>
+</div>
+
+<section id="bwcReportPreview" class="bwc-report-preview" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="bwcReportPreviewTitle">
+  <header class="bwc-report-preview-toolbar">
+    <strong id="bwcReportPreviewTitle">BWC DECISION-SUPPORT REPORT PREVIEW</strong>
+    <div>
+      <button id="bwcReportPreviewBack" type="button">BACK TO BWC HISTORY</button>
+      <button id="bwcReportPreviewPrint" class="bwc-report-preview-print" type="button">PRINT / SAVE PDF</button>
+    </div>
+  </header>
+  <div id="bwcReportPages" class="bwc-report-pages" aria-live="polite"></div>
+</section>
 
 <div id="hostHealthOverlay" class="host-health-overlay" hidden aria-hidden="true">
   <section id="hostHealthPanel" class="host-health-panel" role="dialog" aria-modal="true" aria-labelledby="hostHealthTitle" aria-describedby="hostHealthDisclaimer">
