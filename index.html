@@ -140,6 +140,8 @@ body.anti-burn-in-enabled .board{
 .ns-warn{ color:var(--warning); font-weight:900; white-space:nowrap; }
 .ns-red{ color:var(--closed); font-weight:900; white-space:nowrap; }
 .ns-none{ color:#7a8a94; font-weight:900; white-space:nowrap; }
+.ns-source-difference{ color:var(--warning); font-weight:1000; letter-spacing:.04em; }
+.notam-source-difference{ display:block; color:var(--warning); font-weight:1000; letter-spacing:.04em; }
 
 .mil-notam-window{
   position:relative !important;
@@ -3051,6 +3053,71 @@ function currentRunwayFiconWorseThanDry(data,inactiveNumbers=new Set()){
   });
 }
 
+function canonicalRunwayDesignator(value){
+  const match=String(value||"").trim().toUpperCase().match(/^0?([1-9]|[12][0-9]|3[0-6])([LCR]?)$/);
+  return match?`${Number(match[1])}${match[2]}`:"";
+}
+
+function runwayDesignatorsFromAtisClosures(value){
+  const text=String(value||"").trim().toUpperCase();
+  if(!text||text==="NONE"||text==="--"||text==="UNKNOWN")return [];
+  const runway="(?:0?[1-9]|[12][0-9]|3[0-6])[LCR]?";
+  if(!new RegExp(`^${runway}(?:\\s*\\/\\s*${runway})*$`).test(text))return [];
+  return text.split("/").map(canonicalRunwayDesignator).filter(Boolean);
+}
+
+function runwayDesignatorsFromNotamClosures(items){
+  const runways=[];
+  const seen=new Set();
+  (items||[]).forEach(item=>{
+    const text=notamFullTextFromItem(item).toUpperCase();
+    const pattern=/\b(?:RWY|RUNWAY)\s+(.{1,80}?)\s+(?:CLSD|CLOSED)\b/g;
+    let match;
+    while((match=pattern.exec(text))){
+      const tokens=match[1].match(/\b(?:0?[1-9]|[12][0-9]|3[0-6])[LCR]?\b/g)||[];
+      tokens.forEach(token=>{
+        const runway=canonicalRunwayDesignator(token);
+        if(runway&&!seen.has(runway)){
+          seen.add(runway);
+          runways.push(runway);
+        }
+      });
+    }
+  });
+  return runways;
+}
+
+function currentAtisClosureState(data){
+  if(atisDisplayState(data||{}).mode!=="current"){
+    return {current:false,known:false,display:"NOT CURRENT",runways:[],info:""};
+  }
+  const raw=String(data?.atisReportedClosedRunways??data?.closedRunways??"").trim().toUpperCase();
+  const info=String(data?.atisReportedLetter||data?.atisLetter||"").trim().toUpperCase();
+  if(raw==="NONE")return {current:true,known:true,display:"NONE",runways:[],info};
+  const runways=runwayDesignatorsFromAtisClosures(raw);
+  if(!runways.length)return {current:true,known:false,display:"UNKNOWN",runways:[],info};
+  return {current:true,known:true,display:runways.join(" / "),runways,info};
+}
+
+function runwayClosureProvenance(data,currentNmsClosures,nmsFeedStatus){
+  const atis=currentAtisClosureState(data);
+  const nmsRunways=runwayDesignatorsFromNotamClosures(currentNmsClosures);
+  const comparable=atis.current&&atis.known&&(nmsFeedStatus==="OK"||nmsFeedStatus==="WARN");
+  const atisSet=new Set(atis.runways);
+  const nmsSet=new Set(nmsRunways);
+  const differs=comparable&&(
+    atisSet.size!==nmsSet.size||[...atisSet].some(runway=>!nmsSet.has(runway))
+  );
+  return {atis,nmsRunways,differs};
+}
+
+function atisClosureSectionHtml(state){
+  const heading='<span class="notam-section-heading">ATIS-REPORTED RWY CLOSURES</span>';
+  if(!state.current)return `${heading}\nNOT OPERATIONAL-CURRENT`;
+  const info=state.info?`INFO ${escapeHtml(state.info)} · `:"";
+  return `${heading}\n<span class="notam-body">${info}${escapeHtml(state.display)}</span>`;
+}
+
 function setMilNotamsDisplay(data){
   const panel=document.getElementById("milNotamPanel");
   const status=document.getElementById("milNotamStatus");
@@ -3074,21 +3141,32 @@ function setMilNotamsDisplay(data){
   const taxi=splitNotamsByState(filterInactiveNotamRecords(data.taxiRestrictionNotams,inactiveNumbers));
   const ficonNow=currentRunwayFiconWorseThanDry(data,inactiveNumbers);
   const futureCount=rwy.future.length+construction.future.length+taxi.future.length+mil.future.length;
+  const nmsFeed=notamFeedState(data);
+  const provenance=runwayClosureProvenance(data,rwy.current,nmsFeed.status);
 
   const currentMilCount=mil.current.length;
   const currentRwyCount=rwy.current.length;
   const nsVal=(n,okCls)=>n>0?`<span class="${okCls}">${n}</span>`:`<span class="ns-none">0</span>`;
-  status.innerHTML=[
-    `CURRENT: ${nsVal(currentMilCount,"ns-warn")} MIL | ${nsVal(currentRwyCount,"ns-red")} RWY CLSD`,
-    `CONST/STATUS NOW: ${construction.current.length?`<span class="ns-ok">${construction.current.length} ACTIVE</span>`:`<span class="ns-none">NONE</span>`}`,
-    `TAXI RTE/RESTR NOW: ${taxi.current.length?`<span class="ns-warn">${taxi.current.length} ACTIVE</span>`:`<span class="ns-none">NONE</span>`}`
-  ].join("\n");
+  const closureRecordLabel=currentRwyCount===1?"RWY-CLOSURE RECORD":"RWY-CLOSURE RECORDS";
+  const atisInfo=provenance.atis.info?` (${escapeHtml(provenance.atis.info)})`:"";
+  const statusLines=[
+    `NMS: ${nsVal(currentMilCount,"ns-warn")} MIL | ${nsVal(currentRwyCount,"ns-red")} ${closureRecordLabel}`,
+    `ATIS CLOSED${atisInfo}: <span class="${provenance.atis.current&&provenance.atis.known&&provenance.atis.runways.length?"ns-red":provenance.atis.current&&provenance.atis.known?"ns-none":"ns-warn"}">${escapeHtml(provenance.atis.display)}</span>`,
+    provenance.differs
+      ? '<span class="ns-source-difference">SOURCE DIFFERENCE</span>'
+      : `CONST ${construction.current.length?`<span class="ns-ok">${construction.current.length}</span>`:`<span class="ns-none">0</span>`} | TAXI ${taxi.current.length?`<span class="ns-warn">${taxi.current.length}</span>`:`<span class="ns-none">0</span>`}`
+  ];
+  status.innerHTML=statusLines.join("\n");
 
   const scrollParts=[
     `<span class="notam-major-heading">FOR REFERENCE ONLY</span>`,
     `<span class="notam-major-heading">CURRENT AIRFIELD STATUS / NOTAM IMPACTS</span>`,
     escapeHtml(formatCaoFull(updated)),
-    notamSectionHtml("RWY CLOSURES NOW",rwy.current),
+    atisClosureSectionHtml(provenance.atis),
+    provenance.differs
+      ? '<span class="notam-source-difference">SOURCE DIFFERENCE · ATIS AND NMS ARE INDEPENDENT REPORTS</span>'
+      : "",
+    notamSectionHtml("NMS RWY-CLOSURE RECORDS NOW",rwy.current),
     notamSectionHtml("RSC/RCR / FICON NOW",ficonNow,{omitIfEmpty:true}),
     notamSectionHtml("CONST / AFLD STATUS NOW",construction.current),
     notamSectionHtml("TAXI ROUTES / RESTR NOW",taxi.current),
@@ -3096,7 +3174,7 @@ function setMilNotamsDisplay(data){
     `<span class="notam-major-heading">UPCOMING / FUTURE NOTAM IMPACTS</span>`,
     futureCount
       ? [
-          notamSectionHtml("RWY CLOSURES UPCOMING",rwy.future,{omitIfEmpty:true}),
+          notamSectionHtml("NMS RWY-CLOSURE RECORDS UPCOMING",rwy.future,{omitIfEmpty:true}),
           notamSectionHtml("CONST / AFLD STATUS UPCOMING",construction.future,{omitIfEmpty:true}),
           notamSectionHtml("TAXI ROUTES / RESTR UPCOMING",taxi.future,{omitIfEmpty:true}),
           notamSectionHtml("MIL NOTAMS UPCOMING",mil.future,{omitIfEmpty:true})
@@ -3124,7 +3202,7 @@ function setMilNotamsDisplay(data){
     status.textContent="NMS STALE";
     crawl.textContent=`MIL NOTAM FEED ${fetchStatus}. USING LAST AVAILABLE DATA IF PRESENT. UPDATED ${updated}`;
   }else{
-    status.innerHTML="CURRENT: <span class=\"ns-none\">0</span> MIL | <span class=\"ns-none\">0</span> RWY CLSD\nCONST/STATUS NOW: <span class=\"ns-none\">NONE</span>\nTAXI RTE/RESTR NOW: <span class=\"ns-none\">NONE</span>";
+    status.innerHTML="NMS: <span class=\"ns-none\">0</span> MIL | <span class=\"ns-none\">0</span> RWY-CLOSURE RECORDS\nATIS CLOSED: <span class=\"ns-warn\">NOT CURRENT</span>\nCONST <span class=\"ns-none\">0</span> | TAXI <span class=\"ns-none\">0</span>";
     crawl.textContent=`NO CURRENT KMEM AIRFIELD STATUS / NOTAM IMPACTS. UPDATED ${updated}`;
   }
 }
