@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "retentionDays": 365,
   "exactHistoryDays": 2,
-  "exactHistoryStartUtc": "2026-09-12T00:00:00Z",
-  "summarizedThroughUtc": "2026-09-12T00:00:00Z",
+  "exactHistoryStartUtc": "2026-09-13T00:00:00Z",
+  "summarizedThroughUtc": "2026-09-13T00:00:00Z",
   "summaryCoverageStartUtc": "2026-09-09T00:00:00Z",
   "retentionBoundaryGap": null,
   "archiveStartedUtc": "2026-09-09T05:35:56Z",
   "coverageStartUtc": "2026-09-09T05:35:56Z",
-  "updatedUtc": "2026-09-14T23:55:53Z",
+  "updatedUtc": "2026-09-15T00:05:54Z",
   "partialHistory": true,
   "thresholds": {
     "healthyMinutes": 15,
@@ -21,22 +21,22 @@
       "healthState": "HEALTHY",
       "roleState": "ACTIVE_PUBLISHER",
       "reason": "HEARTBEAT_CURRENT",
-      "heartbeatAgeMinutes": 0.012,
+      "heartbeatAgeMinutes": 0.003,
       "lastObservedHealthState": "HEALTHY",
-      "lastHeartbeatUtc": "2026-09-14T23:55:53Z",
-      "lastSuccessfulUpdaterRunUtc": "2026-09-14T23:55:53Z",
-      "lastSuccessfulPushUtc": "2026-09-14T23:55:53Z",
-      "lastKnownSourceSha": "da57401e13d4c81982212c76a311ab9053c387ed",
+      "lastHeartbeatUtc": "2026-09-15T00:05:54Z",
+      "lastSuccessfulUpdaterRunUtc": "2026-09-15T00:05:54Z",
+      "lastSuccessfulPushUtc": "2026-09-15T00:05:54Z",
+      "lastKnownSourceSha": "98810a32c07afd1d74502d34e7ae67c075865b01",
       "lastError": null,
       "taskState": "UNKNOWN",
-      "evidenceUpdatedUtc": "2026-09-14T23:55:53Z"
+      "evidenceUpdatedUtc": "2026-09-15T00:05:54Z"
     },
     "BACKUP": {
       "role": "BACKUP",
       "healthState": "UNKNOWN",
       "roleState": "STANDBY_NOT_OBSERVED",
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "heartbeatAgeMinutes": 2215.095,
+      "heartbeatAgeMinutes": 2225.103,
       "lastObservedHealthState": "HEALTHY",
       "lastHeartbeatUtc": "2026-09-13T11:00:48Z",
       "lastSuccessfulUpdaterRunUtc": "2026-09-13T11:00:48Z",
@@ -52,26 +52,26 @@
       "role": "PRIMARY",
       "sinceUtc": "2026-09-13T11:05:43Z",
       "sinceTimestampBasis": "LEASE_ACQUIRED_UTC",
-      "lastSuccessfulPublishUtc": "2026-09-14T23:55:53Z",
-      "lastSuccessfulPushUtc": "2026-09-14T23:55:53Z",
+      "lastSuccessfulPublishUtc": "2026-09-15T00:05:54Z",
+      "lastSuccessfulPushUtc": "2026-09-15T00:05:54Z",
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "rootCauseKnown": false
     },
     "boardDelivery": {
       "state": "CONTINUOUS",
-      "lastSuccessfulPublishUtc": "2026-09-14T23:55:53Z",
+      "lastSuccessfulPublishUtc": "2026-09-15T00:05:54Z",
       "publisher": "PRIMARY",
-      "ageMinutes": 0.012,
+      "ageMinutes": 0.003,
       "reason": "BOARD_PUBLISH_CURRENT"
     },
     "lease": {
       "state": "RELEASED",
       "activeOwner": null,
       "lastOwner": "PRIMARY",
-      "acquiredUtc": "2026-09-14T23:55:38Z",
-      "expiresUtc": "2026-09-14T23:55:53Z",
-      "releasedUtc": "2026-09-14T23:55:53Z",
-      "observedUtc": "2026-09-14T23:55:53Z"
+      "acquiredUtc": "2026-09-15T00:05:38Z",
+      "expiresUtc": "2026-09-15T00:05:54Z",
+      "releasedUtc": "2026-09-15T00:05:54Z",
+      "observedUtc": "2026-09-15T00:05:54Z"
     }
   },
   "intervals": [
@@ -79,7 +79,7 @@
       "track": "BACKUP",
       "host": "BACKUP",
       "state": "UNKNOWN",
-      "startUtc": "2026-09-12T00:00:00Z",
+      "startUtc": "2026-09-13T00:00:00Z",
       "endUtc": "2026-09-13T11:00:48Z",
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
       "sourceSha": "b9657aaad107836f0a5d10292d96fa2f596fc71b",
@@ -92,7 +92,7 @@
       "track": "BOARD_DELIVERY",
       "host": null,
       "state": "CONTINUOUS",
-      "startUtc": "2026-09-12T00:00:00Z",
+      "startUtc": "2026-09-13T00:00:00Z",
       "endUtc": "2026-09-13T10:40:56Z",
       "reason": "BOARD_PUBLISH_CURRENT",
       "sourceSha": "b9657aaad107836f0a5d10292d96fa2f596fc71b",
@@ -105,7 +105,7 @@
       "track": "PRIMARY",
       "host": "PRIMARY",
       "state": "HEALTHY",
-      "startUtc": "2026-09-12T00:00:00Z",
+      "startUtc": "2026-09-13T00:00:00Z",
       "endUtc": "2026-09-13T10:40:56Z",
       "reason": "HEARTBEAT_CURRENT",
       "sourceSha": "342066f3ba651319bec3d676f133a2b07d362774",
@@ -118,7 +118,7 @@
       "track": "PUBLISHER",
       "host": null,
       "state": "PRIMARY",
-      "startUtc": "2026-09-12T00:00:00Z",
+      "startUtc": "2026-09-13T00:00:00Z",
       "endUtc": "2026-09-13T11:00:22Z",
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "sourceSha": "342066f3ba651319bec3d676f133a2b07d362774",
@@ -1329,6 +1329,54 @@
       },
       "sourceIntervalCount": 85,
       "sourceEventCount": 87,
+      "aggregation": {
+        "timeBasis": "UTC",
+        "timestampBasis": "EXACT_INTERVAL_BOUNDARIES_SPLIT_AT_UTC_DAY",
+        "provenance": "DERIVED_FROM_EXACT_INTERVALS_AND_EVENTS"
+      }
+    },
+    {
+      "dateUtc": "2026-09-12",
+      "dayStartUtc": "2026-09-12T00:00:00Z",
+      "dayEndUtc": "2026-09-13T00:00:00Z",
+      "coverageStartUtc": "2026-09-12T00:00:00Z",
+      "coverageEndUtc": "2026-09-13T00:00:00Z",
+      "coverageSeconds": 86400,
+      "knownCoverageSeconds": 86400,
+      "partialCoverage": false,
+      "tracks": {
+        "BACKUP": {
+          "durationsSeconds": {
+            "UNKNOWN": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 0
+        },
+        "BOARD_DELIVERY": {
+          "durationsSeconds": {
+            "CONTINUOUS": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        },
+        "PRIMARY": {
+          "durationsSeconds": {
+            "HEALTHY": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        },
+        "PUBLISHER": {
+          "durationsSeconds": {
+            "PRIMARY": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        }
+      },
+      "eventCounts": {},
+      "sourceIntervalCount": 4,
+      "sourceEventCount": 0,
       "aggregation": {
         "timeBasis": "UTC",
         "timestampBasis": "EXACT_INTERVAL_BOUNDARIES_SPLIT_AT_UTC_DAY",
