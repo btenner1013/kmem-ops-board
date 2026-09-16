@@ -7851,14 +7851,6 @@
       "raw": "TAF KLEX 152320Z 1600/1624 17004KT P6SM SKC FM161600 24008KT P6SM SCT050"
     },
     {
-      "station": "KLFI",
-      "issueTime": "2026-09-15T17:00:00Z",
-      "validTimeFrom": "2026-09-15T17:00:00Z",
-      "validTimeTo": "2026-09-16T23:00:00Z",
-      "variant": "",
-      "raw": "TAF KLFI 151700Z 1517/1623 07009KT 9999 SCT040 QNH3031INS BECMG 1617/1618 VRB06KT 9999 SKC QNH3029INS TX26/1518Z TN18/1609Z"
-    },
-    {
       "station": "KLFK",
       "issueTime": "2026-09-15T23:40:00Z",
       "validTimeFrom": "2026-09-16T00:00:00Z",
@@ -14899,14 +14891,6 @@
       "raw": "TAF OEPA 152200Z 1600/1706 02010KT 8000 NSC"
     },
     {
-      "station": "OEPS",
-      "issueTime": "2026-09-15T19:00:00Z",
-      "validTimeFrom": "2026-09-15T19:00:00Z",
-      "validTimeTo": "2026-09-16T23:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD OEPS 151900Z 1519/1623 03009KT 9999 SKC QNH2987INS BECMG 1522/1523 32006KT 9999 SKC QNH2987INS BECMG 1608/1609 05012KT 9000 HZ SKC QNH2991INS BECMG 1615/1616 03009KT 9999 NSW SKC QNH2986INS TX44/1611Z TN29/1602Z"
-    },
-    {
       "station": "OERF",
       "issueTime": "2026-09-15T23:00:00Z",
       "validTimeFrom": "2026-09-16T00:00:00Z",
@@ -18515,6 +18499,14 @@
       "raw": "TAF UACC 152303Z 1600/1624 27005MPS 9999 SCT030 BKN050 TX19/1610Z TN07/1601Z TEMPO 1600/1604 31005MPS 3100 BR SCT005 BKN011 TEMPO 1604/1613 31009MPS SCT030CB BECMG 1613/1615 VRB01MPS TEMPO 1619/1624 3100 BR FEW005 BKN011"
     },
     {
+      "station": "UACP",
+      "issueTime": "2026-09-16T00:47:00Z",
+      "validTimeFrom": "2026-09-16T01:00:00Z",
+      "validTimeTo": "2026-09-16T09:00:00Z",
+      "variant": "AMD",
+      "raw": "TAF AMD UACP 160047Z 1601/1609 26004MPS 9999 SCT011 BKN030CB TEMPO 1601/1603 BKN007 BKN020CB BECMG 1603/1604 32007G12MPS TEMPO 1606/1609 3100 -SHRA BKN015CB"
+    },
+    {
       "station": "UADD",
       "issueTime": "2026-09-15T23:00:00Z",
       "validTimeFrom": "2026-09-16T00:00:00Z",
@@ -18577,6 +18569,14 @@
       "validTimeTo": "2026-09-16T09:00:00Z",
       "variant": "",
       "raw": "TAF UASP 152302Z 1600/1609 27008G13MPS 9999 -SHRA BKN011 BKN020CB TEMPO 1602/1608 27015MPS 2000 SHRA BKN007 BKN015CB"
+    },
+    {
+      "station": "UASS",
+      "issueTime": "2026-09-16T00:46:00Z",
+      "validTimeFrom": "2026-09-16T01:00:00Z",
+      "validTimeTo": "2026-09-16T09:00:00Z",
+      "variant": "AMD",
+      "raw": "TAF AMD UASS 160046Z 1601/1609 26006G11MPS 9999 BKN040 BKN100 TEMPO 1602/1609 28010G15MPS 3100 -TSRA BKN030CB"
     },
     {
       "station": "UATE",
@@ -19324,11 +19324,11 @@
     },
     {
       "station": "UWKD",
-      "issueTime": "2026-09-15T23:13:00Z",
-      "validTimeFrom": "2026-09-16T00:00:00Z",
+      "issueTime": "2026-09-16T00:53:00Z",
+      "validTimeFrom": "2026-09-16T01:00:00Z",
       "validTimeTo": "2026-09-17T00:00:00Z",
-      "variant": "",
-      "raw": "TAF UWKD 152313Z 1600/1624 04005G12MPS 6000 OVC016 TX16/1612Z TN10/1602Z TEMPO 1600/1609 1000 SHRA BKN004 BKN020CB TEMPO 1609/1615 2000 TSRA BKN005 BKN020CB BECMG 1612/1614 34005G12MPS"
+      "variant": "AMD",
+      "raw": "TAF AMD UWKD 160053Z 1601/1624 04005G12MPS 6000 OVC016 TX16/1612Z TN10/1602Z TEMPO 1601/1609 1000 TSRA BKN004 BKN020CB TEMPO 1609/1615 2000 TSRA BKN005 BKN020CB BECMG 1612/1614 34005G12MPS"
     },
     {
       "station": "UWKE",
@@ -21881,6 +21881,22 @@
       "validTimeTo": "2026-09-17T00:00:00Z",
       "variant": "",
       "raw": "TAF ZJSY 152107Z 1600/1624 09004MPS 9999 FEW020 TX32/1606Z TN27/1621Z"
+    },
+    {
+      "station": "ZKPY",
+      "issueTime": "2026-09-15T22:00:00Z",
+      "validTimeFrom": "2026-09-16T00:00:00Z",
+      "validTimeTo": "2026-09-17T00:00:00Z",
+      "variant": "",
+      "raw": "TAF ZKPY 152200Z 1600/1624 09003MPS CAVOK TX26/1606Z TN12/1621Z"
+    },
+    {
+      "station": "ZKWS",
+      "issueTime": "2026-09-15T22:00:00Z",
+      "validTimeFrom": "2026-09-16T00:00:00Z",
+      "validTimeTo": "2026-09-17T00:00:00Z",
+      "variant": "",
+      "raw": "TAF ZKWS 152200Z 1600/1624 12004MPS CAVOK TX24/1606Z TN12/1621Z"
     },
     {
       "station": "ZLLL",
