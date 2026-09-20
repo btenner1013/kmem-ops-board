@@ -5,15 +5,15 @@
   "atisLetter": "J",
   "atisPhonetic": "JULIETT",
   "atisDisplay": "JULIETT",
-  "metarFetchStatus": "WARN_SOURCE",
-  "tafFetchStatus": "OK",
+  "metarFetchStatus": "WARN_LAST_GOOD",
+  "tafFetchStatus": "USED_LAST_GOOD",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-19T22:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarAgeMinutes": 72,
   "atisObservedZ": "2026-09-19T23:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "J:2354Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,8 +25,7 @@
       "identity": "J:2354Z",
       "observedZ": "2026-09-19T23:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
-        "ATIS_RELAY"
+        "ATIS_INFO_API"
       ]
     }
   ],
@@ -38,8 +37,8 @@
   "atisReportedClosedRunways": "NONE",
   "atisReportedFlow": "MIXED",
   "lastKnownGoodUsed": {
-    "metar": false,
-    "taf": false,
+    "metar": true,
+    "taf": true,
     "atis": false,
     "ahas": false
   },
@@ -127,20 +126,20 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-19 23:54:00.000",
+  "bwcUpdatedZ": "2026-09-20 00:00:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
-  "bwcHeight100FtAgl": "6667",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=19&hour=23&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=19&iHour=23",
+  "bwcHeight100FtAgl": "6444",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=20&hour=00&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=20&iHour=00",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-19 23:55:57Z",
+  "milNotamUpdatedZ": "2026-09-20 00:05:54Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -177,7 +176,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-09-19 23:55:57Z",
+  "milNotamAttemptZ": "2026-09-20 00:05:54Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [],
@@ -199,13 +198,13 @@
   "constructionStatusNotamCount": 1,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-09-19 23:55Z",
+  "allFeedsUpdatedZ": "2026-09-20 00:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-19 23:55:41Z"
+    "lastWorkflowTimestampZ": "2026-09-20 00:05:41Z"
   }
 }
