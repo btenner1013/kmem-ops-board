@@ -1,19 +1,19 @@
 {
-  "metar": "METAR KMEM 210154Z 24005KT 10SM FEW140 SCT250 31/16 A2989 RMK AO2 SLP116 T03060156 $",
+  "metar": "METAR KMEM 210254Z 27004KT 10SM FEW140 SCT250 31/16 A2991 RMK AO2 SLP123 T03060161 53023 $",
   "taf": "TAF KMEM 210250Z 2103/2206 22004KT P6SM SCT090 \n  FM211500 30007KT P6SM BKN200 \n  FM220100 02004KT P6SM BKN200",
   "atisText": "MEM ATIS INFO P 0254Z. 27004KT 10SM FEW140 SCT250 31/16 A2991 (TWO NINER NINER ONE). SIMUL VISUAL APCHS IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. RWY 18L, 18R, AND 27 RWY ALIGNMENT INDICATOR LIGHTS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO P",
   "atisLetter": "P",
   "atisPhonetic": "PAPA",
   "atisDisplay": "PAPA",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-09-21T01:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarObservedZ": "2026-09-21T02:54:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-09-21T02:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "P:0254Z",
-  "atisSelectedSource": "ATIS_INFO_API",
+  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,7 +25,8 @@
       "identity": "P:0254Z",
       "observedZ": "2026-09-21T02:54:00Z",
       "sources": [
-        "ATIS_INFO_API"
+        "ATIS_INFO_API",
+        "ATIS_RELAY"
       ]
     }
   ],
@@ -54,7 +55,7 @@
     "visibility": "ATIS",
     "ceiling": "NONE"
   },
-  "metarAltimeterRaw": 29.89,
+  "metarAltimeterRaw": 29.91,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
@@ -126,20 +127,20 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-21 02:54:00.000",
+  "bwcUpdatedZ": "2026-09-21 03:06:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=21&hour=02&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=21&iHour=02",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=21&hour=03&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=9&iDay=21&iHour=03",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-21 02:55:57Z",
+  "milNotamUpdatedZ": "2026-09-21 03:06:01Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -176,7 +177,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-09-21 02:55:57Z",
+  "milNotamAttemptZ": "2026-09-21 03:06:01Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [],
@@ -198,13 +199,13 @@
   "constructionStatusNotamCount": 1,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-09-21 02:55Z",
+  "allFeedsUpdatedZ": "2026-09-21 03:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-21 02:55:44Z"
+    "lastWorkflowTimestampZ": "2026-09-21 03:05:43Z"
   }
 }
