@@ -9,11 +9,11 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-09-23T21:54:00Z",
-  "metarAgeMinutes": 42,
+  "metarAgeMinutes": 52,
   "atisObservedZ": "2026-09-23T21:54:00Z",
-  "atisAgeMinutes": 42,
+  "atisAgeMinutes": 52,
   "atisReportIdentity": "K:2154Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,8 +25,7 @@
       "identity": "K:2154Z",
       "observedZ": "2026-09-23T21:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
-        "ATIS_RELAY"
+        "ATIS_INFO_API"
       ]
     }
   ],
@@ -45,8 +44,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-09-23T19:45:41Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-09-23T19:55:41Z",
+  "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -81,8 +80,8 @@
   "rcrRaw": "--",
   "altimeter": "30.15",
   "altimeterRaw": 30.15,
-  "altimeterTrend": "\u2193",
-  "altimeterTrendText": "FALLING",
+  "altimeterTrend": "\u2192",
+  "altimeterTrendText": "STEADY",
   "ceilingFt": null,
   "ceilingDisplay": "UNL",
   "ceilingTrend": "\u2191",
@@ -98,14 +97,14 @@
   "windGustKt": null,
   "windArrow": "\u2199",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
-  "windTrend": "\u25ba",
-  "windTrendText": "STEADY",
-  "windTrendClass": "steady",
+  "windTrend": "\u25bc",
+  "windTrendText": "DECREASING",
+  "windTrendClass": "improving",
   "tempC": 24,
   "dewpointC": 15,
   "tempDpDisplay": "24/15",
-  "tempTrend": "\u25b2",
-  "tempTrendText": "RISING",
+  "tempTrend": "\u25ba",
+  "tempTrendText": "STEADY",
   "dewpointTrend": "\u25bc",
   "dewpointTrendText": "FALLING",
   "lightning": "NONE",
@@ -125,13 +124,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-09-23 22:36:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-09-23 22:42:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "SEVERE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "99999",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=9&day=23&hour=22&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -140,7 +139,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-09-23 22:36:11Z",
+  "milNotamUpdatedZ": "2026-09-23 22:46:00Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0039/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD UHF/VHF INOP FOR MX. PLEASE USE 901-291-7148 FOR OFFICIAL BUSINESS ONLY.",
   "milNotams": [
     {
@@ -188,7 +187,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-09-23 22:36:11Z",
+  "milNotamAttemptZ": "2026-09-23 22:46:00Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -260,13 +259,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-09-23 22:35Z",
+  "allFeedsUpdatedZ": "2026-09-23 22:45Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-09-23 22:35:41Z"
+    "lastWorkflowTimestampZ": "2026-09-23 22:45:41Z"
   }
 }
