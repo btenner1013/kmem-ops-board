@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-02T15:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 42,
   "atisObservedZ": "2026-10-02T15:54:00Z",
-  "atisAgeMinutes": 32,
+  "atisAgeMinutes": 42,
   "atisReportIdentity": "P:1554Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,8 +45,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-02T13:25:44Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-10-02T13:45:42Z",
+  "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -73,12 +73,12 @@
     "18R/36L"
   ],
   "flow": "MIXED",
-  "rcrText": "DRY",
-  "rcrCode": "DRY",
+  "rcrText": "RSC/RCR 5/5/5 WET",
+  "rcrCode": "5/5/5",
   "rcrSeverity": "good",
-  "rcrSource": "NOTAM_FICON_NONE",
+  "rcrSource": "NOTAM_FICON",
   "rcrVisible": true,
-  "rcrRaw": "--",
+  "rcrRaw": "10/028 RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2610021634. RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2610021634.",
   "altimeter": "30.05",
   "altimeterRaw": 30.05,
   "altimeterTrend": "\u2191",
@@ -169,7 +169,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-03 OCT 02Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-02 16:24:00.000",
+  "bwcUpdatedZ": "2026-10-02 16:36:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "LOW",
@@ -182,7 +182,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-02 16:25:54Z",
+  "milNotamUpdatedZ": "2026-10-02 16:36:17Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -219,9 +219,65 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-02 16:25:54Z",
-  "ficonNotams": [],
-  "ficonNotamCount": 0,
+  "milNotamAttemptZ": "2026-10-02 16:36:17Z",
+  "ficonNotams": [
+    {
+      "number": "10/030",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "APRON ALL FICON WET OBS AT 2610021636.",
+      "displayText": "APRON ALL FICON WET OBS AT 2610021636.",
+      "effectiveStart": "202610021636",
+      "effectiveEnd": "202610031636",
+      "lastUpdated": "2026-10-02T16:36:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "10/029",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "TWY ALL FICON WET OBS AT 2610021635.",
+      "displayText": "TWY ALL FICON WET OBS AT 2610021635.",
+      "effectiveStart": "202610021635",
+      "effectiveEnd": "202610031635",
+      "lastUpdated": "2026-10-02T16:35:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "10/028",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2610021634.",
+      "displayText": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2610021634.",
+      "effectiveStart": "202610021634",
+      "effectiveEnd": "202610031634",
+      "lastUpdated": "2026-10-02T16:35:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "10/027",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 36L FICON 5/5/5 100 PCT WET OBS AT 2610021634.",
+      "displayText": "RWY 36L FICON 5/5/5 100 PCT WET OBS AT 2610021634.",
+      "effectiveStart": "202610021634",
+      "effectiveEnd": "202610031634",
+      "lastUpdated": "2026-10-02T16:35:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "10/026",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 36R FICON 5/5/5 100 PCT WET OBS AT 2610021633.",
+      "displayText": "RWY 36R FICON 5/5/5 100 PCT WET OBS AT 2610021633.",
+      "effectiveStart": "202610021633",
+      "effectiveEnd": "202610031633",
+      "lastUpdated": "2026-10-02T16:35:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    }
+  ],
+  "ficonNotamCount": 5,
   "runwayClosureNotams": [
     {
       "number": "10/015",
@@ -291,13 +347,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-10-02 16:25Z",
+  "allFeedsUpdatedZ": "2026-10-02 16:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-02 16:25:43Z"
+    "lastWorkflowTimestampZ": "2026-10-02 16:35:45Z"
   }
 }
