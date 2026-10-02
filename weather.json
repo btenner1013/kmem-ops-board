@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-02T19:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-10-02T19:54:00Z",
-  "atisAgeMinutes": 22,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "Z:1954Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,8 +45,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-02T17:15:46Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-10-02T17:35:43Z",
+  "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -85,8 +85,8 @@
   "altimeterTrendText": "STEADY",
   "ceilingFt": 2000,
   "ceilingDisplay": "2000 FT",
-  "ceilingTrend": "\u2192",
-  "ceilingTrendText": "STEADY",
+  "ceilingTrend": "\u2191",
+  "ceilingTrendText": "RISING",
   "visibilitySm": 5.0,
   "visibilityDisplay": "5 SM",
   "visibilityTrend": "\u2191",
@@ -167,7 +167,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA ATIS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-02 20:12:00.000",
+  "bwcUpdatedZ": "2026-10-02 20:24:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "LOW",
@@ -180,7 +180,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-02 20:15:52Z",
+  "milNotamUpdatedZ": "2026-10-02 20:26:02Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -217,7 +217,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-02 20:15:52Z",
+  "milNotamAttemptZ": "2026-10-02 20:26:02Z",
   "ficonNotams": [
     {
       "number": "10/033",
@@ -304,6 +304,18 @@
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
     {
+      "number": "10/036",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP SPRAYING, MOWING &amp; WEEDING",
+      "displayText": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP SPRAYING, MOWING &amp; WEEDING",
+      "effectiveStart": "202610051300",
+      "effectiveEnd": "202610121930",
+      "lastUpdated": "2026-10-02T20:22:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP SPRAYING, MOWING &amp; WEEDING"
+    },
+    {
       "number": "09/339",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -316,7 +328,7 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 1,
+  "constructionStatusNotamCount": 2,
   "taxiRestrictionNotams": [
     {
       "number": "10/035",
@@ -326,19 +338,19 @@
       "displayText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY H BTN TWY R2 AND TWY N, TWY R BTN TWY R2 AND TWY N CLSD",
       "effectiveStart": "202610051300",
       "effectiveEnd": "202610051930",
-      "lastUpdated": "2026-10-02T20:15:00.000Z",
+      "lastUpdated": "2026-10-02T20:16:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY H BTN TWY R2 AND TWY N, TWY R BTN TWY R2 AND TWY N CLSD"
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-02 20:15Z",
+  "allFeedsUpdatedZ": "2026-10-02 20:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-02 20:15:42Z"
+    "lastWorkflowTimestampZ": "2026-10-02 20:25:44Z"
   }
 }
