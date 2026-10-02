@@ -1,18 +1,18 @@
 {
   "metar": "METAR KMEM 021254Z 19007KT 10SM BKN036 BKN045 BKN130 26/22 A3001 RMK AO2 RAB07E18 SLP157 P0000 T02560217 $",
-  "taf": "TAF KMEM 021148Z 0212/0318 21005KT P6SM VCSH SCT035 BKN080 \n  FM021500 24005KT P6SM -SHRA SCT025 OVC035 \n  TEMPO 0215/0218 5SM -SHRA BR BKN025 \n  FM021800 36007KT 5SM -SHRA BR SCT015 BKN025 OVC035 \n  FM030200 03010KT P6SM VCSH BKN015 OVC025 \n  FM030600 03010KT P6SM VCSH OVC007 \n  FM031600 05008KT P6SM OVC015",
-  "atisText": "MEM ATIS INFO I 1254Z. 19007KT 10SM BKN036 BKN045 BKN130 26/22 A3001 (THREE ZERO ZERO ONE) RMK AO2 RAB07E18 SLP157 P0000 T02560217. SIMUL VISUAL APCHS IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18L 18R. 18L. NOTICE TO AIRMEN. RWY 18C, 36C CLSD. TWY M9 BTN N AND 18R CLSD. ILS RWY 18C, 36C OTS, LLWAS OTS. RWY 18L RWY ALIGNMENT INDICATOR LIGHTS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO I",
-  "atisLetter": "I",
-  "atisPhonetic": "INDIA",
-  "atisDisplay": "INDIA",
+  "taf": "TAF KMEM 021322Z 0213/0318 20006KT P6SM VCSH BKN035 BKN060 \n  FM021500 VRB03KT 5SM -SHRA SCT025 OVC035 \n  TEMPO 0215/0218 3SM -SHRA BR BKN025 \n  FM021800 36007KT 5SM -SHRA BR SCT015 BKN025 OVC035 \n  FM030200 03010KT P6SM VCSH BKN015 OVC025 \n  FM030600 03010KT P6SM VCSH OVC007 \n  FM031600 05008KT P6SM OVC015",
+  "atisText": "MEM ATIS INFO J 1254Z. 19007KT 10SM BKN036 BKN045 BKN130 26/22 A3001 (THREE ZERO ZERO ONE) RMK AO2 RAB07E18 SLP157 P0000 T02560217. SIMUL VISUAL APCHS IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18L 18R. 18L. NOTICE TO AIRMEN. RWY 18C, 36C CLSD. TWY M9 BTN N AND 18R CLSD. ILS RWY 18C, 36C OTS, LLWAS OTS. RWY 18L RWY ALIGNMENT INDICATOR LIGHTS OTS. RWY 18R DEPARTURES EXPECT TO DEPART FROM TWY M8 INTERSECTION DUE TO TWY CLOSURE. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO J",
+  "atisLetter": "J",
+  "atisPhonetic": "JULIETT",
+  "atisDisplay": "JULIETT",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-02T12:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "atisObservedZ": "2026-10-02T12:54:00Z",
-  "atisAgeMinutes": 22,
-  "atisReportIdentity": "I:1254Z",
+  "atisAgeMinutes": 32,
+  "atisReportIdentity": "J:1254Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -22,7 +22,7 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "I:1254Z",
+      "identity": "J:1254Z",
       "observedZ": "2026-10-02T12:54:00Z",
       "sources": [
         "ATIS_INFO_API",
@@ -31,8 +31,8 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "I",
-  "atisReportedPhonetic": "INDIA",
+  "atisReportedLetter": "J",
+  "atisReportedPhonetic": "JULIETT",
   "atisReportedArrRunways": "18L / 18R / 27",
   "atisReportedDepRunways": "18L / 18R",
   "atisReportedClosedRunways": "18C / 36C",
@@ -45,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-02T10:25:41Z",
+  "trendReferenceTimestampZ": "2026-10-02T10:35:42Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -117,8 +117,8 @@
   "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND.",
   "wxAlerts": [
     {
-      "code": "VCSH",
-      "label": "SHOWERS VICINITY",
+      "code": "-SHRA",
+      "label": "LIGHT RAIN SHOWERS",
       "emoji": "\ud83c\udf27\ufe0f",
       "category": "shower",
       "sources": [
@@ -129,21 +129,21 @@
       "flash": false,
       "pulse": false,
       "priority": 70,
-      "text": "VCSH PSBL NOW-15Z",
-      "displayText": "\ud83c\udf27\ufe0f VCSH PSBL NOW-15Z",
-      "tafWindow": "NOW-15Z",
-      "tafStartKey": 60,
-      "tafGroupType": "PREVAILING",
-      "tafStartIso": "2026-10-02T12:00:00Z",
-      "tafEndIso": "2026-10-02T15:00:00Z"
+      "text": "-SHRA PSBL 15-18Z",
+      "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL 15-18Z",
+      "tafWindow": "15-18Z",
+      "tafStartKey": 63,
+      "tafGroupType": "TEMPO",
+      "tafStartIso": "2026-10-02T15:00:00Z",
+      "tafEndIso": "2026-10-02T18:00:00Z"
     }
   ],
-  "wxAlertText": "\ud83c\udf27\ufe0f VCSH PSBL NOW-15Z",
-  "wxAlertLogText": "VCSH PSBL NOW-15Z",
+  "wxAlertText": "\ud83c\udf27\ufe0f -SHRA PSBL 15-18Z",
+  "wxAlertLogText": "-SHRA PSBL 15-18Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
-    "code": "VCSH",
-    "label": "SHOWERS VICINITY",
+    "code": "-SHRA",
+    "label": "LIGHT RAIN SHOWERS",
     "emoji": "\ud83c\udf27\ufe0f",
     "category": "shower",
     "sources": [
@@ -154,26 +154,26 @@
     "flash": false,
     "pulse": false,
     "priority": 70,
-    "text": "VCSH PSBL NOW-15Z",
-    "displayText": "\ud83c\udf27\ufe0f VCSH PSBL NOW-15Z",
-    "tafWindow": "NOW-15Z",
-    "tafStartKey": 60,
-    "tafGroupType": "PREVAILING",
-    "tafStartIso": "2026-10-02T12:00:00Z",
-    "tafEndIso": "2026-10-02T15:00:00Z"
+    "text": "-SHRA PSBL 15-18Z",
+    "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL 15-18Z",
+    "tafWindow": "15-18Z",
+    "tafStartKey": 63,
+    "tafGroupType": "TEMPO",
+    "tafStartIso": "2026-10-02T15:00:00Z",
+    "tafEndIso": "2026-10-02T18:00:00Z"
   },
   "wxSecondaryAlert": null,
   "wxAlertTone": "blue",
   "wxAlertFlash": false,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL NOW-15Z",
-  "bwc": "LOW",
+  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 15-18Z",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-02 13:12:00.000",
-  "bwcNexrad": "LOW",
+  "bwcUpdatedZ": "2026-10-02 13:24:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "LOW",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "221",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=10&day=2&hour=13&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -182,7 +182,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-02 13:15:59Z",
+  "milNotamUpdatedZ": "2026-10-02 13:25:56Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -219,7 +219,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-02 13:15:59Z",
+  "milNotamAttemptZ": "2026-10-02 13:25:56Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -303,13 +303,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-10-02 13:15Z",
+  "allFeedsUpdatedZ": "2026-10-02 13:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-02 13:15:42Z"
+    "lastWorkflowTimestampZ": "2026-10-02 13:25:44Z"
   }
 }
