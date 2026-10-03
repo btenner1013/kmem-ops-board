@@ -1,6 +1,6 @@
 {
   "metar": "SPECI KMEM 030117Z 03011KT 10SM BKN006 BKN010 OVC018 22/21 A3007 RMK AO2 T02220211 $",
-  "taf": "TAF KMEM 022320Z 0300/0406 03011KT P6SM -SHRA BKN015 OVC025 \n  FM030200 02010KT P6SM -SHRA BKN009 OVC015 \n  FM030600 03010KT 6SM -DZ BR OVC006 \n  FM031400 04008KT P6SM OVC008 \n  PROB30 0314/0318 -RA \n  FM031900 05008KT P6SM BKN012 OVC020 \n  FM032300 03006KT P6SM SCT015 BKN100",
+  "taf": "TAF KMEM 030132Z 0302/0406 03011KT P6SM BKN006 OVC010 \n  TEMPO 0302/0306 -DZ \n  FM030600 03010KT 6SM -DZ BR OVC005 \n  FM031400 04008KT P6SM OVC008 \n  PROB30 0314/0318 -RA \n  FM031900 05008KT P6SM BKN012 OVC020 \n  FM032300 03006KT P6SM SCT015 BKN100",
   "atisText": "MEM ATIS INFO P 0117Z SPECIAL. 03011KT 10SM BKN006 BKN010 OVC018 22/21 A3007 (THREE ZERO ZERO SEVEN). ILS APCH IN USE RY 36L, 36R. SIMUL DEPS IN USE RY 36L 36C 36R. NOTICE TO AIRMEN. LLWAS OTS. RWY 18L RWY ALIGNMENT INDICATOR LIGHTS OTS. RWY 36L CONDITION CODES, , 5 , , 5 , , 5 , AT 1634Z, RWY 36C CONDITION CODES, , 5 , , 5 , , 5 , AT 1634Z, RWY 36R CONDITION CODES, , 5 , , 5 , , 5 , AT 1634Z, RWY 27 CONDITION CODES, , 5 , , 5 , , 5 , AT 1634Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO P",
   "atisLetter": "P",
   "atisPhonetic": "PAPA",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-03T01:17:00Z",
-  "metarAgeMinutes": 9,
+  "metarAgeMinutes": 19,
   "atisObservedZ": "2026-10-03T01:17:00Z",
-  "atisAgeMinutes": 9,
+  "atisAgeMinutes": 19,
   "atisReportIdentity": "P:0117Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -46,7 +46,7 @@
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
   "trendReferenceTimestampZ": "2026-10-02T22:35:43Z",
-  "trendSampleCount": 21,
+  "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -117,10 +117,10 @@
   "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND.",
   "wxAlerts": [
     {
-      "code": "-SHRA",
-      "label": "LIGHT RAIN SHOWERS",
+      "code": "-DZ",
+      "label": "LIGHT DRIZZLE",
       "emoji": "\ud83c\udf27\ufe0f",
-      "category": "shower",
+      "category": "drizzle",
       "sources": [
         "TAF"
       ],
@@ -129,23 +129,23 @@
       "flash": false,
       "pulse": false,
       "priority": 70,
-      "text": "-SHRA PSBL NOW-02Z",
-      "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL NOW-02Z",
-      "tafWindow": "NOW-02Z",
-      "tafStartKey": 72,
-      "tafGroupType": "PREVAILING",
-      "tafStartIso": "2026-10-03T00:00:00Z",
-      "tafEndIso": "2026-10-03T02:00:00Z"
+      "text": "-DZ PSBL 02-06Z",
+      "displayText": "\ud83c\udf27\ufe0f -DZ PSBL 02-06Z",
+      "tafWindow": "02-06Z",
+      "tafStartKey": 74,
+      "tafGroupType": "TEMPO",
+      "tafStartIso": "2026-10-03T02:00:00Z",
+      "tafEndIso": "2026-10-03T06:00:00Z"
     }
   ],
-  "wxAlertText": "\ud83c\udf27\ufe0f -SHRA PSBL NOW-02Z",
-  "wxAlertLogText": "-SHRA PSBL NOW-02Z",
+  "wxAlertText": "\ud83c\udf27\ufe0f -DZ PSBL 02-06Z",
+  "wxAlertLogText": "-DZ PSBL 02-06Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
-    "code": "-SHRA",
-    "label": "LIGHT RAIN SHOWERS",
+    "code": "-DZ",
+    "label": "LIGHT DRIZZLE",
     "emoji": "\ud83c\udf27\ufe0f",
-    "category": "shower",
+    "category": "drizzle",
     "sources": [
       "TAF"
     ],
@@ -154,26 +154,26 @@
     "flash": false,
     "pulse": false,
     "priority": 70,
-    "text": "-SHRA PSBL NOW-02Z",
-    "displayText": "\ud83c\udf27\ufe0f -SHRA PSBL NOW-02Z",
-    "tafWindow": "NOW-02Z",
-    "tafStartKey": 72,
-    "tafGroupType": "PREVAILING",
-    "tafStartIso": "2026-10-03T00:00:00Z",
-    "tafEndIso": "2026-10-03T02:00:00Z"
+    "text": "-DZ PSBL 02-06Z",
+    "displayText": "\ud83c\udf27\ufe0f -DZ PSBL 02-06Z",
+    "tafWindow": "02-06Z",
+    "tafStartKey": 74,
+    "tafGroupType": "TEMPO",
+    "tafStartIso": "2026-10-03T02:00:00Z",
+    "tafEndIso": "2026-10-03T06:00:00Z"
   },
   "wxSecondaryAlert": null,
   "wxAlertTone": "blue",
   "wxAlertFlash": false,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL NOW-02Z",
-  "bwc": "MODERATE",
+  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -DZ PSBL 02-06Z",
+  "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-03 01:24:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-10-03 01:36:00.000",
+  "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "MODERATE",
+  "bwcAhasRisk": "SEVERE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=10&day=3&hour=01&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -182,7 +182,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-03 01:25:56Z",
+  "milNotamUpdatedZ": "2026-10-03 01:35:52Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -219,7 +219,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-03 01:25:56Z",
+  "milNotamAttemptZ": "2026-10-03 01:35:52Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -279,13 +279,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-03 01:25Z",
+  "allFeedsUpdatedZ": "2026-10-03 01:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-03 01:25:43Z"
+    "lastWorkflowTimestampZ": "2026-10-03 01:35:42Z"
   }
 }
