@@ -5,13 +5,13 @@
   "atisLetter": "E",
   "atisPhonetic": "ECHO",
   "atisDisplay": "ECHO",
-  "metarFetchStatus": "OK",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-04T07:54:00Z",
-  "metarAgeMinutes": 39,
+  "metarAgeMinutes": 56,
   "atisObservedZ": "2026-10-04T07:54:00Z",
-  "atisAgeMinutes": 39,
+  "atisAgeMinutes": 56,
   "atisReportIdentity": "E:0754Z",
   "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -44,7 +44,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-04T05:50:23Z",
+  "trendReferenceTimestampZ": "2026-10-04T06:02:41Z",
   "trendSampleCount": 14,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -84,12 +84,12 @@
   "altimeterTrendText": "STEADY",
   "ceilingFt": 900,
   "ceilingDisplay": "900 FT",
-  "ceilingTrend": "\u2193",
-  "ceilingTrendText": "FALLING",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 10.0,
   "visibilityDisplay": "10 SM",
-  "visibilityTrend": "\u2191",
-  "visibilityTrendText": "RISING",
+  "visibilityTrend": "\u2192",
+  "visibilityTrendText": "STEADY",
   "windRaw": "03006KT",
   "windDisplay": "03006KT",
   "windDirDeg": 30,
@@ -168,7 +168,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA PSBL NOW-11Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-04 08:30:00.000",
+  "bwcUpdatedZ": "2026-10-04 08:48:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -181,7 +181,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-04 08:33:12Z",
+  "milNotamUpdatedZ": "2026-10-04 08:50:57Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -218,7 +218,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-04 08:33:12Z",
+  "milNotamAttemptZ": "2026-10-04 08:50:57Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -278,13 +278,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-04 08:32Z",
+  "allFeedsUpdatedZ": "2026-10-04 08:50Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_BACKUP_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-04 08:32:59Z"
+    "lastWorkflowTimestampZ": "2026-10-04 08:50:23Z"
   }
 }
