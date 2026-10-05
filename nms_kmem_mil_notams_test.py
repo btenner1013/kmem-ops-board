@@ -220,7 +220,14 @@ def helper_failure_category(error):
     ):
         return "TRANSPORT_UNAVAILABLE"
     if isinstance(error, (json.JSONDecodeError, ET.ParseError)) or any(
-        term in text for term in ("malformed xml", "no complete aixm", "incomplete page")
+        term in text
+        for term in (
+            "malformed xml",
+            "no complete aixm",
+            "incomplete page",
+            "conflicting records",
+            "ambiguous alias group",
+        )
     ):
         return "RESPONSE_PARSE"
     if isinstance(error, OSError):
@@ -2668,6 +2675,42 @@ def preferred_bulk_record(records):
     return max(preferred, key=lambda item: str(item[1].get("lastUpdated") or ""))
 
 
+def parsed_bulk_last_updated(record):
+    """Return an aware UTC revision timestamp, or None when NMS did not provide one."""
+    value = str(record.get("lastUpdated") or "").strip()
+    if not value:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
+def select_conflicting_bulk_revision(prior, current, number):
+    """Select a uniquely newer revision of one provider identity, else fail closed."""
+    prior_classification, prior_record = prior
+    classification, record = current
+
+    if classification != prior_classification:
+        raise RuntimeError(
+            f"NMS bulk response contains conflicting records for {number}."
+        )
+
+    prior_updated = parsed_bulk_last_updated(prior_record)
+    updated = parsed_bulk_last_updated(record)
+    if prior_updated is None or updated is None or prior_updated == updated:
+        raise RuntimeError(
+            f"NMS bulk response contains conflicting records for {number}."
+        )
+
+    return current if updated > prior_updated else prior
+
+
 def deduplicate_bulk_operational_records(records):
     """Collapse exact DOM/INTL aliases and return their number equivalence map."""
     by_number = {}
@@ -2686,13 +2729,22 @@ def deduplicate_bulk_operational_records(records):
             prior_classification, prior_record, prior_signature = prior
 
             if signature != prior_signature:
-                raise RuntimeError(
-                    f"NMS bulk response contains conflicting records for {number}."
+                selected_classification, selected_record = (
+                    select_conflicting_bulk_revision(
+                        (prior_classification, prior_record),
+                        (classification, record),
+                        number,
+                    )
                 )
-
-            by_number[number] = preferred_bulk_record(
-                [(prior_classification, prior_record), (classification, record)]
-            ) + (signature,)
+                by_number[number] = (
+                    selected_classification,
+                    selected_record,
+                    bulk_semantic_signature(selected_record),
+                )
+            else:
+                by_number[number] = preferred_bulk_record(
+                    [(prior_classification, prior_record), (classification, record)]
+                ) + (signature,)
             duplicate_count += 1
             continue
 
@@ -2787,9 +2839,9 @@ def build_bulk_notam_result(response, generated_z=None):
     )
     inactive_notam_numbers = set()
 
-    # Collect every action from the complete response before filtering categories.
+    # Collect actions from the selected revisions before filtering categories.
     # If an action targets either side of a DOM/INTL crossover pair, suppress both.
-    for _classification, record in complete_records:
+    for _classification, record in deduplicated_records:
         if is_notam_cancellation(record):
             target = notam_cancellation_target(record)
 

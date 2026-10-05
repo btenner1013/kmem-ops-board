@@ -918,6 +918,82 @@ class NmsBulkLocationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "conflicting records for 09/047"):
             nms.build_bulk_notam_result(_bulk_response(exact, conflicting))
 
+    def test_same_identity_uses_uniquely_newest_provider_revision_in_any_order(self):
+        older = _aixm_record(
+            "INTL",
+            "A7930/26",
+            "RWY 18L/36R CLSD",
+            updated="2026-10-05T13:54:52.000Z",
+        )
+        newer = _aixm_record(
+            "INTL",
+            "A7930/26",
+            "TWY A CLSD",
+            updated="2026-10-05T14:29:00.000Z",
+        )
+
+        for records in ((older, newer), (newer, older)):
+            with self.subTest(order=records[0]):
+                result = nms.build_bulk_notam_result(_bulk_response(*records))
+                self.assertEqual(result["bulkAliasRecordsCollapsed"], 1)
+                self.assertEqual(result["runwayClosureNotams"], [])
+                self.assertEqual(result["taxiRestrictionNotamCount"], 1)
+                self.assertEqual(
+                    result["taxiRestrictionNotams"][0]["number"],
+                    "A7930/26",
+                )
+
+    def test_conflicting_revision_requires_parseable_unique_timestamp_and_same_class(self):
+        base = _aixm_record(
+            "INTL",
+            "A7930/26",
+            "RWY 18L/36R CLSD",
+            updated="2026-10-05T13:54:52Z",
+        )
+        ambiguous = (
+            _aixm_record(
+                "INTL",
+                "A7930/26",
+                "TWY A CLSD",
+                updated="2026-10-05T13:54:52+00:00",
+            ),
+            _aixm_record("INTL", "A7930/26", "TWY A CLSD", updated="not-a-time"),
+        )
+
+        for conflicting in ambiguous:
+            with self.subTest(conflicting=conflicting):
+                with self.assertRaisesRegex(RuntimeError, "conflicting records for A7930/26"):
+                    nms.build_bulk_notam_result(_bulk_response(base, conflicting))
+
+        with self.assertRaisesRegex(RuntimeError, "conflicting records for A7930/26"):
+            nms.select_conflicting_bulk_revision(
+                ("INTL", {"lastUpdated": "2026-10-05T13:54:52Z"}),
+                ("MIL", {"lastUpdated": "2026-10-05T14:29:00Z"}),
+                "A7930/26",
+            )
+
+    def test_only_selected_revision_can_apply_cancellation(self):
+        target = _aixm_record("INTL", "A7000/26", "RWY 18L/36R CLSD")
+        stale_cancel = _aixm_record(
+            "INTL",
+            "A7930/26",
+            "A7930/26 NOTAMC A7000/26 A) KMEM",
+            updated="2026-10-05T13:54:52Z",
+        )
+        current_notice = _aixm_record(
+            "INTL",
+            "A7930/26",
+            "TWY A CLSD",
+            updated="2026-10-05T14:29:00Z",
+        )
+
+        result = nms.build_bulk_notam_result(
+            _bulk_response(target, stale_cancel, current_notice)
+        )
+
+        self.assertEqual(result["runwayClosureNotamCount"], 1)
+        self.assertEqual(result["taxiRestrictionNotamCount"], 1)
+
     def test_cancellation_is_applied_after_complete_bulk_scan_in_any_order(self):
         target = _aixm_record("DOM", "09/047", "RWY 18C/36C CLSD")
         cancel = _aixm_record("DOM", "09/048", "09/048 NOTAMC 09/047 A) KMEM")
