@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-05T11:54:00Z",
-  "metarAgeMinutes": 29,
+  "metarAgeMinutes": 46,
   "atisObservedZ": "2026-10-05T11:54:00Z",
-  "atisAgeMinutes": 29,
+  "atisAgeMinutes": 46,
   "atisReportIdentity": "K:1154Z",
   "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -44,7 +44,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-05T09:40:23Z",
+  "trendReferenceTimestampZ": "2026-10-05T09:52:49Z",
   "trendSampleCount": 14,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -124,13 +124,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-05 12:18:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-10-05 12:36:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "SEVERE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=10&day=5&hour=12&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -139,7 +139,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-05 12:23:51Z",
+  "milNotamUpdatedZ": "2026-10-05 12:40:35Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -176,7 +176,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-05 12:23:51Z",
+  "milNotamAttemptZ": "2026-10-05 12:40:35Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -196,16 +196,16 @@
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
     {
-      "number": "10/040",
+      "number": "10/047",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
-      "text": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP SPRAYING, MOWING AND WEEDING",
-      "displayText": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP SPRAYING, MOWING AND WEEDING",
+      "text": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP MOWING &amp; WEEDING",
+      "displayText": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP MOWING &amp; WEEDING",
       "effectiveStart": "202610051300",
       "effectiveEnd": "202610051930",
-      "lastUpdated": "2026-10-04T11:44:00.000Z",
+      "lastUpdated": "2026-10-05T12:35:00.000Z",
       "source": "FAA_NMS_STAGING",
-      "rawText": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP SPRAYING, MOWING AND WEEDING"
+      "rawText": "TWY A, TWY C BTN TWY C5 AND TWY A, TWY N BTN TWY M9 AND APCH END RWY 09 WIP MOWING &amp; WEEDING"
     },
     {
       "number": "09/339",
@@ -236,13 +236,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-05 12:23Z",
+  "allFeedsUpdatedZ": "2026-10-05 12:40Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_BACKUP_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-05 12:23:18Z"
+    "lastWorkflowTimestampZ": "2026-10-05 12:40:23Z"
   }
 }
