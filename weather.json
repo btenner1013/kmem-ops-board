@@ -1,18 +1,18 @@
 {
   "metar": "METAR KMEM 062254Z 32007KT 10SM CLR 27/11 A2996 RMK AO2 SLP143 T02720111 $",
   "taf": "TAF KMEM 062119Z 0621/0724 06005KT P6SM SKC \n  FM070100 VRB03KT P6SM SKC",
-  "atisText": "MEM ATIS INFO H 2254Z. 32007KT 10SM CLR 27/11 A2996 (TWO NINER NINER SIX). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36R, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 18C, 36C CLSD. LLWAS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO H",
-  "atisLetter": "H",
-  "atisPhonetic": "HOTEL",
-  "atisDisplay": "HOTEL",
+  "atisText": "MEM ATIS INFO I 2254Z. 32007KT 10SM CLR 27/11 A2996 (TWO NINER NINER SIX). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 27. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 27. NOTICE TO AIRMEN. LLWAS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO I",
+  "atisLetter": "I",
+  "atisPhonetic": "INDIA",
+  "atisDisplay": "INDIA",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-06T22:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-10-06T22:54:00Z",
-  "atisAgeMinutes": 12,
-  "atisReportIdentity": "H:2254Z",
+  "atisAgeMinutes": 22,
+  "atisReportIdentity": "I:2254Z",
   "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -22,7 +22,7 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "H:2254Z",
+      "identity": "I:2254Z",
       "observedZ": "2026-10-06T22:54:00Z",
       "sources": [
         "ATIS_INFO_API"
@@ -30,11 +30,11 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "H",
-  "atisReportedPhonetic": "HOTEL",
+  "atisReportedLetter": "I",
+  "atisReportedPhonetic": "INDIA",
   "atisReportedArrRunways": "36L / 36R / 27",
-  "atisReportedDepRunways": "36L / 36R / 27",
-  "atisReportedClosedRunways": "18C / 36C",
+  "atisReportedDepRunways": "36L / 36C / 36R / 27",
+  "atisReportedClosedRunways": "NONE",
   "atisReportedFlow": "MIXED",
   "lastKnownGoodUsed": {
     "metar": false,
@@ -44,7 +44,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-06T20:05:44Z",
+  "trendReferenceTimestampZ": "2026-10-06T20:25:45Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -63,8 +63,8 @@
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
   "arrRunways": "36L / 36R / 27",
-  "depRunways": "36L / 36R / 27",
-  "closedRunways": "18C / 36C",
+  "depRunways": "36L / 36C / 36R / 27",
+  "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
     "18L/36R",
@@ -124,13 +124,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "VFR NEXT 24 HRS",
-  "bwc": "SEVERE",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-06 23:00:00.000",
-  "bwcNexrad": "SEVERE",
+  "bwcUpdatedZ": "2026-10-06 23:12:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
-  "bwcAhasRisk": "SEVERE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "6367",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=10&day=6&hour=23&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -139,7 +139,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-06 23:05:51Z",
+  "milNotamUpdatedZ": "2026-10-06 23:15:56Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -176,22 +176,10 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-06 23:05:51Z",
+  "milNotamAttemptZ": "2026-10-06 23:15:56Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
-    {
-      "number": "10/074",
-      "classification": "RWY_CLOSURE",
-      "severity": "red",
-      "text": "RWY 18C/36C CLSD",
-      "displayText": "RWY 18C/36C CLSD",
-      "effectiveStart": "202610062128",
-      "effectiveEnd": "202610062359",
-      "lastUpdated": "2026-10-06T21:33:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 18C/36C CLSD EXC XNG TWY D, P, E"
-    },
     {
       "number": "10/068",
       "classification": "RWY_CLOSURE",
@@ -205,7 +193,7 @@
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY K, P, E"
     }
   ],
-  "runwayClosureNotamCount": 2,
+  "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
     {
       "number": "10/073",
@@ -259,30 +247,6 @@
   "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [
     {
-      "number": "10/077",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "red",
-      "text": "TWY C1, C2, C3, C4, C5, C6, C7, S6, S7, TWY B BTN APCH END RWY 18C AND TWY S, TWY K BTN TWY C AND TWY S, TWY L BTN TWY C AND TWY S, TWY H BTN TWY J AND TWY S, TWY R BTN TWY J AND TWY S CLSD",
-      "displayText": "TWY C1, C2, C3, C4, C5, C6, C7, S6, S7, TWY B BTN APCH END RWY 18C AND TWY S, TWY K BTN TWY C AND TWY S, TWY L BTN TWY C AND TWY S, TWY H BTN TWY J...",
-      "effectiveStart": "202610062136",
-      "effectiveEnd": "202610062359",
-      "lastUpdated": "2026-10-06T21:43:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY C1, C2, C3, C4, C5, C6, C7, S6, S7, TWY B BTN APCH END RWY 18C AND TWY S, TWY K BTN TWY C AND TWY S, TWY L BTN TWY C AND TWY S, TWY H BTN TWY J AND TWY S, TWY R BTN TWY J AND TWY S CLSD"
-    },
-    {
-      "number": "10/074",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "red",
-      "text": "RWY 18C/36C CLSD EXC XNG TWY D, P, E",
-      "displayText": "RWY 18C/36C CLSD EXC XNG TWY D, P, E",
-      "effectiveStart": "202610062128",
-      "effectiveEnd": "202610062359",
-      "lastUpdated": "2026-10-06T21:33:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 18C/36C CLSD EXC XNG TWY D, P, E"
-    },
-    {
       "number": "10/070",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "green",
@@ -319,14 +283,14 @@
       "rawText": "RWY 18C/36C CLSD EXC XNG TWY K, P, E"
     }
   ],
-  "taxiRestrictionNotamCount": 5,
-  "allFeedsUpdatedZ": "2026-10-06 23:05Z",
+  "taxiRestrictionNotamCount": 3,
+  "allFeedsUpdatedZ": "2026-10-06 23:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-06 23:05:42Z"
+    "lastWorkflowTimestampZ": "2026-10-06 23:15:43Z"
   }
 }
