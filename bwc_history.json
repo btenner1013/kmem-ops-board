@@ -10,7 +10,7 @@
   "retentionDays": 365,
   "continuityMinutes": 90,
   "collectionStartedZ": "2026-08-30T04:15:42.295283Z",
-  "archiveUpdatedZ": "2026-10-08T21:35:42.870118Z",
+  "archiveUpdatedZ": "2026-10-08T21:45:43.267752Z",
   "runs": [
     {
       "kind": "STATE",
@@ -15289,6 +15289,24 @@
       "firstRecordedZ": "2026-10-08T19:35:42.336567Z",
       "lastRecordedZ": "2026-10-08T21:35:42.870118Z",
       "confirmationCount": 13,
+      "startReason": "STATE_CHANGE",
+      "source": "USAHAS",
+      "basis": "NEXRAD",
+      "basisClass": "OBSERVED_OPERATIONAL"
+    },
+    {
+      "kind": "STATE",
+      "state": "SEVERE",
+      "rawAhasRisk": "SEVERE",
+      "startZ": "2026-10-08T21:42:00Z",
+      "firstObservedZ": "2026-10-08T21:42:00Z",
+      "lastObservedZ": "2026-10-08T21:42:00Z",
+      "observationsZ": [
+        "2026-10-08T21:42:00Z"
+      ],
+      "firstRecordedZ": "2026-10-08T21:45:43.267752Z",
+      "lastRecordedZ": "2026-10-08T21:45:43.267752Z",
+      "confirmationCount": 1,
       "startReason": "STATE_CHANGE",
       "source": "USAHAS",
       "basis": "NEXRAD",
