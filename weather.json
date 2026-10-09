@@ -1,19 +1,19 @@
 {
-  "metar": "METAR KMEM 091454Z 12006KT 10SM FEW250 27/14 A3010 RMK AO2 SLP188 T02670139 53012 $",
+  "metar": "METAR KMEM 091554Z 13007KT 10SM FEW250 28/13 A3010 RMK AO2 SLP187 T02830133 $",
   "taf": "TAF KMEM 091501Z 0915/1018 12006KT P6SM SKC \n  FM091700 10009KT P6SM SKC \n  FM100200 11005KT P6SM OVC180 \n  PROB30 1010/1012 -SHRA \n  FM101300 04015G28KT 5SM -SHRA OVC015",
   "atisText": "MEM ATIS INFO O 1554Z. 13007KT 10SM FEW250 28/13 A3010 (THREE ZERO ONE ZERO) RMK AO2 SLP187 T02830133. VISUAL APCH IN USE RY 18L. DEPG RWYS 18C. NOTICE TO AIRMEN. RWY 18R, 36L CLSD. TWY N CLSD BTN TWY, P AND TWY R, TWY R CLSD BTN TWY, N AND TWY R1, TWY H CLSD BTN TWY, N AND TWY R1, TWY M CLSD. ILS RWY 18R OTS, LLWAS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO O",
   "atisLetter": "O",
   "atisPhonetic": "OSCAR",
   "atisDisplay": "OSCAR",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-10-09T14:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarObservedZ": "2026-10-09T15:54:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-10-09T15:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "O:1554Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
@@ -25,8 +25,7 @@
       "identity": "O:1554Z",
       "observedZ": "2026-10-09T15:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
-        "ATIS_RELAY"
+        "ATIS_INFO_API"
       ]
     }
   ],
@@ -45,7 +44,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-09T13:05:42Z",
+  "trendReferenceTimestampZ": "2026-10-09T13:15:42Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -167,22 +166,22 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 10 OCT 10-12Z",
-  "bwc": "LOW",
+  "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-09 15:54:00.000",
-  "bwcNexrad": "LOW",
+  "bwcUpdatedZ": "2026-10-09 16:06:00.000",
+  "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
-  "bwcBamRisk": "LOW",
-  "bwcAhasRisk": "LOW",
+  "bwcBamRisk": "MODERATE",
+  "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=10&day=9&hour=15&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=10&iDay=9&iHour=15",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=10&day=9&hour=16&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=10&iDay=9&iHour=16",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-09 15:55:54Z",
+  "milNotamUpdatedZ": "2026-10-09 16:06:12Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -219,7 +218,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-09 15:55:54Z",
+  "milNotamAttemptZ": "2026-10-09 16:06:12Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -279,13 +278,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-09 15:55Z",
+  "allFeedsUpdatedZ": "2026-10-09 16:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-09 15:55:42Z"
+    "lastWorkflowTimestampZ": "2026-10-09 16:05:42Z"
   }
 }
