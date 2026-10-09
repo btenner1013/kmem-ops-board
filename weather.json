@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-09T11:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "atisObservedZ": "2026-10-09T11:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "I:1154Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-09T09:15:41Z",
+  "trendReferenceTimestampZ": "2026-10-09T09:25:41Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -169,7 +169,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 10 OCT 10-12Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-09 12:00:00.000",
+  "bwcUpdatedZ": "2026-10-09 12:12:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -182,7 +182,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-09 12:06:00Z",
+  "milNotamUpdatedZ": "2026-10-09 12:15:52Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -219,7 +219,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-09 12:06:00Z",
+  "milNotamAttemptZ": "2026-10-09 12:15:52Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -266,26 +266,26 @@
   "constructionStatusNotamCount": 2,
   "taxiRestrictionNotams": [
     {
-      "number": "10/102",
+      "number": "10/104",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "green",
-      "text": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R2, TWY H BTN TWY N AND TWY R2 CLSD",
-      "displayText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R2, TWY H BTN TWY N AND TWY R2 CLSD",
+      "text": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R1, TWY H BTN TWY N AND TWY R1 CLSD",
+      "displayText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R1, TWY H BTN TWY N AND TWY R1 CLSD",
       "effectiveStart": "202610091300",
       "effectiveEnd": "202610091930",
-      "lastUpdated": "2026-10-08T20:15:00.000Z",
+      "lastUpdated": "2026-10-09T12:14:00.000Z",
       "source": "FAA_NMS_STAGING",
-      "rawText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R2, TWY H BTN TWY N AND TWY R2 CLSD"
+      "rawText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY R BTN TWY N AND TWY R1, TWY H BTN TWY N AND TWY R1 CLSD"
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-09 12:05Z",
+  "allFeedsUpdatedZ": "2026-10-09 12:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-09 12:05:45Z"
+    "lastWorkflowTimestampZ": "2026-10-09 12:15:41Z"
   }
 }
