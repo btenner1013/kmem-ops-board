@@ -1,18 +1,18 @@
 {
   "metar": "METAR KMEM 100254Z 12009KT 10SM BKN250 25/13 A3004 RMK AO2 SLP168 T02500133 53020 $",
   "taf": "TAF KMEM 100312Z 1003/1106 12010KT P6SM OVC180 \n  FM100900 10010G20KT P6SM OVC180 \n  FM101400 07013G28KT P6SM BKN100 OVC180 \n  PROB30 1014/1016 5SM -SHRA \n  FM101600 02018G35KT 5SM -SHRA OVC060 \n  FM102100 01018G32KT 5SM -SHRA OVC025 \n  FM110300 35012G20KT P6SM BKN015",
-  "atisText": "MEM ATIS INFO B 0254Z. 12009KT 10SM BKN250 25/13 A3004 (THREE ZERO ZERO FOUR). SIMUL VISUAL APCHS IN USE RY 18L, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. LLWAS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO B",
-  "atisLetter": "B",
-  "atisPhonetic": "BRAVO",
-  "atisDisplay": "BRAVO",
-  "metarFetchStatus": "OK",
+  "atisText": "MEM ATIS INFO C 0354Z. 13009KT 10SM BKN250 24/13 A3004 (THREE ZERO ZERO FOUR) RMK AO2 SLP169 T02390128. SIMUL VISUAL APCHS IN USE RY 18L, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. LLWAS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO C",
+  "atisLetter": "C",
+  "atisPhonetic": "CHARLIE",
+  "atisDisplay": "CHARLIE",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-10T02:54:00Z",
-  "metarAgeMinutes": 52,
-  "atisObservedZ": "2026-10-10T02:54:00Z",
-  "atisAgeMinutes": 52,
-  "atisReportIdentity": "B:0254Z",
+  "metarAgeMinutes": 62,
+  "atisObservedZ": "2026-10-10T03:54:00Z",
+  "atisAgeMinutes": 2,
+  "atisReportIdentity": "C:0354Z",
   "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -22,23 +22,23 @@
   "atisLiveCandidateCount": 2,
   "atisLiveCandidates": [
     {
-      "identity": "B:0254Z",
-      "observedZ": "2026-10-10T02:54:00Z",
+      "identity": "C:0354Z",
+      "observedZ": "2026-10-10T03:54:00Z",
       "sources": [
         "ATIS_INFO_API"
       ]
     },
     {
-      "identity": "B:0254Z",
-      "observedZ": "2026-10-10T02:54:00Z",
+      "identity": "C:0354Z",
+      "observedZ": "2026-10-10T03:54:00Z",
       "sources": [
         "ATIS_RELAY"
       ]
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "B",
-  "atisReportedPhonetic": "BRAVO",
+  "atisReportedLetter": "C",
+  "atisReportedPhonetic": "CHARLIE",
   "atisReportedArrRunways": "18L / 18R",
   "atisReportedDepRunways": "18C",
   "atisReportedClosedRunways": "NONE",
@@ -51,8 +51,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-10T00:55:41Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-10-10T01:05:40Z",
+  "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -97,9 +97,9 @@
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
   "visibilityTrendText": "STEADY",
-  "windRaw": "12009KT",
-  "windDisplay": "12009KT",
-  "windDirDeg": 120,
+  "windRaw": "13009KT",
+  "windDisplay": "13009KT",
+  "windDirDeg": 130,
   "windSpeedKt": 9,
   "windGustKt": null,
   "windArrow": "\u2196",
@@ -107,9 +107,9 @@
   "windTrend": "\u25ba",
   "windTrendText": "STEADY",
   "windTrendClass": "steady",
-  "tempC": 25,
+  "tempC": 24,
   "dewpointC": 13,
-  "tempDpDisplay": "25/13",
+  "tempDpDisplay": "24/13",
   "tempTrend": "\u25bc",
   "tempTrendText": "FALLING",
   "dewpointTrend": "\u25b2",
@@ -188,7 +188,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-10 03:46:12Z",
+  "milNotamUpdatedZ": "2026-10-10 03:56:11Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -225,7 +225,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-10 03:46:12Z",
+  "milNotamAttemptZ": "2026-10-10 03:56:11Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [],
@@ -247,13 +247,13 @@
   "constructionStatusNotamCount": 1,
   "taxiRestrictionNotams": [],
   "taxiRestrictionNotamCount": 0,
-  "allFeedsUpdatedZ": "2026-10-10 03:45Z",
+  "allFeedsUpdatedZ": "2026-10-10 03:55Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-10 03:45:41Z"
+    "lastWorkflowTimestampZ": "2026-10-10 03:55:41Z"
   }
 }
