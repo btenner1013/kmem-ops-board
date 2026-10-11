@@ -3,6 +3,14 @@
   "sourcePolicy": "NOAA_AWC_COMPLETE_CURRENT_CACHE",
   "reports": [
     {
+      "station": "AGGH",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T06:00:00Z",
+      "variant": "",
+      "raw": "TAF AGGH 110815Z 1109/1206 09006KT 9999 FEW017 SCT027 FM111000 18005KT 9999 FEW016 FM112200 09010KT 9999 FEW018"
+    },
+    {
       "station": "ANYN",
       "issueTime": "2026-10-10T21:50:00Z",
       "validTimeFrom": "2026-10-10T23:00:00Z",
@@ -20,19 +28,19 @@
     },
     {
       "station": "BGGH",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF BGGH 110527Z 1106/1206 02018KT 9999 SCT100 TEMPO 1116/1206 36022G32KT"
+      "raw": "TAF BGGH 110827Z 1109/1209 02018KT 9999 SCT100 TEMPO 1116/1209 36022G32KT"
     },
     {
       "station": "BGJN",
-      "issueTime": "2026-10-11T07:57:00Z",
-      "validTimeFrom": "2026-10-11T08:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF BGJN 110757Z 1108/1115 VRB08KT 9999 BKN030 BECMG 1113/1115 02015KT"
+      "raw": "TAF BGJN 110827Z 1109/1118 VRB08KT 9999 BKN030 BECMG 1113/1115 02015KT"
     },
     {
       "station": "BGSF",
@@ -372,11 +380,11 @@
     },
     {
       "station": "CYKA",
-      "issueTime": "2026-10-11T06:40:00Z",
-      "validTimeFrom": "2026-10-11T07:00:00Z",
+      "issueTime": "2026-10-11T08:28:00Z",
+      "validTimeFrom": "2026-10-11T08:00:00Z",
       "validTimeTo": "2026-10-11T19:00:00Z",
-      "variant": "",
-      "raw": "TAF CYKA 110640Z 1107/1119 28015G25KT P6SM BKN100 BECMG 1107/1109 30008KT FM110900 30008KT P6SM FEW100 RMK NXT FCST BY 111300Z"
+      "variant": "AMD",
+      "raw": "TAF AMD CYKA 110828Z 1108/1119 28015G25KT P6SM SCT100 RMK NXT FCST BY 111300Z"
     },
     {
       "station": "CYKF",
@@ -1588,11 +1596,11 @@
     },
     {
       "station": "EBAW",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EBAW 110500Z 1106/1115 25010KT 9999 SCT030 PROB30 TEMPO 1106/1112 SHRA"
+      "raw": "TAF EBAW 110800Z 1109/1118 27008KT 9999 FEW035"
     },
     {
       "station": "EBBR",
@@ -1627,12 +1635,20 @@
       "raw": "TAF EBOS 110500Z 1106/1212 28015KT 9999 SCT030 BECMG 1118/1120 18006KT PROB30 TEMPO 1200/1206 4000 MIFG BR"
     },
     {
-      "station": "EDAH",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "station": "EDAC",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDAH 110500Z 1106/1115 24013G23KT 9999 BKN020 PROB40 TEMPO 1109/1115 4500 SHRA BKN025CB"
+      "raw": "TAF EDAC 110800Z 1109/1118 22012KT 9999 SCT040 PROB40 TEMPO 1109/1118 25015G25KT SHRA BKN020TCU"
+    },
+    {
+      "station": "EDAH",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
+      "variant": "",
+      "raw": "TAF EDAH 110800Z 1109/1118 24013G23KT 9999 BKN025 PROB30 TEMPO 1109/1118 4500 SHRA BKN014CB"
     },
     {
       "station": "EDDB",
@@ -1764,43 +1780,43 @@
     },
     {
       "station": "EDGS",
-      "issueTime": "2026-10-11T06:20:00Z",
-      "validTimeFrom": "2026-10-11T07:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDGS 110620Z 1107/1115 26012KT 9999 SCT010 BKN020 TEMPO 1107/1111 BKN007 PROB30 TEMPO 1111/1115 4000 SHRA BKN013TCU"
+      "raw": "TAF EDGS 110800Z 1109/1118 26013KT 9999 SCT015 BKN030 TEMPO 1109/1111 BKN012 PROB40 TEMPO 1109/1111 3500 SHRA BKN008TCU PROB30 TEMPO 1111/1116 27015G25KT 4000 SHRA BKN013TCU BECMG 1115/1118 26008KT"
     },
     {
       "station": "EDHK",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDHK 110500Z 1106/1115 24009KT 9999 SCT040 TEMPO 1106/1115 4500 SHRA BKN007 BKN012CB PROB30 TEMPO 1106/1115 2500 +TSRA"
+      "raw": "TAF EDHK 110800Z 1109/1118 25009KT 9999 BKN025 TEMPO 1109/1115 4500 SHRA BKN012CB PROB30 TEMPO 1110/1115 30015G25KT +TSRA BECMG 1112/1115 31008KT"
     },
     {
       "station": "EDHL",
-      "issueTime": "2026-10-11T05:36:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDHL 110536Z 1106/1115 24007KT 9999 BKN015 TEMPO 1106/1115 4500 SHRA BKN012CB PROB30 TEMPO 1113/1115 30015G25KT TSRA BKN012CB"
+      "raw": "TAF EDHL 110800Z 1109/1118 24009KT 9999 BKN020 TEMPO 1109/1117 4500 SHRA BKN012CB PROB30 TEMPO 1113/1117 30015G25KT +TSRA BECMG 1114/1117 29004KT"
     },
     {
       "station": "EDJA",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDJA 110500Z 1106/1115 24009KT 9999 FEW055 PROB30 TEMPO 1111/1115 28015G25KT SHRA BKN025TCU"
+      "raw": "TAF EDJA 110800Z 1109/1118 24009KT CAVOK PROB30 TEMPO 1111/1115 28015G25KT SHRA BKN025TCU"
     },
     {
       "station": "EDLN",
-      "issueTime": "2026-10-11T06:20:00Z",
-      "validTimeFrom": "2026-10-11T07:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDLN 110620Z 1107/1115 24008KT 9999 SCT030 TEMPO 1109/1113 24013KT"
+      "raw": "TAF EDLN 110800Z 1109/1118 25008KT 9999 SCT040 TEMPO 1110/1113 25013KT BECMG 1116/1118 VRB03KT"
     },
     {
       "station": "EDLP",
@@ -1828,27 +1844,27 @@
     },
     {
       "station": "EDMA",
-      "issueTime": "2026-10-11T07:00:00Z",
-      "validTimeFrom": "2026-10-11T08:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDMA 110700Z 1108/1115 25008KT CAVOK PROB30 TEMPO 1111/1115 28015G25KT SHRA BKN025TCU"
+      "raw": "TAF EDMA 110800Z 1109/1118 25008KT CAVOK PROB30 TEMPO 1111/1115 28015G25KT SHRA BKN025TCU"
     },
     {
       "station": "EDMO",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDMO 110500Z 1106/1115 25009KT 9999 FEW025 PROB30 TEMPO 1113/1115 28015G25KT SHRA BKN025TCU"
+      "raw": "TAF EDMO 110800Z 1109/1118 25009KT CAVOK PROB30 TEMPO 1113/1115 28015G25KT SHRA BKN025TCU"
     },
     {
       "station": "EDNY",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDNY 110500Z 1106/1115 27003KT 9999 FEW025 OVC055 BECMG 1107/1109 24008KT PROB30 TEMPO 1112/1115 28015G25KT SHRA BKN025TCU"
+      "raw": "TAF EDNY 110800Z 1109/1118 25009KT 9999 BKN050 PROB30 TEMPO 1112/1115 28015G25KT SHRA SCT025TCU BECMG 1116/1118 VRB03KT"
     },
     {
       "station": "EDSB",
@@ -1860,51 +1876,59 @@
     },
     {
       "station": "EDTL",
-      "issueTime": "2026-10-11T07:00:00Z",
-      "validTimeFrom": "2026-10-11T08:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDTL 110700Z 1108/1115 21006KT 9999 SCT030"
+      "raw": "TAF EDTL 110800Z 1109/1118 22007KT 9999 SCT030 BECMG 1116/1118 VRB03KT"
     },
     {
       "station": "EDTY",
-      "issueTime": "2026-10-11T07:05:00Z",
-      "validTimeFrom": "2026-10-11T08:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDTY 110705Z 1108/1115 24009KT 9999 SCT015 BKN040 PROB30 TEMPO 1108/1114 28015G25KT 4000 SHRA BKN015TCU"
+      "raw": "TAF EDTY 110800Z 1109/1118 24009KT 9999 SCT015 SCT040 PROB30 TEMPO 1109/1114 28015G25KT 4000 SHRA BKN015TCU"
     },
     {
       "station": "EDVE",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDVE 110500Z 1106/1115 24009KT CAVOK PROB30 TEMPO 1106/1115 SHRA BKN020CB"
+      "raw": "TAF EDVE 110800Z 1109/1118 25011KT 9999 BKN040 TEMPO 1109/1115 4500 SHRA BKN025CB BECMG 1115/1118 26006KT"
     },
     {
       "station": "EDVK",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDVK 110500Z 1106/1115 23009KT 9999 BKN030 PROB30 TEMPO 1106/1115 SHRA BKN020TCU TEMPO 1110/1114 25015G25KT"
+      "raw": "TAF EDVK 110800Z 1109/1118 23010KT 9999 SCT030 PROB30 TEMPO 1109/1117 SHRA BKN020TCU TEMPO 1110/1114 25015G25KT"
     },
     {
       "station": "EDWE",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDWE 110500Z 1106/1115 25009KT 9999 SCT030 TEMPO 1106/1115 4500 SHRA BKN020CB PROB30 TEMPO 1106/1115 28015G25KT 2500 +TSRA BKN007"
+      "raw": "TAF EDWE 110800Z 1109/1118 24012KT 9999 BKN020 TEMPO 1109/1114 4500 SHRA BKN012CB PROB30 TEMPO 1109/1114 30015G25KT +TSRA BECMG 1112/1115 33007KT PROB30 TEMPO 1114/1118 SHRA BKN020TCU BECMG 1115/1117 VRB03KT"
     },
     {
       "station": "EDWI",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EDWI 110500Z 1106/1115 23010KT 9999 SCT040 TEMPO 1106/1115 4500 SHRA BKN020CB PROB30 TEMPO 1106/1115 28015G25KT 2500 +TSRA BKN007"
+      "raw": "TAF EDWI 110800Z 1109/1118 24010KT 9999 BKN015 TEMPO 1109/1114 4500 SHRA BKN012CB PROB30 TEMPO 1109/1114 30015G25KT +TSRA BECMG 1112/1115 33005KT"
+    },
+    {
+      "station": "EDXW",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
+      "variant": "",
+      "raw": "TAF EDXW 110800Z 1109/1118 36010KT 9999 BKN025 PROB30 TEMPO 1109/1112 4500 SHRA BKN012CB"
     },
     {
       "station": "EEKA",
@@ -2580,11 +2604,11 @@
     },
     {
       "station": "EIDL",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EIDL 110500Z 1106/1115 15009KT 9999 BKN040"
+      "raw": "TAF EIDL 110800Z 1109/1118 14010KT 9999 BKN042"
     },
     {
       "station": "EIDW",
@@ -2604,19 +2628,19 @@
     },
     {
       "station": "EIKY",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EIKY 110500Z 1106/1115 10007KT 9999 BKN040 BECMG 1106/1108 13012KT TEMPO 1109/1115 13016G27KT -RA BKN012"
+      "raw": "TAF EIKY 110800Z 1109/1118 11007KT 9999 BKN016 TEMPO 1109/1118 -RA BKN012 TEMPO 1112/1118 12016G27KT"
     },
     {
       "station": "EIME",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EIME 110500Z 1106/1115 19005KT 9999 FEW022 BKN035 BECMG 1112/1114 15010KT"
+      "raw": "TAF EIME 110800Z 1109/1118 13006KT 9999 FEW020"
     },
     {
       "station": "EINN",
@@ -2628,59 +2652,59 @@
     },
     {
       "station": "EISG",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EISG 110500Z 1106/1115 14010KT 9999 FEW020 SCT030 TEMPO 1111/1115 14015G25KT"
+      "raw": "TAF EISG 110800Z 1109/1118 12008KT 9999 FEW015 BKN032 PROB40 TEMPO 1112/1118 12015G25KT"
     },
     {
       "station": "EIWF",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EIWF 110500Z 1106/1115 VRB03KT 9999 FEW015 BKN040 BECMG 1108/1110 14012KT PROB30 TEMPO 1112/1115 15015G25KT -RA BKN014"
+      "raw": "TAF EIWF 110800Z 1109/1118 13008KT 9999 BKN022 PROB30 TEMPO 1110/1114 -RA BKN012 PROB30 TEMPO 1112/1115 14015G25KT BECMG 1114/1116 -RA BKN010 PROB40 TEMPO 1115/1118 14017G27KT 4000 -RADZ BKN007"
     },
     {
       "station": "EKAH",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF EKAH 110527Z 1106/1206 27003KT 0200 FG BKN001 FEW015CB BECMG 1106/1108 33010KT 9999 NSW BKN015 TEMPO 1115/1202 BKN012 SCT020TCU"
+      "raw": "TAF EKAH 110827Z 1109/1209 31010KT 9999 BKN015 TEMPO 1115/1118 FEW020TCU TEMPO 1118/1201 BKN012 FEW020TCU"
     },
     {
       "station": "EKBI",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF EKBI 110527Z 1106/1206 VRB02KT 9999 SCT004 TEMPO 1106/1108 0200 FG BKN001 BECMG 1107/1109 35010KT TEMPO 1108/1110 BKN004"
+      "raw": "TAF EKBI 110827Z 1109/1209 36008KT 9999 SCT015 BKN035 TEMPO 1203/1209 FEW030TCU"
     },
     {
       "station": "EKCH",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF EKCH 110527Z 1106/1206 22008KT 9999 FEW018 TEMPO 1106/1114 BKN014 SCT020CB BECMG 1110/1113 31010KT TEMPO 1119/1206 BKN014 SCT020TCU"
+      "raw": "TAF EKCH 110827Z 1109/1209 25005KT 9999 SCT040 TEMPO 1109/1113 BKN014 SCT020CB BECMG 1111/1114 31010KT TEMPO 1119/1207 SCT020TCU"
     },
     {
       "station": "EKEB",
-      "issueTime": "2026-10-11T08:05:00Z",
-      "validTimeFrom": "2026-10-11T08:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD EKEB 110805Z 1108/1115 01010KT 9999 BKN003 BECMG 1108/1110 BKN035"
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
+      "variant": "",
+      "raw": "TAF EKEB 110827Z 1109/1118 01010KT 9999 BKN003 BECMG 1109/1110 BKN035"
     },
     {
       "station": "EKKA",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF EKKA 110527Z 1106/1206 VRB02KT 0300 FG BKN002 BECMG 1106/1108 33010KT 9999 NSW SCT030 TEMPO 1109/1116 7000 -SHRA SCT025CB"
+      "raw": "TAF EKKA 110827Z 1109/1209 33010KT 9999 BKN020 TEMPO 1109/1116 7000 -SHRA SCT025CB"
     },
     {
       "station": "EKOD",
@@ -2692,27 +2716,27 @@
     },
     {
       "station": "EKRK",
-      "issueTime": "2026-10-11T06:43:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD EKRK 110643Z 1106/1115 21006KT 1000 BR SCT030 BECMG 1106/1107 9999 NSW TEMPO 1107/1114 BKN013 SCT020CB BECMG 1109/1112 30010KT"
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
+      "variant": "",
+      "raw": "TAF EKRK 110827Z 1109/1118 22005KT 9999 SCT030 TEMPO 1109/1113 BKN014 SCT020CB BECMG 1109/1112 30010KT"
     },
     {
       "station": "EKRN",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EKRN 110527Z 1106/1115 23016KT 9999 BKN020 TEMPO 1106/1115 24018G28KT 4000 SHRA SCT020CB"
+      "raw": "TAF EKRN 110827Z 1109/1118 23016KT 9999 BKN020 TEMPO 1109/1112 24018G28KT 4000 SHRA BKN014 SCT020CB TEMPO 1112/1118 4000 SHRA SCT020CB"
     },
     {
       "station": "EKSP",
-      "issueTime": "2026-10-11T06:54:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD EKSP 110654Z 1106/1206 VRB02KT 9999 SCT030 TEMPO 1107/1109 6000 -SHRA BKN003 SCT025CB BECMG 1108/1111 33010KT TEMPO 1109/1116 7000 -SHRA SCT025CB"
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
+      "variant": "",
+      "raw": "TAF EKSP 110827Z 1109/1209 35008KT 9999 SCT030 TEMPO 1109/1116 7000 -SHRA SCT025CB"
     },
     {
       "station": "EKVD",
@@ -2724,19 +2748,19 @@
     },
     {
       "station": "EKVG",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EKVG 110527Z 1106/1115 02005KT 9999 SCT030"
+      "raw": "TAF EKVG 110827Z 1109/1118 02002KT 9999 FEW030"
     },
     {
       "station": "EKYT",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF EKYT 110527Z 1106/1206 34010KT 9999 BKN030 TEMPO 1106/1121 5000 -SHRA SCT030CB"
+      "raw": "TAF EKYT 110827Z 1109/1209 34010KT 9999 BKN030 TEMPO 1109/1121 5000 -SHRA SCT030CB"
     },
     {
       "station": "ELLX",
@@ -3004,11 +3028,11 @@
     },
     {
       "station": "EPKK",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF EPKK 110530Z 1106/1206 24006KT CAVOK PROB40 TEMPO 1113/1118 -SHRA BKN025CB"
+      "raw": "TAF EPKK 110830Z 1109/1209 26006KT CAVOK PROB40 TEMPO 1112/1118 -SHRA BKN025CB"
     },
     {
       "station": "EPKT",
@@ -3052,11 +3076,11 @@
     },
     {
       "station": "EPRA",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EPRA 110530Z 1106/1115 26008KT 9999 SCT008 BKN014 BECMG 1106/1108 CAVOK"
+      "raw": "TAF EPRA 110830Z 1109/1118 25010KT 9999 SCT040 TEMPO 1109/1111 BKN014 PROB30 1113/1118 7000 -SHRA BKN025CB"
     },
     {
       "station": "EPRZ",
@@ -3076,99 +3100,99 @@
     },
     {
       "station": "EPSY",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EPSY 110530Z 1106/1115 20006KT 4000 BR OVC003 BECMG 1106/1108 7000 BKN010 BECMG 1108/1110 CAVOK"
+      "raw": "TAF EPSY 110830Z 1109/1118 24008KT 9999 BKN013 BECMG 1110/1112 SCT025 PROB40 TEMPO 1113/1117 -SHRA BKN020TCU"
     },
     {
       "station": "EPWA",
-      "issueTime": "2026-10-11T06:26:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD EPWA 110626Z 1106/1206 26010KT 9999 BKN007 BECMG 1107/1109 SCT025 TEMPO 1112/1122 -SHRA SCT030TCU PROB40 TEMPO 1112/1118 4000 SHRA BKN030CB BECMG 1115/1117 20004KT"
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
+      "variant": "",
+      "raw": "TAF EPWA 110830Z 1109/1209 26010KT 9999 SCT025 PROB40 1109/1110 BKN008 TEMPO 1112/1122 -SHRA SCT030TCU PROB40 TEMPO 1112/1118 4000 SHRA BKN030CB BECMG 1115/1117 20004KT BECMG 1205/1208 26010KT TEMPO 1206/1209 -SHRA BKN012 BKN015CB"
     },
     {
       "station": "EPWR",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF EPWR 110530Z 1106/1206 22005KT CAVOK BECMG 1107/1110 26015KT TEMPO 1110/1118 27015G25KT 3000 SHRA BKN020CB PROB30 TEMPO 1114/1118 2000 TSRA BECMG 1117/1118 23005KT PROB30 TEMPO 1200/1206 SHRA BKN015CB"
+      "raw": "TAF EPWR 110830Z 1109/1209 25012KT CAVOK TEMPO 1110/1118 27015G25KT 3000 SHRA BKN020CB PROB30 TEMPO 1200/1209 SHRA BKN015CB BECMG 1208/1209 31012KT"
     },
     {
       "station": "EPZG",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF EPZG 110530Z 1106/1115 22005KT CAVOK BECMG 1107/1110 26015KT TEMPO 1110/1115 27015G25KT 3000 SHRA BKN020CB PROB30 TEMPO 1112/1115 2000 TSRA"
+      "raw": "TAF EPZG 110830Z 1109/1118 25012KT CAVOK TEMPO 1110/1115 27015G25KT 3000 SHRA BKN020CB PROB30 TEMPO 1112/1115 TSRA TEMPO 1115/1118 -SHRA BKN020CB"
     },
     {
       "station": "ESDF",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESDF 110530Z 1106/1115 20006KT 9999 FEW008 BKN040 TEMPO 1106/1115 4000 SHRA BKN008 BKN025CB RMK MIL"
+      "raw": "TAF ESDF 110830Z 1109/1118 20010KT 9999 FEW008 BKN040 TEMPO 1109/1118 4000 SHRA BKN008 BKN025CB RMK MIL"
     },
     {
       "station": "ESGG",
-      "issueTime": "2026-10-11T05:33:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD ESGG 110533Z 1106/1206 01005KT 9999 BKN025 TEMPO 1106/1108 0300 FG VV003 TEMPO 1108/1112 BKN006 TEMPO 1112/1118 3500 SHRA BKN006 BKN015CB BECMG 1118/1120 BKN005 PROB40 1120/1123 BKN004 BECMG 1123/1201 BKN015"
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
+      "variant": "",
+      "raw": "TAF ESGG 110830Z 1109/1209 01007KT 9999 BKN025 TEMPO 1109/1112 BKN006 TEMPO 1112/1118 4000 SHRA BKN006 BKN030CB BECMG 1118/1120 BKN005 PROB40 1120/1123 BKN004 BECMG 1123/1201 BKN015"
     },
     {
       "station": "ESGP",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESGP 110530Z 1106/1115 01005KT 9999 SCT006 BKN025 TEMPO 1106/1109 BKN004 TEMPO 1110/1112 BKN009"
+      "raw": "TAF ESGP 110830Z 1109/1118 01005KT 9999 SCT009 BKN025 TEMPO 1110/1118 BKN009 PROB40 TEMPO 1112/1117 4000 SHRA BKN030CB"
     },
     {
       "station": "ESIB",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T14:00:00Z",
       "variant": "",
-      "raw": "TAF ESIB 110530Z 1106/1115 VRB03KT 9999 BKN015 TEMPO 1106/1108 4000 DZ BKN010 TEMPO 1108/1112 4000 SHRA BKN008 BECMG 1107/1109 03012KT BECMG 1112/1115 02012G22KT"
+      "raw": "TAF ESIB 110830Z 1109/1114 03012KT 9999 BKN015 PROB30 TEMPO 1109/1114 04010G20KT 4000 SHRA BKN008"
     },
     {
       "station": "ESKN",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF ESKN 110530Z 1106/1206 03005KT 9999 SCT003 BKN035 PROB40 1106/1107 2000 SHRA BR BKN003 BKN020CB TEMPO 1107/1116 2500 SHRA BR BKN004 BKN020CB TEMPO 1114/1206 2000 RADZ BR BKN002"
+      "raw": "TAF ESKN 110830Z 1109/1209 03007KT 9999 SCT003 BKN035 TEMPO 1109/1117 2500 SHRA BR BKN004 BKN020CB TEMPO 1117/1209 2000 RADZ BR BKN002"
     },
     {
       "station": "ESMK",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESMK 110527Z 1106/1115 20004KT 9999 BKN035 TEMPO 1106/1115 BKN010 SCT020CB BECMG 1112/1115 28010KT"
+      "raw": "TAF ESMK 110827Z 1109/1118 20004KT 9999 BKN030 TEMPO 1109/1118 BKN012 SCT020CB BECMG 1113/1116 29010KT"
     },
     {
       "station": "ESMS",
-      "issueTime": "2026-10-11T05:27:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF ESMS 110527Z 1106/1206 21006KT 9999 SCT020 TEMPO 1106/1116 SHRA BKN012 SCT025CB BECMG 1112/1115 30010KT TEMPO 1122/1206 BKN012 SCT020TCU"
+      "raw": "TAF ESMS 110827Z 1109/1209 20006KT 9999 SCT020 TEMPO 1109/1116 SHRA BKN014 SCT020CB BECMG 1112/1115 30010KT TEMPO 1121/1124 BKN014 SCT020TCU TEMPO 1200/1206 BKN012"
     },
     {
       "station": "ESMX",
-      "issueTime": "2026-10-11T07:30:00Z",
-      "validTimeFrom": "2026-10-11T08:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESMX 110730Z 1108/1115 18005KT 9000 -RA BKN003 BECMG 1108/1110 BKN015 TEMPO 1108/1115 3000 RA BKN030CB PROB40 1110/1115 BKN007"
+      "raw": "TAF ESMX 110830Z 1109/1118 18005KT 9000 -RA SCT007 BKN020 TEMPO 1109/1118 3000 RA BKN007 BKN030CB"
     },
     {
       "station": "ESNQ",
@@ -3180,75 +3204,75 @@
     },
     {
       "station": "ESNS",
-      "issueTime": "2026-10-11T05:36:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD ESNS 110536Z 1106/1115 01008KT 9999 OVC035 PROB40 1106/1111 4000 -SN BKN010 BECMG 1111/1113 07010KT"
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
+      "variant": "",
+      "raw": "TAF ESNS 110830Z 1109/1118 01008KT 9999 BKN035 PROB40 1109/1110 4000 -SN BKN014 BECMG 1111/1113 07010KT"
     },
     {
       "station": "ESNU",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESNU 110530Z 1106/1115 36010KT 9999 BKN035"
+      "raw": "TAF ESNU 110830Z 1109/1118 01010KT 9999 BKN035 TEMPO 1109/1111 SG TEMPO 1113/1115 07014KT"
     },
     {
       "station": "ESNZ",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESNZ 110530Z 1106/1115 09007KT 9999 OVC045"
+      "raw": "TAF ESNZ 110830Z 1109/1118 07007KT 9999 OVC040"
     },
     {
       "station": "ESOK",
-      "issueTime": "2026-10-11T06:11:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD ESOK 110611Z 1106/1115 04010KT 6000 -DZ SCT005 BKN012 TEMPO 1106/1109 2000 DZ BR BKN003 TEMPO 1106/1115 3500 DZ BR"
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
+      "variant": "",
+      "raw": "TAF ESOK 110830Z 1109/1118 04010KT 9999 SCT005 BKN012 TEMPO 1109/1118 3500 RADZ BR BKN007 BECMG 1116/1118 BKN016"
     },
     {
       "station": "ESPA",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESPA 110530Z 1106/1115 35005KT CAVOK"
+      "raw": "TAF ESPA 110830Z 1109/1118 01007KT CAVOK"
     },
     {
       "station": "ESSA",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF ESSA 110530Z 1106/1206 06006KT 9999 BKN015 TEMPO 1106/1108 2500 SHRA BKN007 BKN015CB TEMPO 1108/1112 4000 SHRA BKN010 BKN030CB TEMPO 1109/1115 06015G25KT TEMPO 1112/1206 3000 SHRA BR BKN006 BKN020CB"
+      "raw": "TAF ESSA 110830Z 1109/1209 06015G25KT 9999 SCT008 BKN030 TEMPO 1109/1209 3000 SHRA BR BKN006 BKN020CB BECMG 1117/1119 01005KT"
     },
     {
       "station": "ESSB",
-      "issueTime": "2026-10-11T07:30:00Z",
-      "validTimeFrom": "2026-10-11T08:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESSB 110730Z 1108/1115 04012G22KT 9999 -RA SCT007 BKN025 TEMPO 1108/1115 4000 SHRA BKN006 BKN020CB"
+      "raw": "TAF ESSB 110830Z 1109/1118 04012G22KT 9999 -RA SCT007 BKN025 TEMPO 1109/1118 4000 SHRA BKN006 BKN020CB"
     },
     {
       "station": "ESSV",
-      "issueTime": "2026-10-11T05:30:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESSV 110530Z 1106/1115 16009KT 9999 BKN045 TEMPO 1106/1115 3500 SHRA BKN014CB"
+      "raw": "TAF ESSV 110830Z 1109/1118 18009KT 9999 BKN040 TEMPO 1109/1118 3500 SHRA BKN014CB"
     },
     {
       "station": "ESTA",
-      "issueTime": "2026-10-11T07:27:00Z",
-      "validTimeFrom": "2026-10-11T08:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:27:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF ESTA 110727Z 1108/1115 18005KT 9999 BKN040 BECMG 1108/1111 33010KT TEMPO 1108/1115 BKN012 SCT020CB"
+      "raw": "TAF ESTA 110827Z 1109/1118 18005KT 9999 BKN040 BECMG 1109/1111 33010KT TEMPO 1109/1118 BKN012 SCT020CB"
     },
     {
       "station": "ETAD",
@@ -4260,67 +4284,75 @@
     },
     {
       "station": "GCFV",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF GCFV 110200Z 1103/1203 35009KT 9999 FEW025 TX27/1115Z TN20/1107Z"
+      "raw": "TAF GCFV 110800Z 1109/1209 03012KT 9999 FEW025 TX27/1115Z TN20/1205Z BECMG 1117/1119 33007KT PROB30 TEMPO 1201/1208 RA"
     },
     {
       "station": "GCGM",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF GCGM 110200Z 1103/1203 VRB05KT 9999 FEW030 TX25/1111Z TN21/1107Z TEMPO 1112/1118 23010KT"
+      "raw": "TAF GCGM 110800Z 1109/1209 23007KT 9999 FEW030 TX25/1111Z TN20/1205Z"
     },
     {
       "station": "GCHI",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF GCHI 110200Z 1103/1203 02012KT 9999 SCT025 TX25/1113Z TN21/1201Z"
+      "raw": "TAF GCHI 110800Z 1109/1209 02014KT 9999 FEW025 TX25/1113Z TN20/1207Z PROB30 TEMPO 1200/1206 RA"
     },
     {
       "station": "GCLA",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF GCLA 110200Z 1103/1203 32008KT 9999 BKN035 TX23/1112Z TN19/1121Z BECMG 1110/1112 02010KT BECMG 1117/1119 32008KT"
+      "raw": "TAF GCLA 110800Z 1109/1209 32008KT 9999 BKN035 TX23/1112Z TN18/1205Z BECMG 1110/1112 02010KT BECMG 1117/1119 32008KT PROB30 TEMPO 1204/1209 RA"
     },
     {
       "station": "GCLP",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF GCLP 110200Z 1103/1203 36014KT 9999 SCT025 TX26/1113Z TN21/1201Z PROB30 TEMPO 1113/1119 01017G27KT PROB30 TEMPO 1103/1105 RA"
+      "raw": "TAF GCLP 110800Z 1109/1209 01017KT 9999 SCT025 TX26/1113Z TN21/1206Z PROB30 TEMPO 1113/1119 01017G27KT BECMG 1119/1121 35007KT PROB30 TEMPO 1123/1209 RA"
     },
     {
       "station": "GCRR",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF GCRR 110200Z 1103/1203 36009KT 9999 FEW025 TX26/1114Z TN21/1107Z"
+      "raw": "TAF GCRR 110800Z 1109/1209 36012KT 9999 FEW030 TX26/1114Z TN20/1206Z PROB30 TEMPO 1201/1207 RA"
     },
     {
       "station": "GCTS",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF GCTS 110200Z 1103/1203 02005KT 9999 SCT025 TX25/1112Z TN21/1202Z BECMG 1107/1109 08012KT BECMG 1121/1123 02006KT"
+      "raw": "TAF GCTS 110800Z 1109/1209 08012KT 9999 BKN025 TX25/1112Z TN20/1206Z BECMG 1121/1123 02006KT BECMG 1207/1209 08010KT"
     },
     {
       "station": "GCXO",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF GCXO 110200Z 1103/1203 31009KT 9999 SCT015 TX20/1114Z TN16/1106Z PROB30 TEMPO 1103/1109 3000 DZRA BCFG BKN005 PROB30 TEMPO 1112/1115 31015G25KT PROB30 TEMPO 1123/1203 3000 DZ BCFG BKN010"
+      "raw": "TAF GCXO 110800Z 1109/1209 31009KT 9999 FEW010 TX20/1114Z TN16/1207Z PROB30 TEMPO 1112/1115 31015G25KT PROB30 TEMPO 1123/1208 3000 RADZ BCFG BKN010"
+    },
+    {
+      "station": "GECE",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
+      "variant": "",
+      "raw": "TAF GECE 110800Z 1109/1209 14010KT CAVOK TX23/1116Z TN20/1206Z BECMG 1118/1120 VRB02KT BECMG 1204/1206 29010KT"
     },
     {
       "station": "GEML",
@@ -5452,11 +5484,11 @@
     },
     {
       "station": "KBAN",
-      "issueTime": "2026-10-11T00:15:00Z",
-      "validTimeFrom": "2026-10-11T00:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T08:00:00Z",
+      "validTimeTo": "2026-10-12T14:00:00Z",
       "variant": "",
-      "raw": "TAF KBAN 110015Z 1100/1206 21015G25KT 9999 SCT100 QNH2972INS FM110400 22015G25KT 9999 OVC090 QNH2976INS FM110900 23006KT 9999 -SHRA OVC070 QNH2972INS TEMPO 1120/1200 8000 -TSRA OVC040 FM120100 24010G20KT 9999 NSW SCT060 BKN100 QNH2969INS FM120400 22005KT 9999 SKC QNH2982INS TX16/1122Z TN01/1113Z"
+      "raw": "TAF KBAN 110800Z 1108/1214 21005KT 9999 SKC QNH2968INS FM110900 23006KT 9999 OVC100 QNH2972INS FM120100 24010G20KT 9999 SCT060 BKN100 QNH2969INS FM120400 22005KT 9999 SKC QNH2982INS TX16/1122Z TNM01/1113Z"
     },
     {
       "station": "KBBD",
@@ -6572,11 +6604,11 @@
     },
     {
       "station": "KECG",
-      "issueTime": "2026-10-11T05:21:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
+      "issueTime": "2026-10-11T08:26:00Z",
+      "validTimeFrom": "2026-10-11T08:00:00Z",
       "validTimeTo": "2026-10-12T06:00:00Z",
       "variant": "",
-      "raw": "TAF KECG 110521Z 1106/1206 08017G25KT 5SM SHRA BR SCT008 OVC025 FM111000 13015G23KT 5SM SHRA BR OVC007 FM111500 16013KT 3SM SHRA BR OVC006 FM111900 18013KT P6SM OVC010 FM120000 21012KT P6SM BKN050"
+      "raw": "TAF KECG 110826Z 1108/1206 10017G25KT 4SM SHRA BR BKN008 FM111000 13015G23KT 5SM SHRA BR OVC007 FM111500 16013KT 3SM SHRA BR OVC006 FM111900 18013KT P6SM OVC010 FM120000 21012KT P6SM BKN050"
     },
     {
       "station": "KECP",
@@ -7604,11 +7636,11 @@
     },
     {
       "station": "KIND",
-      "issueTime": "2026-10-11T05:20:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
+      "issueTime": "2026-10-11T08:28:00Z",
+      "validTimeFrom": "2026-10-11T08:00:00Z",
       "validTimeTo": "2026-10-12T12:00:00Z",
       "variant": "",
-      "raw": "TAF KIND 110520Z 1106/1212 08010KT P6SM VCSH OVC020 FM111100 05009KT P6SM OVC009 FM111400 35007KT P6SM SCT009 BKN025 FM112100 34006KT P6SM FEW035 FM120000 VRB04KT P6SM SKC"
+      "raw": "TAF KIND 110828Z 1108/1212 08010KT P6SM VCSH OVC020 TEMPO 1108/1111 4SM BR OVC009 FM111100 05009KT P6SM OVC009 FM111400 35007KT P6SM SCT009 BKN025 FM112100 34006KT P6SM FEW035 FM120000 VRB04KT P6SM SKC"
     },
     {
       "station": "KINK",
@@ -8612,11 +8644,11 @@
     },
     {
       "station": "KMSP",
-      "issueTime": "2026-10-11T05:20:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
+      "issueTime": "2026-10-11T08:33:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
       "validTimeTo": "2026-10-12T12:00:00Z",
       "variant": "",
-      "raw": "TAF KMSP 110520Z 1106/1212 18013G24KT P6SM SKC WS020/20045KT FM111300 19012G20KT P6SM SKC FM120000 17006KT P6SM BKN250 FM120800 27005KT P6SM SCT250"
+      "raw": "TAF KMSP 110833Z 1109/1212 18012G18KT P6SM SKC WS020/20045KT FM111300 19012G18KT P6SM SKC FM120000 17006KT P6SM BKN250 FM120800 27005KT P6SM SCT250"
     },
     {
       "station": "KMSS",
@@ -10284,11 +10316,11 @@
     },
     {
       "station": "KTRM",
-      "issueTime": "2026-10-11T07:39:00Z",
+      "issueTime": "2026-10-11T08:28:00Z",
       "validTimeFrom": "2026-10-11T08:00:00Z",
       "validTimeTo": "2026-10-12T06:00:00Z",
       "variant": "",
-      "raw": "TAF KTRM 110739Z 1108/1206 34007KT 3SM -SHRA SCT040 BKN050 FM111400 33012KT P6SM -SHRA SCT080 BKN100 FM111800 31009KT P6SM VCSH BKN080 FM112000 28012G20KT P6SM BKN100 FM120200 33012KT P6SM BKN100"
+      "raw": "TAF KTRM 110828Z 1108/1206 30007KT 3SM SHRA SCT025 BKN035 TEMPO 1108/1110 2SM RA BR BKN025 FM111400 33012KT P6SM -SHRA SCT080 BKN100 FM111800 31009KT P6SM VCSH BKN080 FM112000 28012G20KT P6SM BKN100 FM120200 33012KT P6SM BKN100"
     },
     {
       "station": "KTTD",
@@ -10779,6 +10811,14 @@
       "raw": "TAF LEAB 110500Z 1106/1206 VRB04KT CAVOK TX24/1115Z TN09/1206Z"
     },
     {
+      "station": "LEAG",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
+      "variant": "",
+      "raw": "TAF LEAG 110800Z 1109/1209 VRB02KT CAVOK TX24/1116Z TN18/1207Z PROB30 TEMPO 1205/1209 3000 BR BKN008"
+    },
+    {
       "station": "LEAL",
       "issueTime": "2026-10-11T05:00:00Z",
       "validTimeFrom": "2026-10-11T06:00:00Z",
@@ -10796,27 +10836,27 @@
     },
     {
       "station": "LEAO",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEAO 110200Z 1103/1203 VRB04KT CAVOK TX25/1115Z TN09/1106Z PROB30 TEMPO 1112/1118 25010KT"
+      "raw": "TAF LEAO 110800Z 1109/1209 VRB04KT CAVOK TX25/1115Z TN10/1206Z PROB30 TEMPO 1112/1118 25010KT"
     },
     {
       "station": "LEAS",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEAS 110200Z 1103/1203 23007KT 9999 SCT025 BKN055 TX19/1115Z TN14/1103Z PROB30 TEMPO 1103/1107 3000 RA BR BKN010 PROB40 1109/1119 32010KT PROB30 TEMPO 1117/1120 BKN010"
+      "raw": "TAF LEAS 110800Z 1109/1209 23007KT 9999 SCT030 BKN050 TX19/1115Z TN14/1203Z PROB40 TEMPO 1109/1119 32010KT PROB30 TEMPO 1117/1121 BKN010"
     },
     {
       "station": "LEBA",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEBA 110200Z 1103/1203 VRB03KT CAVOK TX29/1115Z TN13/1106Z"
+      "raw": "TAF LEBA 110800Z 1109/1209 VRB03KT CAVOK TX29/1115Z TN12/1206Z"
     },
     {
       "station": "LEBB",
@@ -10828,11 +10868,11 @@
     },
     {
       "station": "LEBG",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEBG 110200Z 1103/1203 VRB04KT 9999 FEW040 TX21/1115Z TN08/1106Z"
+      "raw": "TAF LEBG 110800Z 1109/1209 VRB04KT 9999 FEW040 TX21/1115Z TN09/1206Z PROB30 TEMPO 1202/1209 3000 BR BCFG"
     },
     {
       "station": "LEBL",
@@ -10844,11 +10884,11 @@
     },
     {
       "station": "LEBZ",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEBZ 110200Z 1103/1203 27005KT CAVOK TX28/1116Z TN13/1106Z"
+      "raw": "TAF LEBZ 110800Z 1109/1209 27005KT CAVOK TX28/1116Z TN13/1206Z TEMPO 1201/1209 2000 BR PROB40 TEMPO 1205/1209 0100 FG BKN001"
     },
     {
       "station": "LECH",
@@ -10860,11 +10900,11 @@
     },
     {
       "station": "LECO",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LECO 110200Z 1103/1203 20005KT 9999 FEW010 BKN020 TX22/1112Z TN14/1103Z PROB40 TEMPO 1103/1108 3000 BR BKN010 PROB30 TEMPO 1103/1108 0800 RA FG BKN002 PROB40 1111/1117 27010KT PROB30 TEMPO 1112/1118 BKN010"
+      "raw": "TAF LECO 110800Z 1109/1209 20006KT 9999 FEW010 BKN020 TX21/1110Z TN15/1121Z PROB40 TEMPO 1110/1117 27010KT PROB40 TEMPO 1110/1115 3000 DZ BKN010"
     },
     {
       "station": "LECV",
@@ -10876,11 +10916,11 @@
     },
     {
       "station": "LEDA",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEDA 110200Z 1103/1203 09005KT CAVOK TX22/1114Z TN10/1105Z PROB30 TEMPO 1108/1116 FEW080TCU TEMPO 1112/1118 24010KT"
+      "raw": "TAF LEDA 110800Z 1109/1209 VRB03KT CAVOK TX24/1114Z TN12/1205Z PROB30 TEMPO 1109/1116 FEW080TCU TEMPO 1112/1118 25010KT"
     },
     {
       "station": "LEGE",
@@ -10908,27 +10948,27 @@
     },
     {
       "station": "LEHC",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEHC 110200Z 1103/1203 VRB03KT CAVOK TX22/1114Z TN11/1105Z PROB30 TEMPO 1107/1115 FEW080TCU BECMG 1110/1113 29010KT BECMG 1118/1120 VRB03KT"
+      "raw": "TAF LEHC 110800Z 1109/1209 VRB03KT CAVOK TX24/1114Z TN12/1205Z PROB30 TEMPO 1109/1115 FEW080TCU BECMG 1110/1113 29010KT BECMG 1120/1122 VRB03KT"
     },
     {
       "station": "LEIB",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEIB 110200Z 1103/1203 22006KT CAVOK TX25/1112Z TN18/1105Z"
+      "raw": "TAF LEIB 110800Z 1109/1209 22006KT CAVOK TX25/1112Z TN19/1205Z"
     },
     {
       "station": "LEJR",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEJR 110200Z 1103/1203 VRB03KT CAVOK TX29/1115Z TN13/1106Z PROB30 TEMPO 1103/1108 3000 BR BKN010 BECMG 1113/1115 31015KT BECMG 1118/1120 VRB02KT"
+      "raw": "TAF LEJR 110800Z 1109/1209 VRB03KT CAVOK TX29/1115Z TN13/1206Z BECMG 1113/1115 30010KT BECMG 1118/1120 VRB02KT PROB40 TEMPO 1122/1208 3000 BR"
     },
     {
       "station": "LELC",
@@ -10940,27 +10980,27 @@
     },
     {
       "station": "LELL",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LELL 110200Z 1103/1203 VRB03KT 9999 FEW020 TX23/1113Z TN11/1105Z TEMPO 1111/1115 14010KT PROB30 TEMPO 1112/1116 FEW080TCU PROB30 TEMPO 1122/1203 3000 BR BKN010"
+      "raw": "TAF LELL 110800Z 1109/1209 VRB03KT 9999 FEW020 TX23/1113Z TN14/1205Z TEMPO 1111/1116 14010KT PROB30 TEMPO 1112/1116 FEW080TCU PROB30 TEMPO 1120/1206 3000 BR BKN010"
     },
     {
       "station": "LELN",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LELN 110200Z 1103/1203 VRB04KT CAVOK TX23/1115Z TN08/1106Z PROB30 TEMPO 1104/1108 3000 BR PROB30 TEMPO 1115/1119 27010KT"
+      "raw": "TAF LELN 110800Z 1109/1209 VRB04KT CAVOK TX23/1115Z TN08/1206Z PROB30 TEMPO 1115/1119 27010KT"
     },
     {
       "station": "LELO",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LELO 110200Z 1103/1203 VRB04KT CAVOK TX24/1115Z TN10/1106Z PROB30 TEMPO 1114/1118 30010KT"
+      "raw": "TAF LELO 110800Z 1109/1209 VRB04KT CAVOK TX24/1115Z TN12/1204Z PROB30 TEMPO 1114/1118 30010KT"
     },
     {
       "station": "LEMD",
@@ -10980,11 +11020,11 @@
     },
     {
       "station": "LEMH",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEMH 110200Z 1103/1203 34005KT 9999 FEW040 TX25/1112Z TN16/1105Z BECMG 1107/1109 24010KT BECMG 1117/1119 33005KT PROB30 TEMPO 1118/1121 FEW080TCU PROB40 TEMPO 1121/1203 3000 SHRA FEW020TCU"
+      "raw": "TAF LEMH 110800Z 1109/1209 24010KT 9999 FEW040 TX24/1112Z TN17/1205Z BECMG 1118/1120 33005KT PROB30 TEMPO 1118/1121 FEW080TCU PROB40 TEMPO 1121/1209 FEW020TCU PROB30 TEMPO 1200/1208 3000 SHRA FEW020TCU BECMG 1204/1206 03008KT"
     },
     {
       "station": "LEMI",
@@ -10996,11 +11036,11 @@
     },
     {
       "station": "LEMO",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEMO 110200Z 1103/1203 VRB03KT CAVOK TX29/1115Z TN15/1106Z PROB30 TEMPO 1103/1108 4000 BR"
+      "raw": "TAF LEMO 110800Z 1109/1209 VRB03KT CAVOK TX29/1115Z TN15/1206Z PROB40 TEMPO 1119/1121 25010KT"
     },
     {
       "station": "LEPA",
@@ -11012,11 +11052,11 @@
     },
     {
       "station": "LEPP",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEPP 110200Z 1103/1203 VRB03KT CAVOK TX20/1116Z TN09/1103Z PROB40 TEMPO 1103/1108 3000 BR BKN010 PROB30 TEMPO 1108/1112 3000 RA BKN010 PROB40 1114/1120 33010KT"
+      "raw": "TAF LEPP 110800Z 1109/1209 VRB03KT 9999 FEW050 TX20/1116Z TN11/1203Z PROB40 1114/1120 34010KT"
     },
     {
       "station": "LERI",
@@ -11028,27 +11068,27 @@
     },
     {
       "station": "LERS",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LERS 110200Z 1103/1203 VRB03KT CAVOK TX25/1112Z TN13/1105Z PROB30 TEMPO 1111/1120 FEW080TCU PROB30 TEMPO 1111/1118 18010KT PROB30 TEMPO 1200/1203 3000 BR BKN010"
+      "raw": "TAF LERS 110800Z 1109/1209 VRB03KT CAVOK TX25/1112Z TN15/1205Z PROB30 TEMPO 1111/1120 FEW080TCU PROB30 TEMPO 1111/1118 18010KT PROB30 TEMPO 1200/1206 3000 BR BKN010 PROB30 TEMPO 1206/1209 BKN010"
     },
     {
       "station": "LERT",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LERT 110200Z 1103/1203 15005KT CAVOK TX28/1114Z TN16/1106Z BECMG 1111/1113 29010KT BECMG 1118/1120 VRB03KT"
+      "raw": "TAF LERT 110800Z 1109/1209 13005KT CAVOK TX28/1114Z TN15/1206Z BECMG 1110/1112 27010KT BECMG 1119/1121 VRB03KT PROB30 TEMPO 1123/1207 4000 BR"
     },
     {
       "station": "LESA",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LESA 110200Z 1103/1203 VRB04KT CAVOK TX25/1115Z TN07/1106Z"
+      "raw": "TAF LESA 110800Z 1109/1209 VRB04KT CAVOK TX25/1115Z TN08/1206Z PROB40 TEMPO 1202/1209 3000 BR BKN004 PROB30 TEMPO 1203/1208 0400 FG VV002"
     },
     {
       "station": "LESO",
@@ -11068,11 +11108,11 @@
     },
     {
       "station": "LESU",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LESU 110200Z 1103/1203 VRB03KT CAVOK TX23/1114Z TN07/1105Z PROB40 TEMPO 1107/1116 FEW060TCU TEMPO 1112/1117 20010KT"
+      "raw": "TAF LESU 110800Z 1109/1209 VRB03KT CAVOK TX23/1114Z TN08/1205Z PROB30 TEMPO 1109/1116 FEW060TCU TEMPO 1112/1117 20010KT"
     },
     {
       "station": "LETL",
@@ -11100,11 +11140,11 @@
     },
     {
       "station": "LEVD",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEVD 110200Z 1103/1203 VRB04KT CAVOK TX23/1115Z TN08/1106Z"
+      "raw": "TAF LEVD 110800Z 1109/1209 VRB04KT CAVOK TX23/1115Z TN09/1206Z"
     },
     {
       "station": "LEVS",
@@ -11132,11 +11172,11 @@
     },
     {
       "station": "LEXJ",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEXJ 110200Z 1103/1203 22005KT 9999 FEW040 BKN055 TX22/1114Z TN14/1103Z PROB40 1110/1119 29010KT"
+      "raw": "TAF LEXJ 110800Z 1109/1209 VRB03KT 9999 FEW040 BKN055 TX22/1114Z TN14/1206Z PROB40 1110/1118 29010KT PROB30 TEMPO 1203/1209 3000 BR BKN010"
     },
     {
       "station": "LEZG",
@@ -11148,11 +11188,11 @@
     },
     {
       "station": "LEZL",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-12T03:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T09:00:00Z",
       "variant": "",
-      "raw": "TAF LEZL 110200Z 1103/1203 VRB02KT CAVOK TX29/1115Z TN17/1106Z PROB30 TEMPO 1103/1108 4000 BR"
+      "raw": "TAF LEZL 110800Z 1109/1209 VRB02KT CAVOK TX29/1115Z TN16/1206Z TEMPO 1118/1121 23010KT"
     },
     {
       "station": "LFAQ",
@@ -11972,19 +12012,19 @@
     },
     {
       "station": "LHDC",
-      "issueTime": "2026-10-11T05:15:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LHDC 110515Z 1106/1115 VRB03KT 9000 -RA SCT004 BKN020 OVC030 BECMG 1106/1109 32007KT TEMPO 1106/1109 4500 RA BKN004 OVC020 BECMG 1112/1115 VRB03KT CAVOK"
+      "raw": "TAF LHDC 110815Z 1109/1118 34005KT 9999 SCT004 BKN020 OVC030 PROB40 1110/1115 4500 RA BKN004 OVC020 PROB30 TEMPO 1113/1117 4500 SHRA SCT012TCU SCT025 BKN070"
     },
     {
       "station": "LHKE",
-      "issueTime": "2026-10-11T05:15:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LHKE 110515Z 1106/1115 30006KT 9999 SCT010 BKN080 BKN100 TEMPO 1106/1108 31009KT 3000 -RA BR BKN004 BKN025 OVC070 BECMG 1108/1110 32011KT SCT033 BKN140 BECMG 1110/1113 CAVOK BECMG 1113/1115 31007KT"
+      "raw": "TAF LHKE 110815Z 1109/1118 32012KT 9999 SCT015 BKN170 BECMG 1109/1111 SCT030 BKN200 BECMG 1111/1113 CAVOK BECMG 1113/1115 32007KT BECMG 1115/1118 29005KT"
     },
     {
       "station": "LHPA",
@@ -11996,35 +12036,35 @@
     },
     {
       "station": "LHPP",
-      "issueTime": "2026-10-11T05:15:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LHPP 110515Z 1106/1115 29006KT 9999 SCT004 OVC080 BECMG 1106/1109 35012KT TEMPO 1106/1109 9000 -RA BKN004 BKN050 PROB30 TEMPO 1106/1108 6000 RA BECMG 1109/1112 CAVOK BECMG 1112/1115 VRB03KT"
+      "raw": "TAF LHPP 110815Z 1109/1118 34009KT CAVOK TEMPO 1109/1113 FEW025 BKN130 BECMG 1113/1116 32004KT"
     },
     {
       "station": "LHPR",
-      "issueTime": "2026-10-11T05:15:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LHPR 110515Z 1106/1115 32012KT 9999 BKN040 BKN200 PROB30 TEMPO 1106/1108 BKN008 PROB40 TEMPO 1108/1115 32015G25KT BECMG 1108/1111 CAVOK"
+      "raw": "TAF LHPR 110815Z 1109/1118 32009KT CAVOK PROB30 TEMPO 1109/1115 32012G24KT"
     },
     {
       "station": "LHSM",
-      "issueTime": "2026-10-11T05:15:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LHSM 110515Z 1106/1115 30004KT CAVOK TEMPO 1106/1109 35012KT PROB40 TEMPO 1106/1108 2500 BCFG BR BKN004 BKN200 BECMG 1112/1115 VRB03KT"
+      "raw": "TAF LHSM 110815Z 1109/1118 34005KT CAVOK"
     },
     {
       "station": "LHSN",
-      "issueTime": "2026-10-11T05:15:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LHSN 110515Z 1106/1115 29005KT 9999 SCT010 OVC070 PROB40 TEMPO 1106/1108 8000 -RA -SHRA BKN007 OVC050 BECMG 1108/1110 32010KT SCT025 BKN083 BECMG 1110/1112 CAVOK"
+      "raw": "TAF LHSN 110815Z 1109/1118 30005KT 9999 BKN015 OVC070 BECMG 1109/1111 SCT025 BKN083 TEMPO 1109/1115 32010KT BECMG 1111/1113 CAVOK"
     },
     {
       "station": "LIBA",
@@ -12580,19 +12620,19 @@
     },
     {
       "station": "LOAN",
-      "issueTime": "2026-10-11T07:15:00Z",
-      "validTimeFrom": "2026-10-11T07:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LOAN 110715Z 1107/1115 VRB02KT 9999 FEW040 BECMG 1107/1108 30010KT TEMPO 1110/1115 30018G28KT"
+      "raw": "TAF LOAN 110815Z 1109/1118 30010KT 9999 FEW040 TEMPO 1110/1115 30018G28KT"
     },
     {
       "station": "LOAV",
-      "issueTime": "2026-10-11T07:15:00Z",
-      "validTimeFrom": "2026-10-11T07:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LOAV 110715Z 1107/1115 30010KT 9999 FEW040 TEMPO 1110/1115 30018G28KT"
+      "raw": "TAF LOAV 110815Z 1109/1118 30010KT 9999 FEW040 TEMPO 1110/1115 30018G28KT"
     },
     {
       "station": "LOWG",
@@ -12644,11 +12684,11 @@
     },
     {
       "station": "LOXZ",
-      "issueTime": "2026-10-11T05:15:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:15:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LOXZ 110515Z 1106/1115 VRB03KT 9999 FEW060 SCT080 PROB40 TEMPO 1106/1107 0800 BCFG FEW003 BECMG 1112/1114 07008KT FEW050 BKN060"
+      "raw": "TAF LOXZ 110815Z 1109/1118 VRB03KT 9999 FEW060 SCT080 BECMG 1112/1114 07008KT FEW050 BKN060 TEMPO 1116/1118 -SHRA FEW030 BKN050"
     },
     {
       "station": "LPAZ",
@@ -12804,27 +12844,27 @@
     },
     {
       "station": "LRAR",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRAR 110500Z 1106/1115 35007KT 9999 SCT010 BKN030 TEMPO 1106/1108 BKN005 OVC020 TEMPO 1110/1115 5000 RA"
+      "raw": "TAF LRAR 110800Z 1109/1118 35008KT 9999 SCT015 BKN035 BECMG 1109/1111 5000 -RA BR BKN010 OVC030 TEMPO 1113/1117 3000 RA BKN005 OVC025"
     },
     {
       "station": "LRBC",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRBC 110500Z 1106/1115 16012KT 0300 FG OVC001 BECMG 1106/1107 0600 BKN002 BECMG 1107/1108 3000 BR BKN005 BECMG 1108/1109 9999 NSW SCT005 TEMPO 1109/1115 16016G26KT"
+      "raw": "TAF LRBC 110800Z 1109/1118 16014KT 3000 BR OVC002 BECMG 1109/1110 5000 BKN005 TEMPO 1109/1115 16016G26KT BECMG 1110/1112 9999 NSW SCT005"
     },
     {
       "station": "LRBM",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRBM 110500Z 1106/1115 08007KT 9999 SCT045 BECMG 1106/1108 29010KT PROB40 TEMPO 1106/1109 5000 SHRA BKN010 SCT035CB BECMG 1109/1111 VRB04KT TEMPO 1112/1115 5000 RA BKN010 OVC040"
+      "raw": "TAF LRBM 110800Z 1109/1118 29006KT 9999 SCT045 TEMPO 1109/1111 5000 -SHRA BKN015 SCT035CB BECMG 1111/1113 5000 -RA BR BKN015 OVC040 TEMPO 1113/1118 3000 RA BR BKN010 OVC025"
     },
     {
       "station": "LRBS",
@@ -12836,11 +12876,11 @@
     },
     {
       "station": "LRBV",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRBV 110500Z 1106/1115 VRB04KT CAVOK TEMPO 1113/1115 29010KT SCT040CB"
+      "raw": "TAF LRBV 110800Z 1109/1118 VRB04KT CAVOK BECMG 1113/1115 29010KT PROB40 TEMPO 1115/1118 5000 TSRA SCT040CB"
     },
     {
       "station": "LRCK",
@@ -12852,35 +12892,35 @@
     },
     {
       "station": "LRCL",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRCL 110500Z 1106/1115 VRB04KT 9999 SCT050 TEMPO 1108/1112 5000 SHRA SCT040CB PROB40 TEMPO 1109/1112 TSRA BECMG 1112/1114 32010KT 5000 -SHRA BKN010 SCT030CB"
+      "raw": "TAF LRCL 110800Z 1109/1118 VRB04KT 9999 SCT050 PROB40 TEMPO 1109/1112 5000 -TSRA SCT040CB BECMG 1112/1114 32010KT 5000 -SHRA BKN015 SCT040CB TEMPO 1114/1116 3000 RA BR BKN010 OVC030"
     },
     {
       "station": "LRCV",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRCV 110500Z 1106/1115 VRB04KT CAVOK TEMPO 1106/1109 07010KT BECMG 1113/1115 32010KT SCT040CB"
+      "raw": "TAF LRCV 110800Z 1109/1118 VRB04KT CAVOK BECMG 1113/1115 32010KT TEMPO 1115/1118 5000 TSRA SCT015 SCT040CB"
     },
     {
       "station": "LRIA",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRIA 110500Z 1106/1115 10014KT 3000 BR SCT005 PROB40 TEMPO 1106/1107 0800 FG BKN002 BECMG 1107/1109 16012KT 9999 NSW"
+      "raw": "TAF LRIA 110800Z 1109/1118 15012KT CAVOK"
     },
     {
       "station": "LROD",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LROD 110500Z 1106/1115 31010KT 9999 SCT010 BKN045 TEMPO 1106/1108 BKN005 OVC030 BECMG 1108/1110 VRB04KT TEMPO 1111/1115 5000 RA"
+      "raw": "TAF LROD 110800Z 1109/1118 34006KT 9999 SCT015 BKN035 BECMG 1109/1111 5000 -RA BR BKN010 OVC030 TEMPO 1113/1117 3000 RA BKN005 OVC025"
     },
     {
       "station": "LROP",
@@ -12900,27 +12940,27 @@
     },
     {
       "station": "LRSV",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRSV 110500Z 1106/1115 19009KT CAVOK BECMG 1113/1115 34012KT SCT045CB"
+      "raw": "TAF LRSV 110800Z 1109/1118 18008KT CAVOK BECMG 1112/1114 34012KT SCT040CB BKN045 TEMPO 1114/1118 VRB22KT 5000 TSRA"
     },
     {
       "station": "LRTC",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRTC 110500Z 1106/1115 15011KT 3000 BR BKN005 TEMPO 1106/1107 0600 FG BKN002 BECMG 1107/1109 9999 NSW SCT005"
+      "raw": "TAF LRTC 110800Z 1109/1118 15012KT 9999 SCT015 BECMG 1114/1116 5000 BR BKN005 BECMG 1116/1118 3000 BR"
     },
     {
       "station": "LRTM",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LRTM 110500Z 1106/1115 VRB04KT 9999 SCT040 TEMPO 1108/1112 SCT040CB TEMPO 1112/1115 32016KT 5000 TSRA SCT015 SCT040CB"
+      "raw": "TAF LRTM 110800Z 1109/1118 VRB04KT 9999 SCT040 TEMPO 1109/1112 SCT040CB TEMPO 1112/1116 32016KT 5000 TSRA SCT015 SCT040CB BECMG 1116/1118 32010KT 5000 SHRA BKN010 SCT030CB BKN040"
     },
     {
       "station": "LRTR",
@@ -12932,75 +12972,75 @@
     },
     {
       "station": "LSGC",
-      "issueTime": "2026-10-11T05:25:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LSGC 110525Z 1106/1115 VRB02KT 9999 FEW005 BKN030"
+      "raw": "TAF LSGC 110825Z 1109/1118 27008KT 9999 FEW005 BKN030"
     },
     {
       "station": "LSGG",
-      "issueTime": "2026-10-11T05:25:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T12:00:00Z",
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T15:00:00Z",
       "variant": "",
-      "raw": "TAF LSGG 110525Z 1106/1212 VRB02KT 9999 FEW050 TX16/1114Z TN07/1106Z TN05/1205Z PROB30 TEMPO 1203/1207 1500 BCFG"
+      "raw": "TAF LSGG 110825Z 1109/1215 VRB02KT 9999 SCT050 TX16/1114Z TN05/1205Z TX16/1214Z PROB30 TEMPO 1203/1207 1500 BCFG"
     },
     {
       "station": "LSGS",
-      "issueTime": "2026-10-11T05:25:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LSGS 110525Z 1106/1115 VRB02KT 9999 BKN020 BECMG 1106/1108 SCT060"
+      "raw": "TAF LSGS 110825Z 1109/1118 VRB02KT 9999 BKN050"
     },
     {
       "station": "LSZA",
-      "issueTime": "2026-10-11T05:25:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LSZA 110525Z 1106/1115 19003KT CAVOK TEMPO 1110/1115 9999 FEW040"
+      "raw": "TAF LSZA 110825Z 1109/1118 20004KT CAVOK TEMPO 1110/1118 9999 FEW040"
     },
     {
       "station": "LSZB",
-      "issueTime": "2026-10-11T05:25:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LSZB 110525Z 1106/1115 VRB02KT 9999 BKN060"
+      "raw": "TAF LSZB 110825Z 1109/1118 29006KT 9999 FEW050 BKN060 BECMG 1116/1118 CAVOK"
     },
     {
       "station": "LSZG",
-      "issueTime": "2026-10-11T05:25:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LSZG 110525Z 1106/1115 26006KT 9999 BKN050"
+      "raw": "TAF LSZG 110825Z 1109/1118 26006KT 9999 BKN050"
     },
     {
       "station": "LSZH",
-      "issueTime": "2026-10-11T05:25:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T12:00:00Z",
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-12T15:00:00Z",
       "variant": "",
-      "raw": "TAF LSZH 110525Z 1106/1212 22004KT 9999 BKN050 TX15/1114Z TN05/1124Z TN03/1205Z TEMPO 1110/1115 29010KT BECMG 1118/1122 CAVOK BECMG 1200/1202 2500 BCFG NSC BECMG 1202/1204 1200 PRFG VV004 PROB40 1204/1207 0200 FG VV001 BECMG 1207/1209 6000 SCT005 BECMG 1209/1211 05005KT CAVOK"
+      "raw": "TAF LSZH 110825Z 1109/1215 26007KT 9999 BKN060 TX15/1114Z TN03/1204Z TX16/1213Z TEMPO 1111/1115 29010KT BECMG 1119/1122 CAVOK BECMG 1200/1202 2500 BCFG NSC BECMG 1202/1204 1200 PRFG VV004 PROB40 1204/1207 0200 FG VV001 BECMG 1207/1209 6000 SCT003 BECMG 1209/1211 05005KT CAVOK TEMPO 1211/1215 9999 FEW040"
     },
     {
       "station": "LSZR",
-      "issueTime": "2026-10-11T05:25:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF LSZR 110525Z 1106/1115 25007KT 9999 BKN050"
+      "raw": "TAF LSZR 110825Z 1109/1118 25009KT 9999 BKN050"
     },
     {
       "station": "LSZS",
-      "issueTime": "2026-10-11T07:04:00Z",
-      "validTimeFrom": "2026-10-11T07:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
-      "variant": "AMD",
-      "raw": "TAF AMD LSZS 110704Z 1107/1115 VRB02KT 1000 BCFG NSC TX12/1114Z BECMG 1108/1109 9999 FEW050 TEMPO 1109/1115 CAVOK"
+      "issueTime": "2026-10-11T08:25:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
+      "variant": "",
+      "raw": "TAF LSZS 110825Z 1109/1118 VRB02KT CAVOK TX12/1114Z TEMPO 1109/1118 9999 FEW050"
     },
     {
       "station": "LTAC",
@@ -14996,11 +15036,11 @@
     },
     {
       "station": "OIBB",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OIBB 110510Z 1106/1115 33012KT 7000 NSC TEMPO 1107/1112 33022KT"
+      "raw": "TAF OIBB 110810Z 1109/1118 33012KT 7000 NSC TEMPO 1109/1115 33022KT"
     },
     {
       "station": "OIBK",
@@ -15012,19 +15052,19 @@
     },
     {
       "station": "OIBP",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OIBP 110510Z 1106/1115 VRB06KT 4000 BR HZ NSC TEMPO 1008/1012 19011KT"
+      "raw": "TAF OIBP 110810Z 1109/1118 VRB06KT 4000 BR HZ NSC TEMPO 1109/1115 19011KT"
     },
     {
       "station": "OICC",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OICC 110510Z 1106/1115 10008KT 8000 NSC TEMPO 1109/1112 23016KT FEW035CB SCT040 SCT100"
+      "raw": "TAF OICC 110810Z 1109/1118 10008KT 8000 NSC TEMPO 1109/1115 23016KT FEW035CB SCT040 SCT100"
     },
     {
       "station": "OICI",
@@ -15044,11 +15084,11 @@
     },
     {
       "station": "OIGG",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OIGG 110510Z 1106/1115 VRB06KT 6000 FEW080"
+      "raw": "TAF OIGG 110810Z 1109/1118 VRB06KT 6000 FEW080 TEMPO 1114/1118 20006KT 3000 BR SCT015 OVC060"
     },
     {
       "station": "OIIE",
@@ -15068,11 +15108,11 @@
     },
     {
       "station": "OIIP",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OIIP 110510Z 1106/1115 30012KT 8000 FEW035"
+      "raw": "TAF OIIP 110810Z 1109/1118 30012KT 8000 FEW035"
     },
     {
       "station": "OIKB",
@@ -15092,11 +15132,11 @@
     },
     {
       "station": "OIMB",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OIMB 110510Z 1106/1115 10008KT 8000 NSC TEMPO 1106/1112 30016KT FEW035CB SCT040 SCT100"
+      "raw": "TAF OIMB 110810Z 1109/1118 10008KT 8000 NSC TEMPO 1109/1115 30016KT FEW035CB SCT040 SCT100"
     },
     {
       "station": "OIMM",
@@ -15108,19 +15148,19 @@
     },
     {
       "station": "OING",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OING 110510Z 1106/1115 26007KT 6000 SCT030 BKN080 TEMPO 1106/1112 24014KT 3000 TS/RA BR FEW020CB SCT025 BKN070"
+      "raw": "TAF OING 110810Z 1109/1118 26007KT 6000 SCT030 BKN080 TEMPO 1109/1112 24014KT 3000 TS/RA BR FEW020CB SCT025 BKN070 TEMPO 1114/1118 20006KT 3000 BR SCT015 OVC060"
     },
     {
       "station": "OINZ",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OINZ 110510Z 1106/1115 18007KT 6000 SCT030 BKN080 PROB30 TEMPO 1106/1112 24016KT 3000 RA FEW020CB SCT025 BKN070"
+      "raw": "TAF OINZ 110810Z 1109/1118 18007KT 6000 SCT030 BKN080 PROB30 TEMPO 1109/1112 24016KT 3000 RA FEW020CB SCT025 BKN070 TEMPO 1114/1118 20006KT 3000 BR SCT015 OVC060"
     },
     {
       "station": "OISL",
@@ -15140,11 +15180,11 @@
     },
     {
       "station": "OITL",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OITL 110510Z 1106/1115 VRB06KT 3000 BR BKN010 TEMPO 1109/1112 07018KT"
+      "raw": "TAF OITL 110810Z 1109/1118 VRB06KT 3000 BR BKN010 TEMPO 1109/1112 07018KT TEMPO 1115/1118 0800 FG BKN005 SCT030"
     },
     {
       "station": "OITR",
@@ -15172,11 +15212,11 @@
     },
     {
       "station": "OIYY",
-      "issueTime": "2026-10-11T05:10:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-11T15:00:00Z",
+      "issueTime": "2026-10-11T08:10:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF OIYY 110510Z 1106/1115 32008KT 4000 DU NSC TEMPO 1106/1112 30016KT PROB30 4000 SA"
+      "raw": "TAF OIYY 110810Z 1109/1118 32008KT 4000 DU NSC TEMPO 1109/1115 30016KT PROB30 4000 SA"
     },
     {
       "station": "OIZH",
@@ -17060,11 +17100,11 @@
     },
     {
       "station": "SBFZ",
-      "issueTime": "2026-10-11T03:22:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:24:00Z",
+      "validTimeFrom": "2026-10-11T12:00:00Z",
+      "validTimeTo": "2026-10-12T12:00:00Z",
       "variant": "",
-      "raw": "TAF SBFZ 110322Z 1106/1206 10010KT 9999 SCT020 TN26/1109Z TX31/1116Z TEMPO 1106/1111 16013KT BECMG 1111/1113 10020KT BECMG 1119/1121 09010KT RMK PHI"
+      "raw": "TAF SBFZ 110824Z 1112/1212 11010KT 9999 SCT020 TX31/1116Z TN26/1209Z BECMG 1112/1114 10020KT BECMG 1119/1121 09010KT TEMPO 1206/1211 15013KT BECMG 1211/1212 10020KT RMK PHI"
     },
     {
       "station": "SBGL",
@@ -17100,11 +17140,11 @@
     },
     {
       "station": "SBJP",
-      "issueTime": "2026-10-11T03:22:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:24:00Z",
+      "validTimeFrom": "2026-10-11T12:00:00Z",
+      "validTimeTo": "2026-10-12T12:00:00Z",
       "variant": "",
-      "raw": "TAF SBJP 110322Z 1106/1206 19005KT 9999 SCT023 TN22/1108Z TX31/1115Z TEMPO 1106/1110 3000 RA BKN010 BECMG 1110/1112 11015KT BECMG 1121/1123 13005KT BECMG 1204/1206 19005KT RMK PHI"
+      "raw": "TAF SBJP 110824Z 1112/1212 11015KT 9999 SCT025 TX31/1115Z TN22/1208Z BECMG 1121/1123 13005KT BECMG 1204/1206 19005KT BECMG 1210/1212 11015KT RMK PHI"
     },
     {
       "station": "SBKP",
@@ -17252,11 +17292,11 @@
     },
     {
       "station": "SBRF",
-      "issueTime": "2026-10-11T03:22:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:24:00Z",
+      "validTimeFrom": "2026-10-11T12:00:00Z",
+      "validTimeTo": "2026-10-12T12:00:00Z",
       "variant": "",
-      "raw": "TAF SBRF 110322Z 1106/1206 12008KT 9999 SCT023 TN25/1108Z TX30/1115Z TEMPO 1106/1112 3000 RA BKN010 RMK PHI"
+      "raw": "TAF SBRF 110824Z 1112/1212 12008KT 9999 SCT023 TX30/1115Z TN25/1208Z RMK PHI"
     },
     {
       "station": "SBRJ",
@@ -17276,11 +17316,11 @@
     },
     {
       "station": "SBSG",
-      "issueTime": "2026-10-11T03:22:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T06:00:00Z",
+      "issueTime": "2026-10-11T08:24:00Z",
+      "validTimeFrom": "2026-10-11T12:00:00Z",
+      "validTimeTo": "2026-10-12T12:00:00Z",
       "variant": "",
-      "raw": "TAF SBSG 110322Z 1106/1206 19005KT 9999 SCT023 TN22/1108Z TX31/1115Z BECMG 1111/1113 11015G25KT BECMG 1120/1122 13005KT BECMG 1204/1206 19005KT RMK PHI"
+      "raw": "TAF SBSG 110824Z 1112/1212 12010KT 9999 SCT025 TX31/1115Z TN22/1208Z BECMG 1112/1114 11015G25KT BECMG 1120/1122 13005KT BECMG 1204/1206 19005KT BECMG 1211/1212 12010KT RMK PHI"
     },
     {
       "station": "SBSJ",
@@ -19476,11 +19516,11 @@
     },
     {
       "station": "VANP",
-      "issueTime": "2026-10-11T05:00:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
-      "validTimeTo": "2026-10-12T12:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T18:00:00Z",
       "variant": "",
-      "raw": "TAF VANP 110500Z 1106/1212 VRB03KT 5000 HZ NSC BECMG 1106/1108 5000 HZ FEW020 SCT025 FEW030TCU BECMG 1112/1114 4000 BECMG 1115/1117 3500 BR HZ FEW020 SCT100 BECMG 1203/1205 06006KT 5000 HZ NSC BECMG 1207/1209 08006KT 5000 HZ FEW025"
+      "raw": "TAF VANP 110800Z 1109/1118 VRB03KT 5000 HZ FEW020 SCT025 FEW030TCU BECMG 1112/1114 4000 BECMG 1115/1117 3500 BR HZ FEW020 SCT100"
     },
     {
       "station": "VAOZ",
@@ -20316,11 +20356,11 @@
     },
     {
       "station": "VOPB",
-      "issueTime": "2026-10-11T02:00:00Z",
-      "validTimeFrom": "2026-10-11T03:00:00Z",
-      "validTimeTo": "2026-10-11T12:00:00Z",
+      "issueTime": "2026-10-11T08:00:00Z",
+      "validTimeFrom": "2026-10-11T09:00:00Z",
+      "validTimeTo": "2026-10-11T19:00:00Z",
       "variant": "",
-      "raw": "TAF VOPB 110200Z 1103/1112 08006KT 6000 SCT SCT080 TEMPO 1103/1106 2000 SHRA/RA SCT012 FEW022TCU OVC080"
+      "raw": "TAF VOPB 110800Z 1109/1119 06008KT 5000 BR SCT014 BKN080 TEMPO 1110/1114 3000 SHRA/RA SCT012 FEW022TCU OVC080"
     },
     {
       "station": "VORY",
@@ -21364,11 +21404,11 @@
     },
     {
       "station": "YBSU",
-      "issueTime": "2026-10-11T05:14:00Z",
-      "validTimeFrom": "2026-10-11T05:00:00Z",
+      "issueTime": "2026-10-11T08:30:00Z",
+      "validTimeFrom": "2026-10-11T08:00:00Z",
       "validTimeTo": "2026-10-12T06:00:00Z",
       "variant": "AMD",
-      "raw": "TAF AMD YBSU 110514Z 1105/1206 03012KT 9999 SCT045 FM110900 33006KT 9999 SCT010 FM112300 03014KT 9999 SCT012 TEMPO 1110/1122 9999 BKN008 PROB30 TEMPO 1105/1108 VRB20G35KT 2000 TSRA BKN010 SCT050CB"
+      "raw": "TAF AMD YBSU 110830Z 1108/1206 03012KT 9999 SCT008 FM110900 33006KT 9999 SCT008 FM112300 03014KT 9999 SCT015 TEMPO 1108/1122 9999 BKN008"
     },
     {
       "station": "YBTL",
@@ -21620,11 +21660,11 @@
     },
     {
       "station": "YPWR",
-      "issueTime": "2026-10-11T06:28:00Z",
-      "validTimeFrom": "2026-10-11T06:00:00Z",
+      "issueTime": "2026-10-11T08:32:00Z",
+      "validTimeFrom": "2026-10-11T08:00:00Z",
       "validTimeTo": "2026-10-12T00:00:00Z",
       "variant": "AMD",
-      "raw": "TAF AMD YPWR 110628Z 1106/1200 01020G30KT 9999 -SHRA NSC BECMG 1107/1108 01012KT 9999 -SHRA NSC FM111600 26010KT CAVOK FM112000 18010KT 9999 SCT010 TEMPO 1106/1109 VRB25G45KT 2000 TSRAGR SCT100CB INTER 1109/1112 VRB20G30KT 4000 SHRA NSC PROB30 TEMPO 1109/1116 VRB25G45KT 2000 TSRAGR SCT100CB"
+      "raw": "TAF AMD YPWR 110832Z 1108/1200 34016G26KT 9999 -SHRA NSC FM111600 26010KT CAVOK FM112000 18010KT 9999 SCT010 TEMPO 1108/1112 VRB25G50KT 1000 TSRAGR SCT100CB PROB30 TEMPO 1112/1116 VRB25G45KT 2000 TSRAGR SCT100CB"
     },
     {
       "station": "YPXM",
