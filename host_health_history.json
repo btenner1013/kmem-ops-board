@@ -8,7 +8,7 @@
   "retentionBoundaryGap": null,
   "archiveStartedUtc": "2026-09-09T05:35:56Z",
   "coverageStartUtc": "2026-09-09T05:35:56Z",
-  "updatedUtc": "2026-10-12T22:50:53Z",
+  "updatedUtc": "2026-10-12T23:03:10Z",
   "partialHistory": true,
   "thresholds": {
     "healthyMinutes": 15,
@@ -21,7 +21,7 @@
       "healthState": "STALE",
       "roleState": "PREFERRED_HOST_NOT_PUBLISHING",
       "reason": "HEARTBEAT_EXCEEDED_FAILOVER_THRESHOLD",
-      "heartbeatAgeMinutes": 104.841,
+      "heartbeatAgeMinutes": 117.125,
       "lastObservedHealthState": "STALE",
       "lastHeartbeatUtc": "2026-10-12T21:06:03Z",
       "lastSuccessfulUpdaterRunUtc": "2026-10-12T21:06:03Z",
@@ -38,13 +38,13 @@
       "reason": "HEARTBEAT_CURRENT",
       "heartbeatAgeMinutes": 0.008,
       "lastObservedHealthState": "HEALTHY",
-      "lastHeartbeatUtc": "2026-10-12T22:50:53Z",
-      "lastSuccessfulUpdaterRunUtc": "2026-10-12T22:50:53Z",
-      "lastSuccessfulPushUtc": "2026-10-12T22:50:53Z",
-      "lastKnownSourceSha": "36f084f2b426241be873e234abbcce1c7a30e394",
+      "lastHeartbeatUtc": "2026-10-12T23:03:10Z",
+      "lastSuccessfulUpdaterRunUtc": "2026-10-12T23:03:10Z",
+      "lastSuccessfulPushUtc": "2026-10-12T23:03:10Z",
+      "lastKnownSourceSha": "9f5e3e001bfbbf19983a79f766beaef6bb4fdfbe",
       "lastError": null,
       "taskState": "UNKNOWN",
-      "evidenceUpdatedUtc": "2026-10-12T22:50:53Z"
+      "evidenceUpdatedUtc": "2026-10-12T23:03:10Z"
     }
   },
   "current": {
@@ -52,14 +52,14 @@
       "role": "BACKUP",
       "sinceUtc": "2026-10-12T21:31:05Z",
       "sinceTimestampBasis": "LEASE_ACQUIRED_UTC",
-      "lastSuccessfulPublishUtc": "2026-10-12T22:50:53Z",
-      "lastSuccessfulPushUtc": "2026-10-12T22:50:53Z",
+      "lastSuccessfulPublishUtc": "2026-10-12T23:03:10Z",
+      "lastSuccessfulPushUtc": "2026-10-12T23:03:10Z",
       "reason": "PRIMARY_HEARTBEAT_STALE",
       "rootCauseKnown": false
     },
     "boardDelivery": {
       "state": "CONTINUOUS",
-      "lastSuccessfulPublishUtc": "2026-10-12T22:50:53Z",
+      "lastSuccessfulPublishUtc": "2026-10-12T23:03:10Z",
       "publisher": "BACKUP",
       "ageMinutes": 0.008,
       "reason": "BOARD_PUBLISH_CURRENT"
@@ -68,10 +68,10 @@
       "state": "RELEASED",
       "activeOwner": null,
       "lastOwner": "BACKUP",
-      "acquiredUtc": "2026-10-12T22:50:20Z",
-      "expiresUtc": "2026-10-12T22:50:53Z",
-      "releasedUtc": "2026-10-12T22:50:53Z",
-      "observedUtc": "2026-10-12T22:50:53Z"
+      "acquiredUtc": "2026-10-12T23:02:55Z",
+      "expiresUtc": "2026-10-12T23:03:10Z",
+      "releasedUtc": "2026-10-12T23:03:10Z",
+      "observedUtc": "2026-10-12T23:03:10Z"
     }
   },
   "intervals": [
