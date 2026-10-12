@@ -1,17 +1,17 @@
 {
-  "metar": "METAR KMEM 121954Z 22008KT 10SM CLR 33/14 A3001 RMK AO2 SLP157 T03280139 $",
+  "metar": "METAR KMEM 122054Z 24009KT 10SM CLR 33/12 A2999 RMK AO2 SLP151 T03280117 56027 $",
   "taf": "TAF KMEM 122053Z 1221/1324 23010G17KT P6SM SKC \n  FM130000 20006KT P6SM SKC \n  FM131500 22008KT P6SM SKC \n  FM131800 22010G17KT P6SM FEW060",
   "atisText": "MEM ATIS INFO Y 2054Z. 24009KT 10SM CLR 33/12 A2999 (TWO NINER NINER NINER). SIMUL VISUAL APCHS IN USE RY 18L, 18R, 27. SIMUL DEPS IN USE RY 18R 18C 18L. 18L. NOTICE TO AIRMEN. RY 36R ALS OTS, LLWAS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO Y",
   "atisLetter": "Y",
   "atisPhonetic": "YANKEE",
   "atisDisplay": "YANKEE",
-  "metarFetchStatus": "WARN_SOURCE",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-10-12T19:54:00Z",
-  "metarAgeMinutes": 62,
+  "metarObservedZ": "2026-10-12T20:54:00Z",
+  "metarAgeMinutes": 12,
   "atisObservedZ": "2026-10-12T20:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "Y:2054Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,7 +45,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-12T18:05:42Z",
+  "trendReferenceTimestampZ": "2026-10-12T18:15:42Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -55,7 +55,7 @@
     "visibility": "ATIS",
     "ceiling": "NONE"
   },
-  "metarAltimeterRaw": 30.01,
+  "metarAltimeterRaw": 29.99,
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
@@ -127,20 +127,20 @@
   "tafTrend": "VFR NEXT 24 HRS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-12 20:54:00.000",
+  "bwcUpdatedZ": "2026-10-12 21:06:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
-  "bwcBamRisk": "MODERATE",
+  "bwcBamRisk": "LOW",
   "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
-  "bwcHeight100FtAgl": "7778",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=10&day=12&hour=20&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=10&iDay=12&iHour=20",
+  "bwcHeight100FtAgl": "8222",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=10&day=12&hour=21&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=10&iDay=12&iHour=21",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-12 20:55:57Z",
+  "milNotamUpdatedZ": "2026-10-12 21:06:01Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -177,7 +177,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-12 20:55:57Z",
+  "milNotamAttemptZ": "2026-10-12 21:06:01Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -204,7 +204,7 @@
       "displayText": "TWY M, N, TWY H BTN TWY J AND TWY N, TWY R BTN TWY J AND TWY N WIP SPRAYING, MOWING, WEEDING",
       "effectiveStart": "202610131300",
       "effectiveEnd": "202610131930",
-      "lastUpdated": "2026-10-12T20:47:00.000Z",
+      "lastUpdated": "2026-10-12T20:58:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY M, N, TWY H BTN TWY J AND TWY N, TWY R BTN TWY J AND TWY N WIP SPRAYING, MOWING, WEEDING"
     },
@@ -231,7 +231,7 @@
       "displayText": "TWY Y1, Y2, Y3, S1, S2, S3, S4, S5, TWY R BTN APCH END RWY 36C AND TWY Y, TWY H BTN RWY 18C/36C AND TWY Y, TWY E BTN RWY 18C/36C AND RWY 18L/36R, T...",
       "effectiveStart": "202610131300",
       "effectiveEnd": "202610131930",
-      "lastUpdated": "2026-10-12T20:42:00.000Z",
+      "lastUpdated": "2026-10-12T20:58:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY Y1, Y2, Y3, S1, S2, S3, S4, S5, TWY R BTN APCH END RWY 36C AND TWY Y, TWY H BTN RWY 18C/36C AND TWY Y, TWY E BTN RWY 18C/36C AND RWY 18L/36R, TWY S BTN TWY P AND TWY R, TWY Y BTN TWY P AND TWY R CLSD"
     },
@@ -249,13 +249,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-10-12 20:55Z",
+  "allFeedsUpdatedZ": "2026-10-12 21:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-12 20:55:42Z"
+    "lastWorkflowTimestampZ": "2026-10-12 21:05:43Z"
   }
 }
