@@ -1,6 +1,6 @@
 {
   "metar": "METAR KMEM 162254Z 35011G24KT 10SM FEW070 17/02 A3026 RMK AO2 SLP245 T01670022 $",
-  "taf": "TAF KMEM 162053Z 1621/1724 34016G25KT P6SM SCT060 \n  FM170300 35012G21KT P6SM BKN035 \n  FM170600 36012G20KT P6SM BKN025 OVC035 \n  FM171500 02012G20KT P6SM SCT045",
+  "taf": "TAF KMEM 162343Z 1700/1806 35014G24KT P6SM SCT060 \n  FM170300 35012G20KT P6SM SCT035 \n  FM170500 36010G18KT P6SM BKN025 OVC035 \n  FM171400 02013G20KT P6SM SKC \n  FM180000 04006KT P6SM SKC",
   "atisText": "MEM ATIS INFO B 2254Z. 35011G24KT 10SM FEW070 17/02 A3026 (THREE ZERO TWO SIX). ILS APCH IN USE RY 36L, 36R. SIMUL DEPS IN USE RY 36L 36C 36R. NOTICE TO AIRMEN. TWY M LGTS BTN TWY, M1 AND TWY M2 OTS, LLWAS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO B",
   "atisLetter": "B",
   "atisPhonetic": "BRAVO",
@@ -9,9 +9,9 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-16T22:54:00Z",
-  "metarAgeMinutes": 42,
+  "metarAgeMinutes": 52,
   "atisObservedZ": "2026-10-16T22:54:00Z",
-  "atisAgeMinutes": 42,
+  "atisAgeMinutes": 52,
   "atisReportIdentity": "B:2254Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -45,8 +45,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-16T20:45:42Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-10-16T20:55:42Z",
+  "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -81,8 +81,8 @@
   "rcrRaw": "--",
   "altimeter": "30.26",
   "altimeterRaw": 30.26,
-  "altimeterTrend": "\u2191",
-  "altimeterTrendText": "RISING",
+  "altimeterTrend": "\u2192",
+  "altimeterTrendText": "STEADY",
   "ceilingFt": null,
   "ceilingDisplay": "UNL",
   "ceilingTrend": "\u2192",
@@ -104,8 +104,8 @@
   "tempC": 17,
   "dewpointC": 2,
   "tempDpDisplay": "17/02",
-  "tempTrend": "\u25b2",
-  "tempTrendText": "RISING",
+  "tempTrend": "\u25ba",
+  "tempTrendText": "STEADY",
   "dewpointTrend": "\u25bc",
   "dewpointTrendText": "FALLING",
   "lightning": "NONE",
@@ -127,7 +127,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-16 23:36:00.000",
+  "bwcUpdatedZ": "2026-10-16 23:42:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "LOW",
@@ -140,7 +140,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-16 23:36:13Z",
+  "milNotamUpdatedZ": "2026-10-16 23:45:54Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -177,7 +177,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-16 23:36:13Z",
+  "milNotamAttemptZ": "2026-10-16 23:45:54Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -261,13 +261,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-10-16 23:35Z",
+  "allFeedsUpdatedZ": "2026-10-16 23:45Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-16 23:35:43Z"
+    "lastWorkflowTimestampZ": "2026-10-16 23:45:45Z"
   }
 }
