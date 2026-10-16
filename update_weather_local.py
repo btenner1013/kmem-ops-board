@@ -3638,6 +3638,11 @@ def detect_weather_alerts(metar, taf, atis_text=""):
     return [selected_current_alert if c_score <= t_score else selected_taf_alert]
 
 def summarize_weather_alerts(alerts):
+    """Format the selected WX alert; tafTrend is a legacy display alias.
+
+    No weather-code alert does not establish VFR or a 24-hour TAF outlook:
+    ceilings, visibility, and forecast coverage are not evaluated here.
+    """
     if not alerts:
         return {
             "wxAlertText": "NONE",
@@ -3648,7 +3653,7 @@ def summarize_weather_alerts(alerts):
             "wxAlertTone": "none",
             "wxAlertFlash": False,
             "wxAlertPulse": False,
-            "tafTrend": "VFR NEXT 24 HRS"
+            "tafTrend": "WX ALERT | NONE"
         }
 
     primary = alerts[0]
