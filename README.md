@@ -8,6 +8,16 @@ awareness, with an optional localhost display mode.
 
 ---
 
+## Display clock validation
+
+The local and Zulu displays share a display-only HTTP time estimate. Three low-latency HEAD samples are checked at startup, every five minutes, and after focus, resume, or reconnect. At least two advancing, consistent HTTP Date values must agree; malformed, frozen, slow, redirected, excessive, or system-clock-jump samples are rejected. HTTP Date is a whole-second estimate, not NTP or a change to Windows time.
+
+The footer shows the clock source and estimated uncertainty independently of feed health. Failed checks retain a labeled correction for at most 20 minutes before reverting to the system clock. A system clock jump immediately drops the old correction. No correction is saved across reloads or page lifecycle restarts. Weather observation and update timestamps are unchanged; freshness checks use the same current display time.
+
+The public GitHub Pages board checks its own HTTPS endpoint. An optional localhost display attempts the public Pages endpoint instead of trusting its own local server's Date; the current Pages CORS headers do not expose Date to localhost, so that optional mode visibly falls back to the system clock. Network failures also use the bounded holdover/system fallback described above. Reload the board after an update to load the new clock module.
+
+Run the deterministic clock tests with `npm run test:clock`.
+
 ## Primary URLs
 
 ### Live GitHub Pages board
@@ -625,3 +635,4 @@ NMS staging availability/credentials can affect NOTAM detail pulls.
 ```
 
 Always verify operational decisions against official/approved sources.
+

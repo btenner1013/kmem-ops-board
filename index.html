@@ -388,6 +388,9 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
 .footer-left{ text-align:left; white-space:nowrap; overflow:hidden; display:flex; align-items:center; min-width:0; }
 .footer-center{ text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .footer-right{ text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.footer-health{ min-width:0; line-height:1.08; }
+.clock-health{ font-size:clamp(8px,1.1vh,20px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--warning); }
+.clock-health.clock-ok{ color:var(--ops-green); }
 
 .host-health{ margin-left:0; flex:0 0 auto; }
 .footer-left > .feed-sep{ flex:0 0 auto; }
@@ -1421,52 +1424,66 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
   <div class="bottom">
     <div class="panel footer">
       <div class="footer-left"><span id="hostHealth" class="host-health host-no-heartbeat">HOST NO HEARTBEAT</span><span class="feed-sep">|</span><span class="data-updated-compact">DATA UPDATED: <span id="dataUpdated">--:--Z</span></span></div>
-      <div id="feedHealth" class="footer-center feed-health feed-warn">FEEDS: CHECKING...</div>
+      <div class="footer-center footer-health"><div id="feedHealth" class="footer-center feed-health feed-warn">FEEDS: CHECKING...</div><div id="clockHealth" class="clock-health" role="status">CLOCK SYSTEM · CHECKING</div></div>
       <div id="staleWarning" class="footer-right">REFRESH IN: <span id="refreshCountdown">10:00</span></div>
     </div>
   </div>
 </div>
 
+<script src="clock-sync.js?v=20261016-1"></script>
 <script>
-let lastClockTick=Date.now();
-let clockOffsetMs=0;
-let clockOffsetKnown=false;
-let clockOffsetSec=0;
+// Keep these synchronous globals: weather, host, and BWC age checks use the same
+// validated display clock. Source timestamps themselves are never rewritten.
+let boardClock=null;
+let fallbackClockTimer=0;
+let lastClockHealthRefresh="";
+function getBoardNow(){ return new Date(getBoardNowMs()); }
+function getBoardNowMs(){ return boardClock ? boardClock.now() : Date.now(); }
 
-function getBoardNow(){ return new Date(Date.now()+clockOffsetMs); }
-function getBoardNowMs(){ return Date.now()+clockOffsetMs; }
-
-function updateClockOffsetFromResponse(response){
-  try{
-    const dateHeader=response.headers.get("Date");
-    if(!dateHeader)return;
-    const serverMs=Date.parse(dateHeader);
-    if(isNaN(serverMs))return;
-    clockOffsetMs=serverMs-Date.now();
-    clockOffsetSec=Math.round(clockOffsetMs/1000);
-    clockOffsetKnown=true;
-  }catch(e){ console.warn("Clock sync check failed",e); }
-}
-
-function clockHealthToken(){
-  if(!clockOffsetKnown)return "";
-  const absOffset=Math.abs(clockOffsetSec);
-  if(absOffset<=5)return "";
-  const sign=clockOffsetSec>0?"+":"";
-  const detail=`${sign}${clockOffsetSec} SEC`;
-  const status=absOffset>60?"BAD":"WARN";
-  return healthPart("CLOCK",status,detail);
-}
-
-function updateClock(){
-  const now=getBoardNow();
-  lastClockTick=Date.now();
-  document.getElementById("local").textContent=now.toLocaleTimeString("en-US",{hour12:false,timeZone:"America/Chicago"});
+function updateClock(current){
+  const now=new Date(current?.nowMs ?? getBoardNowMs());
+  document.getElementById("local").textContent=now.toLocaleTimeString("en-US",{hourCycle:"h23",timeZone:"America/Chicago"});
   document.getElementById("localDate").textContent=now.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric",timeZone:"America/Chicago"});
   document.getElementById("zulu").textContent=now.toISOString().substring(11,19)+"z";
   document.getElementById("zuluDate").textContent="UTC Date: "+now.toISOString().substring(0,10);
+  const status=current?.status;
+  const health=document.getElementById("clockHealth");
+  if(health){
+    const source=status?.source ?? "SYSTEM CLOCK";
+    const uncertainty=status?.uncertaintyMs;
+    const detail=source==="SYSTEM CLOCK" ? ` · ${status?.state ?? "WARNING"}` : ` · EST ±${(uncertainty/1000).toFixed(1)}S${status?.state!=="OK"?" · "+status.state:""}`;
+    health.textContent="CLOCK "+source+detail;
+    health.className="clock-health"+(status?.state==="OK"?" clock-ok":"");
+    health.title=status ? window.KmemClockSync.formatClockStatus(status)+" · "+status.detail+" · Display estimate only; not NTP" : "Clock sync module unavailable; using the system clock";
+  }
+  // Re-evaluate age-based indicators after a correction, fallback, or minute change.
+  // This does not modify or refetch any weather/observation timestamp.
+  const signature=[Math.floor(now.getTime()/60000),status?.source,status?.state,Math.round(status?.estimatedOffsetMs??0)].join("|");
+  if(signature!==lastClockHealthRefresh){
+    lastClockHealthRefresh=signature;
+    const data=window.kmemWeatherData;
+    if(data){
+      const updatedZ=data.allFeedsUpdatedZ||data.lastUpdatedZ||"Pending";
+      updateStaleWarning(updatedZ);
+      if(!window.kmemWeatherFetchFailed)updateSourceHealth(data,updatedZ);
+      setMetarAge(data.metar||"");
+    }
+    if(window.kmemHostStatus)renderHostHealth(window.kmemHostStatus);
+  }
   fitClockPanels();
   window.kmemUpdateBwcAge?.();
+}
+
+function startBoardClock(){
+  if(boardClock){ boardClock.start(); return; }
+  if(fallbackClockTimer)return;
+  updateClock();
+  fallbackClockTimer=setInterval(updateClock,1000);
+}
+function stopBoardClock(){
+  boardClock?.stop();
+  clearInterval(fallbackClockTimer);
+  fallbackClockTimer=0;
 }
 
 function fitClockPanels(){
@@ -1499,13 +1516,6 @@ function fitClockPanels(){
 
 window.addEventListener("resize",()=>setTimeout(fitClockPanels,60));
 
-function checkClockWatchdog(){
-  const elapsed=Date.now()-lastClockTick;
-  if(elapsed>90000){
-    console.warn("Clock watchdog detected stale clock. Reloading page.",elapsed);
-    window.location.reload();
-  }
-}
 
 function parseVisibilitySM(metar){
   const tokens=metar.split(/\s+/);
@@ -2674,12 +2684,6 @@ function updateSourceHealth(data,updatedZ){
   const updatedAge=updated?Math.round((getBoardNowMs()-updated.getTime())/60000):null;
   if(updatedAge===null||updatedAge>30){ if(worst!=="BAD")worst="WARN"; }
 
-  const clockToken=clockHealthToken();
-  if(clockToken){
-    parts.push(clockToken);
-    if(Math.abs(clockOffsetSec)>60){ worst="BAD"; }
-    else if(worst!=="BAD"){ worst="WARN"; }
-  }
 
   el.className="footer-center feed-health";
   if(worst==="BAD")el.classList.add("feed-warn");
@@ -3365,11 +3369,8 @@ document.addEventListener("DOMContentLoaded",function(){
   }
 });
 
-function applyWeatherSnapshot(data,{response=null,resetCountdown=true}={}){
-  if(response){
-    updateClockOffsetFromResponse(response);
-    updateClock();
-  }
+function applyWeatherSnapshot(data,{resetCountdown=true}={}){
+  window.kmemWeatherFetchFailed=false;
 
   const metar=data.metar||"METAR unavailable";
   const taf=data.taf||"TAF unavailable";
@@ -3427,10 +3428,11 @@ async function loadWeatherJson({resetCountdown=true}={}){
     const response=await fetch("weather.json?t="+new Date().getTime(),options);
     if(!response.ok)throw new Error("Unable to load weather.json");
     const data=await response.json();
-    applyWeatherSnapshot(data,{response,resetCountdown});
+    applyWeatherSnapshot(data,{resetCountdown});
     queueMicrotask(loadRawAtisCatchup);
     return true;
   }catch(e){
+    window.kmemWeatherFetchFailed=true;
     console.error("weather.json load/render failed",e);
     if(window.kmemWeatherData){
       updateStaleWarning(window.kmemWeatherData.allFeedsUpdatedZ||window.kmemWeatherData.lastUpdatedZ||null);
@@ -3549,7 +3551,10 @@ async function refreshActiveData(){
   return results[0].status==="fulfilled"&&results[0].value===true;
 }
 
-updateClock();
+if(window.KmemClockSync)boardClock=window.KmemClockSync.createClock({onTick:updateClock});
+startBoardClock();
+window.addEventListener("pagehide",stopBoardClock);
+window.addEventListener("pageshow",startBoardClock);
 refreshActiveData();
 updateRefreshCountdown();
 
@@ -3559,8 +3564,6 @@ setInterval(()=>{
     loadWeatherJson({resetCountdown:false});
   }
 },ATIS_CATCHUP_SECONDS*1000);
-setInterval(updateClock,1000);
-setInterval(checkClockWatchdog,30000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refreshActiveData(); });
 window.addEventListener("focus",()=>{ refreshActiveData(); });
 
@@ -4023,3 +4026,4 @@ setInterval(phase45PolishOpsText,1000);
 
 </body>
 </html>
+

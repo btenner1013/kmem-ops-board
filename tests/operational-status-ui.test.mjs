@@ -326,7 +326,7 @@ test("unknown runway state is amber and does not use the flashing closure class"
 });
 
 test("live BWC keeps source time visible and delegates age updates to the board clock", () => {
-  const clockSource = sourceBetween("function updateClock()", "function fitClockPanels");
+  const clockSource = sourceBetween("function updateClock(", "function fitClockPanels");
   const bwcSource = sourceBetween("function setBwcDisplay", "function setLightningDisplay");
 
   assert.match(clockSource, /window\.kmemUpdateBwcAge\?\.\(\)/);
@@ -737,10 +737,11 @@ test("raw-main ATIS catch-up is background-only, noncritical, and compares again
   assert.match(loaderSource, /catch\(_error\)\{\s*return false;/);
   assert.doesNotMatch(loaderSource, /feedHealth|updateClockOffsetFromResponse|refreshRemaining\s*=/);
   assert.ok(
-    pageLoaderSource.indexOf("applyWeatherSnapshot(data,{response,resetCountdown})") <
+    pageLoaderSource.indexOf("applyWeatherSnapshot(data,{resetCountdown})") <
       pageLoaderSource.indexOf("queueMicrotask(loadRawAtisCatchup)"),
     "same-origin Pages snapshot must render before optional raw-main catch-up",
   );
   assert.match(indexHtml, /const RAW_ATIS_FETCH_TIMEOUT_MS=5000;/);
   assert.match(indexHtml, /let rawAtisFetchInFlight=false;/);
 });
+

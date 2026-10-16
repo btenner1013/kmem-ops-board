@@ -131,7 +131,7 @@ test("recent blocked code sync is distinct from feed and heartbeat age", () => {
 test("host status fetch remains supplemental to weather and feed state", () => {
   assert.match(indexHtml, /id="hostHealth"/);
   assert.match(
-    sourceBetween("async function refreshActiveData", "updateClock();"),
+    sourceBetween("async function refreshActiveData", "if(window.KmemClockSync)boardClock="),
     /Promise\.allSettled\(\[loadWeatherJson\(\),loadHostStatus\(\)\]\)/,
   );
   assert.doesNotMatch(
@@ -156,3 +156,4 @@ test("desktop and Getac footer grids preserve intrinsic edge content", () => {
     /body\.getac-preset \.footer\{[^}]*grid-template-columns:max-content minmax\(0,1fr\) max-content !important;/,
   );
 });
+
