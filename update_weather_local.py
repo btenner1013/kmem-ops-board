@@ -232,30 +232,124 @@ def fetch_first_nonempty(urls, label):
     return ""
 
 
-def choose_latest_metar_report(raw_text, now_z=None):
-    """Return the newest METAR/SPECI line from an AWC raw response.
+def normalize_metar_report(raw_text):
+    """Validate a KMEM observation, including NOAA's unprefixed station format."""
+    text = re.sub(r"\s+", " ", str(raw_text or "")).strip().upper().rstrip("=").strip()
+    match = re.fullmatch(
+        r"(?:(METAR|SPECI)\s+)?(?:(COR)\s+)?KMEM\s+(\d{6})Z\s+(.+)", text
+    )
+    if not match or text_is_bad(text):
+        return ""
+    kind, correction, observed, body = match.groups()
+    weather_body = body.split(" RMK ", 1)[0]
+    if re.search(r"\bNIL\b|[<>]|\d+/0+SM\b", weather_body):
+        return ""
+    # Header-only/error/NIL responses are not weather observations. Keep the
+    # supported missing-value groups, but do not accept a timestamp on its own.
+    if not re.search(r"(?:^|\s)(?:\d{3}|VRB|/{3})/?(?:\d{2,3}|/{2,3})(?:G\d{2,3})?KT(?:\s|$)", weather_body):
+        return ""
+    if not re.search(r"(?:\b[MPS]?\d+(?:/\d+)?SM\b|\b\d{4}\b|\bCAVOK\b|(?:^|\s)/{4}(?:SM)?(?:\s|$))", weather_body):
+        return ""
+    return f"{kind or 'METAR'} KMEM {observed}Z " + ("COR " if correction else "") + body
 
-    AWC may return SPECI during rapidly changing weather. Treat SPECI as the current
-    METAR observation source for this board. If multiple observations are returned,
-    choose the newest parsed observation time rather than blindly taking a stale line.
-    """
-    raw = (raw_text or "").replace("\r", "\n")
+
+def metar_revision_rank(report):
+    """At equal observation times retain corrections, then special observations."""
+    header = str(report or "").split(" RMK ", 1)[0]
+    return (bool(re.search(r"\bCOR\b", header)), header.startswith("SPECI "))
+
+
+def metar_observed_datetime(report, now_z, previous_data=None):
+    """Keep known full dates authoritative before any live candidate is ranked."""
+    if previous_data and report == normalize_metar_report(previous_data.get("metar")):
+        known = cached_metar_observed_datetime(previous_data, now_z)
+        if known:
+            return known
+    return parse_metar_datetime_utc(report, now_z)
+
+
+def choose_latest_metar_report(raw_text, now_z=None, previous_data=None):
+    """Choose the newest valid KMEM report, not merely the first nonempty line."""
+    now_z = now_z or datetime.now(timezone.utc)
     candidates = []
+    for order, line in enumerate(str(raw_text or "").replace("\r", "\n").split("\n")):
+        report = normalize_metar_report(line)
+        observed = metar_observed_datetime(report, now_z, previous_data) if report else None
+        if observed:
+            candidates.append((observed, metar_revision_rank(report), -order, report))
+    return max(candidates)[-1] if candidates else ""
 
-    for line in raw.split("\n"):
-        report = re.sub(r"\s+", " ", line).strip()
-        if not report:
+
+def fetch_current_metar(urls, now_z=None, diagnostics=None, previous_data=None):
+    """Compare all endpoints, with one 10s socket timeout per endpoint.
+
+    The five configured endpoints have a nominal 50s socket-wait budget, not a
+    hard wall-clock deadline (DNS and a response arriving in chunks may differ).
+    """
+    now_z = now_z or datetime.now(timezone.utc)
+    candidates = []
+    for order, url in enumerate(urls):
+        source = "NWS_NOAA" if urllib.parse.urlparse(url).hostname == "tgftp.nws.noaa.gov" else "AWC"
+        try:
+            raw = fetch_url(url, attempts=1, timeout_seconds=10)
+        except Exception as error:
+            print(f"METAR endpoint failed {url}: {error}")
             continue
-        if is_good_metar(report):
-            observed = parse_metar_datetime_utc(report, now_z)
-            candidates.append((observed or datetime.min.replace(tzinfo=timezone.utc), report))
+        report = choose_latest_metar_report(raw, now_z, previous_data)
+        if report:
+            observed = metar_observed_datetime(report, now_z, previous_data)
+            candidates.append((observed, metar_revision_rank(report), -order, report, source))
+    selected = max(candidates, key=lambda item: item[:3]) if candidates else None
+    if diagnostics is not None:
+        diagnostics.update({
+            "selectedSource": selected[4] if selected else "NONE",
+            "candidateCount": len(candidates),
+        })
+    return selected[3] if selected else ""
 
-    if candidates:
-        candidates.sort(key=lambda item: item[0], reverse=True)
-        return candidates[0][1]
 
-    report = re.sub(r"\s+", " ", (raw_text or "")).strip()
-    return report if is_good_metar(report) else ""
+def cached_metar_observed_datetime(data, now_z=None):
+    """Anchor cached DDHHMMZ to its original date, never to the current month."""
+    if not isinstance(data, dict):
+        return None
+    report = normalize_metar_report(data.get("metar"))
+    if not report:
+        return None
+    persisted = parse_z_datetime(data.get("metarObservedZ"))
+    anchor = persisted or parse_z_datetime(data.get("allFeedsUpdatedZ") or data.get("lastUpdatedZ"))
+    if not anchor:
+        return None
+    observed = parse_metar_datetime_utc(report, anchor)
+    if not observed or (persisted and observed != persisted):
+        return None
+    now_z = now_z or datetime.now(timezone.utc)
+    return observed if observed <= now_z + timedelta(minutes=10) else None
+
+
+def select_metar_observation(live_report, previous_data, now_z=None, live_source="UNKNOWN"):
+    """Never replace a newer retained observation with a regressed live response."""
+    now_z = now_z or datetime.now(timezone.utc)
+    live_report = choose_latest_metar_report(live_report, now_z, previous_data)
+    live_observed = metar_observed_datetime(live_report, now_z, previous_data) if live_report else None
+    cached_report = normalize_metar_report(previous_data.get("metar"))
+    cached_observed = cached_metar_observed_datetime(previous_data, now_z)
+    use_cache = bool(cached_observed and (
+        not live_observed or
+        (cached_observed, metar_revision_rank(cached_report)) >
+        (live_observed, metar_revision_rank(live_report))
+    ))
+    original_source = next((
+        previous_data.get(key) for key in ("metarOriginalSource", "metarSelectedSource")
+        if previous_data.get(key) in {"AWC", "NWS_NOAA"}
+    ), "UNKNOWN")
+    return {
+        "report": cached_report if use_cache else live_report,
+        "observed": cached_observed if use_cache else live_observed,
+        "usedLastGood": use_cache,
+        "selectedSource": "LAST_KNOWN_GOOD" if use_cache else (live_source if live_report else "NONE"),
+        "originalSource": original_source if use_cache else (live_source if live_report else "NONE"),
+        "reason": ("LIVE_REGRESSION" if live_observed else "FETCH_FAILED") if use_cache else ("LIVE" if live_report else "FETCH_FAILED"),
+    }
 
 
 def relaxed_text_unescape(text):
@@ -775,6 +869,7 @@ def load_previous_weather():
     to govern the other weather fields, but it must not make an older cached ATIS
     beat a newer one with a persisted observation time or make an older host-local
     NMS snapshot replace a newer complete repository snapshot after role handoff.
+    METAR likewise keeps its newest anchored observation and original provenance.
     """
     weather_path = os.path.join(REPO_DIR, "weather.json")
     sources = [
@@ -795,6 +890,19 @@ def load_previous_weather():
     _, base_source, base_path, base_data = loaded[0]
     previous = dict(base_data)
     print(f"Loaded preferred previous weather cache ({base_source}): {base_path}")
+
+    metar_candidates = []
+    for priority, source_name, path, data in loaded:
+        observed = cached_metar_observed_datetime(data)
+        if observed:
+            report = normalize_metar_report(data.get("metar"))
+            metar_candidates.append((observed, metar_revision_rank(report), -priority, data))
+    if metar_candidates:
+        observed, _, _, metar_data = max(metar_candidates, key=lambda item: item[:3])
+        previous["metar"] = normalize_metar_report(metar_data.get("metar"))
+        previous["metarObservedZ"] = zulu_iso(observed)
+        for key in ("metarSelectedSource", "metarOriginalSource"):
+            previous[key] = metar_data.get(key, "UNKNOWN")
 
     atis_candidates = []
     for priority, source_name, path, data in loaded:
@@ -1111,10 +1219,8 @@ def parse_metar_datetime_utc(metar_text, now_z=None):
         return None
 
     now_z = now_z or datetime.now(timezone.utc)
-    text = str(metar_text).upper()
-    match = re.search(r"\b(?:METAR\s+|SPECI\s+)?[A-Z]{4}\s+(\d{2})(\d{2})(\d{2})Z\b", text)
-    if not match:
-        match = re.search(r"\b(\d{2})(\d{2})(\d{2})Z\b", text)
+    text = str(metar_text).upper().strip()
+    match = re.match(r"(?:(?:METAR|SPECI)\s+)?(?:COR\s+)?KMEM\s+(\d{2})(\d{2})(\d{2})Z\b", text)
     if not match:
         return None
 
@@ -1141,11 +1247,10 @@ def parse_metar_datetime_utc(metar_text, now_z=None):
     if not candidates:
         return None
 
-    # Prefer the candidate closest to now, with a bias against future times.
-    not_future = [c for c in candidates if c <= now_z + timedelta(minutes=10)]
-    if not_future:
-        return max(not_future)
-    return min(candidates, key=lambda c: abs((c - now_z).total_seconds()))
+    # Resolve the nearest month first. Do not turn a future/invalid observation
+    # into last month's report merely to avoid rejecting its future timestamp.
+    observed = min(candidates, key=lambda c: abs((c - now_z).total_seconds()))
+    return observed if observed <= now_z + timedelta(minutes=10) else None
 
 
 def parse_atis_datetime_utc(atis_text, now_z=None):
@@ -5514,7 +5619,8 @@ def build_weather_json():
 
     cache_buster = int(now_z.timestamp())
 
-    metar_raw = fetch_first_nonempty(
+    metar_live_diagnostics = {}
+    metar_current = fetch_current_metar(
         [
             f"https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&hours=6&taf=false&_={cache_buster}",
             f"https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false&_={cache_buster}",
@@ -5522,9 +5628,10 @@ def build_weather_json():
             "https://aviationweather.gov/api/data/metar?ids=KMEM&format=raw&taf=false",
             "https://tgftp.nws.noaa.gov/data/observations/metar/stations/KMEM.TXT"
         ],
-        "METAR"
+        now_z=now_z,
+        diagnostics=metar_live_diagnostics,
+        previous_data=previous_data,
     )
-    metar_current = choose_latest_metar_report(metar_raw, now_z)
 
     taf_current = fetch_first_nonempty(
         [
@@ -5554,14 +5661,16 @@ def build_weather_json():
         live_candidates=atis_history_candidates,
     )
 
-    if is_good_metar(metar_current):
-        metar = metar_current
-    elif is_good_metar(previous_data.get("metar", "")):
-        metar = previous_data.get("metar", "")
+    metar_selection = select_metar_observation(
+        metar_current, previous_data, now_z,
+        live_source=metar_live_diagnostics.get("selectedSource", "UNKNOWN"),
+    )
+    metar = metar_selection["report"]
+    if metar_selection["usedLastGood"]:
         metar_fetch_status = "USED_LAST_GOOD"
         last_known_good_used["metar"] = True
-        print("METAR fetch failed; using last-known-good METAR.")
-    else:
+        print(f"METAR {metar_selection['reason']}; retaining original cached observation time.")
+    elif not metar:
         metar = "METAR unavailable"
         metar_fetch_status = "FAILED_NO_LAST_GOOD"
         print("METAR fetch failed; no valid last-known-good METAR available.")
@@ -5600,7 +5709,7 @@ def build_weather_json():
         atis_fetch_status = "FAILED_NO_LAST_GOOD"
         print("D-ATIS fetch failed; no valid last-known-good D-ATIS available.")
 
-    metar_observed_dt = parse_metar_datetime_utc(metar, now_z)
+    metar_observed_dt = metar_selection["observed"]
     metar_age_minutes = source_age_minutes(metar_observed_dt, now_z)
     original_metar_fetch_status = metar_fetch_status
     metar_fetch_status = freshness_status(metar_fetch_status, metar_age_minutes, 55, 75)
@@ -5718,6 +5827,11 @@ def build_weather_json():
         "atisFetchStatus": atis_fetch_status,
         "metarObservedZ": zulu_iso(metar_observed_dt),
         "metarAgeMinutes": metar_age_minutes,
+        "metarSelectedSource": metar_selection["selectedSource"],
+        "metarOriginalSource": metar_selection["originalSource"],
+        "metarSelectionReason": metar_selection["reason"],
+        "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
+        "metarLiveCandidateCount": metar_live_diagnostics.get("candidateCount", 0),
         "atisObservedZ": zulu_iso(atis_observed_dt),
         "atisAgeMinutes": atis_age_minutes,
         "atisReportIdentity": atis_report_identity(atis_text),

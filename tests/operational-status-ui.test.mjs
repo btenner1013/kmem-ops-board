@@ -17,6 +17,7 @@ function sourceBetween(startMarker, endMarker) {
 
 
 const context = vm.createContext({
+  window: { innerWidth: 1920 },
   minutesSince: () => null,
   parseAtisTime: () => null,
   isBadText: (value, badWords) => {
@@ -25,8 +26,9 @@ const context = vm.createContext({
   },
 });
 vm.runInContext(
-  `${sourceBetween("function atisFeedState", "function updateSourceHealth")}` +
-    "globalThis.atisFeedState=atisFeedState;",
+  `${sourceBetween("function feedClassForStatus", "function updateSourceHealth")}` +
+    "globalThis.atisFeedState=atisFeedState;" +
+    "globalThis.healthPart=healthPart;",
   context,
 );
 
@@ -187,6 +189,91 @@ test("ATIS footer reports unavailable for missing timestamp or unusable report",
     },
     { status: "UNAVAILABLE", detail: "", age: null },
   );
+});
+
+test("ATIS footer stays yellow from warning through stale without losing status or age", () => {
+  for (const [age, overrides, expectedStatus, expectedClass, expectedDetail] of [
+    [59, {}, "OK", "feed-ok", ""],
+    [60, {}, "WARN", "feed-warn", "60M"],
+    [89, {}, "WARN", "feed-warn", "89M"],
+    [90, {}, "STALE", "feed-warn", "90M"],
+    [180, {}, "STALE", "feed-warn", "180M"],
+    [1440, {}, "STALE", "feed-warn", "1440M"],
+    [20, { atisFetchStatus: "STALE_SOURCE" }, "STALE", "feed-warn", "20M"],
+    [null, { atisFetchStatus: "SOURCE_TIME_UNKNOWN" }, "UNAVAILABLE", "feed-warn", ""],
+    [180, { atisFetchStatus: "FAILED_NO_LAST_GOOD" }, "UNAVAILABLE", "feed-warn", ""],
+  ]) {
+    const state = statusAt(age, overrides);
+    assert.equal(state.status, expectedStatus);
+    assert.equal(state.detail, expectedDetail);
+    assert.equal(
+      context.healthPart("ATIS", state.status, state.detail),
+      `<span class="feed-token ${expectedClass}">ATIS ${expectedStatus}${expectedDetail ? ` ${expectedDetail}` : ""}</span>`,
+    );
+  }
+});
+
+test("the ATIS stale color exception preserves missing and error status distinctions", () => {
+  const missing = context.atisFeedState({}, "");
+  assert.equal(missing.status, "UNAVAILABLE");
+  assert.equal(
+    context.healthPart("ATIS", missing.status, missing.detail),
+    '<span class="feed-token feed-warn">ATIS UNAVAILABLE</span>',
+  );
+  for (const status of ["BAD", "ERROR"]) {
+    assert.equal(
+      context.healthPart("ATIS", status, ""),
+      `<span class="feed-token feed-bad">ATIS ${status}</span>`,
+      "only age-related staleness receives the ATIS color exception",
+    );
+  }
+});
+
+test("other feed status colors remain unchanged including stale and error", () => {
+  for (const name of ["METAR", "TAF", "AHAS", "NOTAMS"]) {
+    for (const [status, cssClass] of [
+      ["OK", "feed-ok"],
+      ["WARN", "feed-warn"],
+      ["STALE", "feed-stale"],
+      ["UNAVAILABLE", "feed-warn"],
+      ["BAD", "feed-bad"],
+      ["ERROR", "feed-bad"],
+    ]) {
+      assert.equal(
+        context.healthPart(name, status, "90M"),
+        `<span class="feed-token ${cssClass}">${name} ${status} 90M</span>`,
+      );
+    }
+  }
+});
+
+test("stale ATIS letter, runways, flow, and their cues use yellow caution styles", () => {
+  for (const [kind, cue] of [["letter", "status"], ["runway", "cue"], ["flow", "cue"]]) {
+    assert.match(
+      indexHtml,
+      new RegExp(`\\.atis-${kind}-last-reported-stale \\.atis-${kind}-value,\\s*` +
+        `\\.atis-${kind}-last-reported-stale \\.atis-${kind}-${cue}\\{color:var\\(--warning\\)\\}`),
+      `${kind} stale value and cue must both be yellow`,
+    );
+  }
+  assert.doesNotMatch(indexHtml, /\.atis-[^{]*\{[^}]*var\(--closed\)/);
+  assert.match(indexHtml, /\.feed-warn\{color:var\(--warning\)\}/);
+  assert.doesNotMatch(indexHtml, /\.feed-warn[^{}]*\{[^}]*animation:blink/);
+});
+
+test("ATIS freshness styling does not change red hazard or other source styles", () => {
+  for (const selector of [
+    "closed-active", "bwc-severe", "lightning-alert", "lightning-close",
+    "rcr-poor", "alert-red", "wind-speed-critical-final", "wind-gust-critical-final",
+    "feed-stale", "feed-bad", "mil-notam-cao-stale", "mil-notam-cao-bad",
+  ]) {
+    assert.match(
+      indexHtml,
+      new RegExp(`\\.${selector}\\{\\s*color:var\\(--closed\\)`),
+      `${selector} must retain its existing red color`,
+    );
+  }
+  assert.match(indexHtml, /\.feed-token\.feed-bad, \.feed-token\.feed-stale\{ animation:blink/);
 });
 
 test("NOTAM freshness uses exact 30- and 60-minute boundaries", () => {
