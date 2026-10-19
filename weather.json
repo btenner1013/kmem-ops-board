@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-19T19:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
-  "metarLiveCandidateCount": 2,
+  "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-10-19T19:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "K:1954Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -132,7 +132,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-19 20:06:00.000",
+  "bwcUpdatedZ": "2026-10-19 20:12:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -145,7 +145,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-19 20:06:02Z",
+  "milNotamUpdatedZ": "2026-10-19 20:15:51Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -182,7 +182,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-19 20:06:02Z",
+  "milNotamAttemptZ": "2026-10-19 20:15:51Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -194,13 +194,25 @@
       "displayText": "RWY 18L/36R CLSD",
       "effectiveStart": "202610201300",
       "effectiveEnd": "202610201930",
-      "lastUpdated": "2026-10-19T20:00:00.000Z",
+      "lastUpdated": "2026-10-19T20:12:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18L/36R CLSD EXC XNG TWY D AND TWY P"
     }
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "10/183",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "APRON CENTRALIZED DEICING FAC WEST PAD WIP SFC PAINTING",
+      "displayText": "APRON CENTRALIZED DEICING FAC WEST PAD WIP SFC PAINTING",
+      "effectiveStart": "202610201300",
+      "effectiveEnd": "202610201930",
+      "lastUpdated": "2026-10-19T20:15:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "APRON CENTRALIZED DEICING FAC WEST PAD WIP SFC PAINTING"
+    },
     {
       "number": "10/140",
       "classification": "CONST_AFLD_STATUS",
@@ -226,7 +238,7 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 2,
+  "constructionStatusNotamCount": 3,
   "taxiRestrictionNotams": [
     {
       "number": "10/182",
@@ -248,7 +260,7 @@
       "displayText": "TWY Y BTN TWY P AND MIL RAMP CLSD",
       "effectiveStart": "202610201200",
       "effectiveEnd": "202610201300",
-      "lastUpdated": "2026-10-19T20:05:00.000Z",
+      "lastUpdated": "2026-10-19T20:12:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY Y BTN TWY P AND MIL RAMP CLSD"
     },
@@ -260,7 +272,7 @@
       "displayText": "TWY S1, S2, S3, S4, S5, Y1, Y2, Y3, TWY E BTN RWY 18L/36R AND TWY S, TWY H BTN TWY S AND TWY Y, TWY R BTN TWY S AND TWY Y, TWY Y BTN TWY P AND TWY...",
       "effectiveStart": "202610201300",
       "effectiveEnd": "202610201930",
-      "lastUpdated": "2026-10-19T20:04:00.000Z",
+      "lastUpdated": "2026-10-19T20:09:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY S1, S2, S3, S4, S5, Y1, Y2, Y3, TWY E BTN RWY 18L/36R AND TWY S, TWY H BTN TWY S AND TWY Y, TWY R BTN TWY S AND TWY Y, TWY Y BTN TWY P AND TWY R CLSD"
     },
@@ -272,19 +284,19 @@
       "displayText": "RWY 18L/36R CLSD EXC XNG TWY D AND TWY P",
       "effectiveStart": "202610201300",
       "effectiveEnd": "202610201930",
-      "lastUpdated": "2026-10-19T20:00:00.000Z",
+      "lastUpdated": "2026-10-19T20:12:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 18L/36R CLSD EXC XNG TWY D AND TWY P"
     }
   ],
   "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-10-19 20:05Z",
+  "allFeedsUpdatedZ": "2026-10-19 20:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-19 20:05:44Z"
+    "lastWorkflowTimestampZ": "2026-10-19 20:15:42Z"
   }
 }
