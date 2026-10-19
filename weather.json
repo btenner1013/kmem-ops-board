@@ -1,23 +1,23 @@
 {
   "metar": "METAR KMEM 191854Z 07006KT 10SM CLR 22/02 A3033 RMK AO2 SLP268 T02170022 $",
   "taf": "TAF KMEM 191720Z 1918/2024 16007KT P6SM FEW250 \n  FM200000 10003KT P6SM SKC \n  FM201400 05006KT P6SM SKC",
-  "atisText": "MEM ATIS INFO I 1854Z. 07006KT 10SM CLR 22/02 A3033 (THREE ZERO THREE THREE). VISUAL APCH IN USE RY 18L. DEPG RWYS 18L, 18C. NOTICE TO AIRMEN. RWY 18R, 36L CLSD. TWY N CLSD BTN TWY, P AND TWY R, TWY H CLSD BTN TWY, N AND TWY R2, TWY R CLSD BTN TWY, N AND TWY R2, TWY M CLSD. ILS RWY 18R, 36L OTS, LLWAS OTS. RWY 36L DME OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO I",
-  "atisLetter": "I",
-  "atisPhonetic": "INDIA",
-  "atisDisplay": "INDIA",
+  "atisText": "MEM ATIS INFO J 1854Z. 07006KT 10SM CLR 22/02 A3033 (THREE ZERO THREE THREE). SIMUL VISUAL APCHS IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. LLWAS OTS. RWY 36L DME OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO J",
+  "atisLetter": "J",
+  "atisPhonetic": "JULIETT",
+  "atisDisplay": "JULIETT",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-19T18:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 42,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-10-19T18:54:00Z",
-  "atisAgeMinutes": 32,
-  "atisReportIdentity": "I:1854Z",
+  "atisAgeMinutes": 42,
+  "atisReportIdentity": "J:1854Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -27,7 +27,7 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "I:1854Z",
+      "identity": "J:1854Z",
       "observedZ": "2026-10-19T18:54:00Z",
       "sources": [
         "ATIS_INFO_API",
@@ -36,11 +36,11 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "I",
-  "atisReportedPhonetic": "INDIA",
-  "atisReportedArrRunways": "18L",
-  "atisReportedDepRunways": "18L / 18C",
-  "atisReportedClosedRunways": "18R / 36L",
+  "atisReportedLetter": "J",
+  "atisReportedPhonetic": "JULIETT",
+  "atisReportedArrRunways": "18L / 18R",
+  "atisReportedDepRunways": "18R / 18C / 18L",
+  "atisReportedClosedRunways": "NONE",
   "atisReportedFlow": "SOUTH \u2193",
   "lastKnownGoodUsed": {
     "metar": false,
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-19T16:35:41Z",
+  "trendReferenceTimestampZ": "2026-10-19T16:45:42Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -68,9 +68,9 @@
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
-  "arrRunways": "18L",
-  "depRunways": "18L / 18C",
-  "closedRunways": "18R / 36L",
+  "arrRunways": "18L / 18R",
+  "depRunways": "18R / 18C / 18L",
+  "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
     "18L/36R",
@@ -132,7 +132,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-19 19:24:00.000",
+  "bwcUpdatedZ": "2026-10-19 19:36:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -145,7 +145,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-19 19:25:58Z",
+  "milNotamUpdatedZ": "2026-10-19 19:36:09Z",
   "milNotamScrollText": "M0024/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -182,24 +182,11 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-19 19:25:58Z",
+  "milNotamAttemptZ": "2026-10-19 19:36:09Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
-  "runwayClosureNotams": [
-    {
-      "number": "10/170",
-      "classification": "RWY_CLOSURE",
-      "severity": "red",
-      "text": "RWY 18R/36L CLSD",
-      "displayText": "RWY 18R/36L CLSD",
-      "effectiveStart": "202610191300",
-      "effectiveEnd": "202610191930",
-      "lastUpdated": "2026-10-16T20:59:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 18R/36L CLSD"
-    }
-  ],
-  "runwayClosureNotamCount": 1,
+  "runwayClosureNotams": [],
+  "runwayClosureNotamCount": 0,
   "constructionStatusNotams": [
     {
       "number": "10/168",
@@ -239,28 +226,15 @@
     }
   ],
   "constructionStatusNotamCount": 3,
-  "taxiRestrictionNotams": [
-    {
-      "number": "10/171",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY H BTN TWY N AND TWY R2, TWY R BTN TWY N AND TWY R2 CLSD",
-      "displayText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY H BTN TWY N AND TWY R2, TWY R BTN TWY N AND TWY R2 CLSD",
-      "effectiveStart": "202610191300",
-      "effectiveEnd": "202610191930",
-      "lastUpdated": "2026-10-16T21:04:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY M, M1, M2, M3, M4, M5, M6, M7, M8, M9, TWY N BTN TWY P AND TWY R, TWY H BTN TWY N AND TWY R2, TWY R BTN TWY N AND TWY R2 CLSD"
-    }
-  ],
-  "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-19 19:25Z",
+  "taxiRestrictionNotams": [],
+  "taxiRestrictionNotamCount": 0,
+  "allFeedsUpdatedZ": "2026-10-19 19:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-19 19:25:43Z"
+    "lastWorkflowTimestampZ": "2026-10-19 19:35:42Z"
   }
 }
