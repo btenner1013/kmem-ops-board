@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "retentionDays": 365,
   "exactHistoryDays": 2,
-  "exactHistoryStartUtc": "2026-10-17T00:00:00Z",
-  "summarizedThroughUtc": "2026-10-17T00:00:00Z",
+  "exactHistoryStartUtc": "2026-10-18T00:00:00Z",
+  "summarizedThroughUtc": "2026-10-18T00:00:00Z",
   "summaryCoverageStartUtc": "2026-09-09T00:00:00Z",
   "retentionBoundaryGap": null,
   "archiveStartedUtc": "2026-09-09T05:35:56Z",
   "coverageStartUtc": "2026-09-09T05:35:56Z",
-  "updatedUtc": "2026-10-19T23:55:51Z",
+  "updatedUtc": "2026-10-20T00:05:51Z",
   "partialHistory": true,
   "thresholds": {
     "healthyMinutes": 15,
@@ -21,22 +21,22 @@
       "healthState": "HEALTHY",
       "roleState": "ACTIVE_PUBLISHER",
       "reason": "HEARTBEAT_CURRENT",
-      "heartbeatAgeMinutes": 0.006,
+      "heartbeatAgeMinutes": 0.008,
       "lastObservedHealthState": "HEALTHY",
-      "lastHeartbeatUtc": "2026-10-19T23:55:51Z",
-      "lastSuccessfulUpdaterRunUtc": "2026-10-19T23:55:51Z",
-      "lastSuccessfulPushUtc": "2026-10-19T23:55:51Z",
-      "lastKnownSourceSha": "f31e37b5eaa568f991057328b30c28a1f84c2ed1",
+      "lastHeartbeatUtc": "2026-10-20T00:05:51Z",
+      "lastSuccessfulUpdaterRunUtc": "2026-10-20T00:05:51Z",
+      "lastSuccessfulPushUtc": "2026-10-20T00:05:51Z",
+      "lastKnownSourceSha": "5bd5fe465f97a61236509d123d9b774e9005e0a9",
       "lastError": null,
       "taskState": "UNKNOWN",
-      "evidenceUpdatedUtc": "2026-10-19T23:55:51Z"
+      "evidenceUpdatedUtc": "2026-10-20T00:05:51Z"
     },
     "BACKUP": {
       "role": "BACKUP",
       "healthState": "UNKNOWN",
       "roleState": "STANDBY_NOT_OBSERVED",
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "heartbeatAgeMinutes": 10005.306,
+      "heartbeatAgeMinutes": 10015.308,
       "lastObservedHealthState": "HEALTHY",
       "lastHeartbeatUtc": "2026-10-13T01:10:33Z",
       "lastSuccessfulUpdaterRunUtc": "2026-10-13T01:10:33Z",
@@ -52,26 +52,26 @@
       "role": "PRIMARY",
       "sinceUtc": "2026-10-17T00:00:00Z",
       "sinceTimestampBasis": "EXACT_HISTORY_WINDOW_BOUNDARY",
-      "lastSuccessfulPublishUtc": "2026-10-19T23:55:51Z",
-      "lastSuccessfulPushUtc": "2026-10-19T23:55:51Z",
+      "lastSuccessfulPublishUtc": "2026-10-20T00:05:51Z",
+      "lastSuccessfulPushUtc": "2026-10-20T00:05:51Z",
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "rootCauseKnown": false
     },
     "boardDelivery": {
       "state": "CONTINUOUS",
-      "lastSuccessfulPublishUtc": "2026-10-19T23:55:51Z",
+      "lastSuccessfulPublishUtc": "2026-10-20T00:05:51Z",
       "publisher": "PRIMARY",
-      "ageMinutes": 0.006,
+      "ageMinutes": 0.008,
       "reason": "BOARD_PUBLISH_CURRENT"
     },
     "lease": {
       "state": "RELEASED",
       "activeOwner": null,
       "lastOwner": "PRIMARY",
-      "acquiredUtc": "2026-10-19T23:55:37Z",
-      "expiresUtc": "2026-10-19T23:55:51Z",
-      "releasedUtc": "2026-10-19T23:55:51Z",
-      "observedUtc": "2026-10-19T23:55:51Z"
+      "acquiredUtc": "2026-10-20T00:05:37Z",
+      "expiresUtc": "2026-10-20T00:05:51Z",
+      "releasedUtc": "2026-10-20T00:05:51Z",
+      "observedUtc": "2026-10-20T00:05:51Z"
     }
   },
   "intervals": [
@@ -79,7 +79,7 @@
       "track": "BACKUP",
       "host": "BACKUP",
       "state": "UNKNOWN",
-      "startUtc": "2026-10-17T00:00:00Z",
+      "startUtc": "2026-10-18T00:00:00Z",
       "endUtc": null,
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
       "sourceSha": "221ecec69ed187cd240808ff97daf9028d94c5ea",
@@ -90,7 +90,7 @@
       "track": "BOARD_DELIVERY",
       "host": null,
       "state": "CONTINUOUS",
-      "startUtc": "2026-10-17T00:00:00Z",
+      "startUtc": "2026-10-18T00:00:00Z",
       "endUtc": null,
       "reason": "BOARD_PUBLISH_CURRENT",
       "sourceSha": "e354eaed6cfcbb96b5204d7998348b7a30ad23a6",
@@ -101,7 +101,7 @@
       "track": "PRIMARY",
       "host": "PRIMARY",
       "state": "HEALTHY",
-      "startUtc": "2026-10-17T00:00:00Z",
+      "startUtc": "2026-10-18T00:00:00Z",
       "endUtc": null,
       "reason": "HEARTBEAT_CURRENT",
       "sourceSha": "e354eaed6cfcbb96b5204d7998348b7a30ad23a6",
@@ -112,7 +112,7 @@
       "track": "PUBLISHER",
       "host": null,
       "state": "PRIMARY",
-      "startUtc": "2026-10-17T00:00:00Z",
+      "startUtc": "2026-10-18T00:00:00Z",
       "endUtc": null,
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "sourceSha": "8076ed37d1bd5ce5cf2564c4515ecf6fbb63380a",
@@ -3033,6 +3033,54 @@
       "dayEndUtc": "2026-10-17T00:00:00Z",
       "coverageStartUtc": "2026-10-16T00:00:00Z",
       "coverageEndUtc": "2026-10-17T00:00:00Z",
+      "coverageSeconds": 86400,
+      "knownCoverageSeconds": 86400,
+      "partialCoverage": false,
+      "tracks": {
+        "BACKUP": {
+          "durationsSeconds": {
+            "UNKNOWN": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 0
+        },
+        "BOARD_DELIVERY": {
+          "durationsSeconds": {
+            "CONTINUOUS": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        },
+        "PRIMARY": {
+          "durationsSeconds": {
+            "HEALTHY": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        },
+        "PUBLISHER": {
+          "durationsSeconds": {
+            "PRIMARY": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        }
+      },
+      "eventCounts": {},
+      "sourceIntervalCount": 4,
+      "sourceEventCount": 0,
+      "aggregation": {
+        "timeBasis": "UTC",
+        "timestampBasis": "EXACT_INTERVAL_BOUNDARIES_SPLIT_AT_UTC_DAY",
+        "provenance": "DERIVED_FROM_EXACT_INTERVALS_AND_EVENTS"
+      }
+    },
+    {
+      "dateUtc": "2026-10-17",
+      "dayStartUtc": "2026-10-17T00:00:00Z",
+      "dayEndUtc": "2026-10-18T00:00:00Z",
+      "coverageStartUtc": "2026-10-17T00:00:00Z",
+      "coverageEndUtc": "2026-10-18T00:00:00Z",
       "coverageSeconds": 86400,
       "knownCoverageSeconds": 86400,
       "partialCoverage": false,
