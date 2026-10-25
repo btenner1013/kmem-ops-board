@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "retentionDays": 365,
   "exactHistoryDays": 2,
-  "exactHistoryStartUtc": "2026-10-22T00:00:00Z",
-  "summarizedThroughUtc": "2026-10-22T00:00:00Z",
+  "exactHistoryStartUtc": "2026-10-23T00:00:00Z",
+  "summarizedThroughUtc": "2026-10-23T00:00:00Z",
   "summaryCoverageStartUtc": "2026-09-09T00:00:00Z",
   "retentionBoundaryGap": null,
   "archiveStartedUtc": "2026-09-09T05:35:56Z",
   "coverageStartUtc": "2026-09-09T05:35:56Z",
-  "updatedUtc": "2026-10-24T23:55:55Z",
+  "updatedUtc": "2026-10-25T00:06:10Z",
   "partialHistory": true,
   "thresholds": {
     "healthyMinutes": 15,
@@ -21,22 +21,22 @@
       "healthState": "HEALTHY",
       "roleState": "ACTIVE_PUBLISHER",
       "reason": "HEARTBEAT_CURRENT",
-      "heartbeatAgeMinutes": 0.003,
+      "heartbeatAgeMinutes": 0.016,
       "lastObservedHealthState": "HEALTHY",
-      "lastHeartbeatUtc": "2026-10-24T23:55:55Z",
-      "lastSuccessfulUpdaterRunUtc": "2026-10-24T23:55:55Z",
-      "lastSuccessfulPushUtc": "2026-10-24T23:55:55Z",
-      "lastKnownSourceSha": "f6038f888b52a3cbce19c7ba83859684b0d6a5a9",
+      "lastHeartbeatUtc": "2026-10-25T00:06:10Z",
+      "lastSuccessfulUpdaterRunUtc": "2026-10-25T00:06:10Z",
+      "lastSuccessfulPushUtc": "2026-10-25T00:06:10Z",
+      "lastKnownSourceSha": "734b5c0affff206e8fc5a720342be9b02f9cad44",
       "lastError": null,
       "taskState": "UNKNOWN",
-      "evidenceUpdatedUtc": "2026-10-24T23:55:55Z"
+      "evidenceUpdatedUtc": "2026-10-25T00:06:10Z"
     },
     "BACKUP": {
       "role": "BACKUP",
       "healthState": "UNKNOWN",
       "roleState": "STANDBY_NOT_OBSERVED",
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "heartbeatAgeMinutes": 17205.369,
+      "heartbeatAgeMinutes": 17215.633,
       "lastObservedHealthState": "HEALTHY",
       "lastHeartbeatUtc": "2026-10-13T01:10:33Z",
       "lastSuccessfulUpdaterRunUtc": "2026-10-13T01:10:33Z",
@@ -52,26 +52,26 @@
       "role": "PRIMARY",
       "sinceUtc": "2026-10-22T00:00:00Z",
       "sinceTimestampBasis": "EXACT_HISTORY_WINDOW_BOUNDARY",
-      "lastSuccessfulPublishUtc": "2026-10-24T23:55:55Z",
-      "lastSuccessfulPushUtc": "2026-10-24T23:55:55Z",
+      "lastSuccessfulPublishUtc": "2026-10-25T00:06:10Z",
+      "lastSuccessfulPushUtc": "2026-10-25T00:06:10Z",
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "rootCauseKnown": false
     },
     "boardDelivery": {
       "state": "CONTINUOUS",
-      "lastSuccessfulPublishUtc": "2026-10-24T23:55:55Z",
+      "lastSuccessfulPublishUtc": "2026-10-25T00:06:10Z",
       "publisher": "PRIMARY",
-      "ageMinutes": 0.003,
+      "ageMinutes": 0.016,
       "reason": "BOARD_PUBLISH_CURRENT"
     },
     "lease": {
       "state": "RELEASED",
       "activeOwner": null,
       "lastOwner": "PRIMARY",
-      "acquiredUtc": "2026-10-24T23:55:38Z",
-      "expiresUtc": "2026-10-24T23:55:55Z",
-      "releasedUtc": "2026-10-24T23:55:55Z",
-      "observedUtc": "2026-10-24T23:55:55Z"
+      "acquiredUtc": "2026-10-25T00:05:38Z",
+      "expiresUtc": "2026-10-25T00:06:10Z",
+      "releasedUtc": "2026-10-25T00:06:10Z",
+      "observedUtc": "2026-10-25T00:06:10Z"
     }
   },
   "intervals": [
@@ -79,7 +79,7 @@
       "track": "BACKUP",
       "host": "BACKUP",
       "state": "UNKNOWN",
-      "startUtc": "2026-10-22T00:00:00Z",
+      "startUtc": "2026-10-23T00:00:00Z",
       "endUtc": null,
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
       "sourceSha": "221ecec69ed187cd240808ff97daf9028d94c5ea",
@@ -90,7 +90,7 @@
       "track": "BOARD_DELIVERY",
       "host": null,
       "state": "CONTINUOUS",
-      "startUtc": "2026-10-22T00:00:00Z",
+      "startUtc": "2026-10-23T00:00:00Z",
       "endUtc": "2026-10-24T19:00:57Z",
       "reason": "BOARD_PUBLISH_CURRENT",
       "sourceSha": "47c2fa3dce4567a23c3a3bbfe5b2d275e43f5e9a",
@@ -103,7 +103,7 @@
       "track": "PRIMARY",
       "host": "PRIMARY",
       "state": "HEALTHY",
-      "startUtc": "2026-10-22T00:00:00Z",
+      "startUtc": "2026-10-23T00:00:00Z",
       "endUtc": "2026-10-24T19:00:57Z",
       "reason": "HEARTBEAT_CURRENT",
       "sourceSha": "47c2fa3dce4567a23c3a3bbfe5b2d275e43f5e9a",
@@ -116,7 +116,7 @@
       "track": "PUBLISHER",
       "host": null,
       "state": "PRIMARY",
-      "startUtc": "2026-10-22T00:00:00Z",
+      "startUtc": "2026-10-23T00:00:00Z",
       "endUtc": null,
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "sourceSha": "8076ed37d1bd5ce5cf2564c4515ecf6fbb63380a",
@@ -3376,6 +3376,54 @@
       "dayEndUtc": "2026-10-22T00:00:00Z",
       "coverageStartUtc": "2026-10-21T00:00:00Z",
       "coverageEndUtc": "2026-10-22T00:00:00Z",
+      "coverageSeconds": 86400,
+      "knownCoverageSeconds": 86400,
+      "partialCoverage": false,
+      "tracks": {
+        "BACKUP": {
+          "durationsSeconds": {
+            "UNKNOWN": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 0
+        },
+        "BOARD_DELIVERY": {
+          "durationsSeconds": {
+            "CONTINUOUS": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        },
+        "PRIMARY": {
+          "durationsSeconds": {
+            "HEALTHY": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        },
+        "PUBLISHER": {
+          "durationsSeconds": {
+            "PRIMARY": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        }
+      },
+      "eventCounts": {},
+      "sourceIntervalCount": 4,
+      "sourceEventCount": 0,
+      "aggregation": {
+        "timeBasis": "UTC",
+        "timestampBasis": "EXACT_INTERVAL_BOUNDARIES_SPLIT_AT_UTC_DAY",
+        "provenance": "DERIVED_FROM_EXACT_INTERVALS_AND_EVENTS"
+      }
+    },
+    {
+      "dateUtc": "2026-10-22",
+      "dayStartUtc": "2026-10-22T00:00:00Z",
+      "dayEndUtc": "2026-10-23T00:00:00Z",
+      "coverageStartUtc": "2026-10-22T00:00:00Z",
+      "coverageEndUtc": "2026-10-23T00:00:00Z",
       "coverageSeconds": 86400,
       "knownCoverageSeconds": 86400,
       "partialCoverage": false,
