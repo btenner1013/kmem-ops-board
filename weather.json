@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-26T16:54:00Z",
-  "metarAgeMinutes": 42,
+  "metarAgeMinutes": 52,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
-  "metarLiveCandidateCount": 2,
+  "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-10-26T16:54:00Z",
-  "atisAgeMinutes": 42,
+  "atisAgeMinutes": 52,
   "atisReportIdentity": "P:1654Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-26T14:35:43Z",
+  "trendReferenceTimestampZ": "2026-10-26T14:55:42Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -86,8 +86,8 @@
   "rcrRaw": "--",
   "altimeter": "30.36",
   "altimeterRaw": 30.36,
-  "altimeterTrend": "\u2192",
-  "altimeterTrendText": "STEADY",
+  "altimeterTrend": "\u2193",
+  "altimeterTrendText": "FALLING",
   "ceilingFt": 25000,
   "ceilingDisplay": "25000 FT",
   "ceilingTrend": "\u2191",
@@ -132,7 +132,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-26 17:30:00.000",
+  "bwcUpdatedZ": "2026-10-26 17:42:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "LOW",
@@ -145,7 +145,7 @@
   "milNotamCount": 1,
   "milNotamStatus": "1 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-26 17:35:59Z",
+  "milNotamUpdatedZ": "2026-10-26 17:45:56Z",
   "milNotamScrollText": "M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -171,7 +171,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-26 17:35:59Z",
+  "milNotamAttemptZ": "2026-10-26 17:45:56Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -243,13 +243,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-26 17:35Z",
+  "allFeedsUpdatedZ": "2026-10-26 17:45Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-26 17:35:42Z"
+    "lastWorkflowTimestampZ": "2026-10-26 17:45:44Z"
   }
 }
