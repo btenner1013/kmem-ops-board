@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-29T20:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
-  "metarLiveCandidateCount": 2,
+  "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-10-29T20:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "D:2054Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-29T18:15:44Z",
+  "trendReferenceTimestampZ": "2026-10-29T18:25:44Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -132,7 +132,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-29 21:04:00.000",
+  "bwcUpdatedZ": "2026-10-29 21:16:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "LOW",
@@ -145,7 +145,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-29 21:06:14Z",
+  "milNotamUpdatedZ": "2026-10-29 21:16:27Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -182,7 +182,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-29 21:06:14Z",
+  "milNotamAttemptZ": "2026-10-29 21:16:27Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -201,6 +201,18 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "10/304",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "APRON CENTRALIZED DEICING FAC WEST PAD WIP MARKINGS",
+      "displayText": "APRON CENTRALIZED DEICING FAC WEST PAD WIP MARKINGS",
+      "effectiveStart": "202610301300",
+      "effectiveEnd": "202610301930",
+      "lastUpdated": "2026-10-29T21:11:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "APRON CENTRALIZED DEICING FAC WEST PAD WIP MARKINGS"
+    },
     {
       "number": "10/254",
       "classification": "CONST_AFLD_STATUS",
@@ -238,8 +250,20 @@
       "rawText": "TWY A BTN TWY N AND TWY S, TWY C BTN RWY 09/27 AND SIGNATURE RAMP, TWY S BTN RWY 09/27 AND TWY B GEOGRAPHIC PSN MARKINGS NOT STD"
     }
   ],
-  "constructionStatusNotamCount": 3,
+  "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [
+    {
+      "number": "10/303",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY N BTN SIGNATURE RAMP AND TWY M6 CLSD",
+      "displayText": "TWY N BTN SIGNATURE RAMP AND TWY M6 CLSD",
+      "effectiveStart": "202610301300",
+      "effectiveEnd": "202610301930",
+      "lastUpdated": "2026-10-29T21:11:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY N BTN SIGNATURE RAMP AND TWY M6 CLSD"
+    },
     {
       "number": "10/302",
       "classification": "TAXI_ROUTE_RESTR",
@@ -253,14 +277,14 @@
       "rawText": "TWY M6, M5, M4, M3, M1, M2, M, M9, M8, M7, TWY H BTN TWY N AND TWY R2, TWY R BTN TWY N AND TWY R2, TWY N BTN TWY P AND TWY R CLSD"
     }
   ],
-  "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-10-29 21:05Z",
+  "taxiRestrictionNotamCount": 2,
+  "allFeedsUpdatedZ": "2026-10-29 21:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-29 21:05:44Z"
+    "lastWorkflowTimestampZ": "2026-10-29 21:15:44Z"
   }
 }
