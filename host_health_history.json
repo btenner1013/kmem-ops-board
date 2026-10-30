@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "retentionDays": 365,
   "exactHistoryDays": 2,
-  "exactHistoryStartUtc": "2026-10-27T00:00:00Z",
-  "summarizedThroughUtc": "2026-10-27T00:00:00Z",
+  "exactHistoryStartUtc": "2026-10-28T00:00:00Z",
+  "summarizedThroughUtc": "2026-10-28T00:00:00Z",
   "summaryCoverageStartUtc": "2026-09-09T00:00:00Z",
   "retentionBoundaryGap": null,
   "archiveStartedUtc": "2026-09-09T05:35:56Z",
   "coverageStartUtc": "2026-09-09T05:35:56Z",
-  "updatedUtc": "2026-10-29T23:56:06Z",
+  "updatedUtc": "2026-10-30T00:06:15Z",
   "partialHistory": true,
   "thresholds": {
     "healthyMinutes": 15,
@@ -21,22 +21,22 @@
       "healthState": "HEALTHY",
       "roleState": "ACTIVE_PUBLISHER",
       "reason": "HEARTBEAT_CURRENT",
-      "heartbeatAgeMinutes": 0.01,
+      "heartbeatAgeMinutes": 0.001,
       "lastObservedHealthState": "HEALTHY",
-      "lastHeartbeatUtc": "2026-10-29T23:56:06Z",
-      "lastSuccessfulUpdaterRunUtc": "2026-10-29T23:56:06Z",
-      "lastSuccessfulPushUtc": "2026-10-29T23:56:06Z",
-      "lastKnownSourceSha": "8c2d4aad43f5914d68808d181dd47841f19f9670",
+      "lastHeartbeatUtc": "2026-10-30T00:06:15Z",
+      "lastSuccessfulUpdaterRunUtc": "2026-10-30T00:06:15Z",
+      "lastSuccessfulPushUtc": "2026-10-30T00:06:15Z",
+      "lastKnownSourceSha": "7d596e7ff8f3219d5b5ec9967d6953e95ff4b058",
       "lastError": null,
       "taskState": "UNKNOWN",
-      "evidenceUpdatedUtc": "2026-10-29T23:56:06Z"
+      "evidenceUpdatedUtc": "2026-10-30T00:06:15Z"
     },
     "BACKUP": {
       "role": "BACKUP",
       "healthState": "UNKNOWN",
       "roleState": "STANDBY_NOT_OBSERVED",
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "heartbeatAgeMinutes": 3173.327,
+      "heartbeatAgeMinutes": 3183.468,
       "lastObservedHealthState": "ERROR",
       "lastHeartbeatUtc": "2026-10-27T19:02:47Z",
       "lastSuccessfulUpdaterRunUtc": "2026-10-27T18:56:15Z",
@@ -52,26 +52,26 @@
       "role": "PRIMARY",
       "sinceUtc": "2026-10-27T19:05:45Z",
       "sinceTimestampBasis": "LEASE_ACQUIRED_UTC",
-      "lastSuccessfulPublishUtc": "2026-10-29T23:56:06Z",
-      "lastSuccessfulPushUtc": "2026-10-29T23:56:06Z",
+      "lastSuccessfulPublishUtc": "2026-10-30T00:06:15Z",
+      "lastSuccessfulPushUtc": "2026-10-30T00:06:15Z",
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "rootCauseKnown": false
     },
     "boardDelivery": {
       "state": "CONTINUOUS",
-      "lastSuccessfulPublishUtc": "2026-10-29T23:56:06Z",
+      "lastSuccessfulPublishUtc": "2026-10-30T00:06:15Z",
       "publisher": "PRIMARY",
-      "ageMinutes": 0.01,
+      "ageMinutes": 0.001,
       "reason": "BOARD_PUBLISH_CURRENT"
     },
     "lease": {
       "state": "RELEASED",
       "activeOwner": null,
       "lastOwner": "PRIMARY",
-      "acquiredUtc": "2026-10-29T23:55:40Z",
-      "expiresUtc": "2026-10-29T23:56:06Z",
-      "releasedUtc": "2026-10-29T23:56:06Z",
-      "observedUtc": "2026-10-29T23:56:06Z"
+      "acquiredUtc": "2026-10-30T00:05:40Z",
+      "expiresUtc": "2026-10-30T00:06:15Z",
+      "releasedUtc": "2026-10-30T00:06:15Z",
+      "observedUtc": "2026-10-30T00:06:15Z"
     }
   },
   "intervals": [
@@ -79,20 +79,18 @@
       "track": "BACKUP",
       "host": "BACKUP",
       "state": "UNKNOWN",
-      "startUtc": "2026-10-27T00:00:00Z",
-      "endUtc": "2026-10-27T19:02:47Z",
+      "startUtc": "2026-10-28T00:00:00Z",
+      "endUtc": null,
       "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "sourceSha": "221ecec69ed187cd240808ff97daf9028d94c5ea",
+      "sourceSha": "f09ec1ea673aa0bae7fa756f9ba6af78717b1d18",
       "startTimestampBasis": "EXACT_HISTORY_WINDOW_BOUNDARY",
-      "startTimestampCertainty": "CLIPPED_AFTER_DAILY_AGGREGATION",
-      "endTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
-      "endTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
+      "startTimestampCertainty": "CLIPPED_AFTER_DAILY_AGGREGATION"
     },
     {
       "track": "BOARD_DELIVERY",
       "host": null,
       "state": "CONTINUOUS",
-      "startUtc": "2026-10-27T00:00:00Z",
+      "startUtc": "2026-10-28T00:00:00Z",
       "endUtc": null,
       "reason": "BOARD_PUBLISH_CURRENT",
       "sourceSha": "afa29f1b2f6c6bd9e589ddbe2bfa977b3fc4f5a8",
@@ -103,7 +101,7 @@
       "track": "PRIMARY",
       "host": "PRIMARY",
       "state": "HEALTHY",
-      "startUtc": "2026-10-27T00:00:00Z",
+      "startUtc": "2026-10-28T00:00:00Z",
       "endUtc": null,
       "reason": "HEARTBEAT_CURRENT",
       "sourceSha": "afa29f1b2f6c6bd9e589ddbe2bfa977b3fc4f5a8",
@@ -114,62 +112,12 @@
       "track": "PUBLISHER",
       "host": null,
       "state": "PRIMARY",
-      "startUtc": "2026-10-27T00:00:00Z",
-      "endUtc": "2026-10-27T19:02:47Z",
-      "reason": "PREFERRED_PRIMARY_PUBLISHING",
-      "sourceSha": "8076ed37d1bd5ce5cf2564c4515ecf6fbb63380a",
-      "startTimestampBasis": "EXACT_HISTORY_WINDOW_BOUNDARY",
-      "startTimestampCertainty": "CLIPPED_AFTER_DAILY_AGGREGATION",
-      "endTimestampBasis": "FIRST_OBSERVED_PUBLISHER_CHANGE",
-      "endTimestampCertainty": "FIRST_OBSERVED"
-    },
-    {
-      "track": "BACKUP",
-      "host": "BACKUP",
-      "state": "ERROR",
-      "startUtc": "2026-10-27T19:02:47Z",
-      "endUtc": "2026-10-27T19:06:02Z",
-      "reason": "FAST_FORWARD_FAILED",
-      "sourceSha": "f09ec1ea673aa0bae7fa756f9ba6af78717b1d18",
-      "startTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
-      "startTimestampCertainty": "EXACT_SOURCE_TIMESTAMP",
-      "endTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
-      "endTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
-    },
-    {
-      "track": "PUBLISHER",
-      "host": null,
-      "state": "BACKUP",
-      "startUtc": "2026-10-27T19:02:47Z",
-      "endUtc": "2026-10-27T19:05:45Z",
-      "reason": "PRIMARY_HEALTH_UNKNOWN",
-      "sourceSha": "f09ec1ea673aa0bae7fa756f9ba6af78717b1d18",
-      "startTimestampBasis": "FIRST_OBSERVED_PUBLISHER_CHANGE",
-      "startTimestampCertainty": "FIRST_OBSERVED",
-      "endTimestampBasis": "LEASE_ACQUIRED_UTC",
-      "endTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
-    },
-    {
-      "track": "PUBLISHER",
-      "host": null,
-      "state": "PRIMARY",
-      "startUtc": "2026-10-27T19:05:45Z",
+      "startUtc": "2026-10-28T00:00:00Z",
       "endUtc": null,
       "reason": "PREFERRED_PRIMARY_PUBLISHING",
       "sourceSha": "9a6cc51ecf957b1bddb28484f00a39acc5d8f0de",
-      "startTimestampBasis": "LEASE_ACQUIRED_UTC",
-      "startTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
-    },
-    {
-      "track": "BACKUP",
-      "host": "BACKUP",
-      "state": "UNKNOWN",
-      "startUtc": "2026-10-27T19:06:02Z",
-      "endUtc": null,
-      "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "sourceSha": "f09ec1ea673aa0bae7fa756f9ba6af78717b1d18",
-      "startTimestampBasis": "PUBLISHED_HEARTBEAT_UTC",
-      "startTimestampCertainty": "EXACT_SOURCE_TIMESTAMP"
+      "startTimestampBasis": "EXACT_HISTORY_WINDOW_BOUNDARY",
+      "startTimestampCertainty": "CLIPPED_AFTER_DAILY_AGGREGATION"
     }
   ],
   "events": [
@@ -1118,7 +1066,8 @@
       "sourceSha": "f09ec1ea673aa0bae7fa756f9ba6af78717b1d18",
       "timestampBasis": "PUBLISHED_HEARTBEAT_UTC",
       "timestampCertainty": "EXACT_SOURCE_TIMESTAMP",
-      "leaseOwner": null
+      "leaseOwner": null,
+      "includedInDailySummary": true
     },
     {
       "eventType": "ACTIVE_BACKUP",
@@ -1129,7 +1078,8 @@
       "sourceSha": "f09ec1ea673aa0bae7fa756f9ba6af78717b1d18",
       "timestampBasis": "FIRST_OBSERVED_PUBLISHER_CHANGE",
       "timestampCertainty": "FIRST_OBSERVED",
-      "leaseOwner": null
+      "leaseOwner": null,
+      "includedInDailySummary": true
     },
     {
       "eventType": "BACKUP_TAKEOVER",
@@ -1140,7 +1090,8 @@
       "sourceSha": "f09ec1ea673aa0bae7fa756f9ba6af78717b1d18",
       "timestampBasis": "FIRST_OBSERVED_PUBLISHER_CHANGE",
       "timestampCertainty": "FIRST_OBSERVED",
-      "leaseOwner": null
+      "leaseOwner": null,
+      "includedInDailySummary": true
     },
     {
       "eventType": "ACTIVE_PRIMARY",
@@ -1151,7 +1102,8 @@
       "sourceSha": "9a6cc51ecf957b1bddb28484f00a39acc5d8f0de",
       "timestampBasis": "LEASE_ACQUIRED_UTC",
       "timestampCertainty": "EXACT_SOURCE_TIMESTAMP",
-      "leaseOwner": null
+      "leaseOwner": null,
+      "includedInDailySummary": true
     },
     {
       "eventType": "PRIMARY_HANDOFF",
@@ -1162,18 +1114,8 @@
       "sourceSha": "9a6cc51ecf957b1bddb28484f00a39acc5d8f0de",
       "timestampBasis": "LEASE_ACQUIRED_UTC",
       "timestampCertainty": "EXACT_SOURCE_TIMESTAMP",
-      "leaseOwner": "PRIMARY"
-    },
-    {
-      "eventType": "BACKUP_UNKNOWN",
-      "timestampUtc": "2026-10-27T19:06:02Z",
-      "host": "BACKUP",
-      "reason": "INACTIVE_HOST_HEALTH_NOT_OBSERVED",
-      "publisher": "PRIMARY",
-      "sourceSha": "f09ec1ea673aa0bae7fa756f9ba6af78717b1d18",
-      "timestampBasis": "PUBLISHED_HEARTBEAT_UTC",
-      "timestampCertainty": "EXACT_SOURCE_TIMESTAMP",
-      "leaseOwner": null
+      "leaseOwner": "PRIMARY",
+      "includedInDailySummary": true
     }
   ],
   "dailySummaries": [
@@ -3681,6 +3623,63 @@
       "eventCounts": {},
       "sourceIntervalCount": 4,
       "sourceEventCount": 0,
+      "aggregation": {
+        "timeBasis": "UTC",
+        "timestampBasis": "EXACT_INTERVAL_BOUNDARIES_SPLIT_AT_UTC_DAY",
+        "provenance": "DERIVED_FROM_EXACT_INTERVALS_AND_EVENTS"
+      }
+    },
+    {
+      "dateUtc": "2026-10-27",
+      "dayStartUtc": "2026-10-27T00:00:00Z",
+      "dayEndUtc": "2026-10-28T00:00:00Z",
+      "coverageStartUtc": "2026-10-27T00:00:00Z",
+      "coverageEndUtc": "2026-10-28T00:00:00Z",
+      "coverageSeconds": 86400,
+      "knownCoverageSeconds": 86400,
+      "partialCoverage": false,
+      "tracks": {
+        "BACKUP": {
+          "durationsSeconds": {
+            "UNKNOWN": 86205,
+            "ERROR": 195
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 195
+        },
+        "BOARD_DELIVERY": {
+          "durationsSeconds": {
+            "CONTINUOUS": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        },
+        "PRIMARY": {
+          "durationsSeconds": {
+            "HEALTHY": 86400
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        },
+        "PUBLISHER": {
+          "durationsSeconds": {
+            "PRIMARY": 86222,
+            "BACKUP": 178
+          },
+          "observedSeconds": 86400,
+          "knownSeconds": 86400
+        }
+      },
+      "eventCounts": {
+        "BACKUP_ERROR": 1,
+        "ACTIVE_BACKUP": 1,
+        "BACKUP_TAKEOVER": 1,
+        "ACTIVE_PRIMARY": 1,
+        "PRIMARY_HANDOFF": 1,
+        "BACKUP_UNKNOWN": 1
+      },
+      "sourceIntervalCount": 8,
+      "sourceEventCount": 6,
       "aggregation": {
         "timeBasis": "UTC",
         "timestampBasis": "EXACT_INTERVAL_BOUNDARIES_SPLIT_AT_UTC_DAY",
