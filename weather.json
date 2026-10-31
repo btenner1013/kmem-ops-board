@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-31T00:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 42,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-10-31T00:54:00Z",
-  "atisAgeMinutes": 32,
+  "atisAgeMinutes": 42,
   "atisReportIdentity": "L:0054Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-30T22:35:43Z",
+  "trendReferenceTimestampZ": "2026-10-30T22:45:43Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -174,7 +174,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -SHRA PSBL 01 NOV 00-06Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-31 01:25:00.000",
+  "bwcUpdatedZ": "2026-10-31 01:31:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "SEVERE",
@@ -187,7 +187,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-31 01:25:56Z",
+  "milNotamUpdatedZ": "2026-10-31 01:36:02Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -224,7 +224,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-31 01:25:56Z",
+  "milNotamAttemptZ": "2026-10-31 01:36:02Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [],
@@ -243,18 +243,6 @@
       "rawText": "AD AP ALL SFC WIP SN REMOVAL TRAINING"
     },
     {
-      "number": "10/313",
-      "classification": "CONST_AFLD_STATUS",
-      "severity": "green",
-      "text": "RWY 18R/36L CL MARKINGS OBSC",
-      "displayText": "RWY 18R/36L CL MARKINGS OBSC",
-      "effectiveStart": "202610302018",
-      "effectiveEnd": "202611032359",
-      "lastUpdated": "2026-10-30T20:18:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "RWY 18R/36L CL MARKINGS OBSC"
-    },
-    {
       "number": "10/310",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -267,7 +255,7 @@
       "rawText": "TWY S EDGE MARKINGS BTN TWY P AND TWY E REMOVED"
     }
   ],
-  "constructionStatusNotamCount": 3,
+  "constructionStatusNotamCount": 2,
   "taxiRestrictionNotams": [
     {
       "number": "10/319",
@@ -331,13 +319,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 5,
-  "allFeedsUpdatedZ": "2026-10-31 01:25Z",
+  "allFeedsUpdatedZ": "2026-10-31 01:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-31 01:25:45Z"
+    "lastWorkflowTimestampZ": "2026-10-31 01:35:44Z"
   }
 }
