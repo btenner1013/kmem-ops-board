@@ -1,23 +1,23 @@
 {
   "metar": "METAR KMEM 312154Z 12006KT 10SM FEW065 OVC075 24/14 A3016 RMK AO2 SLP210 T02390144 $",
   "taf": "TAF KMEM 312059Z 3121/0124 12010KT P6SM VCSH OVC100 \n  FM010000 11008KT 5SM -SHRA OVC050 \n  FM010600 12008KT P6SM -SHRA OVC015 \n  FM011000 12007KT 6SM -SHRA OVC008 \n  FM011300 12006KT 5SM -SHRA BR OVC005 \n  FM011800 12007KT P6SM VCSH SCT007 OVC015",
-  "atisText": "MEM ATIS INFO O 2154Z. 12006KT 10SM FEW065 OVC075 24/14 A3016 (THREE ZERO ONE SIX) RMK AO2 SLP210 T02390144. SIMUL VISUAL APCHS IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. TWY Y BTN TWY A AND UPS RAMP CLSD. WILSON AIR CENTER RAMP WEST ENTRANCE CLSD. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO O",
-  "atisLetter": "O",
-  "atisPhonetic": "OSCAR",
-  "atisDisplay": "OSCAR",
+  "atisText": "MEM ATIS INFO P 2154Z. 12006KT 10SM FEW065 OVC075 24/14 A3016 (THREE ZERO ONE SIX) RMK AO2 SLP210 T02390144. SIMUL VISUAL APCHS IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO P",
+  "atisLetter": "P",
+  "atisPhonetic": "PAPA",
+  "atisDisplay": "PAPA",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-10-31T21:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-10-31T21:54:00Z",
-  "atisAgeMinutes": 12,
-  "atisReportIdentity": "O:2154Z",
+  "atisAgeMinutes": 22,
+  "atisReportIdentity": "P:2154Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -27,7 +27,7 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "O:2154Z",
+      "identity": "P:2154Z",
       "observedZ": "2026-10-31T21:54:00Z",
       "sources": [
         "ATIS_INFO_API",
@@ -36,8 +36,8 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "O",
-  "atisReportedPhonetic": "OSCAR",
+  "atisReportedLetter": "P",
+  "atisReportedPhonetic": "PAPA",
   "atisReportedArrRunways": "18L / 18R",
   "atisReportedDepRunways": "18R / 18C / 18L",
   "atisReportedClosedRunways": "NONE",
@@ -50,8 +50,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-10-31T19:05:45Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-10-31T19:15:45Z",
+  "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -174,7 +174,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f VCSH PSBL NOW-24Z",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-10-31 22:04:00.000",
+  "bwcUpdatedZ": "2026-10-31 22:10:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "MODERATE",
@@ -187,7 +187,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-10-31 22:05:53Z",
+  "milNotamUpdatedZ": "2026-10-31 22:15:54Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -224,7 +224,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-10-31 22:05:53Z",
+  "milNotamAttemptZ": "2026-10-31 22:15:54Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [],
@@ -280,40 +280,16 @@
       "lastUpdated": "2026-10-30T20:42:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "APRON WILSON AIR CENTER RAMP WEST ENTRANCE CLSD"
-    },
-    {
-      "number": "10/315",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "amber",
-      "text": "APRON WILSON AIR CENTER RAMP WEST ENTRANCE CLSD",
-      "displayText": "APRON WILSON AIR CENTER RAMP WEST ENTRANCE CLSD",
-      "effectiveStart": "202610311200",
-      "effectiveEnd": "202610312230",
-      "lastUpdated": "2026-10-30T20:39:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "APRON WILSON AIR CENTER RAMP WEST ENTRANCE CLSD"
-    },
-    {
-      "number": "10/314",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "green",
-      "text": "TWY Y BTN TWY A AND UPS RAMP CLSD",
-      "displayText": "TWY Y BTN TWY A AND UPS RAMP CLSD",
-      "effectiveStart": "202610311200",
-      "effectiveEnd": "202610312230",
-      "lastUpdated": "2026-10-30T20:29:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY Y BTN TWY A AND UPS RAMP CLSD"
     }
   ],
-  "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-10-31 22:05Z",
+  "taxiRestrictionNotamCount": 2,
+  "allFeedsUpdatedZ": "2026-10-31 22:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-10-31 22:05:44Z"
+    "lastWorkflowTimestampZ": "2026-10-31 22:15:44Z"
   }
 }
