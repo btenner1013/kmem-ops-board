@@ -1,43 +1,49 @@
 {
   "metar": "METAR KMEM 012254Z 12009KT 1SM R36L/P6000FT -RA BR OVC006 18/17 A3015 RMK AO2 SFC VIS 3 RAB54 CIG 004V009 SLP206 P0000 T01780172 $",
-  "taf": "TAF KMEM 012052Z 0121/0224 12007KT P6SM SCT007 OVC010 \n  FM020500 14008KT 6SM -DZ BR OVC006 \n  PROB30 0207/0213 5SM -SHRA BR \n  FM021500 15011G19KT P6SM FEW010 OVC020",
-  "atisText": "MEM ATIS INFO R 2254Z. 12009KT 1SM R36L/P6000FT -RA BR OVC006 18/17 A3015 (THREE ZERO ONE FIVE) RMK AO2 SFC VIS 3 RAB54 CIG 004V009 SLP206 P0000 T01780172. ILS APCH IN USE RY 18C. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO R",
-  "atisLetter": "R",
-  "atisPhonetic": "ROMEO",
-  "atisDisplay": "ROMEO",
+  "taf": "TAF KMEM 012320Z 0200/0306 13007KT 4SM -DZ BR OVC007 \n  FM021500 15012G20KT P6SM OVC015 \n  FM022200 13008KT P6SM BKN020 OVC040",
+  "atisText": "MEM ATIS INFO S 2254Z. 12009KT 1SM R36L/P6000FT -RA BR OVC006 18/17 A3015 (THREE ZERO ONE FIVE) RMK AO2 SFC VIS 3 RAB54 CIG 004V009 SLP206 P0000 T01780172. ILS APCH IN USE RY 18C. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 2325Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 2325Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 2325Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO S",
+  "atisLetter": "S",
+  "atisPhonetic": "SIERRA",
+  "atisDisplay": "SIERRA",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-01T22:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-01T22:54:00Z",
-  "atisAgeMinutes": 22,
-  "atisReportIdentity": "R:2254Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisAgeMinutes": 32,
+  "atisReportIdentity": "S:2254Z",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
     "ATIS_RELAY"
   ],
-  "atisLiveCandidateCount": 1,
+  "atisLiveCandidateCount": 2,
   "atisLiveCandidates": [
+    {
+      "identity": "S:2254Z",
+      "observedZ": "2026-11-01T22:54:00Z",
+      "sources": [
+        "ATIS_INFO_API"
+      ]
+    },
     {
       "identity": "R:2254Z",
       "observedZ": "2026-11-01T22:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
         "ATIS_RELAY"
       ]
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "R",
-  "atisReportedPhonetic": "ROMEO",
+  "atisReportedLetter": "S",
+  "atisReportedPhonetic": "SIERRA",
   "atisReportedArrRunways": "18C",
   "atisReportedDepRunways": "18R / 18C / 18L",
   "atisReportedClosedRunways": "NONE",
@@ -50,7 +56,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-01T20:25:43Z",
+  "trendReferenceTimestampZ": "2026-11-01T20:35:43Z",
   "trendSampleCount": 21,
   "obsSource": "MIXED",
   "obsFieldSources": {
@@ -172,7 +178,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA ATIS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-01 23:10:00.000",
+  "bwcUpdatedZ": "2026-11-01 23:22:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "LOW",
@@ -185,7 +191,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-01 23:15:56Z",
+  "milNotamUpdatedZ": "2026-11-01 23:26:05Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -222,7 +228,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-01 23:15:56Z",
+  "milNotamAttemptZ": "2026-11-01 23:26:05Z",
   "ficonNotams": [
     {
       "number": "11/027",
@@ -348,13 +354,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-11-01 23:15Z",
+  "allFeedsUpdatedZ": "2026-11-01 23:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-01 23:15:44Z"
+    "lastWorkflowTimestampZ": "2026-11-01 23:25:45Z"
   }
 }
