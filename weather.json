@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-02T05:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-02T05:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "A:0554Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -83,7 +83,7 @@
   "rcrSeverity": "good",
   "rcrSource": "NOTAM_FICON",
   "rcrVisible": true,
-  "rcrRaw": "11/031 RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2611020605. RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2611020605.",
+  "rcrRaw": "11/033 RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2611020608. RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2611020608.",
   "altimeter": "30.16",
   "altimeterRaw": 30.16,
   "altimeterTrend": "\u2192",
@@ -172,7 +172,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA ATIS",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-02 06:01:00.000",
+  "bwcUpdatedZ": "2026-11-02 06:13:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "SEVERE",
@@ -185,7 +185,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-02 06:06:17Z",
+  "milNotamUpdatedZ": "2026-11-02 06:15:59Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -222,8 +222,30 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-02 06:06:17Z",
+  "milNotamAttemptZ": "2026-11-02 06:15:59Z",
   "ficonNotams": [
+    {
+      "number": "11/033",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2611020608.",
+      "displayText": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2611020608.",
+      "effectiveStart": "202611020608",
+      "effectiveEnd": "202611030608",
+      "lastUpdated": "2026-11-02T06:10:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "11/032",
+      "classification": "DOM",
+      "severity": "green",
+      "text": "RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2611020606.",
+      "displayText": "RWY 18R FICON 5/5/5 100 PCT WET OBS AT 2611020606.",
+      "effectiveStart": "202611020606",
+      "effectiveEnd": "202611030606",
+      "lastUpdated": "2026-11-02T06:10:00.000Z",
+      "source": "FAA_NMS_STAGING"
+    },
     {
       "number": "11/031",
       "classification": "DOM",
@@ -232,7 +254,7 @@
       "displayText": "RWY 18L FICON 5/5/5 100 PCT WET OBS AT 2611020605.",
       "effectiveStart": "202611020605",
       "effectiveEnd": "202611030605",
-      "lastUpdated": "2026-11-02T06:05:00.000Z",
+      "lastUpdated": "2026-11-02T06:08:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -243,7 +265,7 @@
       "displayText": "RWY 18C FICON 5/5/5 100 PCT WET OBS AT 2611020605.",
       "effectiveStart": "202611020605",
       "effectiveEnd": "202611030605",
-      "lastUpdated": "2026-11-02T06:05:00.000Z",
+      "lastUpdated": "2026-11-02T06:08:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -254,7 +276,7 @@
       "displayText": "TWY ALL FICON WET OBS AT 2611020603.",
       "effectiveStart": "202611020603",
       "effectiveEnd": "202611030603",
-      "lastUpdated": "2026-11-02T06:04:00.000Z",
+      "lastUpdated": "2026-11-02T06:06:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -265,11 +287,11 @@
       "displayText": "APRON ALL FICON WET OBS AT 2611020602.",
       "effectiveStart": "202611020602",
       "effectiveEnd": "202611030602",
-      "lastUpdated": "2026-11-02T06:04:00.000Z",
+      "lastUpdated": "2026-11-02T06:06:00.000Z",
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "ficonNotamCount": 4,
+  "ficonNotamCount": 6,
   "runwayClosureNotams": [],
   "runwayClosureNotamCount": 0,
   "constructionStatusNotams": [
@@ -326,13 +348,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-11-02 06:05Z",
+  "allFeedsUpdatedZ": "2026-11-02 06:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-02 06:05:48Z"
+    "lastWorkflowTimestampZ": "2026-11-02 06:15:44Z"
   }
 }
