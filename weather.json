@@ -5,18 +5,18 @@
   "atisLetter": "L",
   "atisPhonetic": "LIMA",
   "atisDisplay": "LIMA",
-  "metarFetchStatus": "USED_LAST_GOOD",
+  "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-02T13:01:00Z",
-  "metarAgeMinutes": 15,
-  "metarSelectedSource": "LAST_KNOWN_GOOD",
+  "metarAgeMinutes": 25,
+  "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
-  "metarSelectionReason": "LIVE_REGRESSION",
+  "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
-  "metarLiveCandidateCount": 2,
+  "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-02T13:01:00Z",
-  "atisAgeMinutes": 15,
+  "atisAgeMinutes": 25,
   "atisReportIdentity": "L:1301Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -43,15 +43,15 @@
   "atisReportedClosedRunways": "NONE",
   "atisReportedFlow": "SOUTH \u2193",
   "lastKnownGoodUsed": {
-    "metar": true,
+    "metar": false,
     "taf": false,
     "atis": false,
     "ahas": false
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-02T10:25:46Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-11-02T10:35:44Z",
+  "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -172,13 +172,13 @@
   "wxAlertFlash": false,
   "wxAlertPulse": false,
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -DZ PSBL NOW-14Z",
-  "bwc": "MODERATE",
+  "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-02 13:16:00.000",
-  "bwcNexrad": "MODERATE",
+  "bwcUpdatedZ": "2026-11-02 13:22:00.000",
+  "bwcNexrad": "LOW",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "LOW",
-  "bwcAhasRisk": "MODERATE",
+  "bwcAhasRisk": "LOW",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "99999",
   "bwcUrl": "https://www.usahas.com/print.aspx?month=11&day=2&hour=13&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
@@ -187,7 +187,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-02 13:16:39Z",
+  "milNotamUpdatedZ": "2026-11-02 13:26:20Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -224,7 +224,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-02 13:16:39Z",
+  "milNotamAttemptZ": "2026-11-02 13:26:20Z",
   "ficonNotams": [
     {
       "number": "11/033",
@@ -350,13 +350,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-11-02 13:15Z",
+  "allFeedsUpdatedZ": "2026-11-02 13:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-02 13:15:48Z"
+    "lastWorkflowTimestampZ": "2026-11-02 13:25:49Z"
   }
 }
