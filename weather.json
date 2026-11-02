@@ -1,23 +1,23 @@
 {
   "metar": "METAR KMEM 021354Z 17010KT 10SM OVC010 19/17 A3014 RMK AO2 CIG 008V013 SLP205 T01890172 $",
-  "taf": "TAF KMEM 021441Z 0215/0318 15011KT P6SM BKN010 \n  FM021800 16011G20KT P6SM BKN025 \n  FM022300 15010KT P6SM SCT025 OVC040 \n  FM030400 16013G21KT P6SM BKN035 OVC060 WS020/17045KT \n  FM031500 16018G28KT P6SM BKN035",
-  "atisText": "MEM ATIS INFO N 1354Z. 17010KT 10SM OVC010 19/17 A3014 (THREE ZERO ONE FOUR) RMK AO2 CIG 008V013 SLP205 T01890172. ILS APCH IN USE RY 18L. DEPG RWYS 18C. NOTICE TO AIRMEN. RWY 18R, 36L CLSD. Y BTN TWY A AND UPS RAMP CLSD. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. WILSON WEST ENTRY CLSD. RWY 27 CONDITION CODES, , 5 , , 5 , , 5 , AT 0605Z, RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 0605Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 0605Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 0605Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO N",
-  "atisLetter": "N",
-  "atisPhonetic": "NOVEMBER",
-  "atisDisplay": "NOVEMBER",
-  "metarFetchStatus": "OK",
+  "taf": "TAF KMEM 021453Z 0215/0318 15011KT P6SM BKN010 OVC018 \n  FM021700 16011G20KT P6SM BKN025 \n  FM022300 15010KT P6SM SCT025 OVC040 \n  FM030400 16013G21KT P6SM BKN035 OVC060 WS020/17045KT \n  FM031500 16018G28KT P6SM BKN035",
+  "atisText": "MEM ATIS INFO O 1454Z. 16010KT 10SM BKN010 OVC013 19/17 A3015 (THREE ZERO ONE FIVE) RMK AO2 SLP206 T01940172 53003. ILS APCH IN USE RY 18L, 18R. DEPG RWYS 18L, 18R. NOTICE TO AIRMEN. RWY 18C, 36C CLSD. Y BTN TWY A AND UPS RAMP CLSD. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. WILSON WEST ENTRY CLSD. RWY 27 CONDITION CODES, , 5 , , 5 , , 5 , AT 0605Z, RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 0605Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 0605Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 0605Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO O",
+  "atisLetter": "O",
+  "atisPhonetic": "OSCAR",
+  "atisDisplay": "OSCAR",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-02T13:54:00Z",
-  "metarAgeMinutes": 52,
-  "metarSelectedSource": "NWS_NOAA",
-  "metarOriginalSource": "NWS_NOAA",
+  "metarAgeMinutes": 62,
+  "metarSelectedSource": "AWC",
+  "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
-  "metarLiveCandidateCount": 1,
-  "atisObservedZ": "2026-11-02T13:54:00Z",
-  "atisAgeMinutes": 52,
-  "atisReportIdentity": "N:1354Z",
+  "metarLiveCandidateCount": 3,
+  "atisObservedZ": "2026-11-02T14:54:00Z",
+  "atisAgeMinutes": 2,
+  "atisReportIdentity": "O:1454Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -27,8 +27,8 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "N:1354Z",
-      "observedZ": "2026-11-02T13:54:00Z",
+      "identity": "O:1454Z",
+      "observedZ": "2026-11-02T14:54:00Z",
       "sources": [
         "ATIS_INFO_API",
         "ATIS_RELAY"
@@ -36,11 +36,11 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "N",
-  "atisReportedPhonetic": "NOVEMBER",
-  "atisReportedArrRunways": "18L",
-  "atisReportedDepRunways": "18C",
-  "atisReportedClosedRunways": "18R / 36L",
+  "atisReportedLetter": "O",
+  "atisReportedPhonetic": "OSCAR",
+  "atisReportedArrRunways": "18L / 18R",
+  "atisReportedDepRunways": "18L / 18R",
+  "atisReportedClosedRunways": "18C / 36C",
   "atisReportedFlow": "SOUTH \u2193",
   "lastKnownGoodUsed": {
     "metar": false,
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-02T11:55:44Z",
+  "trendReferenceTimestampZ": "2026-11-02T12:05:44Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -64,13 +64,13 @@
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": 1000,
-  "atisAltimeterRaw": 30.14,
+  "atisAltimeterRaw": 30.15,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": 1000,
-  "arrRunways": "18L",
-  "depRunways": "18C",
-  "closedRunways": "18R / 36L",
+  "arrRunways": "18L / 18R",
+  "depRunways": "18L / 18R",
+  "closedRunways": "18C / 36C",
   "knownMemRunways": [
     "9/27",
     "18L/36R",
@@ -84,8 +84,8 @@
   "rcrSource": "NOTAM_FICON",
   "rcrVisible": true,
   "rcrRaw": "11/041 RWY 27 FICON 5/5/5 30 PCT WET OBS AT 2611021429. RWY 27 FICON 5/5/5 30 PCT WET OBS AT 2611021429.",
-  "altimeter": "30.14",
-  "altimeterRaw": 30.14,
+  "altimeter": "30.15",
+  "altimeterRaw": 30.15,
   "altimeterTrend": "\u2192",
   "altimeterTrendText": "STEADY",
   "ceilingFt": 1000,
@@ -96,9 +96,9 @@
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
   "visibilityTrendText": "STEADY",
-  "windRaw": "17010KT",
-  "windDisplay": "17010KT",
-  "windDirDeg": 170,
+  "windRaw": "16010KT",
+  "windDisplay": "16010KT",
+  "windDirDeg": 160,
   "windSpeedKt": 10,
   "windGustKt": null,
   "windArrow": "\u2191",
@@ -174,7 +174,7 @@
   "tafTrend": "WX ALERT | \ud83d\udca8 LLWS PSBL 03 NOV 04-15Z",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-02 14:42:00.000",
+  "bwcUpdatedZ": "2026-11-02 14:54:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "LOW",
@@ -187,7 +187,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-02 14:46:30Z",
+  "milNotamUpdatedZ": "2026-11-02 14:56:23Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -224,7 +224,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-02 14:46:30Z",
+  "milNotamAttemptZ": "2026-11-02 14:56:23Z",
   "ficonNotams": [
     {
       "number": "11/043",
@@ -375,13 +375,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 2,
-  "allFeedsUpdatedZ": "2026-11-02 14:45Z",
+  "allFeedsUpdatedZ": "2026-11-02 14:55Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-02 14:45:50Z"
+    "lastWorkflowTimestampZ": "2026-11-02 14:55:49Z"
   }
 }
