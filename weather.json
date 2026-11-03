@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-03T23:01:00Z",
-  "metarAgeMinutes": 5,
+  "metarAgeMinutes": 15,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-03T23:01:00Z",
-  "atisAgeMinutes": 5,
+  "atisAgeMinutes": 15,
   "atisReportIdentity": "M:2301Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-03T20:06:23Z",
+  "trendReferenceTimestampZ": "2026-11-03T20:16:03Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -122,6 +122,26 @@
   "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND.",
   "wxAlerts": [
     {
+      "code": "RA",
+      "label": "RAIN / RAIN",
+      "emoji": "\ud83c\udf27\ufe0f",
+      "category": "rain",
+      "sources": [
+        "ATIS",
+        "METAR"
+      ],
+      "severity": "info",
+      "displayTone": "blue",
+      "flash": false,
+      "pulse": false,
+      "priority": 60,
+      "text": "RA ATIS",
+      "displayText": "\ud83c\udf27\ufe0f RA ATIS",
+      "tafWindow": "",
+      "tafStartKey": -1,
+      "tafGroupType": ""
+    },
+    {
       "code": "-TSRA",
       "label": "LIGHT THUNDERSTORM RAIN",
       "emoji": "\u26c8\ufe0f",
@@ -143,10 +163,30 @@
       "tafEndIso": "2026-11-04T04:00:00Z"
     }
   ],
-  "wxAlertText": "\u26c8\ufe0f -TSRA PSBL 04 NOV 00-04Z",
-  "wxAlertLogText": "-TSRA PSBL 04 NOV 00-04Z",
+  "wxAlertText": "\ud83c\udf27\ufe0f RA ATIS \u2192 \u26c8\ufe0f -TSRA PSBL 04 NOV 00-04Z",
+  "wxAlertLogText": "RA ATIS | -TSRA PSBL 04 NOV 00-04Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
+    "code": "RA",
+    "label": "RAIN / RAIN",
+    "emoji": "\ud83c\udf27\ufe0f",
+    "category": "rain",
+    "sources": [
+      "ATIS",
+      "METAR"
+    ],
+    "severity": "info",
+    "displayTone": "blue",
+    "flash": false,
+    "pulse": false,
+    "priority": 60,
+    "text": "RA ATIS",
+    "displayText": "\ud83c\udf27\ufe0f RA ATIS",
+    "tafWindow": "",
+    "tafStartKey": -1,
+    "tafGroupType": ""
+  },
+  "wxSecondaryAlert": {
     "code": "-TSRA",
     "label": "LIGHT THUNDERSTORM RAIN",
     "emoji": "\u26c8\ufe0f",
@@ -167,14 +207,13 @@
     "tafStartIso": "2026-11-04T00:00:00Z",
     "tafEndIso": "2026-11-04T04:00:00Z"
   },
-  "wxSecondaryAlert": null,
-  "wxAlertTone": "yellow",
+  "wxAlertTone": "blue",
   "wxAlertFlash": false,
-  "wxAlertPulse": true,
-  "tafTrend": "WX ALERT | \u26c8\ufe0f -TSRA PSBL 04 NOV 00-04Z",
+  "wxAlertPulse": false,
+  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f RA ATIS \u2192 \u26c8\ufe0f -TSRA PSBL 04 NOV 00-04Z",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-03 23:00:00.000",
+  "bwcUpdatedZ": "2026-11-03 23:12:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "LOW",
@@ -187,7 +226,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-03 23:06:06Z",
+  "milNotamUpdatedZ": "2026-11-03 23:16:17Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -224,7 +263,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-03 23:06:06Z",
+  "milNotamAttemptZ": "2026-11-03 23:16:17Z",
   "ficonNotams": [
     {
       "number": "11/079",
@@ -399,13 +438,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 6,
-  "allFeedsUpdatedZ": "2026-11-03 23:05Z",
+  "allFeedsUpdatedZ": "2026-11-03 23:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-03 23:05:48Z"
+    "lastWorkflowTimestampZ": "2026-11-03 23:15:51Z"
   }
 }
