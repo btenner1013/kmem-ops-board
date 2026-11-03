@@ -627,6 +627,9 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
   white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; text-align:center !important;
   font-weight:1000 !important; letter-spacing:.01em !important; line-height:1.05 !important;
 }
+#tafTrend.wx-alert-pair{ white-space:normal !important; overflow-wrap:normal; }
+.wx-alert-segment{ display:inline-block; max-width:100%; white-space:normal; }
+.wx-alert-separator{ color:var(--dim); margin:0 .3em; }
 
 /* Manual Alert Override */
 .manual-alert-overlay{ position:fixed; z-index:99999; display:none; align-items:center; justify-content:center; pointer-events:none; padding:3px 8px; }
@@ -1831,6 +1834,18 @@ function wxAlertDisplayHtml(value,data={}){
   return escaped.replace(/^(\p{Extended_Pictographic}(?:️)?)/u,'<span class="wx-alert-emoji">$1</span>');
 }
 
+function wxAlertSegmentHtml(alert,displayText){
+  // Structured alerts already carry their own source/window. Do not infer
+  // a current source from unrelated (possibly retained) raw ATIS text.
+  const tone=["red","blue","yellow"].includes(alert.displayTone)?alert.displayTone:"yellow";
+  const classes=["wx-alert-segment",`alert-${tone}`];
+  if(alert.flash===true)classes.push("alert-flash");
+  if(alert.pulse===true)classes.push("alert-pulse");
+  const escaped=String(displayText).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const html=escaped.replace(/^(\p{Extended_Pictographic}(?:️)?)/u,'<span class="wx-alert-emoji">$1</span>');
+  return `<span class="${classes.join(" ")}">${html}</span>`;
+}
+
 function formatRawWeatherText(metar,taf,data={}){
   const metarText=(metar||"METAR unavailable").toString().trim();
   /* Source feeds sometimes insert a newline in the middle of one forecast
@@ -2419,6 +2434,21 @@ function setTafTrend(data){
   const tone=(data.wxAlertTone||"yellow").toLowerCase();
 
   if(hasAlert){
+    const primary=data.wxPrimaryAlert;
+    const secondary=data.wxSecondaryAlert;
+    if(primary&&primary.displayText){
+      trend.innerHTML=wxAlertSegmentHtml(primary,primary.displayText);
+      if(secondary&&secondary.displayText){
+        let secondaryDisplay=secondary.displayText;
+        if(primary.code===secondary.code&&secondary.tafWindow){
+          secondaryDisplay=`PSBL ${secondary.tafWindow}`;
+        }
+        trend.classList.add("wx-alert-pair");
+        trend.innerHTML+='<span class="wx-alert-separator">→</span>'+wxAlertSegmentHtml(secondary,secondaryDisplay);
+      }
+      trend.title=data.wxAlertLogText||wxDisplayText;
+      return;
+    }
     if(tone==="red"){ trend.classList.add("alert-red"); }
     else if(tone==="blue"){ trend.classList.add("alert-blue"); }
     else{ trend.classList.add("alert-yellow"); }
@@ -4027,4 +4057,5 @@ setInterval(phase45PolishOpsText,1000);
 
 </body>
 </html>
+
 

@@ -2823,7 +2823,7 @@ def combine_simultaneous_alerts(alerts, window=None):
         first["tafWindow"] = window
     else:
         sources = visible_alert_sources(src for alert in alerts for src in alert.get("sources", []))
-        source_suffix = "ATIS" if "ATIS" in sources else "OBS"
+        source_suffix = "ATIS" if "ATIS" in sources else "METAR"
         first["text"] = f"{code_text} {source_suffix}".strip()
         first["displayText"] = f"{display_base} {source_suffix}".strip()
 
@@ -3609,7 +3609,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
             "FU", "VA"
         }
         base_text = code if code in raw_display_codes else check["label"]
-        source_suffix = "ATIS" if source == "ATIS" else "OBS"
+        source_suffix = "ATIS" if source == "ATIS" else "METAR"
         text = f"{base_text} {source_suffix}"
         display_text = f"{check['emoji']} {text}".strip()
         alerts.append({
@@ -3712,38 +3712,18 @@ def detect_weather_alerts(metar, taf, atis_text=""):
     selected_current_alert = select_current_alert(current_alerts)
     selected_taf_alert = select_taf_alert(taf_alerts, now_z)
 
-    if not selected_current_alert and not selected_taf_alert:
-        return []
-    if not selected_current_alert:
+    # Observed weather leads the existing WX ALERT slot before any forecast,
+    # including a TAF group whose validity window already includes NOW.
+    # Severity and ATIS tie-breaking still apply within current sources.
+    # With no current weather-code alert, retain the existing TAF selection.
+    if selected_current_alert:
+        return [selected_current_alert] + ([selected_taf_alert] if selected_taf_alert else [])
+    if selected_taf_alert:
         return [selected_taf_alert]
-    if not selected_taf_alert:
-        return [selected_current_alert]
-
-    # Both exist — most restrictive wins across all sources.
-    # Active TAF (bucket 0) competes at natural priority; future TAF gets a
-    # timing penalty so current observations beat near-future forecasts.
-    # ATIS > METAR > TAF as a tiebreaker when scores are equal.
-    def _alert_score(alert, is_taf):
-        sources = set(alert.get("sources", []))
-        if is_taf:
-            bucket = taf_timing_bucket(alert, now_z) or 0
-            timing_penalty = bucket * 5
-            source_tie = 2
-        else:
-            timing_penalty = 0
-            source_tie = 0 if "ATIS" in sources else 1
-        return (
-            alert.get("priority", 99) + timing_penalty,
-            taf_hazard_rank(alert.get("code")),
-            source_tie
-        )
-
-    c_score = _alert_score(selected_current_alert, False)
-    t_score = _alert_score(selected_taf_alert, True)
-    return [selected_current_alert if c_score <= t_score else selected_taf_alert]
+    return []
 
 def summarize_weather_alerts(alerts):
-    """Format the selected WX alert; tafTrend is a legacy display alias.
+    """Format current WX followed by possible WX in the existing alert slot.
 
     No weather-code alert does not establish VFR or a 24-hour TAF outlook:
     ceilings, visibility, and forecast coverage are not evaluated here.
@@ -3762,15 +3742,23 @@ def summarize_weather_alerts(alerts):
         }
 
     primary = alerts[0]
+    secondary = alerts[1] if len(alerts) > 1 else None
     wx_alert_text = primary["displayText"]
     wx_alert_log_text = primary["text"]
+    if secondary:
+        secondary_display = secondary["displayText"]
+        if primary.get("code") == secondary.get("code") and secondary.get("tafWindow"):
+            # Keep the forecast timing without repeating the same hazard code.
+            secondary_display = f"PSBL {secondary['tafWindow']}"
+        wx_alert_text += " → " + secondary_display
+        wx_alert_log_text += " | " + secondary["text"]
 
     return {
         "wxAlertText": wx_alert_text,
         "wxAlertLogText": wx_alert_log_text,
         "wxAlertVisible": True,
         "wxPrimaryAlert": primary,
-        "wxSecondaryAlert": None,
+        "wxSecondaryAlert": secondary,
         "wxAlertTone": primary.get("displayTone", "yellow"),
         "wxAlertFlash": bool(primary.get("flash", False)),
         "wxAlertPulse": bool(primary.get("pulse", False)),
@@ -6173,4 +6161,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

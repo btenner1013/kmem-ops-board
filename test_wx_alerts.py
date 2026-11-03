@@ -71,7 +71,7 @@ TAF_CLEAR        = taf(f"19007KT P6SM FEW090", f"FM{ddhh(6)} 23009KT P6SM SCT040
 TAF_VCTS_ACTIVE  = taf(f"18009KT P6SM VCTS BKN045CB", f"FM{ddhh(6)} 23009KT P6SM SCT040")
 TAF_SHRA_ACTIVE  = taf(f"18009KT P6SM -SHRA SCT020 BKN045", f"FM{ddhh(6)} 23009KT P6SM SCT040")
 TAF_TSRA_ACTIVE  = taf(f"18009KT P6SM TSRA SCT040CB BKN090", f"FM{ddhh(6)} 23009KT P6SM SCT040")
-# VCTS starting ~2hr from now (bucket=1, timing_penalty=5)
+# VCTS starting ~2hr from now (TAF timing bucket 1)
 TAF_VCTS_NEAR    = taf(f"19007KT P6SM FEW090", f"FM{ddhh(2)} P6SM VCTS BKN045CB", f"FM{ddhh(8)} 23009KT P6SM SCT040")
 
 # ── Test sections ───────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ check("Empty inputs",                    u.detect_weather_alerts("", "", ""), []
 # 2. Source labels ───────────────────────────────────────────────────────────
 print("\n[2] Source labels")
 alerts = u.detect_weather_alerts(METAR_RA, TAF_CLEAR)
-check("-RA METAR only  → '-RA OBS'",   f(alerts), "-RA OBS")
+check("-RA METAR only  → '-RA METAR'",   f(alerts), "-RA METAR")
 check("-RA METAR only  → sources METAR", f(alerts, "sources"), ["METAR"])
 
 alerts = u.detect_weather_alerts(METAR_RA, TAF_CLEAR, ATIS_RA)
@@ -103,7 +103,7 @@ alerts = u.detect_weather_alerts(METAR_TSRA, TAF_CLEAR, ATIS_TSRA)
 check("TSRA ATIS+METAR → 'TSRA ATIS'", f(alerts), "TSRA ATIS")
 
 alerts = u.detect_weather_alerts(METAR_FZRA, TAF_CLEAR)
-check("FZRA METAR only → 'FZRA OBS'",  f(alerts), "FZRA OBS")
+check("FZRA METAR only → 'FZRA METAR'",  f(alerts), "FZRA METAR")
 
 # 3. TAF labels (PSBL + time window) ────────────────────────────────────────
 print("\n[3] TAF labels — expect code PSBL <window>")
@@ -121,18 +121,17 @@ alerts = u.detect_weather_alerts(METAR_CLEAR, TAF_TSRA_ACTIVE)
 check("TSRA active TAF → code TSRA",           f(alerts, "code"), "TSRA")
 check_contains("TSRA active TAF → text PSBL",  f(alerts), "PSBL")
 
-# 4. Ranking — most restrictive wins ────────────────────────────────────────
-print("\n[4] Ranking — most restrictive wins")
+# 4. Ranking — current first; most restrictive current source wins ──────────
+print("\n[4] Ranking — current first; most restrictive current source wins")
 
-# High-impact TAF beats info-tier current
+# An active forecast window is still a forecast, not observed weather.
 alerts = u.detect_weather_alerts(METAR_RA, TAF_VCTS_ACTIVE, ATIS_RA)
-check("VCTS active TAF (pri=30) beats -RA current (pri=60)",
-      f(alerts, "code"), "VCTS")
+check("-RA current beats VCTS active TAF", f(alerts, "code"), "-RA")
+check("Current ATIS/METAR sources retained", f(alerts, "sources"), ["ATIS", "METAR"])
 
-# VCTS near-future (bucket=1, penalty=5 → effective 35) still beats -RA (60)
+# Forecast severity must not hide weather happening now.
 alerts = u.detect_weather_alerts(METAR_RA, TAF_VCTS_NEAR, ATIS_RA)
-check("VCTS near-future TAF (pri=35) beats -RA current (pri=60)",
-      f(alerts, "code"), "VCTS")
+check("-RA current beats VCTS near-future TAF", f(alerts, "code"), "-RA")
 
 # Same tier: -SHRA TAF (pri=70) loses to -RA current (pri=60)
 alerts = u.detect_weather_alerts(METAR_RA, TAF_SHRA_ACTIVE, ATIS_RA)
@@ -194,3 +193,4 @@ print("=" * 62)
 print(f"RESULTS: {PASS} passed, {FAIL} failed")
 print("=" * 62)
 sys.exit(0 if FAIL == 0 else 1)
+
