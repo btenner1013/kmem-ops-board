@@ -1,5 +1,5 @@
 {
-  "metar": "SPECI KMEM 040027Z 13006KT 7SM RA FEW026 SCT037 OVC050 20/19 A2988 RMK AO2 P0008 T02000194 $",
+  "metar": "METAR KMEM 040054Z 16005KT 5SM -RA BR FEW031 BKN050 OVC070 20/19 A2989 RMK AO2 SLP117 P0015 T02000194 $",
   "taf": "TAF KMEM 032320Z 0400/0506 18010KT 4SM SHRA VCTS SCT008 OVC015CB \n  TEMPO 0401/0404 2SM +SHRA OVC015 \n  FM040400 20007KT P6SM VCSH BKN015 \n  FM040800 24005KT P6SM BKN015 \n  FM041700 27007KT P6SM BKN025",
   "atisText": "MEM ATIS INFO Q 0054Z. 16005KT 5SM -RA BR FEW031 BKN050 OVC070 20/19 A2989 (TWO NINER EIGHT NINER) RMK AO2 SLP117 P0015 T02000194. ILS APCH IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO Q",
   "atisLetter": "Q",
@@ -8,35 +8,29 @@
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-11-04T00:27:00Z",
-  "metarAgeMinutes": 29,
+  "metarObservedZ": "2026-11-04T00:54:00Z",
+  "metarAgeMinutes": 12,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-04T00:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "Q:0054Z",
-  "atisSelectedSource": "ATIS_INFO_API",
+  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
     "ATIS_RELAY"
   ],
-  "atisLiveCandidateCount": 2,
+  "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
       "identity": "Q:0054Z",
       "observedZ": "2026-11-04T00:54:00Z",
       "sources": [
-        "ATIS_INFO_API"
-      ]
-    },
-    {
-      "identity": "P:0027Z",
-      "observedZ": "2026-11-04T00:27:00Z",
-      "sources": [
+        "ATIS_INFO_API",
         "ATIS_RELAY"
       ]
     }
@@ -56,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-03T21:55:49Z",
+  "trendReferenceTimestampZ": "2026-11-03T22:05:51Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -66,9 +60,9 @@
     "visibility": "ATIS",
     "ceiling": "ATIS"
   },
-  "metarAltimeterRaw": 29.88,
-  "metarVisibilitySm": 7.0,
-  "metarVisibilityDisplay": "7 SM",
+  "metarAltimeterRaw": 29.89,
+  "metarVisibilitySm": 5.0,
+  "metarVisibilityDisplay": "5 SM",
   "metarCeilingFt": 5000,
   "atisAltimeterRaw": 29.89,
   "atisVisibilitySm": 5.0,
@@ -128,11 +122,12 @@
   "lightningLogText": "No current METAR/ATIS lightning or thunder cues. TAF thunder belongs in WX ALERT / TAF TREND.",
   "wxAlerts": [
     {
-      "code": "RA",
-      "label": "RAIN",
+      "code": "-RA",
+      "label": "LIGHT RAIN / LIGHT RAIN",
       "emoji": "\ud83c\udf27\ufe0f",
       "category": "rain",
       "sources": [
+        "ATIS",
         "METAR"
       ],
       "severity": "info",
@@ -140,8 +135,8 @@
       "flash": false,
       "pulse": false,
       "priority": 60,
-      "text": "RA METAR",
-      "displayText": "\ud83c\udf27\ufe0f RA METAR",
+      "text": "-RA ATIS",
+      "displayText": "\ud83c\udf27\ufe0f -RA ATIS",
       "tafWindow": "",
       "tafStartKey": -1,
       "tafGroupType": ""
@@ -168,15 +163,16 @@
       "tafEndIso": "2026-11-04T04:00:00Z"
     }
   ],
-  "wxAlertText": "\ud83c\udf27\ufe0f RA METAR \u2192 \u26c8\ufe0f VCTS PSBL NOW-04Z",
-  "wxAlertLogText": "RA METAR | VCTS PSBL NOW-04Z",
+  "wxAlertText": "\ud83c\udf27\ufe0f -RA ATIS \u2192 \u26c8\ufe0f VCTS PSBL NOW-04Z",
+  "wxAlertLogText": "-RA ATIS | VCTS PSBL NOW-04Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
-    "code": "RA",
-    "label": "RAIN",
+    "code": "-RA",
+    "label": "LIGHT RAIN / LIGHT RAIN",
     "emoji": "\ud83c\udf27\ufe0f",
     "category": "rain",
     "sources": [
+      "ATIS",
       "METAR"
     ],
     "severity": "info",
@@ -184,8 +180,8 @@
     "flash": false,
     "pulse": false,
     "priority": 60,
-    "text": "RA METAR",
-    "displayText": "\ud83c\udf27\ufe0f RA METAR",
+    "text": "-RA ATIS",
+    "displayText": "\ud83c\udf27\ufe0f -RA ATIS",
     "tafWindow": "",
     "tafStartKey": -1,
     "tafGroupType": ""
@@ -214,23 +210,23 @@
   "wxAlertTone": "blue",
   "wxAlertFlash": false,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f RA METAR \u2192 \u26c8\ufe0f VCTS PSBL NOW-04Z",
+  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA ATIS \u2192 \u26c8\ufe0f VCTS PSBL NOW-04Z",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-04 00:54:00.000",
+  "bwcUpdatedZ": "2026-11-04 01:00:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "LOW",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=11&day=4&hour=00&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=11&iDay=4&iHour=00",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=11&day=4&hour=01&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=11&iDay=4&iHour=01",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-04 00:55:53Z",
+  "milNotamUpdatedZ": "2026-11-04 01:05:56Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -267,7 +263,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-04 00:55:53Z",
+  "milNotamAttemptZ": "2026-11-04 01:05:56Z",
   "ficonNotams": [
     {
       "number": "11/079",
@@ -442,13 +438,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 6,
-  "allFeedsUpdatedZ": "2026-11-04 00:55Z",
+  "allFeedsUpdatedZ": "2026-11-04 01:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-04 00:55:44Z"
+    "lastWorkflowTimestampZ": "2026-11-04 01:05:43Z"
   }
 }
