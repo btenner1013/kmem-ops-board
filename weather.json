@@ -1,23 +1,23 @@
 {
   "metar": "SPECI KMEM 040728Z 23004KT 2SM RA BR OVC011 19/18 A2983 RMK AO2 P0001 T01890183 $",
   "taf": "TAF KMEM 040520Z 0406/0512 20007KT P6SM VCSH BKN025 \n  TEMPO 0406/0407 5SM -SHRA BR \n  FM040800 24005KT P6SM BKN015 \n  FM041700 27007KT P6SM BKN025 \n  FM050000 27004KT P6SM SCT035",
-  "atisText": "MEM ATIS INFO G 0728Z SPECIAL. 23004KT 2SM RA BR OVC011 19/18 A2983 (TWO NINER EIGHT THREE) RMK AO2 P0001 T01890183. ILS APCH IN USE RY 18L, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO G",
-  "atisLetter": "G",
-  "atisPhonetic": "GOLF",
-  "atisDisplay": "GOLF",
+  "atisText": "MEM ATIS INFO H 0744Z SPECIAL. 23006KT 3SM -RA BR OVC009 19/18 A2983 (TWO NINER EIGHT THREE) RMK AO2 P0004 T01890183. ILS APCH IN USE RY 18L, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO H",
+  "atisLetter": "H",
+  "atisPhonetic": "HOTEL",
+  "atisDisplay": "HOTEL",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-04T07:28:00Z",
-  "metarAgeMinutes": 8,
+  "metarAgeMinutes": 18,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
-  "atisObservedZ": "2026-11-04T07:28:00Z",
-  "atisAgeMinutes": 8,
-  "atisReportIdentity": "G:0728Z",
+  "atisObservedZ": "2026-11-04T07:44:00Z",
+  "atisAgeMinutes": 2,
+  "atisReportIdentity": "H:0744Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -27,8 +27,8 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "G:0728Z",
-      "observedZ": "2026-11-04T07:28:00Z",
+      "identity": "H:0744Z",
+      "observedZ": "2026-11-04T07:44:00Z",
       "sources": [
         "ATIS_INFO_API",
         "ATIS_RELAY"
@@ -36,8 +36,8 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "G",
-  "atisReportedPhonetic": "GOLF",
+  "atisReportedLetter": "H",
+  "atisReportedPhonetic": "HOTEL",
   "atisReportedArrRunways": "18L / 18R",
   "atisReportedDepRunways": "18C",
   "atisReportedClosedRunways": "NONE",
@@ -50,14 +50,14 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-04T04:35:44Z",
+  "trendReferenceTimestampZ": "2026-11-04T04:55:44Z",
   "trendSampleCount": 22,
-  "obsSource": "ATIS",
+  "obsSource": "MIXED",
   "obsFieldSources": {
     "wind": "ATIS",
     "tempDp": "ATIS",
     "altimeter": "ATIS",
-    "visibility": "ATIS",
+    "visibility": "METAR",
     "ceiling": "ATIS"
   },
   "metarAltimeterRaw": 29.83,
@@ -65,9 +65,9 @@
   "metarVisibilityDisplay": "2 SM",
   "metarCeilingFt": 1100,
   "atisAltimeterRaw": 29.83,
-  "atisVisibilitySm": 2.0,
-  "atisVisibilityDisplay": "2 SM",
-  "atisCeilingFt": 1100,
+  "atisVisibilitySm": 3.0,
+  "atisVisibilityDisplay": "3 SM",
+  "atisCeilingFt": 900,
   "arrRunways": "18L / 18R",
   "depRunways": "18C",
   "closedRunways": "NONE",
@@ -86,20 +86,20 @@
   "rcrRaw": "11/077 RWY 18C FICON 5/5/5 100 PCT WET OBS AT 2611032256. RWY 18C FICON 5/5/5 100 PCT WET OBS AT 2611032256.",
   "altimeter": "29.83",
   "altimeterRaw": 29.83,
-  "altimeterTrend": "\u2193",
-  "altimeterTrendText": "FALLING",
-  "ceilingFt": 1100,
-  "ceilingDisplay": "1100 FT",
-  "ceilingTrend": "\u2191",
-  "ceilingTrendText": "RISING",
+  "altimeterTrend": "\u2192",
+  "altimeterTrendText": "STEADY",
+  "ceilingFt": 900,
+  "ceilingDisplay": "900 FT",
+  "ceilingTrend": "\u2192",
+  "ceilingTrendText": "STEADY",
   "visibilitySm": 2.0,
   "visibilityDisplay": "2 SM",
   "visibilityTrend": "\u2193",
   "visibilityTrendText": "FALLING",
-  "windRaw": "23004KT",
-  "windDisplay": "23004KT",
+  "windRaw": "23006KT",
+  "windDisplay": "23006KT",
   "windDirDeg": 230,
-  "windSpeedKt": 4,
+  "windSpeedKt": 6,
   "windGustKt": null,
   "windArrow": "\u2197",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
@@ -123,11 +123,10 @@
   "wxAlerts": [
     {
       "code": "RA",
-      "label": "RAIN / RAIN",
+      "label": "RAIN",
       "emoji": "\ud83c\udf27\ufe0f",
       "category": "rain",
       "sources": [
-        "ATIS",
         "METAR"
       ],
       "severity": "info",
@@ -135,8 +134,8 @@
       "flash": false,
       "pulse": false,
       "priority": 60,
-      "text": "RA ATIS",
-      "displayText": "\ud83c\udf27\ufe0f RA ATIS",
+      "text": "RA METAR",
+      "displayText": "\ud83c\udf27\ufe0f RA METAR",
       "tafWindow": "",
       "tafStartKey": -1,
       "tafGroupType": ""
@@ -163,16 +162,15 @@
       "tafEndIso": "2026-11-04T08:00:00Z"
     }
   ],
-  "wxAlertText": "\ud83c\udf27\ufe0f RA ATIS \u2192 \ud83c\udf27\ufe0f VCSH PSBL NOW-08Z",
-  "wxAlertLogText": "RA ATIS | VCSH PSBL NOW-08Z",
+  "wxAlertText": "\ud83c\udf27\ufe0f RA METAR \u2192 \ud83c\udf27\ufe0f VCSH PSBL NOW-08Z",
+  "wxAlertLogText": "RA METAR | VCSH PSBL NOW-08Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
     "code": "RA",
-    "label": "RAIN / RAIN",
+    "label": "RAIN",
     "emoji": "\ud83c\udf27\ufe0f",
     "category": "rain",
     "sources": [
-      "ATIS",
       "METAR"
     ],
     "severity": "info",
@@ -180,8 +178,8 @@
     "flash": false,
     "pulse": false,
     "priority": 60,
-    "text": "RA ATIS",
-    "displayText": "\ud83c\udf27\ufe0f RA ATIS",
+    "text": "RA METAR",
+    "displayText": "\ud83c\udf27\ufe0f RA METAR",
     "tafWindow": "",
     "tafStartKey": -1,
     "tafGroupType": ""
@@ -210,10 +208,10 @@
   "wxAlertTone": "blue",
   "wxAlertFlash": false,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f RA ATIS \u2192 \ud83c\udf27\ufe0f VCSH PSBL NOW-08Z",
+  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f RA METAR \u2192 \ud83c\udf27\ufe0f VCSH PSBL NOW-08Z",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-04 07:30:00.000",
+  "bwcUpdatedZ": "2026-11-04 07:42:00.000",
   "bwcNexrad": "SEVERE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -226,7 +224,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-04 07:35:50Z",
+  "milNotamUpdatedZ": "2026-11-04 07:45:53Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -263,7 +261,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-04 07:35:50Z",
+  "milNotamAttemptZ": "2026-11-04 07:45:53Z",
   "ficonNotams": [
     {
       "number": "11/079",
@@ -438,13 +436,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 6,
-  "allFeedsUpdatedZ": "2026-11-04 07:35Z",
+  "allFeedsUpdatedZ": "2026-11-04 07:45Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-04 07:35:43Z"
+    "lastWorkflowTimestampZ": "2026-11-04 07:45:44Z"
   }
 }
