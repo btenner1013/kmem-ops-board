@@ -1,14 +1,14 @@
 {
-  "metar": "SPECI KMEM 040744Z 23006KT 3SM -RA BR OVC009 19/18 A2983 RMK AO2 P0004 T01890183 $",
+  "metar": "METAR KMEM 040754Z 24004KT 3SM -RA BR OVC009 19/19 A2982 RMK AO2 SLP094 P0004 T01890189 $",
   "taf": "TAF KMEM 040753Z 0408/0512 25005KT P6SM BKN015 \n  TEMPO 0408/0410 3SM -RA BR OVC009 \n  FM041700 27007KT P6SM BKN025 \n  FM050000 27004KT P6SM SCT035",
-  "atisText": "MEM ATIS INFO I 0754Z. 24004KT 3SM -RA BR OVC009 19/19 A2982 (TWO NINER EIGHT TWO) RMK AO2 SLP094 P0004 T01890189. ILS APCH IN USE RY 18L, 18R. DEPG RWYS 18C. NOTICE TO AIRMEN. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO I",
-  "atisLetter": "I",
-  "atisPhonetic": "INDIA",
-  "atisDisplay": "INDIA",
+  "atisText": "MEM ATIS INFO J 0754Z. 24004KT 3SM -RA BR OVC009 19/19 A2982 (TWO NINER EIGHT TWO) RMK AO2 SLP094 P0004 T01890189. ILS APCH IN USE RY 27. SIMUL DEPS IN USE RY 18R 18C 18L, DEPG RWYS 27. NOTICE TO AIRMEN. RWY 36L DME OTS. RWY 18R RUNWAY ALIGNMENT INDICATOR LIGHTS OTS. RWY 18R CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18C CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z, RWY 18L CONDITION CODES, , 5 , , 5 , , 5 , AT 2256Z. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. HAZD WX INFO FOR MEM AREA AVBL FM FSS. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO J",
+  "atisLetter": "J",
+  "atisPhonetic": "JULIETT",
+  "atisDisplay": "JULIETT",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
-  "metarObservedZ": "2026-11-04T07:44:00Z",
+  "metarObservedZ": "2026-11-04T07:54:00Z",
   "metarAgeMinutes": 12,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
@@ -16,8 +16,8 @@
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-04T07:54:00Z",
-  "atisAgeMinutes": 2,
-  "atisReportIdentity": "I:0754Z",
+  "atisAgeMinutes": 12,
+  "atisReportIdentity": "J:0754Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
@@ -27,7 +27,7 @@
   "atisLiveCandidateCount": 1,
   "atisLiveCandidates": [
     {
-      "identity": "I:0754Z",
+      "identity": "J:0754Z",
       "observedZ": "2026-11-04T07:54:00Z",
       "sources": [
         "ATIS_INFO_API",
@@ -36,12 +36,12 @@
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "I",
-  "atisReportedPhonetic": "INDIA",
-  "atisReportedArrRunways": "18L / 18R",
-  "atisReportedDepRunways": "18C",
+  "atisReportedLetter": "J",
+  "atisReportedPhonetic": "JULIETT",
+  "atisReportedArrRunways": "27",
+  "atisReportedDepRunways": "18R / 18C / 18L / 27",
   "atisReportedClosedRunways": "NONE",
-  "atisReportedFlow": "SOUTH \u2193",
+  "atisReportedFlow": "MIXED",
   "lastKnownGoodUsed": {
     "metar": false,
     "taf": false,
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-04T04:55:44Z",
+  "trendReferenceTimestampZ": "2026-11-04T05:15:43Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -60,7 +60,7 @@
     "visibility": "ATIS",
     "ceiling": "ATIS"
   },
-  "metarAltimeterRaw": 29.83,
+  "metarAltimeterRaw": 29.82,
   "metarVisibilitySm": 3.0,
   "metarVisibilityDisplay": "3 SM",
   "metarCeilingFt": 900,
@@ -68,8 +68,8 @@
   "atisVisibilitySm": 3.0,
   "atisVisibilityDisplay": "3 SM",
   "atisCeilingFt": 900,
-  "arrRunways": "18L / 18R",
-  "depRunways": "18C",
+  "arrRunways": "27",
+  "depRunways": "18R / 18C / 18L / 27",
   "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
@@ -77,7 +77,7 @@
     "18C/36C",
     "18R/36L"
   ],
-  "flow": "SOUTH \u2193",
+  "flow": "MIXED",
   "rcrText": "RSC/RCR 5/5/5 WET",
   "rcrCode": "5/5/5",
   "rcrSeverity": "good",
@@ -154,17 +154,17 @@
       "flash": false,
       "pulse": false,
       "priority": 70,
-      "text": "-RA PSBL 08-10Z",
-      "displayText": "\ud83c\udf27\ufe0f -RA PSBL 08-10Z",
-      "tafWindow": "08-10Z",
+      "text": "-RA PSBL NOW-10Z",
+      "displayText": "\ud83c\udf27\ufe0f -RA PSBL NOW-10Z",
+      "tafWindow": "NOW-10Z",
       "tafStartKey": 104,
       "tafGroupType": "TEMPO",
       "tafStartIso": "2026-11-04T08:00:00Z",
       "tafEndIso": "2026-11-04T10:00:00Z"
     }
   ],
-  "wxAlertText": "\ud83c\udf27\ufe0f -RA ATIS \u2192 PSBL 08-10Z",
-  "wxAlertLogText": "-RA ATIS | -RA PSBL 08-10Z",
+  "wxAlertText": "\ud83c\udf27\ufe0f -RA ATIS \u2192 PSBL NOW-10Z",
+  "wxAlertLogText": "-RA ATIS | -RA PSBL NOW-10Z",
   "wxAlertVisible": true,
   "wxPrimaryAlert": {
     "code": "-RA",
@@ -199,9 +199,9 @@
     "flash": false,
     "pulse": false,
     "priority": 70,
-    "text": "-RA PSBL 08-10Z",
-    "displayText": "\ud83c\udf27\ufe0f -RA PSBL 08-10Z",
-    "tafWindow": "08-10Z",
+    "text": "-RA PSBL NOW-10Z",
+    "displayText": "\ud83c\udf27\ufe0f -RA PSBL NOW-10Z",
+    "tafWindow": "NOW-10Z",
     "tafStartKey": 104,
     "tafGroupType": "TEMPO",
     "tafStartIso": "2026-11-04T08:00:00Z",
@@ -210,23 +210,23 @@
   "wxAlertTone": "blue",
   "wxAlertFlash": false,
   "wxAlertPulse": false,
-  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA ATIS \u2192 PSBL 08-10Z",
+  "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA ATIS \u2192 PSBL NOW-10Z",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-04 07:54:00.000",
+  "bwcUpdatedZ": "2026-11-04 08:00:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "MODERATE",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "0",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=11&day=4&hour=07&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=11&iDay=4&iHour=07",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=11&day=4&hour=08&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=11&iDay=4&iHour=08",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-04 07:55:52Z",
+  "milNotamUpdatedZ": "2026-11-04 08:05:53Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -263,7 +263,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-04 07:55:52Z",
+  "milNotamAttemptZ": "2026-11-04 08:05:53Z",
   "ficonNotams": [
     {
       "number": "11/079",
@@ -438,13 +438,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 6,
-  "allFeedsUpdatedZ": "2026-11-04 07:55Z",
+  "allFeedsUpdatedZ": "2026-11-04 08:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-04 07:55:43Z"
+    "lastWorkflowTimestampZ": "2026-11-04 08:05:43Z"
   }
 }
