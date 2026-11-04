@@ -34,6 +34,26 @@ class CurrentWeatherPriorityTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
+    def test_mist_and_br_use_identical_code_text_and_effects(self):
+        clear = "METAR KMEM 032226Z 17011KT 10SM SCT031 22/18 A2989"
+        for observation in ("MIST", "BR"):
+            atis = f"MEM ATIS INFO J 2226Z. 17011KT 5SM {observation} SCT031 22/18 A2989. ILS APCH IN USE RY 18C."
+            alert = updater.detect_weather_alerts(clear, "", atis)[0]
+            self.assertEqual(alert["code"], "BR")
+            self.assertEqual(alert["text"], "BR ATIS")
+            self.assertEqual((alert["displayTone"], alert["flash"], alert["pulse"]), ("blue", False, False))
+        metar_br = clear.replace("10SM", "5SM BR")
+        alert = updater.detect_weather_alerts(metar_br, "")[0]
+        self.assertEqual(alert["text"], "BR METAR")
+        # Neither source is absolute: a stronger current hazard wins.
+        for metar, atis, source in (
+            (metar_br, "MEM ATIS INFO J 2226Z. 5SM TSRA BKN030.", "ATIS"),
+            (clear.replace("10SM", "5SM TSRA"), "MEM ATIS INFO J 2226Z. 5SM MIST BKN030.", "METAR"),
+        ):
+            alert = updater.detect_weather_alerts(metar, "", atis)[0]
+            self.assertEqual(alert["code"], "TSRA")
+            self.assertEqual(alert["sources"], [source])
+
     def test_reported_live_case_current_rain_beats_midnight_thunder(self):
         alerts = updater.detect_weather_alerts(METAR, TAF, ATIS)
         self.assertEqual(len(alerts), 2)

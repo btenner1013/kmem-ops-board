@@ -1742,6 +1742,8 @@ function observedWxSourceLabelFromText(upperText){
 function compactWxAlertDisplay(value,data={}){
   let text=safeValue(value,"NONE").toString().replace(/\s+/g," ").trim();
   text=text.replace(/^WX\s+ALERT\s*\|\s*/i,"").trim();
+  // MIST is BR, regardless of source or retained report format.
+  text=text.replace(/\bMIST\b/gi,"BR");
   if(!text || text==="--" || /^NONE$/i.test(text) || /^N\/A$/i.test(text)){ return "NONE"; }
 
   const rawCodeRe=/(^|[\s(])([+-]?(?:TSRA|SHRA|FZRA|FZDZ|RA|DZ|SN|SG|PL|GR|GS|VCTS|VCSH|VA|FU|HZ|FG|BR|SQ|FC|LLWS))(?=$|[\s),.;:])/i;
@@ -1835,6 +1837,10 @@ function wxAlertDisplayHtml(value,data={}){
 }
 
 function wxAlertSegmentHtml(alert,displayText){
+  // Normalize retained pre-fix reports without changing severity or effects.
+  if(String(alert.code||"").toUpperCase()==="BR"){
+    displayText=String(displayText).replace(/\bMIST\b/gi,"BR");
+  }
   // Structured alerts already carry their own source/window. Do not infer
   // a current source from unrelated (possibly retained) raw ATIS text.
   const tone=["red","blue","yellow"].includes(alert.displayTone)?alert.displayTone:"yellow";

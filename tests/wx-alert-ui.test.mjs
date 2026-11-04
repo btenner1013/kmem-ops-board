@@ -106,3 +106,22 @@ test('legacy unstructured payload keeps its existing fallback', () => {
   assert.equal(elements.tafTrend.innerHTML, '-RA OBS');
   assert.match(elements.tafTrend.className, /alert-blue/);
 });
+
+test('retained MIST report uses BR without changing blue/no-animation styling', () => {
+  const { elements, render } = setup();
+  const mist = { code: 'BR', displayText: '🌫️ MIST ATIS', sources: ['ATIS'], displayTone: 'blue', flash: false, pulse: false };
+  render(payload(mist, { ...mist, sources: ['TAF'], displayText: '🌫️ BR PSBL 12-13Z', tafWindow: '12-13Z' }));
+  assert.match(elements.tafTrend.innerHTML, /BR ATIS/);
+  assert.doesNotMatch(elements.tafTrend.innerHTML, /MIST|alert-flash|alert-pulse/);
+  assert.equal((elements.tafTrend.innerHTML.match(/alert-blue/g) || []).length, 2);
+  assert.match(elements.tafTrend.innerHTML, /PSBL 12-13Z/);
+});
+
+test('BR METAR and BR ATIS render equivalently while retaining source', () => {
+  const { elements, render } = setup();
+  for (const sourceName of ['METAR', 'ATIS']) {
+    render(payload({ code: 'BR', displayText: `🌫️ BR ${sourceName}`, sources: [sourceName], displayTone: 'blue', flash: false, pulse: false }, null));
+    assert.match(elements.tafTrend.innerHTML, new RegExp(`BR ${sourceName}`));
+    assert.doesNotMatch(elements.tafTrend.innerHTML, /alert-flash|alert-pulse/);
+  }
+});

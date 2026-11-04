@@ -3606,7 +3606,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
             "+TSRA", "TSRA", "-TSRA", "TS", "VCTS", "FC",
             "+FZRA", "FZRA", "-FZRA", "+FZDZ", "FZDZ", "-FZDZ",
             "PL", "GR", "GS", "+RA", "RA", "-RA", "+SHRA", "SHRA", "-SHRA",
-            "FU", "VA"
+            "FU", "VA", "BR"
         }
         base_text = code if code in raw_display_codes else check["label"]
         source_suffix = "ATIS" if source == "ATIS" else "METAR"
