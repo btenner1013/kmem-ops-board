@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-04T00:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 42,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-04T00:54:00Z",
-  "atisAgeMinutes": 32,
+  "atisAgeMinutes": 42,
   "atisReportIdentity": "Q:0054Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-03T22:25:48Z",
+  "trendReferenceTimestampZ": "2026-11-03T22:35:49Z",
   "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -90,12 +90,12 @@
   "altimeterTrendText": "STEADY",
   "ceilingFt": 5000,
   "ceilingDisplay": "5000 FT",
-  "ceilingTrend": "\u2191",
-  "ceilingTrendText": "RISING",
+  "ceilingTrend": "\u2193",
+  "ceilingTrendText": "FALLING",
   "visibilitySm": 5.0,
   "visibilityDisplay": "5 SM",
-  "visibilityTrend": "\u2193",
-  "visibilityTrendText": "FALLING",
+  "visibilityTrend": "\u2192",
+  "visibilityTrendText": "STEADY",
   "windRaw": "16005KT",
   "windDisplay": "16005KT",
   "windDirDeg": 160,
@@ -213,7 +213,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf27\ufe0f -RA ATIS \u2192 \u26c8\ufe0f VCTS PSBL NOW-04Z",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-04 01:24:00.000",
+  "bwcUpdatedZ": "2026-11-04 01:30:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -226,7 +226,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-04 01:25:53Z",
+  "milNotamUpdatedZ": "2026-11-04 01:35:59Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
   "milNotams": [
     {
@@ -263,7 +263,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-04 01:25:53Z",
+  "milNotamAttemptZ": "2026-11-04 01:35:59Z",
   "ficonNotams": [
     {
       "number": "11/079",
@@ -438,13 +438,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 6,
-  "allFeedsUpdatedZ": "2026-11-04 01:25Z",
+  "allFeedsUpdatedZ": "2026-11-04 01:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-04 01:25:43Z"
+    "lastWorkflowTimestampZ": "2026-11-04 01:35:43Z"
   }
 }
