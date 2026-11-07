@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-07T19:54:00Z",
-  "metarAgeMinutes": 12,
+  "metarAgeMinutes": 22,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-07T19:54:00Z",
-  "atisAgeMinutes": 12,
+  "atisAgeMinutes": 22,
   "atisReportIdentity": "K:1954Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,8 +50,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-07T17:15:46Z",
-  "trendSampleCount": 22,
+  "trendReferenceTimestampZ": "2026-11-07T17:25:43Z",
+  "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -132,7 +132,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-07 20:00:00.000",
+  "bwcUpdatedZ": "2026-11-07 20:12:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "LOW",
@@ -142,11 +142,11 @@
   "bwcUrl": "https://www.usahas.com/print.aspx?month=11&day=7&hour=20&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
   "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=11&iDay=7&iHour=20",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
-  "milNotamCount": 2,
-  "milNotamStatus": "2 ACTIVE",
+  "milNotamCount": 3,
+  "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-07 20:05:55Z",
-  "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...",
+  "milNotamUpdatedZ": "2026-11-07 20:16:01Z",
+  "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0041/26 MIL RAMP OPR HR MON-FRI 1500-0500Z DURING CST AND 1400-0400Z DURING CDT (0900-2300 LCL YEAR-ROUND). CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT RE...",
   "milNotams": [
     {
       "number": "M0040/26",
@@ -169,6 +169,17 @@
       "effectiveEnd": "202612062359",
       "lastUpdated": "2026-09-08T22:59:00.000Z",
       "source": "FAA_NMS_STAGING"
+    },
+    {
+      "number": "M0041/26",
+      "classification": "MIL",
+      "severity": "amber",
+      "text": "MIL RAMP OPR HR MON-FRI 1500-0500Z DURING CST AND 1400-0400Z DURING CDT (0900-2300 LCL YEAR-ROUND). CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED.",
+      "displayText": "MIL RAMP OPR HR MON-FRI 1500-0500Z DURING CST AND 1400-0400Z DURING CDT (0900-2300 LCL YEAR-ROUND). CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT RE...",
+      "effectiveStart": "202611072011",
+      "effectiveEnd": "202702042359",
+      "lastUpdated": "2026-11-07T20:11:00.000Z",
+      "source": "FAA_NMS_STAGING"
     }
   ],
   "milNotamFetchStatus": "OK",
@@ -182,7 +193,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-07 20:05:55Z",
+  "milNotamAttemptZ": "2026-11-07 20:16:01Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -275,16 +286,28 @@
       "lastUpdated": "2026-11-06T21:30:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY N BTN TWY M9 AND TWY M6 CLSD"
+    },
+    {
+      "number": "M0041/26",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "amber",
+      "text": "MIL RAMP OPR HR MON-FRI 1500-0500Z DURING CST AND 1400-0400Z DURING CDT (0900-2300 LCL YEAR-ROUND). CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED.",
+      "displayText": "MIL RAMP OPR HR MON-FRI 1500-0500Z DURING CST AND 1400-0400Z DURING CDT (0900-2300 LCL YEAR-ROUND). CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT RE...",
+      "effectiveStart": "202611072011",
+      "effectiveEnd": "202702042359",
+      "lastUpdated": "2026-11-07T20:11:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "MIL RAMP OPR HR MON-FRI 1500-0500Z DURING CST AND 1400-0400Z DURING CDT (0900-2300 LCL YEAR-ROUND). CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED."
     }
   ],
-  "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-11-07 20:05Z",
+  "taxiRestrictionNotamCount": 5,
+  "allFeedsUpdatedZ": "2026-11-07 20:15Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-07 20:05:45Z"
+    "lastWorkflowTimestampZ": "2026-11-07 20:15:46Z"
   }
 }
