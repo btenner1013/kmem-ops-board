@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-09T12:54:00Z",
-  "metarAgeMinutes": 22,
+  "metarAgeMinutes": 32,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-09T12:54:00Z",
-  "atisAgeMinutes": 22,
+  "atisAgeMinutes": 32,
   "atisReportIdentity": "F:1254Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-09T10:25:40Z",
+  "trendReferenceTimestampZ": "2026-11-09T10:35:41Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -132,7 +132,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-09 13:12:00.000",
+  "bwcUpdatedZ": "2026-11-09 13:24:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -145,7 +145,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-09 13:15:57Z",
+  "milNotamUpdatedZ": "2026-11-09 13:25:50Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0042/26 MIL RAMP OPR HR MON-FRI 1500-0500Z++. CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED.",
   "milNotams": [
     {
@@ -193,7 +193,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-09 13:15:57Z",
+  "milNotamAttemptZ": "2026-11-09 13:25:50Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -205,7 +205,7 @@
       "displayText": "RWY 09/27 CLSD",
       "effectiveStart": "202611091400",
       "effectiveEnd": "202611092030",
-      "lastUpdated": "2026-11-09T13:14:00.000Z",
+      "lastUpdated": "2026-11-09T13:22:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 09/27 CLSD EXC XNG TWY N, S, B, Y, A1, V1, V2"
     },
@@ -252,6 +252,18 @@
   "constructionStatusNotamCount": 2,
   "taxiRestrictionNotams": [
     {
+      "number": "11/130",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY V3, A2, TWY C BTN TWY V AND TWY A CLSD",
+      "displayText": "TWY V3, A2, TWY C BTN TWY V AND TWY A CLSD",
+      "effectiveStart": "202611091400",
+      "effectiveEnd": "202611092030",
+      "lastUpdated": "2026-11-09T13:20:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY V3, A2, TWY C BTN TWY V AND TWY A CLSD"
+    },
+    {
       "number": "11/129",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "red",
@@ -259,7 +271,7 @@
       "displayText": "RWY 09/27 CLSD EXC XNG TWY N, S, B, Y, A1, V1, V2",
       "effectiveStart": "202611091400",
       "effectiveEnd": "202611092030",
-      "lastUpdated": "2026-11-09T13:14:00.000Z",
+      "lastUpdated": "2026-11-09T13:22:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "RWY 09/27 CLSD EXC XNG TWY N, S, B, Y, A1, V1, V2"
     },
@@ -300,14 +312,14 @@
       "rawText": "MIL RAMP OPR HR MON-FRI 1500-0500Z++. CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED."
     }
   ],
-  "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-11-09 13:15Z",
+  "taxiRestrictionNotamCount": 5,
+  "allFeedsUpdatedZ": "2026-11-09 13:25Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-09 13:15:41Z"
+    "lastWorkflowTimestampZ": "2026-11-09 13:25:41Z"
   }
 }
