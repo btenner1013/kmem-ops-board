@@ -2,6 +2,8 @@ import json
 import math
 import os
 import re
+import socket
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -707,7 +709,42 @@ class AhasHttpsRedirectHandler(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def fetch_with_opener(opener, url):
+def sanitized_ahas_error(error):
+    """Return allowlisted diagnostics, never exception text, URLs or secrets."""
+    if isinstance(error, urllib.error.HTTPError):
+        return f"HTTP_{error.code}" if 100 <= error.code <= 599 else "HTTP_ERROR"
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return {
+            9: "TLS_CERTIFICATE_NOT_YET_VALID",
+            10: "TLS_CERTIFICATE_EXPIRED",
+            18: "TLS_CERTIFICATE_SELF_SIGNED",
+            19: "TLS_CERTIFICATE_SELF_SIGNED_CHAIN",
+            20: "TLS_CERTIFICATE_ISSUER_UNAVAILABLE",
+            21: "TLS_CERTIFICATE_CHAIN_UNVERIFIED",
+            62: "TLS_CERTIFICATE_HOSTNAME_MISMATCH",
+        }.get(getattr(reason, "verify_code", None), "TLS_CERTIFICATE_INVALID")
+    if isinstance(reason, ssl.SSLError):
+        return "TLS_HANDSHAKE_FAILED"
+    if isinstance(reason, (TimeoutError, socket.timeout)):
+        return "TIMEOUT"
+    if isinstance(reason, socket.gaierror):
+        return "DNS_FAILURE"
+    if isinstance(reason, ConnectionRefusedError):
+        return "CONNECTION_REFUSED"
+    if isinstance(reason, ConnectionResetError):
+        return "CONNECTION_RESET"
+    if isinstance(reason, OSError):
+        return "NETWORK_ERROR"
+    if str(reason).startswith("AHAS redirect rejected:"):
+        return "HTTPS_REDIRECT_REJECTED"
+    return "UNKNOWN_ERROR"
+
+
+def fetch_with_opener(opener, url, diagnostics=None):
+    if diagnostics is not None:
+        diagnostics.clear()
+        diagnostics["error"] = "NONE"
     try:
         request = urllib.request.Request(
             url,
@@ -723,11 +760,15 @@ def fetch_with_opener(opener, url):
             return response.read().decode("utf-8", errors="ignore")
 
     except urllib.error.HTTPError as error:
+        if diagnostics is not None:
+            diagnostics["error"] = sanitized_ahas_error(error)
         body = error.read().decode("utf-8", errors="ignore")
         print(f"AHAS HTTP error {error.code}: {body[:500]}")
         return ""
 
     except Exception as error:
+        if diagnostics is not None:
+            diagnostics["error"] = sanitized_ahas_error(error)
         print(f"AHAS fetch failed for {url}: {error}")
         return ""
 
@@ -4185,7 +4226,8 @@ def fetch_ahas_bwc(now_z):
         "bwcHeight100FtAgl": "--",
         "bwcUrl": print_url,
         "bwcRiskUrl": risk_url,
-        "bwcFetchStatus": "NOT_STARTED"
+        "bwcFetchStatus": "NOT_STARTED",
+        "bwcFetchError": "NONE"
     }
 
     try:
@@ -4201,10 +4243,14 @@ def fetch_ahas_bwc(now_z):
             # unavailable. Keep the same verified HTTPS session for both.
             print("AHAS print page unavailable; checking the HTTPS risk service directly.")
 
-        xml_text = fetch_with_opener(opener, risk_url)
+        risk_diagnostics = {}
+        xml_text = fetch_with_opener(opener, risk_url, diagnostics=risk_diagnostics)
 
         if not xml_text:
             result["bwcFetchStatus"] = "RISK_ENDPOINT_FAILED"
+            result["bwcFetchError"] = risk_diagnostics.get("error", "EMPTY_RESPONSE")
+            if result["bwcFetchError"] == "NONE":
+                result["bwcFetchError"] = "EMPTY_RESPONSE"
             return result
 
         date_time = get_xml_tag(xml_text, "DateTime")
@@ -4220,6 +4266,7 @@ def fetch_ahas_bwc(now_z):
 
         if not parsed_ok:
             result["bwcFetchStatus"] = "NO_RESULT_ROW"
+            result["bwcFetchError"] = "INVALID_RISK_PAYLOAD"
             return result
 
         bwc_value = normalize_bwc_risk(ahas_risk, parsed_ok)
@@ -4244,6 +4291,7 @@ def fetch_ahas_bwc(now_z):
     except Exception as error:
         print("AHAS parse failed:", error)
         result["bwcFetchStatus"] = "ERROR"
+        result["bwcFetchError"] = sanitized_ahas_error(error)
         return result
 
 
@@ -5947,6 +5995,7 @@ def build_weather_json():
         "bwcFetchStatus": ahas_data["bwcFetchStatus"],
         "bwcLatestAttemptStatus": ahas_direct_candidate.get("bwcFetchStatus", "UNKNOWN"),
         "bwcLatestAttemptZ": ahas_attempted_z,
+        "bwcLatestAttemptError": ahas_direct_candidate.get("bwcFetchError", "UNKNOWN"),
 
         "milNotamCount": mil_notam_data["milNotamCount"],
         "milNotamStatus": mil_notam_data["milNotamStatus"],

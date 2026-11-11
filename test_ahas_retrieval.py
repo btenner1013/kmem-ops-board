@@ -20,6 +20,41 @@ XML = """<result><Segment>MEMPHIS INTL</Segment>
 
 
 class AhasRetrievalTests(unittest.TestCase):
+    def test_diagnostics_categorize_expiry_without_exposing_exception_text(self):
+        error = u.ssl.SSLCertVerificationError("secret-token user@private.example /private/path")
+        error.verify_code = 10
+        diagnostics = {}
+        opener = mock.Mock()
+        opener.open.side_effect = u.urllib.error.URLError(error)
+        with mock.patch("builtins.print"):
+            self.assertEqual(u.fetch_with_opener(opener, "https://www.usahas.com/", diagnostics), "")
+        self.assertEqual(diagnostics, {"error": "TLS_CERTIFICATE_EXPIRED"})
+        self.assertEqual(u.sanitized_ahas_error(Exception("secret-token")), "UNKNOWN_ERROR")
+
+    def test_diagnostics_only_emit_fixed_categories_or_http_status(self):
+        errors = [
+            (u.urllib.error.HTTPError("https://secret.example", 503, "secret", {}, None), "HTTP_503"),
+            (u.urllib.error.URLError(u.socket.gaierror("secret")), "DNS_FAILURE"),
+            (TimeoutError("secret"), "TIMEOUT"),
+            (ConnectionRefusedError("secret"), "CONNECTION_REFUSED"),
+            (u.ssl.SSLError("secret"), "TLS_HANDSHAKE_FAILED"),
+        ]
+        for error, category in errors:
+            with self.subTest(category=category):
+                self.assertEqual(u.sanitized_ahas_error(error), category)
+
+    def test_actual_expiry_is_published_as_current_error_not_cached_error(self):
+        error = u.ssl.SSLCertVerificationError("do-not-publish-this")
+        error.verify_code = 10
+        opener = mock.Mock()
+        opener.open.side_effect = u.urllib.error.URLError(error)
+        with mock.patch.object(u.urllib.request, "build_opener", return_value=opener), mock.patch("builtins.print"):
+            failed = u.fetch_ahas_bwc(NOW)
+        payload = self.build_payload(failed)
+        self.assertEqual(payload["bwcLatestAttemptError"], "TLS_CERTIFICATE_EXPIRED")
+        self.assertEqual(payload["bwcFetchStatus"], "USED_LAST_GOOD")
+        self.assertNotIn("do-not-publish-this", json.dumps(payload))
+
     def test_redirects_cannot_downgrade_or_leave_ahas(self):
         handler = u.AhasHttpsRedirectHandler()
         request = u.urllib.request.Request("https://www.usahas.com/print.aspx")

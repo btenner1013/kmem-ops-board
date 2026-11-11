@@ -28,7 +28,9 @@ fallback.
 On retrieval failure, the board retains the last valid risk and its original
 AHAS observation time. `bwcFetchStatus` becomes `USED_LAST_GOOD`, while
 `bwcLatestAttemptStatus` and `bwcLatestAttemptZ` describe the latest fetch
-attempt separately. The existing observation age and LAST KNOWN marker remain
+attempt separately. `bwcLatestAttemptError` contains only an allowlisted error
+category, never raw exception text, headers, credentials or response bodies.
+The existing observation age and LAST KNOWN marker remain
 in place. These fields do not make an old observation current, and cached
 observations are not added to the live AHAS history.
 
