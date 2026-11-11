@@ -2709,9 +2709,9 @@ function updateSourceHealth(data,updatedZ){
   const ahasAge=ahasUpdated?Math.round((getBoardNowMs()-ahasUpdated.getTime())/60000):null;
 
   if(bwc==="PENDING"||bwcStatus.includes("FAILED")||bwcStatus.includes("ERROR")){ addPart("AHAS","PENDING",""); }
+  else if(ahasAge!==null&&ahasAge>90){ addPart("AHAS","STALE",`${ahasAge}M`); }
   else if(bwcStatus==="PARSED_DIRECT_XML"){
-    if(ahasAge!==null&&ahasAge>90){ addPart("AHAS","STALE",""); }
-    else{ addPart("AHAS","OK",""); }
+    addPart("AHAS","OK","");
   }else{ addPart("AHAS","WARN",""); }
 
   const notamFeed=notamFeedState(data);

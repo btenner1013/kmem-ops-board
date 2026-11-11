@@ -107,6 +107,7 @@ class BwcCandidateValidationTests(unittest.TestCase):
             direct_candidate(risk="NONE"),
             direct_candidate(fallback=True),
             direct_candidate(status="RISK_ENDPOINT_FAILED"),
+            direct_candidate(status="PARSED_PINNED_EXPIRED_TLS"),
             {
                 **direct_candidate(),
                 "lastKnownGoodUsed": {"ahas": True},

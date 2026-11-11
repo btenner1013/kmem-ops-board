@@ -20,10 +20,25 @@ Run the deterministic clock tests with `npm run test:clock`.
 
 ## AHAS retrieval and retained reports
 
-AHAS retrieval uses certificate-verified HTTPS only, including redirects, on
-`www.usahas.com` or `usahas.com`. An unavailable print page does not prevent a
-direct attempt to the HTTPS risk service. There is no HTTP or unverified-TLS
-fallback.
+AHAS retrieval normally uses CA- and hostname-verified HTTPS on
+`www.usahas.com`. The updater calls the risk service directly; the optional
+print page is not a prerequisite. There is never a plain-HTTP fallback.
+
+USAHAS allowed its leaf certificate to expire on November 10, 2026 while the
+risk service remained live. Until `2026-11-25T00:00:00Z`, and only when the
+normal request fails specifically with `TLS_CERTIFICATE_EXPIRED`, the updater
+may use a temporary HTTPS recovery path authenticated by the exact SHA-256
+fingerprint of that known leaf. The exception is limited to the fixed KMEM risk
+URL, rejects all redirects, caps the response size, and validates the airport,
+source timestamp, and risk fields before publishing. A different certificate,
+a different URL, any other TLS/network error, or use after the deadline fails
+closed. A renewed valid certificate automatically returns the updater to the
+normal verified path.
+
+Pinned recovery is labeled `PARSED_PINNED_EXPIRED_TLS` with
+`bwcTransportSecurity=TLS_PINNED_EXPIRED_LEAF`; the board therefore shows the
+current BWC value with AHAS feed health at `WARN`. These degraded-transport
+observations are intentionally excluded from the retained AHAS history.
 
 On retrieval failure, the board retains the last valid risk and its original
 AHAS observation time. `bwcFetchStatus` becomes `USED_LAST_GOOD`, while

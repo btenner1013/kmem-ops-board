@@ -128,6 +128,7 @@ def bwc_cache_fixture(tag, updated, *, risk="SEVERE", fetch_status="PARSED_DIREC
         "bwcUrl": f"https://www.usahas.com/print.aspx?tag={tag}",
         "bwcRiskUrl": f"https://www.usahas.com/webservices/GetAHASRisk?tag={tag}",
         "bwcFetchStatus": fetch_status,
+        "bwcTransportSecurity": "CA_VERIFIED_TLS",
     }
 
 
@@ -355,6 +356,19 @@ class WeatherCacheHandoffTests(unittest.TestCase):
             weather.cached_bwc_updated_datetime(selected),
             datetime(2026, 9, 11, 13, 12, tzinfo=timezone.utc),
         )
+
+    def test_legacy_newest_ahas_block_does_not_inherit_older_transport_metadata(self):
+        local = {
+            "metar": "LOCAL",
+            **bwc_cache_fixture("LOCAL", "2026-09-11 12:06:00.000"),
+        }
+        legacy_newer = bwc_cache_fixture("LEGACY", "2026-09-11 13:12:00.000")
+        del legacy_newer["bwcTransportSecurity"]
+
+        selected = self.load_caches(local, legacy_newer, {})
+
+        self.assertEqual(selected["bwcUrl"], legacy_newer["bwcUrl"])
+        self.assertEqual(selected["bwcTransportSecurity"], "UNKNOWN")
 
     def test_unusable_or_equal_ahas_blocks_keep_location_priority(self):
         local = {"metar": "LOCAL", **bwc_cache_fixture("LOCAL", "2026-09-11 12:06:00.000")}

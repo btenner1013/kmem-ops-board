@@ -404,6 +404,18 @@ test("NOTAM footer and CAO share one classifier without borrowing weather freshn
   );
 });
 
+test("AHAS footer reports stale age before degraded transport warning", () => {
+  const footerSource = sourceBetween("function updateSourceHealth", "function parseCaoDate");
+  const pendingBranch = footerSource.indexOf('if(bwc==="PENDING"');
+  const staleBranch = footerSource.indexOf('else if(ahasAge!==null&&ahasAge>90)');
+  const directBranch = footerSource.indexOf('else if(bwcStatus==="PARSED_DIRECT_XML")');
+
+  assert.ok(pendingBranch >= 0);
+  assert.ok(staleBranch > pendingBranch);
+  assert.ok(directBranch > staleBranch, "stale age must outrank direct/pinned/cache transport status");
+  assert.match(footerSource, /addPart\("AHAS","STALE",`\$\{ahasAge\}M`\)/);
+});
+
 test("unknown runway state is amber and does not use the flashing closure class", () => {
   assert.match(indexHtml, /\.closed-unknown\{color:var\(--warning\)\}/);
   assert.match(
