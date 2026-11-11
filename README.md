@@ -20,25 +20,34 @@ Run the deterministic clock tests with `npm run test:clock`.
 
 ## AHAS retrieval and retained reports
 
-AHAS retrieval normally uses CA- and hostname-verified HTTPS on
-`www.usahas.com`. The updater calls the risk service directly; the optional
-print page is not a prerequisite. There is never a plain-HTTP fallback.
+AHAS retrieval uses the official risk service through a bounded four-route
+cascade: HTTPS GET and form POST on `www.usahas.com`, followed by the same two
+methods on `usahas.com`. Every response must still pass the same KMEM airport,
+risk-value, and source-time validation before it can be published. The two
+hostnames currently reach the same USAHAS backend, so this protects against
+hostname, route, and HTTP-method failures; it is not an independent AHAS data
+provider. The optional print page is not a data source or prerequisite, and
+there is never a plain-HTTP fallback.
 
 USAHAS allowed its leaf certificate to expire on November 10, 2026 while the
 risk service remained live. Until `2026-11-25T00:00:00Z`, and only when the
-normal request fails specifically with `TLS_CERTIFICATE_EXPIRED`, the updater
-may use a temporary HTTPS recovery path authenticated by the exact SHA-256
-fingerprint of that known leaf. The exception is limited to the fixed KMEM risk
-URL, rejects all redirects, caps the response size, and validates the airport,
-source timestamp, and risk fields before publishing. A different certificate,
-a different URL, any other TLS/network error, or use after the deadline fails
-closed. A renewed valid certificate automatically returns the updater to the
-normal verified path.
+approved requests fail specifically with `TLS_CERTIFICATE_EXPIRED`, the updater
+may use temporary HTTPS recovery routes authenticated by the exact SHA-256
+fingerprint of that known leaf. The exception is limited to the exact KMEM GET
+or form-POST requests on the two approved hosts, rejects all redirects, caps
+response size, and validates the airport, source timestamp, and risk fields
+before publishing. A different certificate, URL, request body, other
+TLS/network error, or use after the deadline fails closed. A renewed valid
+certificate automatically returns the updater to CA-verified HTTPS.
 
-Pinned recovery is labeled `PARSED_PINNED_EXPIRED_TLS` with
-`bwcTransportSecurity=TLS_PINNED_EXPIRED_LEAF`; the board therefore shows the
-current BWC value with AHAS feed health at `WARN`. These degraded-transport
-observations are intentionally excluded from the retained AHAS history.
+Pinned recovery is labeled `PARSED_PINNED_EXPIRED_TLS` in
+`bwcLatestAttemptStatus` with
+`bwcTransportSecurity=TLS_PINNED_EXPIRED_LEAF`. The public
+`bwcFetchStatus` retains the legacy live-success value `PARSED_DIRECT_XML` so an
+already-open shop display turns `AHAS OK` on its normal data poll without a page
+reload. Because the server identity and payload are both validated, this fresh
+observation is also eligible for retained AHAS history. Last-known-good, stale,
+malformed, or unavailable data still cannot show green feed health.
 
 On retrieval failure, the board retains the last valid risk and its original
 AHAS observation time. `bwcFetchStatus` becomes `USED_LAST_GOOD`, while

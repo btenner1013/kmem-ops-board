@@ -48,6 +48,15 @@ AHAS_EMERGENCY_LEAF_SHA256 = frozenset({
     "D32703396D5BF33F91EC70FE52D2CE705E91A16BC7724AE9ED1F9656E455F157",
 })
 AHAS_EMERGENCY_PIN_DEADLINE_Z = datetime(2026, 11, 25, 0, 0, tzinfo=timezone.utc)
+AHAS_APPROVED_HOSTS = ("www.usahas.com", "usahas.com")
+AHAS_RISK_PATH = "/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk"
+AHAS_RESPONSE_MAX_BYTES = 256 * 1024
+AHAS_REQUEST_TIMEOUT_SECONDS = 12
+AHAS_TOTAL_FETCH_SECONDS = 45
+AHAS_LIVE_FETCH_STATUSES = frozenset({
+    "PARSED_DIRECT_XML",
+    "PARSED_PINNED_EXPIRED_TLS",
+})
 TAF_CURRENT_PATH = os.path.join(REPO_DIR, "taf_current.json")
 LOCAL_CACHE_BASE = (
     os.environ.get("LOCALAPPDATA")
@@ -726,41 +735,72 @@ class AhasCertificatePinError(ssl.SSLError):
     """Raised when the emergency AHAS connection does not match the leaf pin."""
 
 
-def is_allowed_ahas_emergency_risk_url(url):
-    """Limit the emergency transport to the one KMEM AHAS risk request."""
+def _is_allowed_ahas_risk_parameters(encoded_parameters):
+    """Accept only the exact KMEM fields supported by the official service."""
+    try:
+        pairs = urllib.parse.parse_qsl(
+            encoded_parameters,
+            keep_blank_values=True,
+            strict_parsing=True,
+            max_num_fields=6,
+        )
+        if len(pairs) != 5:
+            return False
+        parameters = dict(pairs)
+        return (
+            set(parameters) == {"Type", "Area", "iMonth", "iDay", "iHour"}
+            and parameters.get("Type") == "ICAO"
+            and parameters.get("Area") == "'MEMPHIS INTL'"
+            and parameters.get("iMonth", "").isdigit()
+            and 1 <= int(parameters["iMonth"]) <= 12
+            and parameters.get("iDay", "").isdigit()
+            and 1 <= int(parameters["iDay"]) <= 31
+            and parameters.get("iHour", "").isdigit()
+            and 0 <= int(parameters["iHour"]) <= 23
+        )
+    except (AttributeError, TypeError, UnicodeDecodeError, ValueError):
+        return False
+
+
+def is_allowed_ahas_emergency_risk_request(url, method="GET", body=None):
+    """Limit pinned transport to an exact KMEM GET or form-POST request."""
     try:
         target = urllib.parse.urlsplit(url)
-        query = urllib.parse.parse_qs(target.query, keep_blank_values=True)
-        return (
+        method = str(method or "").upper()
+        common_allowed = (
             target.scheme.lower() == "https"
-            and target.hostname == "www.usahas.com"
+            and target.hostname in AHAS_APPROVED_HOSTS
             and target.port in {None, 443}
             and target.username is None
             and target.password is None
             and not target.fragment
-            and target.path == "/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk"
-            and query.get("Type") == ["ICAO"]
-            and query.get("Area") == ["'MEMPHIS INTL'"]
-            and len(query.get("iMonth", [])) == 1
-            and len(query.get("iDay", [])) == 1
-            and len(query.get("iHour", [])) == 1
-            and set(query) == {"Type", "Area", "iMonth", "iDay", "iHour"}
-            and query["iMonth"][0].isdigit()
-            and 1 <= int(query["iMonth"][0]) <= 12
-            and query["iDay"][0].isdigit()
-            and 1 <= int(query["iDay"][0]) <= 31
-            and query["iHour"][0].isdigit()
-            and 0 <= int(query["iHour"][0]) <= 23
+            and target.path == AHAS_RISK_PATH
         )
-    except (AttributeError, TypeError, ValueError):
+        if not common_allowed:
+            return False
+        if method == "GET":
+            return body in {None, b"", ""} and _is_allowed_ahas_risk_parameters(target.query)
+        if method != "POST" or target.query or body is None:
+            return False
+        if isinstance(body, bytes):
+            body = body.decode("ascii")
+        elif not isinstance(body, str):
+            return False
+        return _is_allowed_ahas_risk_parameters(body)
+    except (AttributeError, TypeError, UnicodeDecodeError, ValueError):
         return False
+
+
+def is_allowed_ahas_emergency_risk_url(url):
+    """Backward-compatible GET-only check used by focused transport tests."""
+    return is_allowed_ahas_emergency_risk_request(url, "GET")
 
 
 class AhasPinnedRiskRedirectHandler(AhasHttpsRedirectHandler):
     """Reject every redirect on the fixed emergency AHAS risk request."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        raise urllib.error.URLError("AHAS emergency redirect rejected")
+        raise urllib.error.URLError("AHAS redirect rejected: exact risk request required")
 
 
 class AhasPinnedHTTPSConnection(http.client.HTTPSConnection):
@@ -800,8 +840,18 @@ class AhasPinnedHTTPSHandler(urllib.request.HTTPSHandler):
         self.expected_fingerprints = frozenset(expected_fingerprints)
 
     def https_open(self, request):
-        if not is_allowed_ahas_emergency_risk_url(request.full_url):
-            raise urllib.error.URLError("AHAS emergency URL rejected")
+        if not is_allowed_ahas_emergency_risk_request(
+            request.full_url,
+            request.get_method(),
+            request.data,
+        ):
+            raise urllib.error.URLError("AHAS emergency request rejected")
+        if (
+            request.get_method() == "POST"
+            and request.get_header("Content-type", "").split(";", 1)[0].strip().lower()
+            != "application/x-www-form-urlencoded"
+        ):
+            raise urllib.error.URLError("AHAS emergency content type rejected")
 
         expected_fingerprints = self.expected_fingerprints
 
@@ -820,7 +870,13 @@ def ahas_emergency_now_z():
     return datetime.now(timezone.utc)
 
 
-def fetch_ahas_risk_with_emergency_pin(url, now_z, diagnostics=None):
+def fetch_ahas_risk_with_emergency_pin(
+    url,
+    now_z,
+    diagnostics=None,
+    form_data=None,
+    timeout=AHAS_REQUEST_TIMEOUT_SECONDS,
+):
     """Fetch one AHAS risk document using the short-lived expired-leaf pin."""
     if diagnostics is not None:
         diagnostics.clear()
@@ -842,9 +898,14 @@ def fetch_ahas_risk_with_emergency_pin(url, now_z, diagnostics=None):
             diagnostics["error"] = "EMERGENCY_PIN_WINDOW_CLOSED"
         return ""
 
-    if not is_allowed_ahas_emergency_risk_url(url):
+    encoded_form = None
+    method = "GET"
+    if form_data is not None:
+        encoded_form = urllib.parse.urlencode(form_data).encode("ascii")
+        method = "POST"
+    if not is_allowed_ahas_emergency_risk_request(url, method, encoded_form):
         if diagnostics is not None:
-            diagnostics["error"] = "EMERGENCY_PIN_URL_REJECTED"
+            diagnostics["error"] = "EMERGENCY_PIN_REQUEST_REJECTED"
         return ""
 
     opener = urllib.request.build_opener(
@@ -856,7 +917,9 @@ def fetch_ahas_risk_with_emergency_pin(url, now_z, diagnostics=None):
         opener,
         url,
         diagnostics=diagnostics,
-        max_bytes=256 * 1024,
+        max_bytes=AHAS_RESPONSE_MAX_BYTES,
+        form_data=form_data,
+        timeout=timeout,
     )
 
 
@@ -894,22 +957,35 @@ def sanitized_ahas_error(error):
     return "UNKNOWN_ERROR"
 
 
-def fetch_with_opener(opener, url, diagnostics=None, max_bytes=None):
+def fetch_with_opener(
+    opener,
+    url,
+    diagnostics=None,
+    max_bytes=None,
+    form_data=None,
+    timeout=30,
+):
     if diagnostics is not None:
         diagnostics.clear()
         diagnostics["error"] = "NONE"
     try:
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json, text/plain, */*",
+            "Referer": "https://www.usahas.com/print.aspx",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+        body = None
+        if form_data is not None:
+            body = urllib.parse.urlencode(form_data).encode("ascii")
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
         request = urllib.request.Request(
             url,
-            headers={
-                "User-Agent": "Mozilla/5.0",
-                "Accept": "application/json, text/plain, */*",
-                "Referer": "https://www.usahas.com/print.aspx",
-                "X-Requested-With": "XMLHttpRequest"
-            }
+            data=body,
+            headers=headers,
         )
 
-        with opener.open(request, timeout=30) as response:
+        with opener.open(request, timeout=timeout) as response:
             if max_bytes is None:
                 body = response.read()
             else:
@@ -1018,6 +1094,8 @@ BWC_CACHE_FIELDS = (
     "bwcRiskUrl",
     "bwcFetchStatus",
     "bwcTransportSecurity",
+    "bwcRetrievalRoute",
+    "bwcLiveValidated",
 )
 
 
@@ -1194,6 +1272,14 @@ def load_previous_weather():
         bwc_block["bwcTransportSecurity"] = bwc_data.get(
             "bwcTransportSecurity",
             "UNKNOWN",
+        )
+        bwc_block["bwcRetrievalRoute"] = bwc_data.get(
+            "bwcRetrievalRoute",
+            "UNKNOWN",
+        )
+        bwc_block["bwcLiveValidated"] = (
+            bwc_data.get("bwcLiveValidated") is True
+            or bwc_data.get("bwcFetchStatus") in AHAS_LIVE_FETCH_STATUSES
         )
         previous.update(bwc_block)
         print(
@@ -4354,8 +4440,12 @@ def normalize_bwc_risk(raw_value, parsed_ok):
     if value == "HIGH":
         return "SEVERE"
 
-    if parsed_ok and value in {"--", "", "NA", "N/A", "NO DATA"}:
-        return "NONE"
+    # A successful transport can still contain no actionable AHAS risk. Never
+    # translate source no-data tokens into the operational state NONE.
+    if parsed_ok and value in {
+        "--", "", "NA", "N/A", "NO DATA", "NO_DATA", "NODATA",
+    }:
+        return "PENDING"
 
     return "PENDING"
 
@@ -4405,28 +4495,64 @@ def validate_ahas_risk_payload(xml_text, now_z):
     return "NONE"
 
 
-def fetch_ahas_bwc(now_z):
-    month = now_z.month
-    day = now_z.day
-    hour = f"{now_z.hour:02d}"
+def build_ahas_risk_routes(now_z):
+    """Return the approved official GET/POST routes in deterministic order."""
+    form_data = (
+        ("Type", "ICAO"),
+        ("Area", "'MEMPHIS INTL'"),
+        ("iMonth", str(now_z.month)),
+        ("iDay", str(now_z.day)),
+        ("iHour", f"{now_z.hour:02d}"),
+    )
+    query = urllib.parse.urlencode(form_data, quote_via=urllib.parse.quote)
+    routes = []
+    for label, host in (("WWW", AHAS_APPROVED_HOSTS[0]), ("BARE", AHAS_APPROVED_HOSTS[1])):
+        base_url = f"https://{host}{AHAS_RISK_PATH}"
+        routes.extend((
+            {
+                "name": f"{label}_GET",
+                "host": host,
+                "method": "GET",
+                "url": f"{base_url}?{query}",
+                "formData": None,
+            },
+            {
+                "name": f"{label}_POST",
+                "host": host,
+                "method": "POST",
+                "url": base_url,
+                "formData": form_data,
+            },
+        ))
+    return routes
 
+
+def _ahas_host_level_failure(error_category):
+    """Return true when changing HTTP verb cannot bypass the failed layer."""
+    category = str(error_category or "").upper()
+    return (
+        category.startswith("TLS_")
+        or category in {
+            "DNS_FAILURE",
+            "CONNECTION_REFUSED",
+            "CONNECTION_RESET",
+            "NETWORK_ERROR",
+            "HTTPS_REDIRECT_REJECTED",
+        }
+    )
+
+
+def fetch_ahas_bwc(now_z):
+    routes = build_ahas_risk_routes(now_z)
+    primary_risk_url = routes[0]["url"]
     print_url = (
         "https://www.usahas.com/print.aspx"
-        f"?month={month}"
-        f"&day={day}"
-        f"&hour={hour}"
+        f"?month={now_z.month}"
+        f"&day={now_z.day}"
+        f"&hour={now_z.hour:02d}"
         "&type=ICAO"
         "&NAME=MEMPHIS%20INTL"
         "&Button=default"
-    )
-
-    risk_url = (
-        "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk"
-        "?Type=ICAO"
-        "&Area=%27MEMPHIS%20INTL%27"
-        f"&iMonth={month}"
-        f"&iDay={day}"
-        f"&iHour={hour}"
     )
 
     result = {
@@ -4440,58 +4566,124 @@ def fetch_ahas_bwc(now_z):
         "bwcBasedOn": "--",
         "bwcHeight100FtAgl": "--",
         "bwcUrl": print_url,
-        "bwcRiskUrl": risk_url,
+        "bwcRiskUrl": primary_risk_url,
         "bwcFetchStatus": "NOT_STARTED",
         "bwcFetchError": "NONE",
         "bwcPrimaryFetchError": "NONE",
         "bwcTransportSecurity": "NONE",
+        "bwcRetrievalRoute": "NONE",
+        "bwcRetrievalAttempts": 0,
+        "bwcLiveValidated": False,
     }
 
     try:
         opener = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(CookieJar()),
-            AhasHttpsRedirectHandler(),
+            AhasPinnedRiskRedirectHandler(),
         )
+        deadline = time.monotonic() + AHAS_TOTAL_FETCH_SECONDS
+        first_outcome = None
+        last_error = "EMPTY_RESPONSE"
+        invalid_payload_error = None
+        saw_expired_certificate = False
+        selected = None
 
-        risk_diagnostics = {}
-        xml_text = fetch_with_opener(opener, risk_url, diagnostics=risk_diagnostics)
-        fetch_status = "PARSED_DIRECT_XML"
-        result["bwcPrimaryFetchError"] = risk_diagnostics.get("error", "UNKNOWN_ERROR")
+        def remaining_timeout():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            return min(AHAS_REQUEST_TIMEOUT_SECONDS, remaining)
 
-        if not xml_text and result["bwcPrimaryFetchError"] == "TLS_CERTIFICATE_EXPIRED":
-            print("AHAS certificate expired; trying the time-limited pinned HTTPS risk path.")
-            emergency_diagnostics = {}
-            xml_text = fetch_ahas_risk_with_emergency_pin(
-                risk_url,
-                now_z,
-                diagnostics=emergency_diagnostics,
+        skipped_post_hosts = set()
+        for route in routes:
+            if route["method"] == "POST" and route["host"] in skipped_post_hosts:
+                continue
+            timeout = remaining_timeout()
+            if timeout is None:
+                last_error = "TIMEOUT"
+                break
+            diagnostics = {}
+            result["bwcRetrievalAttempts"] += 1
+            xml_text = fetch_with_opener(
+                opener,
+                route["url"],
+                diagnostics=diagnostics,
+                max_bytes=AHAS_RESPONSE_MAX_BYTES,
+                form_data=route["formData"],
+                timeout=timeout,
             )
+            route_error = diagnostics.get("error", "UNKNOWN_ERROR")
             if xml_text:
-                fetch_status = "PARSED_PINNED_EXPIRED_TLS"
-                result["bwcTransportSecurity"] = "TLS_PINNED_EXPIRED_LEAF"
-            else:
-                result["bwcFetchError"] = emergency_diagnostics.get(
-                    "error",
-                    "EMERGENCY_PIN_FAILED",
+                payload_error = validate_ahas_risk_payload(xml_text, now_z)
+                route_error = payload_error
+                if payload_error == "NONE":
+                    selected = (xml_text, route, "PARSED_DIRECT_XML", "CA_VERIFIED_TLS")
+            elif route_error == "NONE":
+                route_error = "EMPTY_RESPONSE"
+
+            if first_outcome is None:
+                first_outcome = route_error
+            if selected:
+                break
+            last_error = route_error
+            if route_error.startswith("RISK_"):
+                invalid_payload_error = route_error
+            if route_error == "TLS_CERTIFICATE_EXPIRED":
+                saw_expired_certificate = True
+            if route["method"] == "GET" and _ahas_host_level_failure(route_error):
+                skipped_post_hosts.add(route["host"])
+
+        result["bwcPrimaryFetchError"] = first_outcome or "UNKNOWN_ERROR"
+
+        if selected is None and saw_expired_certificate:
+            print("AHAS certificate expired; trying approved routes with the time-limited HTTPS leaf pin.")
+            skipped_post_hosts.clear()
+            for route in routes:
+                if route["method"] == "POST" and route["host"] in skipped_post_hosts:
+                    continue
+                timeout = remaining_timeout()
+                if timeout is None:
+                    last_error = "TIMEOUT"
+                    break
+                diagnostics = {}
+                result["bwcRetrievalAttempts"] += 1
+                xml_text = fetch_ahas_risk_with_emergency_pin(
+                    route["url"],
+                    now_z,
+                    diagnostics=diagnostics,
+                    form_data=route["formData"],
+                    timeout=timeout,
                 )
+                route_error = diagnostics.get("error", "UNKNOWN_ERROR")
+                if xml_text:
+                    payload_error = validate_ahas_risk_payload(xml_text, now_z)
+                    route_error = payload_error
+                    if payload_error == "NONE":
+                        selected = (
+                            xml_text,
+                            route,
+                            "PARSED_PINNED_EXPIRED_TLS",
+                            "TLS_PINNED_EXPIRED_LEAF",
+                        )
+                elif route_error == "NONE":
+                    route_error = "EMPTY_RESPONSE"
 
-        if not xml_text:
-            result["bwcFetchStatus"] = "RISK_ENDPOINT_FAILED"
-            if result["bwcFetchError"] == "NONE":
-                result["bwcFetchError"] = risk_diagnostics.get("error", "EMPTY_RESPONSE")
-            if result["bwcFetchError"] == "NONE":
-                result["bwcFetchError"] = "EMPTY_RESPONSE"
+                if selected:
+                    break
+                last_error = route_error
+                if route_error.startswith("RISK_"):
+                    invalid_payload_error = route_error
+                if route["method"] == "GET" and _ahas_host_level_failure(route_error):
+                    skipped_post_hosts.add(route["host"])
+
+        if selected is None:
+            result["bwcFetchStatus"] = (
+                "INVALID_RISK_PAYLOAD" if invalid_payload_error else "RISK_ENDPOINT_FAILED"
+            )
+            result["bwcFetchError"] = invalid_payload_error or last_error or "EMPTY_RESPONSE"
             return result
 
-        payload_error = validate_ahas_risk_payload(xml_text, now_z)
-        if payload_error != "NONE":
-            result["bwcFetchStatus"] = "INVALID_RISK_PAYLOAD"
-            result["bwcFetchError"] = payload_error
-            return result
-
-        if fetch_status == "PARSED_DIRECT_XML":
-            result["bwcTransportSecurity"] = "CA_VERIFIED_TLS"
-
+        xml_text, route, fetch_status, transport_security = selected
         date_time = get_xml_tag(xml_text, "DateTime")
         nexrad_risk = get_xml_tag(xml_text, "NEXRADRISK").upper()
         soar_risk = get_xml_tag(xml_text, "SOARRISK").upper()
@@ -4500,12 +4692,8 @@ def fetch_ahas_bwc(now_z):
         based_on = get_xml_tag(xml_text, "BasedOn").upper()
         ti_depth = get_xml_tag(xml_text, "TIDepth").upper()
 
-        parsed_ok = True
-
-        bwc_value = normalize_bwc_risk(ahas_risk, parsed_ok)
-
         result.update({
-            "bwc": bwc_value,
+            "bwc": normalize_bwc_risk(ahas_risk, True),
             "bwcSource": "AHAS",
             "bwcUpdatedZ": date_time,
             "bwcNexrad": nexrad_risk,
@@ -4515,11 +4703,13 @@ def fetch_ahas_bwc(now_z):
             "bwcBasedOn": based_on,
             "bwcHeight100FtAgl": ti_depth,
             "bwcUrl": print_url,
-            "bwcRiskUrl": risk_url,
+            "bwcRiskUrl": primary_risk_url,
             "bwcFetchStatus": fetch_status,
             "bwcFetchError": "NONE",
+            "bwcTransportSecurity": transport_security,
+            "bwcRetrievalRoute": route["name"],
+            "bwcLiveValidated": True,
         })
-
         return result
 
     except Exception as error:
@@ -6061,8 +6251,9 @@ def build_weather_json():
     wx_summary = summarize_weather_alerts(wx_alerts)
     lightning_summary = build_lightning_summary(metar, taf, current_atis_text)
 
-    ahas_attempted_z = zulu_iso(datetime.now(timezone.utc))
-    ahas_direct_candidate = fetch_ahas_bwc(now_z)
+    ahas_request_now_z = datetime.now(timezone.utc)
+    ahas_attempted_z = zulu_iso(ahas_request_now_z)
+    ahas_direct_candidate = fetch_ahas_bwc(ahas_request_now_z)
     ahas_data = ahas_direct_candidate
 
     if not is_good_bwc(ahas_data):
@@ -6087,9 +6278,28 @@ def build_weather_json():
                     "bwcTransportSecurity",
                     "UNKNOWN",
                 ),
+                "bwcRetrievalRoute": use_previous_field(
+                    previous_data,
+                    "bwcRetrievalRoute",
+                    "UNKNOWN",
+                ),
+                "bwcLiveValidated": False,
             }
         else:
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
+
+    # The already-open production board recognizes PARSED_DIRECT_XML as its
+    # legacy live-success contract. Keep that public compatibility value for
+    # every explicitly validated current payload so the display turns healthy
+    # on its normal weather.json poll without a page reload. The exact retrieval
+    # status remains available in bwcLatestAttemptStatus, with transport and
+    # route provenance in their dedicated fields.
+    ahas_public_fetch_status = ahas_data["bwcFetchStatus"]
+    if (
+        ahas_data.get("bwcLiveValidated") is True
+        and ahas_public_fetch_status in AHAS_LIVE_FETCH_STATUSES
+    ):
+        ahas_public_fetch_status = "PARSED_DIRECT_XML"
 
     mil_notam_data = fetch_mil_notams(previous_data)
     notam_decision_now_z = datetime.now(timezone.utc)
@@ -6231,8 +6441,10 @@ def build_weather_json():
         "bwcHeight100FtAgl": ahas_data["bwcHeight100FtAgl"],
         "bwcUrl": ahas_data["bwcUrl"],
         "bwcRiskUrl": ahas_data["bwcRiskUrl"],
-        "bwcFetchStatus": ahas_data["bwcFetchStatus"],
+        "bwcFetchStatus": ahas_public_fetch_status,
         "bwcTransportSecurity": ahas_data.get("bwcTransportSecurity", "UNKNOWN"),
+        "bwcRetrievalRoute": ahas_data.get("bwcRetrievalRoute", "UNKNOWN"),
+        "bwcLiveValidated": ahas_data.get("bwcLiveValidated") is True,
         "bwcLatestAttemptStatus": ahas_direct_candidate.get("bwcFetchStatus", "UNKNOWN"),
         "bwcLatestAttemptZ": ahas_attempted_z,
         "bwcLatestAttemptError": ahas_direct_candidate.get("bwcFetchError", "UNKNOWN"),
@@ -6244,6 +6456,17 @@ def build_weather_json():
             "bwcTransportSecurity",
             "UNKNOWN",
         ),
+        "bwcLatestAttemptRetrievalRoute": ahas_direct_candidate.get(
+            "bwcRetrievalRoute",
+            "UNKNOWN",
+        ),
+        "bwcLatestAttemptRetrievalAttempts": ahas_direct_candidate.get(
+            "bwcRetrievalAttempts",
+            0,
+        ),
+        "bwcLatestAttemptLiveValidated": ahas_direct_candidate.get(
+            "bwcLiveValidated",
+        ) is True,
 
         "milNotamCount": mil_notam_data["milNotamCount"],
         "milNotamStatus": mil_notam_data["milNotamStatus"],
@@ -6314,7 +6537,10 @@ def build_weather_json():
     snapshot_current_weather_before_overwrite(weather_path)
     write_weather_json(weather_path, data)
 
-    maintain_bwc_history_safely(ahas_direct_candidate, now_z)
+    maintain_bwc_history_safely(
+        ahas_direct_candidate,
+        datetime.now(timezone.utc),
+    )
     maintain_atis_history_safely(atis_history_candidates, now_z)
 
     if should_save_last_good(data):

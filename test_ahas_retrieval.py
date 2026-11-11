@@ -107,9 +107,98 @@ class AhasRetrievalTests(unittest.TestCase):
         self.assertEqual(result["bwcUpdatedZ"], "2026-11-11 12:18:00.000")
         self.assertEqual(result["bwc"], "LOW")
         self.assertEqual(result["bwcTransportSecurity"], "CA_VERIFIED_TLS")
+        self.assertEqual(result["bwcRetrievalRoute"], "WWW_GET")
+        self.assertEqual(result["bwcRetrievalAttempts"], 1)
+        self.assertTrue(result["bwcLiveValidated"])
         self.assertEqual(fetch.call_count, 1)
         self.assertTrue(all(call.args[1].startswith("https://www.usahas.com/") for call in fetch.call_args_list))
         emergency.assert_not_called()
+
+    def test_official_form_post_recovers_after_primary_get_failure(self):
+        calls = []
+
+        def fetch(_opener, url, diagnostics=None, form_data=None, **_kwargs):
+            calls.append((url, form_data))
+            diagnostics["error"] = "NONE"
+            if form_data is None:
+                diagnostics["error"] = "HTTP_500"
+                return ""
+            return XML
+
+        with mock.patch.object(u, "fetch_with_opener", side_effect=fetch):
+            result = u.fetch_ahas_bwc(NOW)
+
+        self.assertEqual(len(calls), 2)
+        self.assertIsNone(calls[0][1])
+        self.assertIsNotNone(calls[1][1])
+        self.assertEqual(result["bwcRetrievalRoute"], "WWW_POST")
+        self.assertEqual(result["bwcFetchStatus"], "PARSED_DIRECT_XML")
+
+    def test_bare_host_recovers_after_www_host_layer_failure(self):
+        calls = []
+
+        def fetch(_opener, url, diagnostics=None, **_kwargs):
+            calls.append(url)
+            diagnostics["error"] = "NONE"
+            if "www.usahas.com" in url:
+                diagnostics["error"] = "DNS_FAILURE"
+                return ""
+            return XML
+
+        with mock.patch.object(u, "fetch_with_opener", side_effect=fetch):
+            result = u.fetch_ahas_bwc(NOW)
+
+        self.assertEqual(len(calls), 2, "same-host POST is skipped for DNS failure")
+        self.assertIn("www.usahas.com", calls[0])
+        self.assertIn("https://usahas.com/", calls[1])
+        self.assertEqual(result["bwcRetrievalRoute"], "BARE_GET")
+
+    def test_bare_form_post_recovers_after_www_and_bare_get_failures(self):
+        calls = []
+
+        def fetch(_opener, url, diagnostics=None, form_data=None, **_kwargs):
+            calls.append((url, form_data))
+            diagnostics["error"] = "NONE"
+            if "www.usahas.com" in url:
+                diagnostics["error"] = "DNS_FAILURE"
+                return ""
+            if form_data is None:
+                diagnostics["error"] = "HTTP_500"
+                return ""
+            return XML
+
+        with mock.patch.object(u, "fetch_with_opener", side_effect=fetch):
+            result = u.fetch_ahas_bwc(NOW)
+
+        self.assertEqual(len(calls), 3)
+        self.assertIsNone(calls[1][1])
+        self.assertIsNotNone(calls[2][1])
+        self.assertEqual(result["bwcRetrievalRoute"], "BARE_POST")
+
+    def test_pinned_form_post_recovers_after_invalid_pinned_get(self):
+        pinned_calls = []
+
+        def expired(_opener, _url, diagnostics=None, **_kwargs):
+            diagnostics["error"] = "TLS_CERTIFICATE_EXPIRED"
+            return ""
+
+        def pinned(_url, _now_z, diagnostics=None, form_data=None, **_kwargs):
+            pinned_calls.append(form_data)
+            diagnostics["error"] = "NONE"
+            return XML if form_data is not None else "<html>maintenance</html>"
+
+        with mock.patch.object(u, "fetch_with_opener", side_effect=expired), mock.patch.object(
+            u,
+            "fetch_ahas_risk_with_emergency_pin",
+            side_effect=pinned,
+        ):
+            result = u.fetch_ahas_bwc(NOW)
+
+        self.assertEqual(len(pinned_calls), 2)
+        self.assertIsNone(pinned_calls[0])
+        self.assertIsNotNone(pinned_calls[1])
+        self.assertEqual(result["bwcRetrievalRoute"], "WWW_POST")
+        self.assertEqual(result["bwcFetchStatus"], "PARSED_PINNED_EXPIRED_TLS")
 
     def test_non_expiry_failure_never_invokes_emergency_pin(self):
         for category in (
@@ -133,7 +222,8 @@ class AhasRetrievalTests(unittest.TestCase):
                 result = u.fetch_ahas_bwc(NOW)
                 self.assertEqual(result["bwcFetchStatus"], "RISK_ENDPOINT_FAILED")
                 self.assertEqual(result["bwcFetchError"], category)
-                self.assertEqual(fetch.call_count, 1)
+                expected_calls = 4 if category == "TIMEOUT" else 2
+                self.assertEqual(fetch.call_count, expected_calls)
                 emergency.assert_not_called()
 
     def test_empty_secure_response_remains_failed(self):
@@ -141,7 +231,7 @@ class AhasRetrievalTests(unittest.TestCase):
             result = u.fetch_ahas_bwc(NOW)
         self.assertEqual(result["bwcFetchStatus"], "RISK_ENDPOINT_FAILED")
         self.assertEqual(result["bwc"], "PENDING")
-        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual(fetch.call_count, 4)
 
     def test_invalid_xml_is_not_a_success(self):
         with mock.patch.object(u, "fetch_with_opener", return_value="<html>maintenance</html>"):
@@ -151,35 +241,41 @@ class AhasRetrievalTests(unittest.TestCase):
         self.assertEqual(result["bwc"], "PENDING")
 
     def test_expiry_uses_fixed_pinned_https_path_and_marks_transport(self):
-        calls = []
+        normal_routes = []
+        pinned_routes = []
 
-        def fetch(_opener, _url, diagnostics=None, max_bytes=None):
-            calls.append(max_bytes)
+        def expired(_opener, url, diagnostics=None, **_kwargs):
+            normal_routes.append(url)
+            diagnostics["error"] = "TLS_CERTIFICATE_EXPIRED"
+            return ""
+
+        def pinned(url, _now_z, diagnostics=None, form_data=None, **_kwargs):
+            pinned_routes.append((url, form_data))
             diagnostics["error"] = "NONE"
-            if max_bytes is None:
-                diagnostics["error"] = "TLS_CERTIFICATE_EXPIRED"
-                return ""
             return XML
 
-        with mock.patch.object(u, "fetch_with_opener", side_effect=fetch), mock.patch.object(
+        with mock.patch.object(u, "fetch_with_opener", side_effect=expired), mock.patch.object(
             u,
-            "ahas_emergency_now_z",
-            return_value=NOW,
+            "fetch_ahas_risk_with_emergency_pin",
+            side_effect=pinned,
         ):
             result = u.fetch_ahas_bwc(NOW)
 
-        self.assertEqual(calls, [None, 256 * 1024])
+        self.assertEqual(len(normal_routes), 2, "certificate failures skip same-host POST")
+        self.assertEqual(len(pinned_routes), 1)
         self.assertEqual(result["bwc"], "LOW")
         self.assertEqual(result["bwcFetchStatus"], "PARSED_PINNED_EXPIRED_TLS")
         self.assertEqual(result["bwcFetchError"], "NONE")
         self.assertEqual(result["bwcPrimaryFetchError"], "TLS_CERTIFICATE_EXPIRED")
         self.assertEqual(result["bwcTransportSecurity"], "TLS_PINNED_EXPIRED_LEAF")
+        self.assertEqual(result["bwcRetrievalRoute"], "WWW_GET")
+        self.assertEqual(result["bwcRetrievalAttempts"], 3)
+        self.assertTrue(result["bwcLiveValidated"])
 
     def test_emergency_pin_has_exact_scope_and_hard_deadline(self):
         self.assertTrue(u.is_allowed_ahas_emergency_risk_url(RISK_URL))
         rejected = (
             RISK_URL.replace("https://", "http://"),
-            RISK_URL.replace("www.usahas.com", "usahas.com"),
             RISK_URL.replace("www.usahas.com", "www.usahas.com.example.test"),
             RISK_URL.replace("GetAHASRisk", "OtherMethod"),
             RISK_URL + "&extra=1",
@@ -189,6 +285,41 @@ class AhasRetrievalTests(unittest.TestCase):
         for url in rejected:
             with self.subTest(url=url):
                 self.assertFalse(u.is_allowed_ahas_emergency_risk_url(url))
+
+        bare_url = RISK_URL.replace("www.usahas.com", "usahas.com")
+        self.assertTrue(u.is_allowed_ahas_emergency_risk_url(bare_url))
+        post_url, encoded = RISK_URL.split("?", 1)
+        self.assertTrue(
+            u.is_allowed_ahas_emergency_risk_request(
+                post_url,
+                "POST",
+                encoded.encode("ascii"),
+            )
+        )
+        self.assertFalse(
+            u.is_allowed_ahas_emergency_risk_request(
+                post_url,
+                "POST",
+                (encoded + "&extra=1").encode("ascii"),
+            )
+        )
+        self.assertFalse(
+            u.is_allowed_ahas_emergency_risk_request(
+                post_url,
+                "POST",
+                (encoded + "&Type=ICAO").encode("ascii"),
+            )
+        )
+        self.assertFalse(u.is_allowed_ahas_emergency_risk_request(post_url, "PUT", encoded))
+
+        bad_post = u.urllib.request.Request(
+            post_url,
+            data=encoded.encode("ascii"),
+            headers={"Content-Type": "application/json"},
+        )
+        handler = u.AhasPinnedHTTPSHandler(u.AHAS_EMERGENCY_LEAF_SHA256)
+        with self.assertRaises(u.urllib.error.URLError):
+            handler.https_open(bad_post)
 
         diagnostics = {}
         with mock.patch.object(u.urllib.request, "build_opener") as build:
@@ -229,7 +360,7 @@ class AhasRetrievalTests(unittest.TestCase):
             diagnostics["error"] = "TLS_CERTIFICATE_EXPIRED"
             return ""
 
-        def pin_mismatch(_url, _now_z, diagnostics=None):
+        def pin_mismatch(_url, _now_z, diagnostics=None, form_data=None, **_kwargs):
             diagnostics["error"] = "TLS_CERTIFICATE_PIN_MISMATCH"
             return ""
 
@@ -317,6 +448,44 @@ class AhasRetrievalTests(unittest.TestCase):
         self.assertEqual(error_body.tell(), 9)
         self.assertEqual(diagnostics, {"error": "HTTP_503"})
         http_error.close()
+
+    def test_form_fallback_builds_exact_post_body_and_content_type(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self, _size=None):
+                return XML.encode("utf-8")
+
+        route = u.build_ahas_risk_routes(NOW)[1]
+        opener = mock.Mock()
+        opener.open.return_value = Response()
+        diagnostics = {}
+        body = u.fetch_with_opener(
+            opener,
+            route["url"],
+            diagnostics,
+            max_bytes=u.AHAS_RESPONSE_MAX_BYTES,
+            form_data=route["formData"],
+        )
+
+        request = opener.open.call_args.args[0]
+        self.assertEqual(body, XML)
+        self.assertEqual(request.get_method(), "POST")
+        self.assertEqual(
+            request.get_header("Content-type"),
+            "application/x-www-form-urlencoded",
+        )
+        self.assertTrue(
+            u.is_allowed_ahas_emergency_risk_request(
+                request.full_url,
+                request.get_method(),
+                request.data,
+            )
+        )
 
     def test_payload_requires_kmem_current_time_and_explicit_risks(self):
         cases = {
@@ -409,27 +578,53 @@ class AhasRetrievalTests(unittest.TestCase):
         self.assertEqual(payload["bwcFetchStatus"], "PARSED_DIRECT_XML")
         self.assertEqual(payload["bwcLatestAttemptStatus"], "PARSED_DIRECT_XML")
 
-    def test_pinned_recovery_publishes_current_value_with_visible_warning_status(self):
-        def fetch(_opener, _url, diagnostics=None, max_bytes=None):
+    def test_live_no_data_never_becomes_a_green_none_risk(self):
+        no_data_xml = XML.replace(
+            "<AHASRISK>LOW</AHASRISK>",
+            "<AHASRISK>NO DATA</AHASRISK>",
+        )
+        with mock.patch.object(u, "fetch_with_opener", return_value=no_data_xml):
+            direct = u.fetch_ahas_bwc(NOW)
+
+        self.assertEqual(direct["bwc"], "PENDING")
+        self.assertEqual(direct["bwcAhasRisk"], "NO DATA")
+        self.assertTrue(direct["bwcLiveValidated"])
+
+        payload = self.build_payload(direct)
+        self.assertEqual(payload["bwc"], "SEVERE")
+        self.assertEqual(payload["bwcFetchStatus"], "USED_LAST_GOOD")
+        self.assertTrue(payload["lastKnownGoodUsed"]["ahas"])
+        self.assertEqual(payload["bwcLatestAttemptStatus"], "PARSED_DIRECT_XML")
+        self.assertTrue(payload["bwcLatestAttemptLiveValidated"])
+
+    def test_pinned_recovery_publishes_current_validated_value(self):
+        def expired(_opener, _url, diagnostics=None, **_kwargs):
+            diagnostics["error"] = "TLS_CERTIFICATE_EXPIRED"
+            return ""
+
+        def pinned(_url, _now_z, diagnostics=None, form_data=None, **_kwargs):
             diagnostics["error"] = "NONE"
-            if max_bytes is None:
-                diagnostics["error"] = "TLS_CERTIFICATE_EXPIRED"
-                return ""
             return XML
 
-        with mock.patch.object(u, "fetch_with_opener", side_effect=fetch), mock.patch.object(
+        with mock.patch.object(u, "fetch_with_opener", side_effect=expired), mock.patch.object(
             u,
-            "ahas_emergency_now_z",
-            return_value=NOW,
+            "fetch_ahas_risk_with_emergency_pin",
+            side_effect=pinned,
         ):
             direct = u.fetch_ahas_bwc(NOW)
         payload = self.build_payload(direct)
         self.assertEqual(payload["bwc"], "LOW")
         self.assertEqual(payload["bwcUpdatedZ"], "2026-11-11 12:18:00.000")
         self.assertFalse(payload["lastKnownGoodUsed"]["ahas"])
-        self.assertEqual(payload["bwcFetchStatus"], "PARSED_PINNED_EXPIRED_TLS")
+        self.assertEqual(
+            payload["bwcFetchStatus"],
+            "PARSED_DIRECT_XML",
+            "legacy open displays must turn AHAS green without reloading index.html",
+        )
         self.assertEqual(payload["bwcLatestAttemptStatus"], "PARSED_PINNED_EXPIRED_TLS")
         self.assertEqual(payload["bwcTransportSecurity"], "TLS_PINNED_EXPIRED_LEAF")
+        self.assertTrue(payload["bwcLiveValidated"])
+        self.assertEqual(payload["bwcRetrievalRoute"], "WWW_GET")
         self.assertEqual(payload["bwcLatestAttemptPrimaryError"], "TLS_CERTIFICATE_EXPIRED")
 
 

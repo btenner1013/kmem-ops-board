@@ -133,6 +133,23 @@ vm.runInContext(
   notamContext,
 );
 
+const AHAS_NOW_MS = Date.parse("2026-11-11T12:20:00Z");
+const ahasContext = vm.createContext({
+  getBoardNowMs: () => AHAS_NOW_MS,
+  parseUpdatedZ: (value) => {
+    const normalized = String(value || "").replace(" ", "T") + (
+      String(value || "").includes("Z") ? "" : "Z"
+    );
+    const date = new Date(normalized);
+    return Number.isFinite(date.getTime()) ? date : null;
+  },
+});
+vm.runInContext(
+  sourceBetween("function ahasFeedState", "function updateSourceHealth") + "\n" +
+    "globalThis.ahasFeedState=ahasFeedState;",
+  ahasContext,
+);
+
 
 function statusAt(age, overrides = {}) {
   return context.atisFeedState(
@@ -404,16 +421,58 @@ test("NOTAM footer and CAO share one classifier without borrowing weather freshn
   );
 });
 
-test("AHAS footer reports stale age before degraded transport warning", () => {
-  const footerSource = sourceBetween("function updateSourceHealth", "function parseCaoDate");
-  const pendingBranch = footerSource.indexOf('if(bwc==="PENDING"');
-  const staleBranch = footerSource.indexOf('else if(ahasAge!==null&&ahasAge>90)');
-  const directBranch = footerSource.indexOf('else if(bwcStatus==="PARSED_DIRECT_XML")');
+test("AHAS footer treats every fresh validated live route as healthy", () => {
+  function state(overrides = {}) {
+    return ahasContext.ahasFeedState({
+      bwc: "LOW",
+      bwcUpdatedZ: "2026-11-11 12:18:00.000",
+      bwcFetchStatus: "PARSED_DIRECT_XML",
+      bwcLiveValidated: true,
+      lastKnownGoodUsed: { ahas: false },
+      ...overrides,
+    }, AHAS_NOW_MS);
+  }
 
-  assert.ok(pendingBranch >= 0);
-  assert.ok(staleBranch > pendingBranch);
-  assert.ok(directBranch > staleBranch, "stale age must outrank direct/pinned/cache transport status");
-  assert.match(footerSource, /addPart\("AHAS","STALE",`\$\{ahasAge\}M`\)/);
+  assert.deepEqual({ ...state() }, { status: "OK", detail: "", age: 2 });
+  assert.equal(state({
+    bwcFetchStatus: "PARSED_PINNED_EXPIRED_TLS",
+    bwcTransportSecurity: "TLS_PINNED_EXPIRED_LEAF",
+  }).status, "OK");
+  assert.equal(state({
+    bwcFetchStatus: "PARSED_FUTURE_APPROVED_ROUTE",
+  }).status, "OK");
+  assert.equal(state({
+    bwcLiveValidated: undefined,
+    bwcFetchStatus: "PARSED_PINNED_EXPIRED_TLS",
+  }).status, "OK", "legacy validated pinned payloads remain healthy");
+
+  const footerSource = sourceBetween("function updateSourceHealth", "function parseCaoDate");
+  assert.match(footerSource, /const ahasFeed=ahasFeedState\(data\);/);
+  assert.match(footerSource, /addPart\("AHAS",ahasFeed\.status,ahasFeed\.detail\)/);
+});
+
+test("AHAS footer keeps cached, stale, malformed, and failed data non-green", () => {
+  function state(overrides = {}) {
+    return ahasContext.ahasFeedState({
+      bwc: "LOW",
+      bwcUpdatedZ: "2026-11-11 12:18:00.000",
+      bwcFetchStatus: "PARSED_PINNED_EXPIRED_TLS",
+      bwcLiveValidated: true,
+      lastKnownGoodUsed: { ahas: false },
+      ...overrides,
+    }, AHAS_NOW_MS);
+  }
+
+  assert.equal(state({ bwcFetchStatus: "USED_LAST_GOOD" }).status, "WARN");
+  assert.equal(state({ lastKnownGoodUsed: { ahas: true } }).status, "WARN");
+  assert.equal(state({ bwcUpdatedZ: "2026-11-11 10:49:59.000" }).status, "STALE");
+  assert.equal(state({ bwcFetchStatus: "RISK_ENDPOINT_FAILED" }).status, "PENDING");
+  assert.equal(state({ bwc: "PENDING" }).status, "PENDING");
+  assert.equal(state({ bwcUpdatedZ: "" }).status, "WARN");
+  assert.equal(state({ bwcUpdatedZ: "2026-11-11 12:22:01.000" }).status, "WARN");
+  assert.equal(state({ bwc: "GARBAGE" }).status, "WARN");
+  assert.equal(state({ bwcFetchStatus: "NOT_STARTED" }).status, "WARN");
+  assert.equal(state({ bwcFetchStatus: "INVALID_RISK_PAYLOAD" }).status, "WARN");
 });
 
 test("unknown runway state is amber and does not use the flashing closure class", () => {

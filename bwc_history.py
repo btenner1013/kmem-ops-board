@@ -1,7 +1,7 @@
 """Failure-safe rolling history for live USAHAS AHAS risk at KMEM.
 
 The operational board labels this product ``BWC``, but the stored value is the
-USAHAS ``AHASRISK`` field.  This module deliberately accepts the *direct*
+USAHAS ``AHASRISK`` field.  This module deliberately accepts a validated *live*
 ``fetch_ahas_bwc`` result before any last-known-good substitution.  It never
 queries historical services and never seeds from ``weather.json``.
 
@@ -35,7 +35,10 @@ DEFAULT_SOURCE_AREA_TYPE = "ICAO"
 DEFAULT_SOURCE_AREA_NAME = "MEMPHIS INTL"
 DEFAULT_SOURCE_TIMESTAMP_FIELD = "DateTime"
 
-DIRECT_FETCH_STATUS = "PARSED_DIRECT_XML"
+LIVE_FETCH_STATUSES = frozenset({
+    "PARSED_DIRECT_XML",
+    "PARSED_PINNED_EXPIRED_TLS",
+})
 KNOWN_STATES = frozenset({"LOW", "MODERATE", "SEVERE"})
 NO_DATA_VALUES = frozenset({"", "--", "NA", "N/A", "NO DATA", "NO_DATA", "NODATA"})
 FUTURE_TOLERANCE = timedelta(minutes=2)
@@ -206,7 +209,7 @@ def validate_live_bwc_candidate(
     now_z: datetime,
     station: str = DEFAULT_STATION,
 ) -> BwcCandidateValidation:
-    """Validate and canonicalize a direct pre-fallback ``fetch_ahas_bwc`` result.
+    """Validate and canonicalize a live pre-fallback ``fetch_ahas_bwc`` result.
 
     A direct ``NO DATA`` row is accepted as ``kind='NO_DATA'`` so an established
     archive can represent unknown coverage.  It can never start an archive and
@@ -221,8 +224,10 @@ def validate_live_bwc_candidate(
         return BwcCandidateValidation(False, reason="station must be a four-character identifier")
     if not isinstance(candidate, Mapping) or not candidate:
         return BwcCandidateValidation(False, reason="no direct USAHAS candidate")
-    if candidate.get("bwcFetchStatus") != DIRECT_FETCH_STATUS:
-        return BwcCandidateValidation(False, reason="candidate was not parsed from direct USAHAS XML")
+    if candidate.get("bwcFetchStatus") not in LIVE_FETCH_STATUSES:
+        return BwcCandidateValidation(False, reason="candidate was not parsed from validated live USAHAS XML")
+    if candidate.get("bwcLiveValidated") is not True:
+        return BwcCandidateValidation(False, reason="candidate lacks explicit live-payload validation")
     if _candidate_is_fallback(candidate):
         return BwcCandidateValidation(False, reason="last-known-good/fallback candidate is ineligible")
 
@@ -255,11 +260,16 @@ def validate_live_bwc_candidate(
         "basisClass": basis_class,
     }
 
-    if raw_risk in KNOWN_STATES:
+    normalized_risk = "SEVERE" if raw_risk == "HIGH" else raw_risk
+    if normalized_risk in KNOWN_STATES:
         return BwcCandidateValidation(
             True,
             kind="STATE",
-            observation={**common, "state": raw_risk, "rawAhasRisk": raw_risk},
+            observation={
+                **common,
+                "state": normalized_risk,
+                "rawAhasRisk": raw_risk,
+            },
         )
     if raw_risk in NO_DATA_VALUES:
         return BwcCandidateValidation(

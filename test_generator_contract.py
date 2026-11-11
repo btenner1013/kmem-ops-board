@@ -105,6 +105,7 @@ class WeatherGeneratorContractTests(unittest.TestCase):
     def test_bwc_history_failure_is_isolated_from_operational_weather(self):
         candidate = {
             "bwcFetchStatus": "PARSED_DIRECT_XML",
+            "bwcLiveValidated": True,
             "bwcAhasRisk": "LOW",
             "bwcUpdatedZ": "2026-08-30 03:12:00.000",
             "bwcBasedOn": "NEXRAD",
@@ -131,15 +132,22 @@ class WeatherGeneratorContractTests(unittest.TestCase):
 
     def test_weather_build_maintains_bwc_history_from_direct_pre_fallback_candidate(self):
         source = inspect.getsource(updater.build_weather_json)
-        self.assertIn("ahas_direct_candidate = fetch_ahas_bwc(now_z)", source)
-        self.assertIn("ahas_data = ahas_direct_candidate", source)
-        self.assertIn(
-            "maintain_bwc_history_safely(ahas_direct_candidate, now_z)",
-            source,
+        request_clock = "ahas_request_now_z = datetime.now(timezone.utc)"
+        fetch = "ahas_direct_candidate = fetch_ahas_bwc(ahas_request_now_z)"
+        history = (
+            "maintain_bwc_history_safely(\n"
+            "        ahas_direct_candidate,\n"
+            "        datetime.now(timezone.utc),\n"
+            "    )"
         )
+        self.assertIn(request_clock, source)
+        self.assertIn(fetch, source)
+        self.assertIn("ahas_data = ahas_direct_candidate", source)
+        self.assertIn(history, source)
+        self.assertLess(source.index(request_clock), source.index(fetch))
         self.assertLess(
             source.index("write_weather_json(weather_path, data)"),
-            source.index("maintain_bwc_history_safely(ahas_direct_candidate, now_z)"),
+            source.index(history),
         )
 
     def test_runway_resolution_uses_a_fresh_post_notam_fetch_decision_clock(self):

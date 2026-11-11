@@ -2669,6 +2669,39 @@ function renderHostHealth(data){
   el.title=`ROLE ${state.role} | UPDATE ${update} | GITHUB ${github} | RUNNING ${running} | ORIGIN ${origin}`;
 }
 
+function ahasFeedState(data,nowMs=getBoardNowMs()){
+  const bwc=String(data?.bwc||"").trim().toUpperCase();
+  const status=String(data?.bwcFetchStatus||"").trim().toUpperCase();
+  if(bwc==="PENDING"||status.includes("FAILED")||status.includes("ERROR")){
+    return {status:"PENDING",detail:"",age:null};
+  }
+
+  const updated=parseUpdatedZ(data?.bwcUpdatedZ||"");
+  if(!updated)return {status:"WARN",detail:"TIME UNKNOWN",age:null};
+  const exactAge=(Number(nowMs)-updated.getTime())/60000;
+  if(!Number.isFinite(exactAge)||exactAge < -2){
+    return {status:"WARN",detail:"FUTURE TIME",age:null};
+  }
+  const age=Math.max(0,Math.round(exactAge));
+  if(exactAge>90)return {status:"STALE",detail:`${age}M`,age};
+  if(status==="USED_LAST_GOOD"||data?.lastKnownGoodUsed?.ahas===true){
+    return {status:"WARN",detail:"LAST KNOWN",age};
+  }
+
+  const allowedValue=["NONE","LOW","MODERATE","SEVERE"].includes(bwc);
+  const validationFlag=data?.bwcLiveValidated;
+  const parsedStatus=/^PARSED_[A-Z0-9_]+$/.test(status);
+  const validatedLive=(
+    (validationFlag===true&&parsedStatus)
+    || (
+      validationFlag==null
+      && ["PARSED_DIRECT_XML","PARSED_PINNED_EXPIRED_TLS"].includes(status)
+    )
+  );
+  if(allowedValue&&validatedLive)return {status:"OK",detail:"",age};
+  return {status:"WARN",detail:"",age};
+}
+
 function updateSourceHealth(data,updatedZ){
   const el=document.getElementById("feedHealth");
   let parts=[];
@@ -2683,8 +2716,6 @@ function updateSourceHealth(data,updatedZ){
   const metar=data.metar||"";
   const taf=data.taf||"";
   const atis=data.atisText||"";
-  const bwc=(data.bwc||"").toUpperCase();
-  const bwcStatus=(data.bwcFetchStatus||"").toUpperCase();
 
   const metarBad=isBadText(metar,["UNAVAILABLE","ERROR","FAILED"]);
   const metarStatus=(data.metarFetchStatus||"").toString().toUpperCase();
@@ -2705,14 +2736,8 @@ function updateSourceHealth(data,updatedZ){
   const atisFeed=atisFeedState(data,atis);
   addPart("ATIS",atisFeed.status,atisFeed.detail);
 
-  const ahasUpdated=parseUpdatedZ(data.bwcUpdatedZ||"");
-  const ahasAge=ahasUpdated?Math.round((getBoardNowMs()-ahasUpdated.getTime())/60000):null;
-
-  if(bwc==="PENDING"||bwcStatus.includes("FAILED")||bwcStatus.includes("ERROR")){ addPart("AHAS","PENDING",""); }
-  else if(ahasAge!==null&&ahasAge>90){ addPart("AHAS","STALE",`${ahasAge}M`); }
-  else if(bwcStatus==="PARSED_DIRECT_XML"){
-    addPart("AHAS","OK","");
-  }else{ addPart("AHAS","WARN",""); }
+  const ahasFeed=ahasFeedState(data);
+  addPart("AHAS",ahasFeed.status,ahasFeed.detail);
 
   const notamFeed=notamFeedState(data);
   addPart("NOTAMS",notamFeed.status,notamFeed.detail);

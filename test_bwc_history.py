@@ -24,6 +24,7 @@ def direct_candidate(
     source="AHAS",
     fallback=False,
     station="KMEM",
+    live_validated=True,
 ):
     return {
         "station": station,
@@ -33,6 +34,7 @@ def direct_candidate(
         "bwcAhasRisk": risk,
         "bwcBasedOn": basis,
         "bwcFetchStatus": status,
+        "bwcLiveValidated": live_validated,
         "isFallback": fallback,
     }
 
@@ -81,6 +83,25 @@ class BwcCandidateValidationTests(unittest.TestCase):
         self.assertEqual(result.observation["basis"], "NEXRAD")
         self.assertEqual(result.observation["basisClass"], "OBSERVED_OPERATIONAL")
 
+    def test_live_status_without_explicit_validation_is_rejected(self):
+        for candidate in (
+            direct_candidate(live_validated=False),
+            direct_candidate(status="PARSED_PINNED_EXPIRED_TLS", live_validated=False),
+            {key: value for key, value in direct_candidate().items() if key != "bwcLiveValidated"},
+        ):
+            with self.subTest(candidate=candidate):
+                result = history.validate_live_bwc_candidate(candidate, now_z=NOW)
+                self.assertFalse(result.accepted)
+
+    def test_exact_pin_live_state_is_accepted_after_payload_validation(self):
+        result = history.validate_live_bwc_candidate(
+            direct_candidate(status="PARSED_PINNED_EXPIRED_TLS"), now_z=NOW
+        )
+
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.kind, "STATE")
+        self.assertEqual(result.observation["state"], "SEVERE")
+
     def test_model_basis_is_not_mislabeled_as_observed(self):
         for basis in ("SOAR", "NEXBAM", "BAM"):
             with self.subTest(basis=basis):
@@ -89,8 +110,17 @@ class BwcCandidateValidationTests(unittest.TestCase):
                 )
                 self.assertEqual(result.observation["basisClass"], "MODEL_OPERATIONAL")
 
+    def test_raw_high_is_archived_as_the_displayed_severe_state(self):
+        result = history.validate_live_bwc_candidate(
+            direct_candidate(risk="HIGH"), now_z=NOW
+        )
+
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.observation["state"], "SEVERE")
+        self.assertEqual(result.observation["rawAhasRisk"], "HIGH")
+
     def test_raw_no_data_is_actionable_unknown_not_known_none(self):
-        for raw_value in ("NO DATA", "--", "", "NA", "N/A"):
+        for raw_value in ("NO DATA", "NO_DATA", "NODATA", "--", "", "NA", "N/A"):
             with self.subTest(raw_value=raw_value):
                 result = history.validate_live_bwc_candidate(
                     direct_candidate(risk=raw_value), now_z=NOW
@@ -107,7 +137,6 @@ class BwcCandidateValidationTests(unittest.TestCase):
             direct_candidate(risk="NONE"),
             direct_candidate(fallback=True),
             direct_candidate(status="RISK_ENDPOINT_FAILED"),
-            direct_candidate(status="PARSED_PINNED_EXPIRED_TLS"),
             {
                 **direct_candidate(),
                 "lastKnownGoodUsed": {"ahas": True},
