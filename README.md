@@ -18,6 +18,22 @@ The public GitHub Pages board checks its own HTTPS endpoint. An optional localho
 
 Run the deterministic clock tests with `npm run test:clock`.
 
+## AHAS retrieval and retained reports
+
+AHAS retrieval uses certificate-verified HTTPS only, including redirects, on
+`www.usahas.com` or `usahas.com`. An unavailable print page does not prevent a
+direct attempt to the HTTPS risk service. There is no HTTP or unverified-TLS
+fallback.
+
+On retrieval failure, the board retains the last valid risk and its original
+AHAS observation time. `bwcFetchStatus` becomes `USED_LAST_GOOD`, while
+`bwcLatestAttemptStatus` and `bwcLatestAttemptZ` describe the latest fetch
+attempt separately. The existing observation age and LAST KNOWN marker remain
+in place. These fields do not make an old observation current, and cached
+observations are not added to the live AHAS history.
+
+Run `python -m unittest test_ahas_retrieval` for the focused regressions.
+
 ## Primary URLs
 
 ### Live GitHub Pages board

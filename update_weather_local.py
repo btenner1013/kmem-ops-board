@@ -697,6 +697,16 @@ def fetch_current_atis(
     return "D-ATIS unavailable"
 
 
+class AhasHttpsRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Never downgrade or leave the approved AHAS hosts during a fetch."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        target = urllib.parse.urlsplit(newurl)
+        if target.scheme.lower() != "https" or target.hostname not in {"www.usahas.com", "usahas.com"}:
+            raise urllib.error.URLError("AHAS redirect rejected: verified HTTPS AHAS host required")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def fetch_with_opener(opener, url):
     try:
         request = urllib.request.Request(
@@ -4180,14 +4190,16 @@ def fetch_ahas_bwc(now_z):
 
     try:
         opener = urllib.request.build_opener(
-            urllib.request.HTTPCookieProcessor(CookieJar())
+            urllib.request.HTTPCookieProcessor(CookieJar()),
+            AhasHttpsRedirectHandler(),
         )
 
         print_page = fetch_with_opener(opener, print_url)
 
         if not print_page:
-            result["bwcFetchStatus"] = "PRINT_PAGE_FAILED"
-            return result
+            # The risk service can work even when the optional print page is
+            # unavailable. Keep the same verified HTTPS session for both.
+            print("AHAS print page unavailable; checking the HTTPS risk service directly.")
 
         xml_text = fetch_with_opener(opener, risk_url)
 
@@ -5767,6 +5779,7 @@ def build_weather_json():
     wx_summary = summarize_weather_alerts(wx_alerts)
     lightning_summary = build_lightning_summary(metar, taf, current_atis_text)
 
+    ahas_attempted_z = zulu_iso(datetime.now(timezone.utc))
     ahas_direct_candidate = fetch_ahas_bwc(now_z)
     ahas_data = ahas_direct_candidate
 
@@ -5786,7 +5799,7 @@ def build_weather_json():
                 "bwcHeight100FtAgl": use_previous_field(previous_data, "bwcHeight100FtAgl", "--"),
                 "bwcUrl": use_previous_field(previous_data, "bwcUrl", "--"),
                 "bwcRiskUrl": use_previous_field(previous_data, "bwcRiskUrl", "--"),
-                "bwcFetchStatus": use_previous_field(previous_data, "bwcFetchStatus", "PARSED_DIRECT_XML")
+                "bwcFetchStatus": "USED_LAST_GOOD"
             }
         else:
             print("AHAS/BWC fetch failed; no valid last-known-good BWC available.")
@@ -5932,6 +5945,8 @@ def build_weather_json():
         "bwcUrl": ahas_data["bwcUrl"],
         "bwcRiskUrl": ahas_data["bwcRiskUrl"],
         "bwcFetchStatus": ahas_data["bwcFetchStatus"],
+        "bwcLatestAttemptStatus": ahas_direct_candidate.get("bwcFetchStatus", "UNKNOWN"),
+        "bwcLatestAttemptZ": ahas_attempted_z,
 
         "milNotamCount": mil_notam_data["milNotamCount"],
         "milNotamStatus": mil_notam_data["milNotamStatus"],
