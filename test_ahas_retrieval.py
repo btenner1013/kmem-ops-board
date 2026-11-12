@@ -4,6 +4,8 @@ import hashlib
 import io
 import inspect
 import json
+import os
+import subprocess
 import unittest
 from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
@@ -26,6 +28,337 @@ RISK_URL = (
 
 
 class AhasRetrievalTests(unittest.TestCase):
+    def test_windows_directory_comes_from_winapi_not_mutable_environment(self):
+        source = inspect.getsource(u._windows_directory_path)
+        self.assertIn("GetWindowsDirectoryW", source)
+        self.assertNotIn("os.environ", source)
+
+    def test_windows_system_curl_path_uses_only_sysnative_or_system32(self):
+        sysnative = os.path.abspath(r"C:\Windows\Sysnative\curl.exe")
+        system32 = os.path.abspath(r"C:\Windows\System32\curl.exe")
+
+        with mock.patch.object(
+            u,
+            "_windows_directory_path",
+            return_value=os.path.abspath(r"C:\Windows"),
+        ), mock.patch.dict(
+            u.os.environ,
+            {
+                "SystemRoot": r"C:\untrusted-absolute-root",
+                "WINDIR": r"C:\untrusted-absolute-root",
+                "PATH": r"C:\untrusted-path-shadow",
+            },
+            clear=False,
+        ), mock.patch.object(
+            u.os.path,
+            "isfile",
+            side_effect=lambda path: os.path.abspath(path) == sysnative,
+        ) as isfile:
+            self.assertEqual(u.windows_system_curl_path(), sysnative)
+        checked = [os.path.abspath(call.args[0]) for call in isfile.call_args_list]
+        self.assertEqual(checked, [sysnative])
+        self.assertTrue(all("untrusted-path-shadow" not in path for path in checked))
+
+        with mock.patch.object(
+            u,
+            "_windows_directory_path",
+            return_value=os.path.abspath(r"C:\Windows"),
+        ), mock.patch.object(
+            u.os.path,
+            "isfile",
+            side_effect=lambda path: os.path.abspath(path) == system32,
+        ) as isfile:
+            self.assertEqual(u.windows_system_curl_path(), system32)
+        checked = [os.path.abspath(call.args[0]) for call in isfile.call_args_list]
+        self.assertEqual(checked, [sysnative, system32])
+
+        with mock.patch.object(u, "_windows_directory_path", return_value=None), mock.patch.object(
+            u.os.path,
+            "isfile",
+        ) as isfile:
+            self.assertIsNone(u.windows_system_curl_path())
+            isfile.assert_not_called()
+
+    def test_windows_trust_fetch_is_https_only_bounded_and_uses_no_bypass_flags(self):
+        route = u.build_ahas_risk_routes(NOW)[0]
+        system_curl = os.path.abspath(r"C:\Windows\System32\curl.exe")
+        diagnostics = {}
+
+        def completed_fetch(command, **_kwargs):
+            output_index = command.index("--output") + 1
+            Path(command[output_index]).write_bytes(XML.encode("utf-8"))
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "KMEM_AHAS_HTTP_STATUS:200",
+                "",
+            )
+
+        with mock.patch.object(
+            u,
+            "windows_system_curl_path",
+            return_value=system_curl,
+        ) as locate, mock.patch.object(
+            u,
+            "run_bounded_process",
+            side_effect=completed_fetch,
+        ) as run, mock.patch.dict(
+            u.os.environ,
+            {
+                "CURL_CA_BUNDLE": r"C:\untrusted\ca.pem",
+                "SSL_CERT_FILE": r"C:\untrusted\ca.pem",
+                "SSL_CERT_DIR": r"C:\untrusted\certs",
+                "REQUESTS_CA_BUNDLE": r"C:\untrusted\requests.pem",
+                "CURL_SSL_BACKEND": "untrusted-backend",
+            },
+            clear=False,
+        ):
+            body = u.fetch_ahas_risk_with_windows_trust(
+                route,
+                diagnostics=diagnostics,
+                timeout=7.5,
+            )
+
+        self.assertEqual(body, XML)
+        self.assertEqual(diagnostics, {"error": "NONE"})
+        locate.assert_called_once_with()
+        run.assert_called_once()
+        command = run.call_args.args[0]
+        self.assertEqual(os.path.abspath(command[0]), system_curl)
+        self.assertEqual(command.count(route["url"]), 1)
+        self.assertTrue(run.call_args.kwargs.get("capture_output"))
+        self.assertGreater(run.call_args.kwargs["timeout"], 0)
+        self.assertLessEqual(run.call_args.kwargs["timeout"], 7.5)
+        child_environment = run.call_args.kwargs["env"]
+        self.assertTrue({
+            "CURL_CA_BUNDLE",
+            "SSL_CERT_FILE",
+            "SSL_CERT_DIR",
+            "REQUESTS_CA_BUNDLE",
+            "CURL_SSL_BACKEND",
+        }.isdisjoint(key.upper() for key in child_environment))
+
+        lowered = [str(part).lower() for part in command]
+        forbidden = {
+            "-k",
+            "--insecure",
+            "-l",
+            "--location",
+            "--location-trusted",
+            "--cacert",
+            "--capath",
+        }
+        self.assertTrue(forbidden.isdisjoint(lowered), command)
+        self.assertIn("--max-time", lowered)
+        self.assertIn("--max-filesize", lowered)
+        self.assertIn("--max-redirs", lowered)
+        self.assertEqual(command[lowered.index("--max-redirs") + 1], "0")
+        max_size_index = lowered.index("--max-filesize")
+        self.assertEqual(int(command[max_size_index + 1]), u.AHAS_RESPONSE_MAX_BYTES)
+
+    def test_windows_trust_fetch_rejects_unapproved_routes_and_oversize_output(self):
+        route = u.build_ahas_risk_routes(NOW)[0]
+        system_curl = os.path.abspath(r"C:\Windows\System32\curl.exe")
+        unapproved = dict(route, url=route["url"].replace("https://", "http://"))
+        diagnostics = {}
+        with mock.patch.object(u, "run_bounded_process") as run:
+            self.assertEqual(
+                u.fetch_ahas_risk_with_windows_trust(
+                    unapproved,
+                    diagnostics=diagnostics,
+                ),
+                "",
+            )
+        run.assert_not_called()
+        self.assertNotEqual(diagnostics.get("error"), "NONE")
+
+        oversized = "x" * (u.AHAS_RESPONSE_MAX_BYTES + 1)
+
+        def completed_oversize(command, **_kwargs):
+            output_index = command.index("--output") + 1
+            Path(command[output_index]).write_text(oversized, encoding="utf-8")
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "KMEM_AHAS_HTTP_STATUS:200",
+                "",
+            )
+
+        diagnostics = {}
+        with mock.patch.object(
+            u,
+            "windows_system_curl_path",
+            return_value=system_curl,
+        ), mock.patch.object(
+            u,
+            "run_bounded_process",
+            side_effect=completed_oversize,
+        ):
+            self.assertEqual(
+                u.fetch_ahas_risk_with_windows_trust(
+                    route,
+                    diagnostics=diagnostics,
+                ),
+                "",
+            )
+        self.assertEqual(diagnostics, {"error": "RESPONSE_TOO_LARGE"})
+
+    def test_windows_trust_recovers_only_approved_python_tls_failures(self):
+        eligible = (
+            "TLS_CERTIFICATE_ISSUER_UNAVAILABLE",
+            "TLS_CERTIFICATE_CHAIN_UNVERIFIED",
+            "TLS_CERTIFICATE_INVALID",
+            "TLS_HANDSHAKE_FAILED",
+        )
+        for category in eligible:
+            def python_failure(_opener, _url, diagnostics=None, **_kwargs):
+                diagnostics["error"] = category
+                return ""
+
+            def windows_success(_route, diagnostics=None, **_kwargs):
+                diagnostics["error"] = "NONE"
+                return XML
+
+            with self.subTest(category=category), mock.patch.object(
+                u,
+                "fetch_with_opener",
+                side_effect=python_failure,
+            ), mock.patch.object(
+                u,
+                "windows_system_curl_path",
+                return_value=os.path.abspath(r"C:\Windows\System32\curl.exe"),
+            ), mock.patch.object(
+                u,
+                "fetch_ahas_risk_with_windows_trust",
+                side_effect=windows_success,
+            ) as windows, mock.patch.object(
+                u,
+                "fetch_ahas_risk_with_emergency_pin",
+            ) as emergency:
+                result = u.fetch_ahas_bwc(NOW)
+
+            self.assertEqual(result["bwc"], "LOW")
+            self.assertEqual(result["bwcFetchStatus"], "PARSED_WINDOWS_SCHANNEL_TLS")
+            self.assertEqual(
+                result["bwcTransportSecurity"],
+                "WINDOWS_SCHANNEL_CA_VERIFIED_TLS",
+            )
+            self.assertEqual(result["bwcRetrievalTransport"], "WINDOWS_CURL_SCHANNEL")
+            self.assertEqual(result["bwcRetrievalRoute"], "WWW_GET")
+            self.assertEqual(result["bwcPrimaryFetchError"], category)
+            self.assertTrue(result["bwcLiveValidated"])
+            windows.assert_called()
+            emergency.assert_not_called()
+
+    def test_windows_trust_is_not_used_for_other_failure_categories(self):
+        ineligible = (
+            "DNS_FAILURE",
+            "TIMEOUT",
+            "TLS_CERTIFICATE_NOT_YET_VALID",
+            "TLS_CERTIFICATE_SELF_SIGNED",
+            "TLS_CERTIFICATE_SELF_SIGNED_CHAIN",
+            "TLS_CERTIFICATE_HOSTNAME_MISMATCH",
+            "TLS_CERTIFICATE_EXPIRED",
+        )
+        for category in ineligible:
+            def python_failure(_opener, _url, diagnostics=None, **_kwargs):
+                diagnostics["error"] = category
+                return ""
+
+            def pinned_success(_url, _now_z, diagnostics=None, **_kwargs):
+                diagnostics["error"] = "NONE"
+                return XML
+
+            with self.subTest(category=category), mock.patch.object(
+                u,
+                "fetch_with_opener",
+                side_effect=python_failure,
+            ), mock.patch.object(
+                u,
+                "fetch_ahas_risk_with_windows_trust",
+            ) as windows, mock.patch.object(
+                u,
+                "fetch_ahas_risk_with_emergency_pin",
+                side_effect=pinned_success,
+            ) as emergency:
+                result = u.fetch_ahas_bwc(NOW)
+
+            windows.assert_not_called()
+            if category == "TLS_CERTIFICATE_EXPIRED":
+                emergency.assert_called()
+                self.assertEqual(result["bwcFetchStatus"], "PARSED_PINNED_EXPIRED_TLS")
+            else:
+                emergency.assert_not_called()
+                self.assertEqual(result["bwcFetchStatus"], "RISK_ENDPOINT_FAILED")
+
+    def test_windows_trust_precedes_expired_pin_and_payload_is_still_validated(self):
+        python_errors = iter((
+            "TLS_CERTIFICATE_ISSUER_UNAVAILABLE",
+            "TLS_CERTIFICATE_EXPIRED",
+        ))
+
+        def python_failure(_opener, _url, diagnostics=None, **_kwargs):
+            diagnostics["error"] = next(python_errors)
+            return ""
+
+        def windows_success(_route, diagnostics=None, **_kwargs):
+            diagnostics["error"] = "NONE"
+            return XML
+
+        with mock.patch.object(
+            u,
+            "fetch_with_opener",
+            side_effect=python_failure,
+        ), mock.patch.object(
+            u,
+            "windows_system_curl_path",
+            return_value=os.path.abspath(r"C:\Windows\System32\curl.exe"),
+        ), mock.patch.object(
+            u,
+            "fetch_ahas_risk_with_windows_trust",
+            side_effect=windows_success,
+        ) as windows, mock.patch.object(
+            u,
+            "fetch_ahas_risk_with_emergency_pin",
+        ) as emergency:
+            result = u.fetch_ahas_bwc(NOW)
+
+        self.assertEqual(result["bwcFetchStatus"], "PARSED_WINDOWS_SCHANNEL_TLS")
+        windows.assert_called()
+        emergency.assert_not_called()
+
+        def issuer_failure(_opener, _url, diagnostics=None, **_kwargs):
+            diagnostics["error"] = "TLS_CERTIFICATE_ISSUER_UNAVAILABLE"
+            return ""
+
+        def invalid_windows_payload(_route, diagnostics=None, **_kwargs):
+            diagnostics["error"] = "NONE"
+            return XML.replace("MEMPHIS INTL", "NASHVILLE INTL")
+
+        with mock.patch.object(
+            u,
+            "fetch_with_opener",
+            side_effect=issuer_failure,
+        ), mock.patch.object(
+            u,
+            "windows_system_curl_path",
+            return_value=os.path.abspath(r"C:\Windows\System32\curl.exe"),
+        ), mock.patch.object(
+            u,
+            "fetch_ahas_risk_with_windows_trust",
+            side_effect=invalid_windows_payload,
+        ), mock.patch.object(
+            u,
+            "fetch_ahas_risk_with_emergency_pin",
+        ) as emergency:
+            result = u.fetch_ahas_bwc(NOW)
+
+        self.assertEqual(result["bwc"], "PENDING")
+        self.assertEqual(result["bwcFetchStatus"], "INVALID_RISK_PAYLOAD")
+        self.assertEqual(result["bwcFetchError"], "RISK_SEGMENT_MISMATCH")
+        self.assertFalse(result["bwcLiveValidated"])
+        emergency.assert_not_called()
+
     def test_diagnostics_categorize_expiry_without_exposing_exception_text(self):
         error = u.ssl.SSLCertVerificationError("secret-token user@private.example /private/path")
         error.verify_code = 10
@@ -216,6 +549,10 @@ class AhasRetrievalTests(unittest.TestCase):
                 "fetch_with_opener",
                 side_effect=fail,
             ) as fetch, mock.patch.object(
+                u,
+                "windows_system_curl_path",
+                return_value=None,
+            ), mock.patch.object(
                 u,
                 "fetch_ahas_risk_with_emergency_pin",
             ) as emergency:
@@ -626,6 +963,49 @@ class AhasRetrievalTests(unittest.TestCase):
         self.assertTrue(payload["bwcLiveValidated"])
         self.assertEqual(payload["bwcRetrievalRoute"], "WWW_GET")
         self.assertEqual(payload["bwcLatestAttemptPrimaryError"], "TLS_CERTIFICATE_EXPIRED")
+
+    def test_windows_trust_recovery_keeps_legacy_display_success_and_exact_provenance(self):
+        def issuer_failure(_opener, _url, diagnostics=None, **_kwargs):
+            diagnostics["error"] = "TLS_CERTIFICATE_ISSUER_UNAVAILABLE"
+            return ""
+
+        def windows_success(_route, diagnostics=None, **_kwargs):
+            diagnostics["error"] = "NONE"
+            return XML
+
+        with mock.patch.object(
+            u,
+            "fetch_with_opener",
+            side_effect=issuer_failure,
+        ), mock.patch.object(
+            u,
+            "windows_system_curl_path",
+            return_value=os.path.abspath(r"C:\Windows\System32\curl.exe"),
+        ), mock.patch.object(
+            u,
+            "fetch_ahas_risk_with_windows_trust",
+            side_effect=windows_success,
+        ), mock.patch.object(
+            u,
+            "fetch_ahas_risk_with_emergency_pin",
+        ) as emergency:
+            direct = u.fetch_ahas_bwc(NOW)
+
+        payload = self.build_payload(direct)
+        self.assertEqual(payload["bwc"], "LOW")
+        self.assertEqual(payload["bwcFetchStatus"], "PARSED_DIRECT_XML")
+        self.assertEqual(
+            payload["bwcLatestAttemptStatus"],
+            "PARSED_WINDOWS_SCHANNEL_TLS",
+        )
+        self.assertEqual(
+            payload["bwcTransportSecurity"],
+            "WINDOWS_SCHANNEL_CA_VERIFIED_TLS",
+        )
+        self.assertEqual(payload["bwcRetrievalTransport"], "WINDOWS_CURL_SCHANNEL")
+        self.assertFalse(payload["lastKnownGoodUsed"]["ahas"])
+        self.assertTrue(payload["bwcLiveValidated"])
+        emergency.assert_not_called()
 
 
 if __name__ == "__main__":

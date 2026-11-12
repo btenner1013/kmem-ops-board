@@ -53,9 +53,16 @@ AHAS_RISK_PATH = "/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk"
 AHAS_RESPONSE_MAX_BYTES = 256 * 1024
 AHAS_REQUEST_TIMEOUT_SECONDS = 12
 AHAS_TOTAL_FETCH_SECONDS = 45
+AHAS_WINDOWS_TRUST_RECOVERY_ERRORS = frozenset({
+    "TLS_CERTIFICATE_ISSUER_UNAVAILABLE",
+    "TLS_CERTIFICATE_CHAIN_UNVERIFIED",
+    "TLS_CERTIFICATE_INVALID",
+    "TLS_HANDSHAKE_FAILED",
+})
 AHAS_LIVE_FETCH_STATUSES = frozenset({
     "PARSED_DIRECT_XML",
     "PARSED_PINNED_EXPIRED_TLS",
+    "PARSED_WINDOWS_SCHANNEL_TLS",
 })
 TAF_CURRENT_PATH = os.path.join(REPO_DIR, "taf_current.json")
 LOCAL_CACHE_BASE = (
@@ -796,6 +803,255 @@ def is_allowed_ahas_emergency_risk_url(url):
     return is_allowed_ahas_emergency_risk_request(url, "GET")
 
 
+def _windows_directory_path():
+    """Return the OS-reported Windows directory without trusting environment."""
+    if os.name != "nt":
+        return None
+
+    try:
+        import ctypes
+
+        buffer = ctypes.create_unicode_buffer(32768)
+        length = ctypes.windll.kernel32.GetWindowsDirectoryW(buffer, len(buffer))
+    except (AttributeError, OSError, ValueError):
+        return None
+    if length <= 0 or length >= len(buffer):
+        return None
+
+    windows_directory = os.path.abspath(buffer.value)
+    return windows_directory if os.path.isabs(windows_directory) else None
+
+
+def windows_system_curl_path():
+    """Return only Windows' built-in curl.exe, never PATH or the checkout."""
+    windows_directory = _windows_directory_path()
+    if not windows_directory:
+        return None
+
+    # Sysnative exists only to a WOW64 process and bypasses System32 file-system
+    # redirection. A native process simply misses it and continues to System32.
+    candidates = (
+        os.path.join(windows_directory, "Sysnative", "curl.exe"),
+        os.path.join(windows_directory, "System32", "curl.exe"),
+    )
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def _ahas_windows_curl_error(return_code):
+    """Map curl exits to fixed, non-sensitive AHAS diagnostic categories."""
+    if return_code in {5, 6}:
+        return "DNS_FAILURE"
+    if return_code == 7:
+        return "CONNECTION_REFUSED"
+    if return_code == 28:
+        return "TIMEOUT"
+    if return_code == 35:
+        return "TLS_HANDSHAKE_FAILED"
+    if return_code in {51, 58, 59, 60, 77, 80, 82, 83, 90, 91}:
+        return "TLS_CERTIFICATE_INVALID"
+    if return_code == 63:
+        return "RESPONSE_TOO_LARGE"
+    return "WINDOWS_CURL_FAILED"
+
+
+def fetch_ahas_risk_with_windows_trust(
+    route,
+    diagnostics=None,
+    timeout=AHAS_REQUEST_TIMEOUT_SECONDS,
+):
+    """Fetch one exact AHAS route with Windows Schannel CA verification.
+
+    This is a second *verified* TLS engine for cases where Python cannot build
+    the provider's chain. It never disables certificate or hostname checks,
+    never follows redirects, and never accepts a different request shape.
+    """
+    if diagnostics is not None:
+        diagnostics.clear()
+        diagnostics["error"] = "NONE"
+
+    try:
+        timeout_value = float(timeout)
+    except (TypeError, ValueError):
+        timeout_value = 0
+    if not math.isfinite(timeout_value) or timeout_value <= 0:
+        if diagnostics is not None:
+            diagnostics["error"] = "TIMEOUT"
+        return ""
+
+    if not isinstance(route, dict):
+        if diagnostics is not None:
+            diagnostics["error"] = "WINDOWS_CURL_REQUEST_REJECTED"
+        return ""
+
+    url = route.get("url")
+    method = str(route.get("method") or "").upper()
+    form_data = route.get("formData")
+    encoded_form = None
+    if form_data is not None:
+        try:
+            encoded_form = urllib.parse.urlencode(form_data).encode("ascii")
+        except (TypeError, UnicodeEncodeError, ValueError):
+            encoded_form = None
+
+    if not is_allowed_ahas_emergency_risk_request(
+        url,
+        method,
+        encoded_form,
+    ):
+        if diagnostics is not None:
+            diagnostics["error"] = "WINDOWS_CURL_REQUEST_REJECTED"
+        return ""
+
+    curl_path = windows_system_curl_path()
+    if not curl_path:
+        if diagnostics is not None:
+            diagnostics["error"] = "WINDOWS_CURL_UNAVAILABLE"
+        return ""
+
+    output_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix="kmem-ahas-schannel-",
+            suffix=".xml",
+            delete=False,
+        ) as output_file:
+            output_path = output_file.name
+
+        connect_timeout = min(5.0, timeout_value)
+        command = [
+            curl_path,
+            "--disable",
+            "--silent",
+            "--show-error",
+            "--proto",
+            "=https",
+            "--proto-redir",
+            "=https",
+            "--max-redirs",
+            "0",
+            "--connect-timeout",
+            f"{connect_timeout:.3f}",
+            "--max-time",
+            f"{timeout_value:.3f}",
+            "--max-filesize",
+            str(AHAS_RESPONSE_MAX_BYTES),
+            "--request",
+            method,
+            "--user-agent",
+            "Mozilla/5.0",
+            "--header",
+            "Accept: application/json, text/plain, */*",
+            "--header",
+            "Referer: https://www.usahas.com/print.aspx",
+            "--header",
+            "X-Requested-With: XMLHttpRequest",
+        ]
+        if method == "POST":
+            command.extend((
+                "--header",
+                "Content-Type: application/x-www-form-urlencoded",
+                "--data-raw",
+                encoded_form.decode("ascii"),
+            ))
+        command.extend((
+            "--output",
+            output_path,
+            "--write-out",
+            "KMEM_AHAS_HTTP_STATUS:%{http_code}",
+            "--url",
+            url,
+        ))
+
+        blocked_environment = {
+            "CURL_CA_BUNDLE",
+            "SSL_CERT_FILE",
+            "SSL_CERT_DIR",
+            "REQUESTS_CA_BUNDLE",
+            "CURL_SSL_BACKEND",
+        }
+        process_environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key.upper() not in blocked_environment
+        }
+        try:
+            completed = run_bounded_process(
+                command,
+                timeout=timeout_value,
+                cwd=Path(curl_path).parent,
+                env=process_environment,
+                capture_output=True,
+            )
+        except subprocess.TimeoutExpired:
+            if diagnostics is not None:
+                diagnostics["error"] = "TIMEOUT"
+            return ""
+        except OSError:
+            if diagnostics is not None:
+                diagnostics["error"] = "WINDOWS_CURL_UNAVAILABLE"
+            return ""
+
+        try:
+            response_size = os.path.getsize(output_path)
+        except OSError:
+            response_size = 0
+        if response_size > AHAS_RESPONSE_MAX_BYTES:
+            if diagnostics is not None:
+                diagnostics["error"] = "RESPONSE_TOO_LARGE"
+            return ""
+
+        if completed.returncode != 0:
+            if diagnostics is not None:
+                diagnostics["error"] = _ahas_windows_curl_error(completed.returncode)
+            return ""
+
+        marker = re.fullmatch(
+            r"KMEM_AHAS_HTTP_STATUS:(\d{3})",
+            (completed.stdout or "").strip(),
+        )
+        if marker is None:
+            if diagnostics is not None:
+                diagnostics["error"] = "WINDOWS_CURL_STATUS_INVALID"
+            return ""
+        status_code = int(marker.group(1))
+        if not 200 <= status_code <= 299:
+            if diagnostics is not None:
+                diagnostics["error"] = f"HTTP_{status_code}"
+            return ""
+
+        try:
+            with open(output_path, "rb") as response_file:
+                body = response_file.read(AHAS_RESPONSE_MAX_BYTES + 1)
+        except OSError:
+            if diagnostics is not None:
+                diagnostics["error"] = "WINDOWS_CURL_OUTPUT_UNAVAILABLE"
+            return ""
+        if len(body) > AHAS_RESPONSE_MAX_BYTES:
+            if diagnostics is not None:
+                diagnostics["error"] = "RESPONSE_TOO_LARGE"
+            return ""
+        if not body:
+            if diagnostics is not None:
+                diagnostics["error"] = "EMPTY_RESPONSE"
+            return ""
+        try:
+            return body.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            if diagnostics is not None:
+                diagnostics["error"] = "RESPONSE_ENCODING_INVALID"
+            return ""
+    finally:
+        if output_path:
+            try:
+                os.unlink(output_path)
+            except OSError:
+                pass
+
+
 class AhasPinnedRiskRedirectHandler(AhasHttpsRedirectHandler):
     """Reject every redirect on the fixed emergency AHAS risk request."""
 
@@ -1095,6 +1351,7 @@ BWC_CACHE_FIELDS = (
     "bwcFetchStatus",
     "bwcTransportSecurity",
     "bwcRetrievalRoute",
+    "bwcRetrievalTransport",
     "bwcLiveValidated",
 )
 
@@ -1275,6 +1532,10 @@ def load_previous_weather():
         )
         bwc_block["bwcRetrievalRoute"] = bwc_data.get(
             "bwcRetrievalRoute",
+            "UNKNOWN",
+        )
+        bwc_block["bwcRetrievalTransport"] = bwc_data.get(
+            "bwcRetrievalTransport",
             "UNKNOWN",
         )
         bwc_block["bwcLiveValidated"] = (
@@ -4572,6 +4833,7 @@ def fetch_ahas_bwc(now_z):
         "bwcPrimaryFetchError": "NONE",
         "bwcTransportSecurity": "NONE",
         "bwcRetrievalRoute": "NONE",
+        "bwcRetrievalTransport": "NONE",
         "bwcRetrievalAttempts": 0,
         "bwcLiveValidated": False,
     }
@@ -4586,6 +4848,7 @@ def fetch_ahas_bwc(now_z):
         last_error = "EMPTY_RESPONSE"
         invalid_payload_error = None
         saw_expired_certificate = False
+        saw_windows_trust_recovery_error = False
         selected = None
 
         def remaining_timeout():
@@ -4617,7 +4880,13 @@ def fetch_ahas_bwc(now_z):
                 payload_error = validate_ahas_risk_payload(xml_text, now_z)
                 route_error = payload_error
                 if payload_error == "NONE":
-                    selected = (xml_text, route, "PARSED_DIRECT_XML", "CA_VERIFIED_TLS")
+                    selected = (
+                        xml_text,
+                        route,
+                        "PARSED_DIRECT_XML",
+                        "CA_VERIFIED_TLS",
+                        "PYTHON_URLLIB",
+                    )
             elif route_error == "NONE":
                 route_error = "EMPTY_RESPONSE"
 
@@ -4630,10 +4899,57 @@ def fetch_ahas_bwc(now_z):
                 invalid_payload_error = route_error
             if route_error == "TLS_CERTIFICATE_EXPIRED":
                 saw_expired_certificate = True
+            if route_error in AHAS_WINDOWS_TRUST_RECOVERY_ERRORS:
+                saw_windows_trust_recovery_error = True
             if route["method"] == "GET" and _ahas_host_level_failure(route_error):
                 skipped_post_hosts.add(route["host"])
 
         result["bwcPrimaryFetchError"] = first_outcome or "UNKNOWN_ERROR"
+
+        if selected is None and saw_windows_trust_recovery_error:
+            curl_path = windows_system_curl_path()
+            if curl_path:
+                print(
+                    "Python could not verify the AHAS chain; trying Windows "
+                    "Schannel with full CA and hostname verification."
+                )
+                skipped_post_hosts.clear()
+                for route in routes:
+                    if route["method"] == "POST" and route["host"] in skipped_post_hosts:
+                        continue
+                    timeout = remaining_timeout()
+                    if timeout is None:
+                        last_error = "TIMEOUT"
+                        break
+                    diagnostics = {}
+                    result["bwcRetrievalAttempts"] += 1
+                    xml_text = fetch_ahas_risk_with_windows_trust(
+                        route,
+                        diagnostics=diagnostics,
+                        timeout=timeout,
+                    )
+                    route_error = diagnostics.get("error", "UNKNOWN_ERROR")
+                    if xml_text:
+                        payload_error = validate_ahas_risk_payload(xml_text, now_z)
+                        route_error = payload_error
+                        if payload_error == "NONE":
+                            selected = (
+                                xml_text,
+                                route,
+                                "PARSED_WINDOWS_SCHANNEL_TLS",
+                                "WINDOWS_SCHANNEL_CA_VERIFIED_TLS",
+                                "WINDOWS_CURL_SCHANNEL",
+                            )
+                    elif route_error == "NONE":
+                        route_error = "EMPTY_RESPONSE"
+
+                    if selected:
+                        break
+                    last_error = route_error
+                    if route_error.startswith("RISK_"):
+                        invalid_payload_error = route_error
+                    if route["method"] == "GET" and _ahas_host_level_failure(route_error):
+                        skipped_post_hosts.add(route["host"])
 
         if selected is None and saw_expired_certificate:
             print("AHAS certificate expired; trying approved routes with the time-limited HTTPS leaf pin.")
@@ -4664,6 +4980,7 @@ def fetch_ahas_bwc(now_z):
                             route,
                             "PARSED_PINNED_EXPIRED_TLS",
                             "TLS_PINNED_EXPIRED_LEAF",
+                            "PYTHON_PINNED_HTTPS",
                         )
                 elif route_error == "NONE":
                     route_error = "EMPTY_RESPONSE"
@@ -4683,7 +5000,7 @@ def fetch_ahas_bwc(now_z):
             result["bwcFetchError"] = invalid_payload_error or last_error or "EMPTY_RESPONSE"
             return result
 
-        xml_text, route, fetch_status, transport_security = selected
+        xml_text, route, fetch_status, transport_security, retrieval_transport = selected
         date_time = get_xml_tag(xml_text, "DateTime")
         nexrad_risk = get_xml_tag(xml_text, "NEXRADRISK").upper()
         soar_risk = get_xml_tag(xml_text, "SOARRISK").upper()
@@ -4708,6 +5025,7 @@ def fetch_ahas_bwc(now_z):
             "bwcFetchError": "NONE",
             "bwcTransportSecurity": transport_security,
             "bwcRetrievalRoute": route["name"],
+            "bwcRetrievalTransport": retrieval_transport,
             "bwcLiveValidated": True,
         })
         return result
@@ -6283,6 +6601,11 @@ def build_weather_json():
                     "bwcRetrievalRoute",
                     "UNKNOWN",
                 ),
+                "bwcRetrievalTransport": use_previous_field(
+                    previous_data,
+                    "bwcRetrievalTransport",
+                    "UNKNOWN",
+                ),
                 "bwcLiveValidated": False,
             }
         else:
@@ -6444,6 +6767,7 @@ def build_weather_json():
         "bwcFetchStatus": ahas_public_fetch_status,
         "bwcTransportSecurity": ahas_data.get("bwcTransportSecurity", "UNKNOWN"),
         "bwcRetrievalRoute": ahas_data.get("bwcRetrievalRoute", "UNKNOWN"),
+        "bwcRetrievalTransport": ahas_data.get("bwcRetrievalTransport", "UNKNOWN"),
         "bwcLiveValidated": ahas_data.get("bwcLiveValidated") is True,
         "bwcLatestAttemptStatus": ahas_direct_candidate.get("bwcFetchStatus", "UNKNOWN"),
         "bwcLatestAttemptZ": ahas_attempted_z,
@@ -6458,6 +6782,10 @@ def build_weather_json():
         ),
         "bwcLatestAttemptRetrievalRoute": ahas_direct_candidate.get(
             "bwcRetrievalRoute",
+            "UNKNOWN",
+        ),
+        "bwcLatestAttemptRetrievalTransport": ahas_direct_candidate.get(
+            "bwcRetrievalTransport",
             "UNKNOWN",
         ),
         "bwcLatestAttemptRetrievalAttempts": ahas_direct_candidate.get(

@@ -130,6 +130,7 @@ def bwc_cache_fixture(tag, updated, *, risk="SEVERE", fetch_status="PARSED_DIREC
         "bwcFetchStatus": fetch_status,
         "bwcTransportSecurity": "CA_VERIFIED_TLS",
         "bwcRetrievalRoute": "WWW_GET",
+        "bwcRetrievalTransport": "PYTHON_URLLIB",
         "bwcLiveValidated": fetch_status.startswith("PARSED_"),
     }
 
@@ -367,6 +368,7 @@ class WeatherCacheHandoffTests(unittest.TestCase):
         legacy_newer = bwc_cache_fixture("LEGACY", "2026-09-11 13:12:00.000")
         del legacy_newer["bwcTransportSecurity"]
         del legacy_newer["bwcRetrievalRoute"]
+        del legacy_newer["bwcRetrievalTransport"]
         del legacy_newer["bwcLiveValidated"]
 
         selected = self.load_caches(local, legacy_newer, {})
@@ -374,6 +376,7 @@ class WeatherCacheHandoffTests(unittest.TestCase):
         self.assertEqual(selected["bwcUrl"], legacy_newer["bwcUrl"])
         self.assertEqual(selected["bwcTransportSecurity"], "UNKNOWN")
         self.assertEqual(selected["bwcRetrievalRoute"], "UNKNOWN")
+        self.assertEqual(selected["bwcRetrievalTransport"], "UNKNOWN")
         self.assertTrue(selected["bwcLiveValidated"])
 
     def test_unusable_or_equal_ahas_blocks_keep_location_priority(self):

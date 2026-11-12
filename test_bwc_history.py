@@ -87,20 +87,26 @@ class BwcCandidateValidationTests(unittest.TestCase):
         for candidate in (
             direct_candidate(live_validated=False),
             direct_candidate(status="PARSED_PINNED_EXPIRED_TLS", live_validated=False),
+            direct_candidate(status="PARSED_WINDOWS_SCHANNEL_TLS", live_validated=False),
             {key: value for key, value in direct_candidate().items() if key != "bwcLiveValidated"},
         ):
             with self.subTest(candidate=candidate):
                 result = history.validate_live_bwc_candidate(candidate, now_z=NOW)
                 self.assertFalse(result.accepted)
 
-    def test_exact_pin_live_state_is_accepted_after_payload_validation(self):
-        result = history.validate_live_bwc_candidate(
-            direct_candidate(status="PARSED_PINNED_EXPIRED_TLS"), now_z=NOW
-        )
+    def test_verified_fallback_live_state_is_accepted_after_payload_validation(self):
+        for status in (
+            "PARSED_PINNED_EXPIRED_TLS",
+            "PARSED_WINDOWS_SCHANNEL_TLS",
+        ):
+            with self.subTest(status=status):
+                result = history.validate_live_bwc_candidate(
+                    direct_candidate(status=status), now_z=NOW
+                )
 
-        self.assertTrue(result.accepted)
-        self.assertEqual(result.kind, "STATE")
-        self.assertEqual(result.observation["state"], "SEVERE")
+                self.assertTrue(result.accepted)
+                self.assertEqual(result.kind, "STATE")
+                self.assertEqual(result.observation["state"], "SEVERE")
 
     def test_model_basis_is_not_mislabeled_as_observed(self):
         for basis in ("SOAR", "NEXBAM", "BAM"):

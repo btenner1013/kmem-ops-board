@@ -29,6 +29,17 @@ hostname, route, and HTTP-method failures; it is not an independent AHAS data
 provider. The optional print page is not a data source or prerequisite, and
 there is never a plain-HTTP fallback.
 
+The primary client is Python's CA-verified HTTPS stack. If that client cannot
+build an otherwise valid issuer chain, the Windows updater retries the same
+exact routes with the Windows-provided System32/Sysnative `curl.exe` and Windows
+Schannel. Schannel still performs full CA and hostname verification: the
+fallback never uses `-k`, an unverified context, an injected CA file/bundle,
+redirects, PATH, or a checkout-local executable. It keeps the same shared
+deadline and response cap, then applies the same KMEM, source-time, and risk
+validation. This protects the board from client-specific trust-store and
+missing-intermediate failures without treating an invalid certificate as
+trusted.
+
 USAHAS allowed its leaf certificate to expire on November 10, 2026 while the
 risk service remained live. Until `2026-11-25T00:00:00Z`, and only when the
 approved requests fail specifically with `TLS_CERTIFICATE_EXPIRED`, the updater
@@ -48,6 +59,14 @@ already-open shop display turns `AHAS OK` on its normal data poll without a page
 reload. Because the server identity and payload are both validated, this fresh
 observation is also eligible for retained AHAS history. Last-known-good, stale,
 malformed, or unavailable data still cannot show green feed health.
+
+Windows trust recovery is labeled `PARSED_WINDOWS_SCHANNEL_TLS` in
+`bwcLatestAttemptStatus`, with
+`bwcTransportSecurity=WINDOWS_SCHANNEL_CA_VERIFIED_TLS` and
+`bwcRetrievalTransport=WINDOWS_CURL_SCHANNEL`. It is tried before the temporary
+expired-leaf exception, so a renewed certificate automatically returns to a
+fully CA-verified transport even if Python's local chain builder has not caught
+up yet.
 
 On retrieval failure, the board retains the last valid risk and its original
 AHAS observation time. `bwcFetchStatus` becomes `USED_LAST_GOOD`, while
