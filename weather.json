@@ -1,46 +1,52 @@
 {
   "metar": "METAR KMEM 162154Z 03007KT 10SM CLR 14/00 A3041 RMK AO2 SLP298 T01440000 $",
   "taf": "TAF KMEM 162104Z 1621/1724 05007KT P6SM SKC \n  FM170200 07004KT P6SM SKC \n  FM171500 12007KT P6SM SKC",
-  "atisText": "MEM ATIS INFO X 2154Z. 03007KT 10SM CLR 14/00 A3041 (THREE ZERO FOUR ONE) RMK AO2 SLP298 T01440000. SIMUL VISUAL APCHS IN USE RY 36R, 9. DEPG RWYS 36C, 36R, 9. NOTICE TO AIRMEN. RWY 18R, 36L CLSD. TWY N CLSD BTN TWY, P AND TWY R, TWY R CLSD BTN TWY, N AND TWY R2, TWY H CLSD BTN TWY, B AND TWY R2, TWY M CLSD. ILS RWY 36L OTS, RY 36C ALS OTS. RWY 18R ALIGNMENT INDICATOR LIGHTS OTS. TWY N BTN M9 AND SIG RAMP CLSD. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO X",
-  "atisLetter": "X",
-  "atisPhonetic": "XRAY",
-  "atisDisplay": "XRAY",
-  "metarFetchStatus": "OK",
+  "atisText": "MEM ATIS INFO Y 2254Z. 04008KT 10SM CLR 13/01 A3043 (THREE ZERO FOUR THREE). SIMUL VISUAL APCHS IN USE RY 36L, 36R, 9. SIMUL DEPS IN USE RY 36L 36C 36R, DEPG RWYS 9. NOTICE TO AIRMEN. RY 36C ALS OTS. RWY 18R ALIGNMENT INDICATOR LIGHTS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO Y",
+  "atisLetter": "Y",
+  "atisPhonetic": "YANKEE",
+  "atisDisplay": "YANKEE",
+  "metarFetchStatus": "WARN_SOURCE",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-16T21:54:00Z",
-  "metarAgeMinutes": 52,
+  "metarAgeMinutes": 62,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
-  "metarLiveCandidateCount": 2,
-  "atisObservedZ": "2026-11-16T21:54:00Z",
-  "atisAgeMinutes": 52,
-  "atisReportIdentity": "X:2154Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "metarLiveCandidateCount": 3,
+  "atisObservedZ": "2026-11-16T22:54:00Z",
+  "atisAgeMinutes": 2,
+  "atisReportIdentity": "Y:2254Z",
+  "atisSelectedSource": "ATIS_INFO_API",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
     "ATIS_RELAY"
   ],
-  "atisLiveCandidateCount": 1,
+  "atisLiveCandidateCount": 2,
   "atisLiveCandidates": [
+    {
+      "identity": "Y:2254Z",
+      "observedZ": "2026-11-16T22:54:00Z",
+      "sources": [
+        "ATIS_INFO_API"
+      ]
+    },
     {
       "identity": "X:2154Z",
       "observedZ": "2026-11-16T21:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
         "ATIS_RELAY"
       ]
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "X",
-  "atisReportedPhonetic": "XRAY",
-  "atisReportedArrRunways": "36R / 9",
-  "atisReportedDepRunways": "36C / 36R / 9",
-  "atisReportedClosedRunways": "18R / 36L",
+  "atisReportedLetter": "Y",
+  "atisReportedPhonetic": "YANKEE",
+  "atisReportedArrRunways": "36L / 36R / 9",
+  "atisReportedDepRunways": "36L / 36C / 36R / 9",
+  "atisReportedClosedRunways": "NONE",
   "atisReportedFlow": "MIXED",
   "lastKnownGoodUsed": {
     "metar": false,
@@ -50,7 +56,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-16T19:55:42Z",
+  "trendReferenceTimestampZ": "2026-11-16T20:05:41Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -64,13 +70,13 @@
   "metarVisibilitySm": 10.0,
   "metarVisibilityDisplay": "10 SM",
   "metarCeilingFt": null,
-  "atisAltimeterRaw": 30.41,
+  "atisAltimeterRaw": 30.43,
   "atisVisibilitySm": 10.0,
   "atisVisibilityDisplay": "10 SM",
   "atisCeilingFt": null,
-  "arrRunways": "36R / 9",
-  "depRunways": "36C / 36R / 9",
-  "closedRunways": "18R / 36L",
+  "arrRunways": "36L / 36R / 9",
+  "depRunways": "36L / 36C / 36R / 9",
+  "closedRunways": "NONE",
   "knownMemRunways": [
     "9/27",
     "18L/36R",
@@ -84,8 +90,8 @@
   "rcrSource": "NOTAM_FICON_NONE",
   "rcrVisible": true,
   "rcrRaw": "--",
-  "altimeter": "30.41",
-  "altimeterRaw": 30.41,
+  "altimeter": "30.43",
+  "altimeterRaw": 30.43,
   "altimeterTrend": "\u2192",
   "altimeterTrendText": "STEADY",
   "ceilingFt": null,
@@ -96,19 +102,19 @@
   "visibilityDisplay": "10 SM",
   "visibilityTrend": "\u2192",
   "visibilityTrendText": "STEADY",
-  "windRaw": "03007KT",
-  "windDisplay": "03007KT",
-  "windDirDeg": 30,
-  "windSpeedKt": 7,
+  "windRaw": "04008KT",
+  "windDisplay": "04008KT",
+  "windDirDeg": 40,
+  "windSpeedKt": 8,
   "windGustKt": null,
   "windArrow": "\u2199",
   "windArrowMeaning": "ARROW SHOWS WHERE WIND IS BLOWING TOWARD",
   "windTrend": "\u25ba",
   "windTrendText": "STEADY",
   "windTrendClass": "steady",
-  "tempC": 14,
-  "dewpointC": 0,
-  "tempDpDisplay": "14/00",
+  "tempC": 13,
+  "dewpointC": 1,
+  "tempDpDisplay": "13/01",
   "tempTrend": "\u25bc",
   "tempTrendText": "FALLING",
   "dewpointTrend": "\u25b2",
@@ -132,7 +138,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-16 22:42:00.000",
+  "bwcUpdatedZ": "2026-11-16 22:54:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
   "bwcBamRisk": "MODERATE",
@@ -147,7 +153,7 @@
   "bwcRetrievalTransport": "PYTHON_URLLIB",
   "bwcLiveValidated": true,
   "bwcLatestAttemptStatus": "PARSED_DIRECT_XML",
-  "bwcLatestAttemptZ": "2026-11-16T22:45:56Z",
+  "bwcLatestAttemptZ": "2026-11-16T22:55:46Z",
   "bwcLatestAttemptError": "NONE",
   "bwcLatestAttemptPrimaryError": "NONE",
   "bwcLatestAttemptTransportSecurity": "CA_VERIFIED_TLS",
@@ -158,7 +164,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-16 22:45:59Z",
+  "milNotamUpdatedZ": "2026-11-16 22:55:49Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0042/26 MIL RAMP OPR HR MON-FRI 1500-0500Z++. CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED.",
   "milNotams": [
     {
@@ -206,12 +212,12 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-16 22:45:59Z",
+  "milNotamAttemptZ": "2026-11-16 22:55:49Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
     {
-      "number": "11/227",
+      "number": "A8694/26",
       "classification": "RWY_CLOSURE",
       "severity": "red",
       "text": "RWY 18R/36L CLSD",
@@ -225,6 +231,18 @@
   ],
   "runwayClosureNotamCount": 1,
   "constructionStatusNotams": [
+    {
+      "number": "11/238",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY A BTN TWY N AND TWY B WIP SURVEYING",
+      "displayText": "TWY A BTN TWY N AND TWY B WIP SURVEYING",
+      "effectiveStart": "202611171300",
+      "effectiveEnd": "202611172300",
+      "lastUpdated": "2026-11-16T22:54:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY A BTN TWY N AND TWY B WIP SURVEYING"
+    },
     {
       "number": "11/213",
       "classification": "CONST_AFLD_STATUS",
@@ -262,7 +280,7 @@
       "rawText": "TWY S EDGE MARKINGS BTN TWY P AND TWY E REMOVED"
     }
   ],
-  "constructionStatusNotamCount": 3,
+  "constructionStatusNotamCount": 4,
   "taxiRestrictionNotams": [
     {
       "number": "11/231",
@@ -302,13 +320,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 3,
-  "allFeedsUpdatedZ": "2026-11-16 22:45Z",
+  "allFeedsUpdatedZ": "2026-11-16 22:55Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-16 22:45:42Z"
+    "lastWorkflowTimestampZ": "2026-11-16 22:55:42Z"
   }
 }
