@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-17T21:54:00Z",
-  "metarAgeMinutes": 2,
-  "metarSelectedSource": "NWS_NOAA",
-  "metarOriginalSource": "NWS_NOAA",
+  "metarAgeMinutes": 12,
+  "metarSelectedSource": "AWC",
+  "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-17T21:54:00Z",
-  "atisAgeMinutes": 2,
+  "atisAgeMinutes": 12,
   "atisReportIdentity": "D:2154Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,8 +50,8 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-17T18:55:42Z",
-  "trendSampleCount": 21,
+  "trendReferenceTimestampZ": "2026-11-17T19:15:42Z",
+  "trendSampleCount": 22,
   "obsSource": "ATIS",
   "obsFieldSources": {
     "wind": "ATIS",
@@ -132,22 +132,22 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "LOW",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-17 21:54:00.000",
+  "bwcUpdatedZ": "2026-11-17 22:06:00.000",
   "bwcNexrad": "LOW",
   "bwcSoarRisk": "LOW",
-  "bwcBamRisk": "LOW",
+  "bwcBamRisk": "MODERATE",
   "bwcAhasRisk": "LOW",
   "bwcBasedOn": "NEXRAD",
   "bwcHeight100FtAgl": "9999",
-  "bwcUrl": "https://www.usahas.com/print.aspx?month=11&day=17&hour=21&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
-  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=11&iDay=17&iHour=21",
+  "bwcUrl": "https://www.usahas.com/print.aspx?month=11&day=17&hour=22&type=ICAO&NAME=MEMPHIS%20INTL&Button=default",
+  "bwcRiskUrl": "https://www.usahas.com/webservices/Fluffy_AHAS2025.asmx/GetAHASRisk?Type=ICAO&Area=%27MEMPHIS%20INTL%27&iMonth=11&iDay=17&iHour=22",
   "bwcFetchStatus": "PARSED_DIRECT_XML",
   "bwcTransportSecurity": "CA_VERIFIED_TLS",
   "bwcRetrievalRoute": "WWW_GET",
   "bwcRetrievalTransport": "PYTHON_URLLIB",
   "bwcLiveValidated": true,
   "bwcLatestAttemptStatus": "PARSED_DIRECT_XML",
-  "bwcLatestAttemptZ": "2026-11-17T21:55:47Z",
+  "bwcLatestAttemptZ": "2026-11-17T22:05:59Z",
   "bwcLatestAttemptError": "NONE",
   "bwcLatestAttemptPrimaryError": "NONE",
   "bwcLatestAttemptTransportSecurity": "CA_VERIFIED_TLS",
@@ -158,7 +158,7 @@
   "milNotamCount": 3,
   "milNotamStatus": "3 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-17 21:55:50Z",
+  "milNotamUpdatedZ": "2026-11-17 22:06:02Z",
   "milNotamScrollText": "M0040/26 MIL RAMP ARFF STATUS YELLOW FOR MIL ACFT ONLY UFN  |  M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0042/26 MIL RAMP OPR HR MON-FRI 1500-0500Z++. CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED.",
   "milNotams": [
     {
@@ -206,7 +206,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-17 21:55:50Z",
+  "milNotamAttemptZ": "2026-11-17 22:06:02Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [
@@ -238,6 +238,18 @@
   "runwayClosureNotamCount": 2,
   "constructionStatusNotams": [
     {
+      "number": "11/258",
+      "classification": "CONST_AFLD_STATUS",
+      "severity": "green",
+      "text": "TWY V WIP SPRAYING, MOWING, WEEDING",
+      "displayText": "TWY V WIP SPRAYING, MOWING, WEEDING",
+      "effectiveStart": "202611181400",
+      "effectiveEnd": "202611181700",
+      "lastUpdated": "2026-11-17T21:59:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY V WIP SPRAYING, MOWING, WEEDING"
+    },
+    {
       "number": "11/257",
       "classification": "CONST_AFLD_STATUS",
       "severity": "green",
@@ -245,7 +257,7 @@
       "displayText": "TWY S WIP MARKINGS",
       "effectiveStart": "202611181400",
       "effectiveEnd": "202611182030",
-      "lastUpdated": "2026-11-17T21:54:00.000Z",
+      "lastUpdated": "2026-11-17T21:59:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY S WIP MARKINGS"
     },
@@ -298,8 +310,20 @@
       "rawText": "TWY S EDGE MARKINGS BTN TWY P AND TWY E REMOVED"
     }
   ],
-  "constructionStatusNotamCount": 5,
+  "constructionStatusNotamCount": 6,
   "taxiRestrictionNotams": [
+    {
+      "number": "11/259",
+      "classification": "TAXI_ROUTE_RESTR",
+      "severity": "green",
+      "text": "TWY Y BTN TWY P AND TWY R CLSD",
+      "displayText": "TWY Y BTN TWY P AND TWY R CLSD",
+      "effectiveStart": "202611181400",
+      "effectiveEnd": "202611182030",
+      "lastUpdated": "2026-11-17T22:03:00.000Z",
+      "source": "FAA_NMS_STAGING",
+      "rawText": "TWY Y BTN TWY P AND TWY R CLSD"
+    },
     {
       "number": "11/255",
       "classification": "TAXI_ROUTE_RESTR",
@@ -361,14 +385,14 @@
       "rawText": "MIL RAMP OPR HR MON-FRI 1500-0500Z++. CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED."
     }
   ],
-  "taxiRestrictionNotamCount": 5,
-  "allFeedsUpdatedZ": "2026-11-17 21:55Z",
+  "taxiRestrictionNotamCount": 6,
+  "allFeedsUpdatedZ": "2026-11-17 22:05Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-17 21:55:41Z"
+    "lastWorkflowTimestampZ": "2026-11-17 22:05:41Z"
   }
 }
