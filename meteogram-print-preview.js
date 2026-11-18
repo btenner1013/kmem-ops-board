@@ -41,14 +41,15 @@ export function openMeteogramPrintPreview({ doc, view, markup, station = "Airpor
   const createButton = preview.document.getElementById("previewCreatePdf");
   const shareButton = preview.document.getElementById("previewSharePdf");
   const downloadButton = preview.document.getElementById("previewDownloadPdf");
-  let pdfFile = null, downloadUrl = null, preparing = false;
+  let pdfFile = null, downloadUrl = null, preparing = false, disposed = false;
   createButton.addEventListener("click", async () => {
-    if (preparing || pdfFile) return;
+    if (disposed || preview.closed || preparing || pdfFile) return;
     preparing = true;
     createButton.disabled = true;
     pdfStatus.textContent = "Creating landscape PDF…";
     try {
       const blob = await createPdf(preview.document);
+      if (disposed || preview.closed) return;
       pdfFile = new preview.File([blob], `${title.replace(/ /g, "-")}.pdf`, { type: "application/pdf" });
       downloadUrl = preview.URL.createObjectURL(blob);
       downloadButton.disabled = false;
@@ -64,6 +65,7 @@ export function openMeteogramPrintPreview({ doc, view, markup, station = "Airpor
         ? "PDF ready. Tap Share PDF and choose Messages, or download a copy."
         : "PDF ready. Download it, then attach the saved PDF to your message.";
     } catch (error) {
+      if (disposed || preview.closed) return;
       pdfFile = null;
       createButton.disabled = false;
       pdfStatus.textContent = "Could not create the PDF. Try again, or use your browser’s Print command. " + (error?.message || "");
@@ -104,7 +106,13 @@ export function openMeteogramPrintPreview({ doc, view, markup, station = "Airpor
       "If no print sheet opens, use your browser’s menu → Print. This chart-only page is ready to print or share from there.";
     try { preview.print(); } catch { /* The native browser-menu route remains available. */ }
   });
-  preview.document.getElementById("previewClose").addEventListener("click", () => preview.close());
+  preview.document.getElementById("previewClose").addEventListener("click", () => {
+    disposed = true;
+    if (downloadUrl) preview.URL.revokeObjectURL(downloadUrl);
+    downloadUrl = null;
+    pdfFile = null;
+    preview.close();
+  });
   preview.focus?.();
   return true;
 }

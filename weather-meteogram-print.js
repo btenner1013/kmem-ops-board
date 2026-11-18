@@ -383,6 +383,7 @@ export function buildMeteogramPrintPlan({ model = {}, settings = {}, range, rang
     timeMode: String(settings.timeMode || "Z").toUpperCase() === "LOCAL" ? "LOCAL" : "Z",
     temperatureUnit: String(settings.temperatureUnit || "C").toUpperCase() === "F" ? "F" : "C",
     windUnit: String(settings.windUnit || "KT").toUpperCase() === "MPH" ? "MPH" : "KT",
+    visibilityUnit: String(settings.visibilityUnit || "SM").toUpperCase() === "M" ? "M" : "SM",
   };
   const selectedModel = sliceMeteogramModelForPrint(model, {
     startZ: range.startZ,
@@ -435,6 +436,7 @@ export function buildMeteogramPrintPlan({ model = {}, settings = {}, range, rang
     rangeLabel,
     scaleOverrides,
     hasGfsPressure: selectedHasGfsPressure,
+    hasMetarTrend: selectedModel.observations.some(observation => observation.trendRaw),
     pages,
     coverageText: range.singleObservation
       ? `ONE EXACT OBSERVATION AVAILABLE AT ${endpointText(range.coverage.startZ, normalizedSettings, model.station)} · SURROUNDING PRINT SPACE CONTAINS NO IMPLIED DATA`
@@ -446,16 +448,16 @@ export function buildMeteogramPrintPlan({ model = {}, settings = {}, range, rang
 
 export function buildMeteogramPrintPagesMarkup(plan = {}) {
   if (!plan.ok) return "";
-  const units = `${plan.settings.timeMode} · °${plan.settings.temperatureUnit} · ${plan.settings.windUnit}`;
+  const units = `${plan.settings.timeMode} · °${plan.settings.temperatureUnit} · ${plan.settings.windUnit} · VIS ${plan.settings.visibilityUnit === "M" ? "METERS" : "SM"}`;
   return plan.pages.map((page) => `<article class="aviation-meteogram-print-page" data-print-page="${page.pageNumber}" data-page-start-z="${escapeMarkup(page.startZ)}" data-page-end-z="${escapeMarkup(page.endZ)}" data-wind-maximum-kt="${plan.scaleOverrides.windMaximumKt}" data-cloud-maximum-ft="${plan.scaleOverrides.cloudMaximumFt}" data-pressure-min="${plan.scaleOverrides.pressureRange.minimum}" data-pressure-max="${plan.scaleOverrides.pressureRange.maximum}" data-visibility-min="${plan.scaleOverrides.visibilityRange.minimum}" data-visibility-max="${plan.scaleOverrides.visibilityRange.maximum}" data-precip-maximum-in="${plan.scaleOverrides.precipMaximumIn}" data-snow-maximum-in="${plan.scaleOverrides.snowMaximumIn}">
     <header class="aviation-meteogram-print-page-header">
       <div><h1>${escapeMarkup(plan.station)} AVIATION METEOGRAM</h1><p>${escapeMarkup(page.intervalLabel)}</p></div>
       <div class="aviation-meteogram-print-page-meta"><strong>${escapeMarkup(units)}</strong><span>PAGE ${page.pageNumber} OF ${page.pageCount}</span><span>FOR REFERENCE ONLY</span></div>
     </header>
     <div class="aviation-meteogram-print-page-context"><span>${escapeMarkup(plan.rangeLabel)}</span><span>OBSERVED — SOLID/STRONG · FORECAST — SHADED/REDUCED · SUSTAINED SOLID · GUST DASHED</span></div>
-    <p class="aviation-meteogram-print-coverage">${escapeMarkup(plan.coverageText)}</p>
+    <p class="aviation-meteogram-print-coverage">${escapeMarkup(plan.coverageText)}${plan.hasMetarTrend ? " · METAR TREND FORECASTS EXCLUDED FROM OBSERVATIONS" : ""}</p>
     ${plan.hasGfsPressure ? '<p class="aviation-meteogram-print-pressure-source">PRESSURE FORECAST · NOAA GFS / HRRR MEAN SEA-LEVEL PRESSURE (MSLP) VIA <a href="https://open-meteo.com/">OPEN-METEO.COM</a> · NOT AN ALTIMETER SETTING</p>' : ""}
-    <p class="aviation-meteogram-print-interval-note">† PRECIP/SNOW AMOUNT IS THE FULL UNSPLIT SOURCE-INTERVAL TOTAL; A BAR CONTINUED ACROSS A PAGE EDGE IS NOT A SECOND TOTAL.</p>
+    <p class="aviation-meteogram-print-interval-note">VISIBILITY CONVERSIONS ROUNDED; REPORTED LIMITS RETAINED. † PRECIP/SNOW AMOUNT IS THE FULL UNSPLIT SOURCE-INTERVAL TOTAL; A BAR CONTINUED ACROSS A PAGE EDGE IS NOT A SECOND TOTAL.</p>
     <div class="aviation-meteogram-print-chart">${page.svg || `<div class="aviation-meteogram-print-no-data">NO DATA IN THIS INTERVAL</div>`}</div>
   </article>`).join("");
 }

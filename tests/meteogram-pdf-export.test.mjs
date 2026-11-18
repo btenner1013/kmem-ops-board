@@ -48,3 +48,29 @@ test('export includes per-page metadata, no-data message and releases canvas mem
  assert.ok(drawn.includes('NO DATA IN THIS INTERVAL'));
  assert.equal(canvases[0].width,0);assert.equal(canvases[0].height,0);
 });
+
+test('SVG PDF export preserves aspect ratio, fits chart within page and revokes image URLs',async()=>{
+ const draws=[], revoked=[];
+ const clone={style:{setProperty(){}},querySelectorAll:()=>[],setAttribute(){}};
+ const svg={tagName:'svg',cloneNode:()=>clone,querySelectorAll:()=>[],viewBox:{baseVal:{width:1540,height:1100}}};
+ const page={querySelector:s=>s.includes('chart svg')?svg:s==='h1'?{textContent:'KMEM AVIATION METEOGRAM'}:null,querySelectorAll:()=>[{textContent:'Z · °C · KT'},{textContent:'FOR REFERENCE ONLY'}]};
+ const ctx={scale(){},fillRect(){},fillText(){},measureText:s=>({width:s.length*4}),drawImage:(img,x,y,w,h)=>draws.push({x,y,w,h})};
+ const view={URL:{createObjectURL:()=> 'blob:chart',revokeObjectURL:u=>revoked.push(u)},setTimeout,clearTimeout,getComputedStyle:()=>({getPropertyValue:()=>''}),XMLSerializer:class{serializeToString(){return '<svg/>'; }},Image:class{set src(v){queueMicrotask(()=>this.onload());}}};
+ const doc={defaultView:view,fonts:{ready:Promise.resolve()},querySelectorAll:()=>[page],createElement:()=>({width:0,height:0,getContext:()=>ctx,toBlob:cb=>cb(new Blob([new Uint8Array([255,216,255,217])]))})};
+ const pdf=await createMeteogramPdf(doc);
+ assert.equal(pdf.type,'application/pdf');assert.equal(draws.length,1);
+ const {x,y,w,h}=draws[0];assert.equal(x,16);assert.ok(y>16);assert.ok(x+w<=776);assert.ok(y+h<=596.00001);
+ assert.ok(Math.abs(w/h-1540/1100)<1e-10);assert.deepEqual(revoked,['blob:chart']);
+});
+
+test('SVG render errors fail rather than silently export missing charts',async()=>{
+ const clone={style:{setProperty(){}},querySelectorAll:()=>[],setAttribute(){}};
+ const svg={tagName:'svg',cloneNode:()=>clone,querySelectorAll:()=>[],viewBox:{baseVal:{width:1540,height:1100}}};
+ const page={querySelector:s=>s.includes('chart svg')?svg:null,querySelectorAll:()=>[]};
+ const ctx={scale(){},fillRect(){},fillText(){},measureText:s=>({width:s.length*4})};
+ const revoked=[];
+ const view={URL:{createObjectURL:()=> 'blob:bad',revokeObjectURL:u=>revoked.push(u)},setTimeout,clearTimeout,getComputedStyle:()=>({getPropertyValue:()=>''}),XMLSerializer:class{serializeToString(){return '<svg/>'; }},Image:class{set src(v){queueMicrotask(()=>this.onerror());}}};
+ const doc={defaultView:view,querySelectorAll:()=>[page],createElement:()=>({getContext:()=>ctx})};
+ await assert.rejects(()=>createMeteogramPdf(doc),/could not render/);
+ assert.deepEqual(revoked,['blob:bad']);
+});

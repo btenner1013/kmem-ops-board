@@ -659,7 +659,7 @@ export function initializeAviationWeatherLookup(doc = document) {
     const visibleRadio = meteogramPrintForm.querySelector?.('input[name="meteogramPrintRange"][value="visible"]');
     if (visibleRadio) visibleRadio.disabled = !meteogramPrintSnapshot.visibleRange;
     const settings = meteogramPrintSnapshot.settings;
-    meteogramPrintBasis.textContent = `TIME BASIS: ${settings.timeMode}${settings.timeMode === "LOCAL" ? ` · ${meteogramPrintSnapshot.model.timeZone}` : " · UTC/Z"} · °${settings.temperatureUnit} · ${settings.windUnit}`;
+    meteogramPrintBasis.textContent = `TIME BASIS: ${settings.timeMode}${settings.timeMode === "LOCAL" ? ` · ${meteogramPrintSnapshot.model.timeZone}` : " · UTC/Z"} · °${settings.temperatureUnit} · ${settings.windUnit} · VIS ${settings.visibilityUnit === "M" ? "METERS" : "SM"}`;
     panel.inert = true;
     panel.setAttribute("aria-hidden", "true");
     meteogramPrintSetup.hidden = false;

@@ -1335,6 +1335,7 @@ test("LOCAL/Z, F/C, and KT/MPH toggles rerender live without another lookup", ()
     ["timeMode", "LOCAL"], ["timeMode", "Z"],
     ["temperatureUnit", "F"], ["temperatureUnit", "C"],
     ["windUnit", "KT"], ["windUnit", "MPH"],
+    ["visibilityUnit", "SM"], ["visibilityUnit", "M"],
   ]) {
     assert.match(meteogramJs, new RegExp(`value: "${contract[1]}"`));
   }
@@ -1742,7 +1743,7 @@ test("row-label content is centralized and follows every live display toggle", (
     ["windSpeed", "WIND SPEED / GUST", "SOLID SUSTAINED · GUST WHISKER · KT"],
     ["pressure", "PRESSURE", "ALTIMETER · IN HG"],
     ["clouds", "CLOUDS / CIG", "FT AGL"],
-    ["visibility", "VISIBILITY", "SM / REPORTED"],
+    ["visibility", "VISIBILITY", "STATUTE MILES"],
     ["precip", "PRECIP (IN)", "INTERVAL TOTAL"],
     ["snow", "SNOW (IN)", "FCST / OBS DEPTH Δ"],
   ]);

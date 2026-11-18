@@ -1,5 +1,6 @@
 import {
   decodeTafReport,
+  splitMetarSections,
   isValidIcao,
   normalizeIcao,
   resolveStationTimeZone,
@@ -124,14 +125,14 @@ function parseVisibility(rawBody, windMatch) {
   if (match) return { valueSm: Number(match[1]), qualifier: "", display: `${match[1]} SM` };
 
   // International reports commonly use four-digit prevailing visibility in metres.
-  match = tail.match(/(?:^|\s)(9999|\d{4})(?=\s|$)/);
+  match = tail.match(/(?:^|\s)(\d{4})(?:NDV)?(?=\s|$)/);
   if (match) {
-    const metres = Number(match[1]);
+    const metres = match[1] === "0000" ? 50 : Number(match[1]);
     const valueSm = match[1] === "9999" ? 10000 / METRES_PER_STATUTE_MILE : metres / METRES_PER_STATUTE_MILE;
     return {
       valueSm,
-      qualifier: match[1] === "9999" ? "≥" : "",
-      display: match[1] === "9999" ? "≥10 KM" : `${metres} M`,
+      qualifier: match[1] === "9999" ? "≥" : match[1] === "0000" ? "<" : "",
+      display: match[1] === "9999" ? "≥10 KM" : `${match[1] === "0000" ? "<" : ""}${metres} M`,
     };
   }
   return { valueSm: null, qualifier: "", display: "—", cavok: false };
@@ -179,8 +180,8 @@ function weatherPresentation(codes, clouds) {
   const joined = codes.join(" ");
   if (/TS/.test(joined)) return { icon: "⚡", label: /RA/.test(joined) ? "THUNDER + RAIN" : "THUNDER" };
   if (/SN|SG|PL/.test(joined)) return { icon: "❄", label: "WINTRY PRECIP" };
-  if (/RA|DZ/.test(joined)) return { icon: "☂", label: "RAIN" };
-  if (/VCSH/.test(joined)) return { icon: "☂", label: "VICINITY SHOWERS" };
+  if (/RA|DZ/.test(joined)) return { icon: "🌧️", label: "RAIN" };
+  if (/VCSH/.test(joined)) return { icon: "🌧️", label: "VICINITY SHOWERS" };
   if (/FG|BR/.test(joined)) return { icon: "≋", label: /FG/.test(joined) ? "FOG" : "MIST" };
   if (/HZ|FU|DU|SA/.test(joined)) return { icon: "◫", label: "OBSCURATION" };
   if (clouds.cavok) return { icon: "◒", label: "CAVOK" };
@@ -260,12 +261,12 @@ function parsedDecodedVisibility(values) {
       cavok: /no significant weather or cloud/i.test(text),
     };
   }
-  const metres = text.match(/^(\d+(?:\.\d+)?) metres$/i);
+  const metres = text.match(/^(Less than )?(\d+(?:\.\d+)?) metres$/i);
   if (metres) {
     return {
-      visibilitySm: Number(metres[1]) / METRES_PER_STATUTE_MILE,
-      visibilityQualifier: "",
-      visibilityDisplay: `${metres[1]} M`,
+      visibilitySm: Number(metres[2]) / METRES_PER_STATUTE_MILE,
+      visibilityQualifier: metres[1] ? "<" : "",
+      visibilityDisplay: `${metres[1] ? "<" : ""}${metres[2]} M`,
       cavok: false,
     };
   }
@@ -1067,7 +1068,8 @@ export function parseMeteogramObservation(report) {
   const raw = normalizedRaw(report?.raw);
   if (!isValidIcao(station) || !Number.isFinite(observed.getTime()) || !raw) return null;
 
-  const rawBody = raw.split(/\s+RMK\b/i)[0];
+  const metarParts = splitMetarSections(raw);
+  const rawBody = metarParts.observationRaw;
   const windMatch = /\b(\d{3}|VRB)\/?(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)\b/.exec(rawBody);
   const windFactor = windMatch?.[4] === "MPS" ? KNOTS_PER_METRE_PER_SECOND : 1;
   const temperatureMatch = /\b(M?\d{2}|\/\/)\/(M?\d{2}|\/\/)\b/.exec(rawBody);
@@ -1087,6 +1089,7 @@ export function parseMeteogramObservation(report) {
   const value = {
     station,
     observedZ: observed.toISOString(),
+    trendRaw: metarParts.trendRaw,
     reportType,
     raw,
     source: String(report?.source || "METAR/SPECI source"),
@@ -1104,7 +1107,7 @@ export function parseMeteogramObservation(report) {
     visibilityDisplay: visibility.display,
     clouds,
     weatherCodes,
-    precipitation: parsePrecipitation(raw, weatherCodes, observed.toISOString()),
+    precipitation: parsePrecipitation(`${rawBody} ${metarParts.remarksRaw ? `RMK ${metarParts.remarksRaw}` : ""}`, weatherCodes, observed.toISOString()),
     revised: false,
   };
   value.weather = weatherPresentation(weatherCodes, clouds);
@@ -1564,4 +1567,23 @@ export function formatTemperature(valueC, unit = "F") {
 export function formatWind(valueKt, unit = "KT") {
   const value = convertWindSpeed(valueKt, unit);
   return value === null ? "—" : String(Math.round(value));
+}
+
+// Keep canonical visibility in SM for plotting; only presentation is converted.
+export function convertVisibility(valueSm, unit = "SM") {
+  if (valueSm === null || valueSm === undefined || !Number.isFinite(Number(valueSm)) || Number(valueSm) < 0) return null;
+  return Number(valueSm) * (String(unit).toUpperCase() === "M" ? METRES_PER_STATUTE_MILE : 1);
+}
+
+export function formatMeteogramVisibility(observation = {}, unit = "SM", { includeUnit = true } = {}) {
+  const metric = String(unit).toUpperCase() === "M";
+  const value = convertVisibility(observation.visibilitySm, metric ? "M" : "SM");
+  if (value === null) return "—";
+  const source = String(observation.visibilityDisplay || "");
+  const qualifier = observation.visibilityQualifier || source.match(/^[<>≥≤]/)?.[0] || "";
+  // Preserve exact reported fractions in SM rather than rounding 1/4 to 0.3.
+  const sourceSm = source.match(/^[<>≥≤]?\s*(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)\s*SM$/i);
+  const number = !metric && sourceSm ? sourceSm[1]
+    : new Intl.NumberFormat("en-US", { maximumFractionDigits: metric ? 0 : 2 }).format(value);
+  return `${qualifier}${number}${includeUnit ? metric ? " m" : " SM" : ""}`;
 }

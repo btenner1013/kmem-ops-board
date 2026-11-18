@@ -96,3 +96,14 @@ test('browsers without file sharing still offer a downloadable PDF',async()=>{
  openMeteogramPrintPreview({doc:doc(),view:{open:()=>f.preview},markup:'chart',createPdf:async()=>new Blob(['pdf'])});
  await f.events.previewCreatePdf();assert.equal(f.nodes.previewSharePdf.hidden,true);assert.equal(f.nodes.previewDownloadPdf.disabled,false);
 });
+
+test('closing preview releases prepared PDF and ignores late generation',async()=>{
+ const f=sharingPreview();let revoked=null;
+ f.preview.URL.revokeObjectURL=url=>{revoked=url};
+ openMeteogramPrintPreview({doc:doc(),view:{open:()=>f.preview},markup:'chart',createPdf:async()=>new Blob(['pdf'])});
+ await f.events.previewCreatePdf();f.events.previewClose();assert.equal(revoked,'blob:pdf');
+ const g=sharingPreview();let complete;
+ openMeteogramPrintPreview({doc:doc(),view:{open:()=>g.preview},markup:'chart',createPdf:()=>new Promise(resolve=>{complete=resolve})});
+ const pending=g.events.previewCreatePdf();g.events.previewClose();complete(new Blob(['pdf']));await pending;
+ assert.notEqual(g.nodes.previewCreatePdf.textContent,'PDF ready');
+});

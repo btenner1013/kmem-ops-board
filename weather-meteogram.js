@@ -5,6 +5,7 @@ import {
   formatMeteogramTime,
   formatTemperature,
   formatWind,
+  formatMeteogramVisibility,
 } from "./weather-meteogram-core.js";
 import { meteogramSolarEvents, meteogramSolarPhase } from "./weather-meteogram-solar.js";
 
@@ -214,6 +215,7 @@ function normalizedMeteogramSettings(settings = {}, model = {}) {
     timeMode: requestedTimeMode === "LOCAL" && !model.timeZone ? "Z" : requestedTimeMode,
     temperatureUnit: String(settings.temperatureUnit || "C").toUpperCase() === "F" ? "F" : "C",
     windUnit: String(settings.windUnit || "KT").toUpperCase() === "MPH" ? "MPH" : "KT",
+    visibilityUnit: String(settings.visibilityUnit || "SM").toUpperCase() === "M" ? "M" : "SM",
   };
 }
 
@@ -363,7 +365,7 @@ export function meteogramRowLabelDescriptors(settings = {}, hasForecast = false,
     { key: "windSpeed", ...rows.windSpeed, icon: "≈", title: "WIND SPEED / GUST", unit: `SOLID SUSTAINED · GUST WHISKER · ${windUnit}` },
     { key: "pressure", ...rows.pressure, icon: "◌", title: "PRESSURE", unit: hasGfsPressure ? "OBS ALTIMETER · FCST MSLP · IN HG" : "ALTIMETER · IN HG" },
     { key: "clouds", ...rows.clouds, icon: "☁", title: "CLOUDS / CIG", unit: "FT AGL" },
-    { key: "visibility", ...rows.visibility, icon: "◉", title: "VISIBILITY", unit: "SM / REPORTED" },
+    { key: "visibility", ...rows.visibility, icon: "◉", title: "VISIBILITY", unit: settings.visibilityUnit === "M" ? "METERS" : "STATUTE MILES" },
     { key: "precip", ...rows.precip, icon: "◒", title: "PRECIP (IN)", unit: "INTERVAL TOTAL" },
     { key: "snow", ...rows.snow, icon: "✣", title: "SNOW (IN)", unit: "FCST / OBS DEPTH Δ" },
   ];
@@ -677,7 +679,10 @@ function visualLabelWidth(observation, minimumWidth) {
     if (value.windSpeedKt !== null && value.windSpeedKt !== undefined) {
       windLabels.push(`${type} ${windDirectionLabel(value)} 00${value.windGustKt === null || value.windGustKt === undefined ? "" : " G00"}`);
     }
-    if (value.visibilitySm !== null && value.visibilitySm !== undefined) visibilityLabels.push(`${type} ${value.visibilityDisplay || "00 SM"}`);
+    if (value.visibilitySm !== null && value.visibilitySm !== undefined) {
+      const labels = [formatMeteogramVisibility(value, "M"), formatMeteogramVisibility(value, "SM")];
+      visibilityLabels.push(`${type} ${labels.sort((a,b) => b.length - a.length)[0]}`);
+    }
     if (value.clouds) cloudLabels.push(`${type} ${cloudColumnLabel({ clouds: value.clouds })} ${ceilingLabel(value.clouds)}`);
     if (value.weatherCodes?.length) weatherLabels.push(`${type} ${value.weatherCodes.join("/")}`);
   }
@@ -825,7 +830,7 @@ function weatherColumnIcon(observation) {
   const joined = conditionalCodes.join(" ");
   if (/TS/.test(joined)) return "⚡";
   if (/SN|SG|PL/.test(joined)) return "❄";
-  if (/RA|DZ/.test(joined)) return "☂";
+  if (/RA|DZ/.test(joined)) return "🌧️";
   if (/FG|BR/.test(joined)) return "≋";
   return observation.weather.icon;
 }
@@ -925,7 +930,7 @@ function conditionalSummary(observation, settings) {
     if (value.windSpeedKt !== null && value.windSpeedKt !== undefined) {
       parts.push(`wind ${windDirectionLabel(value)} ${formatWind(value.windSpeedKt, settings.windUnit)} ${settings.windUnit}${value.windGustKt === null || value.windGustKt === undefined ? "" : ` G${formatWind(value.windGustKt, settings.windUnit)}`}`);
     }
-    if (value.visibilitySm !== null && value.visibilitySm !== undefined) parts.push(`visibility ${value.visibilityDisplay || visibilityLabel(value)}`);
+    if (value.visibilitySm !== null && value.visibilitySm !== undefined) parts.push(`visibility ${formatMeteogramVisibility(value, settings.visibilityUnit)}`);
     if (value.clouds) parts.push(`clouds ${value.clouds.display}; ceiling ${ceilingLabel(value.clouds)}`);
     if (value.weatherCodes?.length) parts.push(`weather ${value.weatherCodes.join(" ")}`);
     return `${conditionalTypeLabel(entry)}${parts.length ? `: ${parts.join(", ")}` : ""}`;
@@ -1062,13 +1067,8 @@ function intervalAccessibleValue(interval, station) {
   return `${amount} · ${validity}`;
 }
 
-function visibilityLabel(observation) {
-  if (observation.visibilitySm === null) return "—";
-  if (observation.visibilityDisplay.includes("KM") || observation.visibilityDisplay.includes(" M")) {
-    return observation.visibilityDisplay;
-  }
-  const qualifier = observation.visibilityQualifier || "";
-  return `${qualifier}${fixed(observation.visibilitySm, observation.visibilitySm < 3 ? 1 : 0)}`;
+function visibilityLabel(observation, settings = {}) {
+  return formatMeteogramVisibility(observation, settings.visibilityUnit, { includeUnit: false });
 }
 
 function pressureReferenceKey(observation) {
@@ -1120,10 +1120,11 @@ function columnTitle(observation, settings) {
     `Temperature ${formatTemperature(observation.temperatureC, settings.temperatureUnit)} / Dew point ${formatTemperature(observation.dewPointC, settings.temperatureUnit)}`,
     `Wind ${direction} ${formatWind(observation.windSpeedKt, settings.windUnit)} ${settings.windUnit} · Gust ${observation.windGustKt === null || observation.windGustKt === undefined ? "—" : `${formatWind(observation.windGustKt, settings.windUnit)} ${settings.windUnit}`}`,
     `Pressure ${pressureAccessibleText(observation)}`,
-    `Visibility ${observation.visibilityDisplay}`,
+    `Visibility ${formatMeteogramVisibility(observation, settings.visibilityUnit)} (reported ${observation.visibilityDisplay || "—"})`,
     `Clouds ${observation.clouds.display}`,
     observation.weatherCodes.length ? `Weather ${observation.weatherCodes.join(" ")}` : "Weather code not reported",
   ];
+  if (observation.trendRaw) base.push(`METAR TREND FORECAST (not observed): ${observation.trendRaw}`);
   if (isForecast(observation)) {
     const hasTaf = forecastBucketHasTaf(observation);
     const hasNws = forecastBucketHasNws(observation);
@@ -1230,6 +1231,7 @@ export function buildMeteogramAccessibleTableMarkup(model, settings = {}) {
         ? "NOAA model MSLP is missing at this exact valid time; no pressure was inferred"
         : "",
       overlays ? `Non-prevailing/transition ${overlays}` : "",
+      observation.trendRaw ? `METAR TREND FORECAST (not observed): ${observation.trendRaw}` : "",
       isForecast(observation) && forecastHasTaf ? "Aviation fields from current TAF" : "",
       isForecast(observation) && forecastHasNws ? "Supplemental fields identify NWS grid provenance" : "",
       isForecast(observation) && !forecastHasTaf && forecastHasNws ? "No current TAF aviation fields are represented in this bucket" : "",
@@ -1247,7 +1249,7 @@ export function buildMeteogramAccessibleTableMarkup(model, settings = {}) {
       <td>${escapeMarkup(wind)}</td>
       <td>${escapeMarkup(pressureAccessibleText(observation))}</td>
       <td>${escapeMarkup(`${observation.clouds?.display || "—"} · ${ceilingLabel(observation.clouds)} · ${cloudAccessibleText(observation.clouds)}`)}</td>
-      <td>${escapeMarkup(observation.visibilityDisplay || "—")}</td>
+      <td>${escapeMarkup(formatMeteogramVisibility(observation, normalizedSettings.visibilityUnit))}</td>
       <td>${escapeMarkup(observedPrecip ? intervalAccessibleValue(observedPrecip, model.station) : "—")}</td>
       <td>${escapeMarkup(observedSnowIncrease ? `${intervalAccessibleValue(observedSnowIncrease, model.station)} · SNOW DEPTH INCREASE DURING PAST HOUR` : "—")}</td>
       <td>${escapeMarkup(finiteAmount(observation.precipitation?.snowDepthIn) === null ? "—" : `${amountDisplay(observation.precipitation.snowDepthIn)} IN DEPTH ON GROUND`)}</td>
@@ -1273,12 +1275,12 @@ export function buildMeteogramAccessibleTableMarkup(model, settings = {}) {
     </tr>`;
   }).join("");
   return `<table class="aviation-meteogram-data-table">
-    <caption>${escapeMarkup(`${model.station} meteogram text data; ${normalizedSettings.timeMode === "Z" ? "UTC/Z" : "station local"} time, degrees ${normalizedSettings.temperatureUnit}, wind in ${normalizedSettings.windUnit}`)}</caption>
+    <caption>${escapeMarkup(`${model.station} meteogram text data; ${normalizedSettings.timeMode === "Z" ? "UTC/Z" : "station local"} time, degrees ${normalizedSettings.temperatureUnit}, wind in ${normalizedSettings.windUnit}; visibility in ${normalizedSettings.visibilityUnit === "M" ? "meters" : "SM"}. Converted visibility rounded; reported limits retained`)}</caption>
     <thead><tr>
       <th scope="col">Time</th><th scope="col">Type</th><th scope="col">Weather</th>
       <th scope="col">Temperature °${normalizedSettings.temperatureUnit}</th><th scope="col">Dew point °${normalizedSettings.temperatureUnit}</th>
       <th scope="col">Wind ${normalizedSettings.windUnit}</th><th scope="col">Pressure</th>
-      <th scope="col">Clouds / ceiling</th><th scope="col">Visibility</th><th scope="col">PRECIP (IN)</th>
+      <th scope="col">Clouds / ceiling</th><th scope="col">Visibility ${normalizedSettings.visibilityUnit === "M" ? "meters" : "SM"}</th><th scope="col">PRECIP (IN)</th>
       <th scope="col" title="Forecast snowfall; observed SNINCR is one-hour snow-depth increase">SNOW (IN)</th><th scope="col">Snow depth (IN)</th><th scope="col">Source / valid-interval semantics</th>
     </tr></thead><tbody>${rows}${intervalRows}</tbody>
   </table>`;
@@ -2751,7 +2753,7 @@ function cloudLayerDetailLine(layer = {}) {
   return `${token} — BASE ${height} AGL${development} · TOP NOT REPORTED`;
 }
 
-function cloudDetailConditionLines(label, conditions = {}, { alwaysShowCloud = false } = {}) {
+function cloudDetailConditionLines(label, conditions = {}, { alwaysShowCloud = false, visibilityUnit = "SM" } = {}) {
   const lines = [label];
   const clouds = conditions?.clouds;
   if (clouds) {
@@ -2766,11 +2768,8 @@ function cloudDetailConditionLines(label, conditions = {}, { alwaysShowCloud = f
     ? conditions.weatherCodes.map((code) => String(code || "").toUpperCase()).filter(Boolean)
     : [];
   if (codes.length) lines.push(`WEATHER: ${codes.join(" ")}`);
-  const visibility = conditions?.visibilityDisplay || (
-    conditions?.visibilitySm !== null && conditions?.visibilitySm !== undefined
-      ? visibilityLabel(conditions)
-      : ""
-  );
+  const visibility = conditions?.visibilitySm !== null && conditions?.visibilitySm !== undefined
+    ? formatMeteogramVisibility(conditions, visibilityUnit) : "";
   if (visibility) lines.push(`VIS: ${visibility}`);
   return lines;
 }
@@ -2782,10 +2781,11 @@ function cloudBucketDetailText(observation, settings, station) {
     ? `${zuluTime.date} · ${compactTimeText(zuluTime, "Z")} / ${localTime.time} ${localTime.zone}`
     : `${zuluTime.date} · ${compactTimeText(zuluTime, "Z")}`;
   const overlays = forecastOverlays(observation);
-  const prevailingLines = cloudDetailConditionLines("PREVAILING", observation, { alwaysShowCloud: true });
+  const prevailingLines = cloudDetailConditionLines("PREVAILING", observation, { alwaysShowCloud: true, visibilityUnit: settings.visibilityUnit });
   const overlayLines = overlays.flatMap((entry) => cloudDetailConditionLines(
     visualConditionalTypeLabel(entry),
     entry.conditions || {},
+    { visibilityUnit: settings.visibilityUnit },
   ));
   const windKnown = observation?.windSpeedKt !== null && observation?.windSpeedKt !== undefined;
   const windLine = windKnown
@@ -3382,11 +3382,11 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
       const value = entry.conditions || {};
       return value.visibilitySm === null || value.visibilitySm === undefined
         ? []
-        : [`${visualConditionalTypeLabel(entry)} ${value.visibilityDisplay || visibilityLabel(value)}`];
+        : [`${visualConditionalTypeLabel(entry)} ${formatMeteogramVisibility(value, normalizedSettings.visibilityUnit)}`];
     }).join(" · ");
     return `<g class="aviation-meteogram-visibility${isForecast(observation) ? " aviation-meteogram-value-forecast" : ""}${visibilityLabelMask[index] ? "" : " aviation-meteogram-label-suppressed"}" data-visibility-label-visible="${visibilityLabelMask[index]}">
       ${visibilityLabelMask[index] ? `
-      <text class="aviation-meteogram-visibility-value" x="${xAt(index).toFixed(1)}" y="${rows.visibility.top + 24}">${escapeMarkup(visibilityLabel(observation))}</text>
+      <text class="aviation-meteogram-visibility-value" x="${xAt(index).toFixed(1)}" y="${rows.visibility.top + 24}">${escapeMarkup(visibilityLabel(observation, normalizedSettings))}</text>
       ${conditionalVisibility ? `<text class="aviation-meteogram-conditional-value" x="${xAt(index).toFixed(1)}" y="${rows.visibility.top + 46}">${escapeMarkup(conditionalVisibility)}</text>` : ""}` : ""}
     </g>`;
   }).join("");
@@ -3571,6 +3571,7 @@ export function renderAviationMeteogram(container, reports, {
     timeMode: "Z",
     temperatureUnit: "C",
     windUnit: "KT",
+    visibilityUnit: "SM",
   };
   const settings = normalizedMeteogramSettings({
     ...defaultSettings,
@@ -3602,6 +3603,9 @@ export function renderAviationMeteogram(container, reports, {
     ]),
     createToggleGroup(doc, "Meteogram temperature unit", "temperatureUnit", [
       { value: "C", label: "°C" }, { value: "F", label: "°F" },
+    ]),
+    createToggleGroup(doc, "Meteogram visibility unit", "visibilityUnit", [
+      { value: "SM", label: "SM" }, { value: "M", label: "METERS" },
     ]),
     createToggleGroup(doc, "Meteogram wind speed unit", "windUnit", [
       { value: "KT", label: "KT" }, { value: "MPH", label: "MPH" },
@@ -3714,7 +3718,14 @@ export function renderAviationMeteogram(container, reports, {
   precip.textContent = model.forecasts.length
     ? "PRECIP (IN) = NWS SIX-HOUR LIQUID-EQUIVALENT TOTAL · SNOW (IN) = NWS SIX-HOUR FORECAST SNOWFALL · OBS SNINCR = SNOW-DEPTH INCREASE DURING PAST HOUR · POP IS NOT AMOUNT · TX/TN ARE SEPARATE TAF EXTREMA"
     : "PRECIP (IN) = REPORTED INTERVAL LIQUID EQUIVALENT · TRACE = T · OBS SNINCR = SNOW-DEPTH INCREASE DURING PAST HOUR · TOTAL SNOW DEPTH IS SEPARATE";
-  notes.append(truth, precip);
+  const visibilityNote = doc.createElement("span");
+  visibilityNote.textContent = "VISIBILITY: 1 SM = 1609.344 METERS · CONVERSIONS ROUNDED TO 1 M / 0.01 SM · REPORTED LIMITS RETAINED";
+  notes.append(truth, precip, visibilityNote);
+  if (model.observations.some(observation => observation.trendRaw)) {
+    const trendNote = doc.createElement("span");
+    trendNote.textContent = "METAR TREND FORECASTS ARE NOT OBSERVATIONS; RETAINED SEPARATELY IN REPORT DETAILS";
+    notes.append(trendNote);
+  }
   if (model.taf) {
     const issued = formatMeteogramTime(model.taf.issuanceZ, { mode: "Z", station: model.station });
     const tafSource = doc.createElement("span");

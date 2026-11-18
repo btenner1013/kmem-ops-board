@@ -186,8 +186,12 @@ function decodeWindToken(token) {
 function decodeVisibilityToken(tokens, index) {
   const token = String(tokens[index] || "").toUpperCase();
   if (token === "CAVOK") return { consumed: 1, value: "10 km or greater; no significant weather or cloud below 5,000 ft" };
-  if (token === "9999") return { consumed: 1, value: "10 km or greater" };
-  if (/^\d{4}$/.test(token)) return { consumed: 1, value: `${Number(token)} metres` };
+  const metric = token.match(/^(\d{4})(?:NDV)?$/);
+  if (metric) {
+    if (metric[1] === "9999") return { consumed: 1, value: "10 km or greater" };
+    if (metric[1] === "0000") return { consumed: 1, value: "Less than 50 metres" };
+    return { consumed: 1, value: `${Number(metric[1])} metres` };
+  }
   const statute = token.match(/^(P|M)?(\d+(?:\/\d+)?)SM$/);
   if (statute) {
     const prefix = statute[1] === "P" ? "Greater than " : statute[1] === "M" ? "Less than " : "";
@@ -387,6 +391,22 @@ function decodeRemarks(tokens) {
   return { remarks, undecoded };
 }
 
+// METAR TREND is a forecast appended to an observation, never observed data.
+// Keep it verbatim rather than treating TEMPO/BECMG values as simultaneous.
+export function splitMetarSections(raw) {
+  const flat = normalizedRaw(raw);
+  const tokens = flat.split(/\s+/).filter(Boolean);
+  const remarkIndex = tokens.findIndex(token => /^RMK$/i.test(token));
+  const body = remarkIndex >= 0 ? tokens.slice(0, remarkIndex) : tokens;
+  const remarks = remarkIndex >= 0 ? tokens.slice(remarkIndex + 1).join(" ") : "";
+  const trendIndex = body.findIndex(token => /^(?:TEMPO|BECMG|NOSIG|(?:FM|TL|AT)\d{4})=?$/i.test(token));
+  return {
+    observationRaw: (trendIndex >= 0 ? body.slice(0, trendIndex) : body).join(" "),
+    trendRaw: trendIndex >= 0 ? body.slice(trendIndex).join(" ") : "",
+    remarksRaw: remarks,
+  };
+}
+
 export function decodeMetarReport(value, options = {}) {
   const input = reportInput(value, options);
   const flat = normalizedRaw(input.raw);
@@ -406,7 +426,8 @@ export function decodeMetarReport(value, options = {}) {
   );
   const remainder = flat.slice(header[0].length).trim().split(/\s+/).filter(Boolean);
   const remarkIndex = remainder.findIndex((token) => token.toUpperCase() === "RMK");
-  const bodyTokens = remarkIndex >= 0 ? remainder.slice(0, remarkIndex) : remainder;
+  const metarParts = splitMetarSections(flat);
+  const bodyTokens = metarParts.observationRaw.slice(header[0].length).trim().split(/\s+/).filter(Boolean);
   const remarkTokens = remarkIndex >= 0 ? remainder.slice(remarkIndex + 1) : [];
   if (header[2]) bodyTokens.unshift(header[2]);
 
@@ -437,6 +458,7 @@ export function decodeMetarReport(value, options = {}) {
   const sections = [
     { heading: "Report", lines: overviewLines },
     { heading: "Conditions", lines: conditionLines },
+    ...(metarParts.trendRaw ? [{ heading: "Trend forecast (not observed)", lines: [{ label: "Raw trend", value: metarParts.trendRaw }] }] : []),
     ...(remarkLines.length ? [{ heading: "Remarks", lines: remarkLines }] : []),
   ];
   const lines = sections.flatMap((section) => section.lines);
@@ -446,6 +468,7 @@ export function decodeMetarReport(value, options = {}) {
     station,
     title: `${product} — ${station}`,
     raw: input.raw,
+    trendRaw: metarParts.trendRaw,
     observationUtc: timestamp ? timestamp.toISOString() : "",
     observationLocal: timestamp ? formatStationLocalTime(timestamp, station) : "LOCAL TIME UNAVAILABLE",
     timeZone: resolveStationTimeZone(station),
