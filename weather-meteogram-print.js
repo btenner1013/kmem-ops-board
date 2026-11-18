@@ -306,6 +306,27 @@ export function paginateMeteogramPrintRange(range = {}, { maximumHours = PRINT_P
   return pages;
 }
 
+// Keep dense half-hourly observations legible without omitting any reports.
+// Sparse hourly forecasts retain the existing twelve-hour pages.
+export function paginateMeteogramPrintModel(model, range, maximumColumns = 14) {
+  const limit = Math.max(2, Math.floor(Number(maximumColumns) || 14));
+  const split = (page) => {
+    const start = finiteTimestamp(page.startZ), end = finiteTimestamp(page.endZ);
+    const times = [...new Set([...(model.observations || []), ...(model.forecasts || [])]
+      .map(timelineTimestamp).filter(time => time !== null && time >= start
+        && (time < end || (page.includeEnd && time === end))))].sort((a, b) => a - b);
+    if (times.length <= limit) return [page];
+    const middle = Math.floor(times.length / 2);
+    const boundary = Math.floor((times[middle - 1] + times[middle]) / 2);
+    if (boundary <= start || boundary >= end) return [page];
+    return [
+      ...split({ ...page, endZ: iso(boundary), durationHours: (boundary - start) / HOUR_MS, includeEnd: false }),
+      ...split({ ...page, startZ: iso(boundary), durationHours: (end - boundary) / HOUR_MS }),
+    ];
+  };
+  return paginateMeteogramPrintRange(range).flatMap(split);
+}
+
 function timelineTimestamp(item) {
   return finiteTimestamp(item?.validZ || item?.observedZ);
 }
@@ -369,7 +390,7 @@ export function buildMeteogramPrintPlan({ model = {}, settings = {}, range, rang
     includeEnd: Boolean(range.includeEnd),
   });
   const scaleOverrides = meteogramSelectedRangeScales(selectedModel, normalizedSettings);
-  const pageRanges = paginateMeteogramPrintRange(range);
+  const pageRanges = paginateMeteogramPrintModel(model, range);
   const selectedHasForecast = selectedModel.forecasts.length > 0
     || selectedModel.forecastPrecipitationIntervals.length > 0
     || selectedModel.forecastSnowfallIntervals.length > 0;
@@ -378,6 +399,9 @@ export function buildMeteogramPrintPlan({ model = {}, settings = {}, range, rang
     hasForecast: selectedHasForecast,
     hasGfsPressure: selectedHasGfsPressure,
     compact: false,
+    // Print uses 13/10px Courier labels, not the smaller screen measurements.
+    // Reserve a little extra width for renderer differences and letter spacing.
+    measureText: (text, kind) => String(text).length * (kind === "title" ? 13 : 10) * .67,
   });
   const pages = pageRanges.map((pageRange, index) => {
     const pageModel = sliceMeteogramModelForPrint(model, pageRange);

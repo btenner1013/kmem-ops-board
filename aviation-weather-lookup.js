@@ -15,7 +15,7 @@ import {
   buildMeteogramPrintPagesMarkup,
   buildMeteogramPrintPlan,
   meteogramPrintDefaultValues,
-  paginateMeteogramPrintRange,
+  paginateMeteogramPrintModel,
   resolveMeteogramPrintRange,
 } from "./weather-meteogram-print.js";
 
@@ -620,10 +620,10 @@ export function initializeAviationWeatherLookup(doc = document) {
       return;
     }
     const hours = range.durationHours;
-    const pageCount = paginateMeteogramPrintRange(range).length;
+    const pageCount = paginateMeteogramPrintModel(meteogramPrintSnapshot.model, range).length;
     const warning = range.warnings?.join(" ") || "";
     setMeteogramPrintStatus(
-      `${hours.toFixed(hours % 1 ? 1 : 0)} HR · ${pageCount} LANDSCAPE ${pageCount === 1 ? "PAGE" : "PAGES"} · approximately 12 hours per page.${warning ? ` ${warning}` : ""}`,
+      `${hours.toFixed(hours % 1 ? 1 : 0)} HR · ${pageCount} LANDSCAPE ${pageCount === 1 ? "PAGE" : "PAGES"} · up to 12 hours per page; dense reports use additional pages.${warning ? ` ${warning}` : ""}`,
       warning ? "warning" : "",
     );
   }

@@ -46,6 +46,7 @@ import {
   meteogramCalendarDayRange,
   meteogramCustomRange,
   meteogramPrintCoverage,
+  paginateMeteogramPrintModel,
   paginateMeteogramPrintRange,
   resolveMeteogramPrintRange,
   sliceMeteogramModelForPrint,
@@ -321,7 +322,7 @@ async function loadLookupController({ doc, lookupAviationWeather: lookup, render
     renderAviationMeteogram: render,
     buildMeteogramPrintPagesMarkup,
     buildMeteogramPrintPlan,
-    paginateMeteogramPrintRange,
+    paginateMeteogramPrintModel,
     meteogramPrintDefaultValues: () => ({
       calendarDate: "2026-09-01",
       startDate: "2026-09-01",
@@ -349,7 +350,7 @@ async function loadLookupController({ doc, lookupAviationWeather: lookup, render
     )
     .replace(
       /import \{[\s\S]*?\} from "\.\/weather-meteogram-print\.js";/,
-      `const { buildMeteogramPrintPagesMarkup, buildMeteogramPrintPlan, meteogramPrintDefaultValues, paginateMeteogramPrintRange, resolveMeteogramPrintRange } = globalThis["${dependencyKey}"];`,
+      `const { buildMeteogramPrintPagesMarkup, buildMeteogramPrintPlan, meteogramPrintDefaultValues, paginateMeteogramPrintModel, resolveMeteogramPrintRange } = globalThis["${dependencyKey}"];`,
     )
     .replace(
       /\nif \(typeof document !== "undefined"\) \{[\s\S]*\}\s*$/,
@@ -1413,7 +1414,7 @@ test("meteogram PRINT opens a dedicated range setup and leaves other product pri
 
   const previewBody = lookupJs.match(/function refreshMeteogramPrintSetup\(\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  function closeMeteogramPrintSetup/)?.[1] || "";
   assert.match(previewBody, /currentMeteogramPrintRange\(\)/);
-  assert.match(previewBody, /paginateMeteogramPrintRange\(range\)/);
+  assert.match(previewBody, /paginateMeteogramPrintModel\(meteogramPrintSnapshot.model, range\)/);
   assert.doesNotMatch(previewBody, /buildMeteogramPrintPlan/, "typing in setup does not rebuild every print SVG");
   assert.match(lookupJs, /panel\.inert = true;[\s\S]*panel\.setAttribute\("aria-hidden", "true"\);[\s\S]*meteogramPrintSetup\.hidden = false/);
   assert.match(lookupJs, /view\.addEventListener\("afterprint",[\s\S]*focusTarget\?\.focus\?\.\(\)/);

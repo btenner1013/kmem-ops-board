@@ -1063,3 +1063,22 @@
   body.aviation-meteogram-printing .aviation-meteogram-wind-speed-tick text,
   body.aviation-meteogram-printing .aviation-meteogram-cloud-axis text{font-size:10.5px!important}
 }
+
+/* SVG outlines can cover small glyphs in iOS Quartz PDF output. Keep print
+   text solid and unoutlined, including nested spans; screen charts unchanged. */
+@media print{
+  body.aviation-meteogram-printing .aviation-meteogram-svg-print text,
+  body.aviation-meteogram-printing .aviation-meteogram-svg-print tspan{
+    stroke:none!important;
+    stroke-width:0!important;
+    opacity:1!important;
+  }
+}
+
+@media print{
+  body.aviation-meteogram-printing .aviation-meteogram-row-title,
+  body.aviation-meteogram-printing .aviation-meteogram-row-unit{
+    font-family:"Courier New",monospace!important;
+    letter-spacing:0!important;
+  }
+}
