@@ -680,7 +680,7 @@ test("meteogram print preparation is isolated while ATIS, METAR, and TAF retain 
   );
   assert.match(
     lookupJs,
-    /meteogramPrintForm\.addEventListener\("submit",[\s\S]*?buildMeteogramPrintPagesMarkup\(plan\)[\s\S]*?classList\.add\("aviation-meteogram-printing"\)[\s\S]*?view\.print\(\)/,
+    /meteogramPrintForm\.addEventListener\("submit",[\s\S]*?openMeteogramPrintPreview\([\s\S]*?buildMeteogramPrintPagesMarkup\(plan\)/,
   );
   assert.match(lookupCss, /@page meteogram\{size:letter landscape/);
   assert.match(

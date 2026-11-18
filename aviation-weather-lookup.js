@@ -1,7 +1,9 @@
+import { openMeteogramPrintPreview } from "./meteogram-print-preview.js";
 import {
   LOOKUP_RANGES,
   decodeMetarReport,
   decodeTafReport,
+  formatDecodedTafText,
   formatStationLocalTime,
   isValidIcao,
   lookupAviationWeather,
@@ -119,6 +121,13 @@ export function formatReportIdentity(report) {
 }
 
 function appendDecodedReport(container, decoded) {
+  if (decoded?.product === "TAF") {
+    const text = document.createElement("pre");
+    text.className = "aviation-lookup-message-text";
+    text.textContent = formatDecodedTafText(decoded);
+    container.appendChild(text);
+    return;
+  }
   const heading = document.createElement("div");
   heading.className = "aviation-lookup-decoded-heading";
   heading.textContent = decoded?.title || "DECODED REPORT";
@@ -383,6 +392,38 @@ export function renderResultCards(container, reports) {
         toggleDecodedReport(toggle, decodePanel);
       });
       controls.appendChild(toggle);
+      if (decoded.product === "TAF") {
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "aviation-lookup-decode-toggle";
+        copy.textContent = "COPY TEXT";
+        const status = document.createElement("span");
+        status.className = "aviation-lookup-copy-status";
+        status.setAttribute("role", "status");
+        const fallback = document.createElement("textarea");
+        fallback.className = "aviation-lookup-copy-fallback";
+        fallback.readOnly = true;
+        fallback.hidden = true;
+        fallback.setAttribute("aria-label", "Decoded TAF text to copy");
+        copy.addEventListener("click", async () => {
+          const text = formatDecodedTafText(decoded);
+          try {
+            if (!globalThis.navigator?.clipboard?.writeText) throw new Error("Clipboard unavailable");
+            await globalThis.navigator.clipboard.writeText(text);
+            fallback.hidden = true;
+            status.textContent = "Copied. Paste into your message.";
+          } catch {
+            fallback.value = text;
+            fallback.hidden = false;
+            fallback.focus();
+            fallback.select();
+            fallback.setSelectionRange(0, text.length);
+            status.textContent = "Select and copy the text below, then paste into your message.";
+          }
+        });
+        controls.append(copy, status);
+        card.appendChild(fallback);
+      }
       card.append(controls, decodePanel);
     }
     container.appendChild(card);
@@ -873,13 +914,18 @@ export function initializeAviationWeatherLookup(doc = document) {
         setMeteogramPrintStatus(plan.error || "Choose a valid print range.", "error");
         return;
       }
-      meteogramPrintPages.innerHTML = buildMeteogramPrintPagesMarkup(plan);
-      meteogramPrintPages.hidden = false;
-      closeMeteogramPrintSetup({ restoreFocus: false, preserveReturnFocus: true });
-      doc.body.classList.add("aviation-meteogram-printing");
-      const invokePrint = () => view.print();
-      if (view.requestAnimationFrame) view.requestAnimationFrame(invokePrint);
-      else invokePrint();
+      try {
+        const opened = openMeteogramPrintPreview({
+          doc, view, station: plan.station, markup: buildMeteogramPrintPagesMarkup(plan),
+        });
+        if (!opened) {
+          setMeteogramPrintStatus("Allow the print preview tab, then tap CONTINUE TO PRINT again.", "error");
+          return;
+        }
+        closeMeteogramPrintSetup();
+      } catch (error) {
+        setMeteogramPrintStatus(error?.message || "Could not prepare the print preview. Try again.", "error");
+      }
     });
   }
   form.addEventListener("submit", (event) => {

@@ -842,6 +842,73 @@ export function decodeTafReport(value, options = {}) {
   };
 }
 
+// Presentation only: retain all decoded values, qualifiers and unknown tokens.
+// Arrows show where the air travels, opposite the meteorological FROM bearing.
+function messageWind(value) {
+  const match = String(value).match(/^(\d+)° true at (.+)$/);
+  if (!match) return String(value);
+  const bearing = Number(match[1]);
+  if (bearing > 360) return String(value);
+  const sector = Math.round((bearing % 360) / 45) % 8;
+  const from = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][sector];
+  const arrow = ["↓", "↙", "←", "↖", "↑", "↗", "→", "↘"][sector];
+  return `${arrow} from ${from} (${bearing}° true) at ${match[2]}`;
+}
+
+function messageWeatherIcon(value) {
+  const text = String(value).toLowerCase();
+  if (/thunder/.test(text)) return "⛈️";
+  if (/funnel|tornado|waterspout/.test(text)) return "🌪️";
+  if (/freezing|ice pellets|hail/.test(text)) return "🧊";
+  if (/snow|ice crystals/.test(text)) return "❄️";
+  if (/rain|drizzle/.test(text)) return "🌧️";
+  if (/fog|mist|haze|smoke|dust|sand|ash/.test(text)) return "🌫️";
+  return "";
+}
+
+export function formatDecodedTafText(decoded) {
+  if (!decoded || decoded.product !== "TAF") return "";
+  const output = [String(decoded.title || "TAF").replace(/ — /g, " · "), "Decoded · for reference only"];
+  const report = decoded.sections?.find((section) => section.heading === "Report");
+  const issued = report?.lines?.find((line) => line.label === "Issued")?.value;
+  if (issued) output.push(`Issued: ${issued}`);
+  if (decoded.validity) {
+    output.push(`Valid local: ${decoded.validity.localLabel}`, `Valid UTC: ${decoded.validity.utcLabel}`);
+  }
+  if (decoded.timeZone) output.push(`Local time zone: ${decoded.timeZone}`);
+  output.push("Wind arrows show where air blows; bearings are FROM.");
+  for (const block of decoded.blocks || []) {
+    let heading = { INITIAL: "Initially", FROM: "From", BECOMING: "Becoming", TEMPORARY: "Temporary (TEMPO)" }[block.type];
+    if (!heading) heading = String(block.type || "Forecast").replace(/^PROB(30|40)/, "$1% chance").replace("TEMPORARY", "temporary (TEMPO)");
+    output.push("", heading);
+    if (block.localLabel) output.push(`Local: ${block.localLabel}`);
+    if (block.utcLabel) output.push(`UTC: ${block.utcLabel}`);
+    if (!["INITIAL", "FROM"].includes(block.type)) output.push("Only the listed conditions change.");
+    const conditions = block.conditions || {};
+    for (const wind of conditions.winds || []) output.push(`Wind: ${messageWind(wind)}`);
+    for (const visibility of conditions.visibility || []) output.push(`👁 Visibility: ${visibility}`);
+    for (const rvr of conditions.rvr || []) output.push(`RVR: ${rvr}`);
+    for (const weather of conditions.weather || []) {
+      const icon = messageWeatherIcon(weather);
+      output.push(`${icon ? `${icon} ` : ""}Weather: ${weather}`);
+    }
+    for (const sky of conditions.sky || []) {
+      // Do not use a sun/moon: a clear-sky report does not establish daylight.
+      const icon = /^(Few|Scattered|Broken|Overcast|Vertical visibility)/.test(sky) ? "☁️ " : "";
+      output.push(`${icon}Sky: ${sky}`);
+    }
+    for (const pressure of conditions.pressure || []) output.push(`${pressure.label}: ${pressure.value}`);
+    for (const flag of conditions.flags || []) output.push(String(flag));
+    if (block.undecoded?.length) output.push(`Not decoded: ${block.undecoded.join(" ")}`);
+  }
+  if (decoded.temperatures?.length) {
+    output.push("", "🌡️ Temperatures");
+    for (const temperature of decoded.temperatures) output.push(`${temperature.type}: ${temperature.valueC}°C at ${temperature.localLabel} (${temperature.timestampLabel})`);
+  }
+  if (!decoded.blocks?.length && decoded.undecoded?.length) output.push("", `Not decoded: ${decoded.undecoded.join(" ")}`);
+  return output.join("\n");
+}
+
 export function parseTafTextProduct(product, requestedStation, metadata = {}) {
   const station = normalizeIcao(requestedStation);
   const text = String(

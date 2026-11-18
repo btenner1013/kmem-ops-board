@@ -686,3 +686,20 @@ body.aviation-lookup-open{overflow:hidden!important}
     color:#000!important;
   }
 }
+
+/* Message-friendly text uses explicit lines, not copied table columns. */
+.aviation-lookup-message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.5;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.aviation-lookup-copy-status { font-size: .85rem; }
+.aviation-lookup-copy-fallback {
+  width: 100%;
+  min-height: 12rem;
+  box-sizing: border-box;
+  font-size: 16px;
+}

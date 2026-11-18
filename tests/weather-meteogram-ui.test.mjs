@@ -1395,8 +1395,8 @@ test("meteogram PRINT opens a dedicated range setup and leaves other product pri
     "aviationMeteogramPrintPages",
   ]) assert.match(indexHtml, new RegExp(`id="${id}"`));
   assert.match(lookupJs, /product === "METEOGRAM" && openMeteogramPrintSetup\(\)/);
-  assert.match(lookupJs, /meteogramPrintPages\.innerHTML = buildMeteogramPrintPagesMarkup\(plan\)/);
-  assert.match(lookupJs, /doc\.body\.classList\.add\("aviation-meteogram-printing"\)/);
+  assert.match(lookupJs, /markup: buildMeteogramPrintPagesMarkup\(plan\)/);
+  assert.match(lookupJs, /openMeteogramPrintPreview/);
   assert.match(lookupJs, /doc\.body\.classList\.add\("aviation-lookup-printing"\)/, "ATIS/METAR/TAF keep their established print path");
   assert.match(lookupCss, /@page meteogram\{size:letter landscape;margin:\.28in\}/);
   assert.match(lookupCss, /\.aviation-meteogram-print-page\{[\s\S]*page:meteogram;[\s\S]*break-after:page/);
