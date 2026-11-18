@@ -12,15 +12,21 @@ export const KMEM_SOLAR_LOCATION = Object.freeze({
   timeZone: "America/Chicago",
 });
 
+// LOWL ARP: Austro Control AIP AD 2 LOWL, 48°14′07″N 014°11′17″E.
+// https://eaip.austrocontrol.at/lo/260122/PART_3/AD_2/PRI/AD_2_LOWL/LO_AD_2_LOWL_en.pdf
+export const LOWL_SOLAR_LOCATION = Object.freeze({
+  station: "LOWL", latitude: 48 + 14 / 60 + 7 / 3600,
+  longitude: 14 + 11 / 60 + 17 / 3600, timeZone: "Europe/Vienna",
+});
+const SOLAR_LOCATIONS = Object.freeze({ KMEM: KMEM_SOLAR_LOCATION, LOWL: LOWL_SOLAR_LOCATION });
+
 function validDate(value) {
   const date = value instanceof Date ? new Date(value.getTime()) : new Date(value);
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
 function stationLocation(station) {
-  return String(station || "KMEM").trim().toUpperCase() === KMEM_SOLAR_LOCATION.station
-    ? KMEM_SOLAR_LOCATION
-    : null;
+  return SOLAR_LOCATIONS[String(station || "KMEM").trim().toUpperCase()] || null;
 }
 
 function normalizeDegrees(value) {

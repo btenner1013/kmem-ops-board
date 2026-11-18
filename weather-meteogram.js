@@ -838,11 +838,11 @@ function weatherColumnIcon(observation) {
 function clearWeatherIconMarkup(observation, weatherCategory, station) {
   if (weatherCategory !== "clear" || !observation?.clouds?.clear) return "";
   const phase = meteogramSolarPhase(timelineTime(observation), { station });
-  if (!phase) return "";
-  const symbol = phase === "day" ? "sun" : "moon";
   const sourceCode = String(observation?.clouds?.display || "CLR").toUpperCase();
   const skyMeaning = ["NSC", "NCD"].includes(sourceCode) ? `${sourceCode} / no significant cloud` : `${sourceCode} / clear sky`;
-  const label = `${skyMeaning} during KMEM ${phase === "day" ? "daylight" : "nighttime"}`;
+  if (!phase) return `<g class="aviation-meteogram-weather-icon aviation-meteogram-weather-clear" data-weather-category="clear" data-weather-symbol="neutral-clear" data-solar-phase="unknown" transform="translate(0 83)" role="img" aria-label="${escapeMarkup(skyMeaning)}; day/night unavailable"><title>${escapeMarkup(skyMeaning)}; day/night unavailable</title><circle cx="0" cy="0" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/></g>`;
+  const symbol = phase === "day" ? "sun" : "moon";
+  const label = `${skyMeaning} during ${String(station || "").toUpperCase()} ${phase === "day" ? "daylight" : "nighttime"}`;
   const vector = phase === "day"
     ? `<circle class="aviation-meteogram-clear-sun-disc" cx="0" cy="0" r="6.5" aria-hidden="true"/>
        <path class="aviation-meteogram-clear-sun-rays" d="M0 -13V-10 M0 10V13 M-13 0H-10 M10 0H13 M-9.2 -9.2L-7.1 -7.1 M7.1 7.1L9.2 9.2 M9.2 -9.2L7.1 -7.1 M-7.1 7.1L-9.2 9.2" aria-hidden="true"/>`
@@ -3058,21 +3058,32 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
       && observation.windDirectionDeg !== undefined
       && !observation.windVariable
       && Number(observation.windSpeedKt) > 0;
-    const conditionalWind = forecastOverlays(observation).flatMap((entry) => {
+    const conditionalWindEntries = forecastOverlays(observation).filter(entry => entry.conditions?.windSpeedKt != null);
+    const conditionalWindLines = conditionalWindEntries.flatMap((entry) => {
       const value = entry.conditions || {};
       if (value.windSpeedKt === null || value.windSpeedKt === undefined) return [];
       return [`${visualConditionalTypeLabel(entry)} ${windDirectionLabel(value)} ${formatWind(value.windSpeedKt, normalizedSettings.windUnit)} ${normalizedSettings.windUnit}${value.windGustKt === null || value.windGustKt === undefined ? "" : ` G${formatWind(value.windGustKt, normalizedSettings.windUnit)}`}`];
-    }).join(" · ");
+    });
+    const conditionalWind = conditionalWindLines.join(" · ");
+    const oneConditional = conditionalWindEntries.length === 1 ? conditionalWindEntries[0] : null;
+    const conditionalHeading = oneConditional ? `${visualConditionalTypeLabel(oneConditional)} ${windDirectionLabel(oneConditional.conditions)}` : "";
+    const conditionalSpeed = oneConditional ? `${formatWind(oneConditional.conditions.windSpeedKt, normalizedSettings.windUnit)}${oneConditional.conditions.windGustKt == null ? "" : ` G${formatWind(oneConditional.conditions.windGustKt, normalizedSettings.windUnit)}`} ${normalizedSettings.windUnit}` : "";
+    const groupMiddle = Math.ceil(conditionalWindLines.length / 2);
+    const groupedWindLines = [conditionalWindLines.slice(0, groupMiddle).join(" · "), conditionalWindLines.slice(groupMiddle).join(" · ")].filter(Boolean);
+    const conditionalTextWidth = Math.max(16, Math.min(x - cellBounds[index].left, cellBounds[index].right - x) * 2 - 8);
+    const conditionalWindMarkup = oneConditional
+      ? `<text class="aviation-meteogram-conditional-value" data-wind-qualifier="heading" x="0" y="${rows.wind.bottom - 18}">${escapeMarkup(conditionalHeading)}</text><text class="aviation-meteogram-conditional-value" data-wind-qualifier="speed" x="0" y="${rows.wind.bottom - 6}">${escapeMarkup(conditionalSpeed)}</text>`
+      : groupedWindLines.map((line, lineIndex) => `<text class="aviation-meteogram-conditional-value" data-wind-qualifier="group" x="0" y="${rows.wind.bottom - 18 + lineIndex * 12}"${line.length * 4.8 > conditionalTextWidth ? ` textLength="${conditionalTextWidth.toFixed(1)}" lengthAdjust="spacingAndGlyphs"` : ""}>${escapeMarkup(line)}</text>`).join("");
     const firstLine = calm ? "CALM" : direction;
     const speedLine = calm ? "" : `${speed} ${normalizedSettings.windUnit}`;
     const showLabel = windLabelMask[index];
-    return `<g class="aviation-meteogram-wind-block${isForecast(observation) ? " aviation-meteogram-wind-forecast" : ""}${showLabel ? "" : " aviation-meteogram-label-suppressed"}" data-wind-label-visible="${showLabel}" transform="translate(${x.toFixed(1)} 0)">
+    return `<g class="aviation-meteogram-wind-block${isForecast(observation) ? " aviation-meteogram-wind-forecast" : ""}${showLabel ? "" : " aviation-meteogram-label-suppressed"}" data-wind-label-visible="${showLabel}" aria-label="${escapeMarkup(conditionalWind ? `Conditional wind: ${conditionalWind}` : "Prevailing wind")}" transform="translate(${x.toFixed(1)} 0)">
       ${directional ? `<g class="aviation-meteogram-wind-arrow${showLabel ? "" : " aviation-meteogram-wind-arrow-exact-compact"}" data-wind-arrow-index="${index}" data-wind-arrow-x="${x.toFixed(1)}" aria-hidden="true" transform="translate(${showLabel ? -25 : 0} ${rows.wind.top + 25}) rotate(${rotation})${showLabel ? "" : " scale(.58)"}"><path d="M0 8V-8M0-8L-4-3M0-8L4-3"/></g>` : ""}
       ${showLabel ? `
       <text class="aviation-meteogram-wind-heading" x="${directional ? 7 : 0}" y="${rows.wind.top + 29}">${escapeMarkup(firstLine)}</text>
       ${speedLine ? `<text class="aviation-meteogram-wind-speed" x="0" y="${rows.wind.top + 51}">${escapeMarkup(speedLine)}</text>` : ""}
       ${gust ? `<text class="aviation-meteogram-wind-gust" x="0" y="${rows.wind.top + 69}">${escapeMarkup(gust)}</text>` : ""}
-      ${conditionalWind ? `<text class="aviation-meteogram-conditional-value" x="0" y="${rows.wind.bottom - 6}">${escapeMarkup(conditionalWind)}</text>` : ""}` : ""}
+      ${conditionalWindMarkup}` : ""}
     </g>`;
   }).join("");
 
@@ -3470,8 +3481,9 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     ? `<rect class="aviation-meteogram-forecast-background" x="${dividerX.toFixed(1)}" y="0" width="${Math.max(0, width - dividerX).toFixed(1)}" height="${height}"/>`
     : "";
   const nowDividerMarkup = showNowDivider
-    ? `<line class="aviation-meteogram-now-divider" x1="${dividerX.toFixed(1)}" y1="0" x2="${dividerX.toFixed(1)}" y2="${height}"/>
-      <g class="aviation-meteogram-now-label" transform="translate(${dividerX.toFixed(1)} 0)">
+    ? `<line class="aviation-meteogram-now-divider" x1="${dividerX.toFixed(1)}" y1="${rows.weather.bottom}" x2="${dividerX.toFixed(1)}" y2="${height}"/>` : "";
+  const nowLabelMarkup = showNowDivider
+    ? `<g class="aviation-meteogram-now-label" transform="translate(${dividerX.toFixed(1)} 0)">
         <rect x="-54" y="2" width="108" height="16" rx="3"/>
         <text x="0" y="13">NOW / FORECAST</text>
       </g>`
@@ -3507,7 +3519,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     ${forecastBackground}
     <rect class="aviation-meteogram-label-background" width="${labelWidth}" height="${height}"/>
     <rect class="aviation-meteogram-axis-gutter-background" x="${labelWidth}" width="${axisWidth}" height="${height}"/>
-    ${denseClusterBandMarkup}${horizontalLines}${verticalLines}${solarLineMarkup}
+    ${denseClusterBandMarkup}${horizontalLines}${verticalLines}${solarLineMarkup}${nowDividerMarkup}
     <line class="aviation-meteogram-description-divider" x1="${labelWidth}" y1="0" x2="${labelWidth}" y2="${height}"/>
     <line class="aviation-meteogram-label-divider" x1="${plotLeft}" y1="0" x2="${plotLeft}" y2="${height}"/>
     ${weatherMarkup}${timeMarkup}${boundaryTimeMarkup}
@@ -3531,7 +3543,7 @@ export function buildMeteogramSvgMarkup(model, settings = {}, {
     ${pathMarkup(observedPoints(visibilityPoints), "aviation-meteogram-visibility-line", timeline)}
     ${pathMarkup(forecastPoints(visibilityPoints), "aviation-meteogram-visibility-line aviation-meteogram-line-forecast", timeline)}
     ${visibilityValuesMarkup}<g class="aviation-meteogram-precip-row" clip-path="url(#${idPrefix}PrecipClip)">${precipitationMarkup}</g><g class="aviation-meteogram-snow-row" clip-path="url(#${idPrefix}SnowClip)">${snowfallMarkup}${snowDepthMarkup}</g>
-    ${solarLabelMarkup}${nowDividerMarkup}${labelMarkup}
+    ${solarLabelMarkup}${nowLabelMarkup}${labelMarkup}
   </svg>`;
 }
 

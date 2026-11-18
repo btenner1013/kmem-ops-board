@@ -315,7 +315,14 @@ export function paginateMeteogramPrintModel(model, range, maximumColumns = 14) {
     const times = [...new Set([...(model.observations || []), ...(model.forecasts || [])]
       .map(timelineTimestamp).filter(time => time !== null && time >= start
         && (time < end || (page.includeEnd && time === end))))].sort((a, b) => a - b);
-    if (times.length <= limit) return [page];
+    const hasConditionalWind = [...(model.observations || []), ...(model.forecasts || [])].some(item => {
+      const time = timelineTimestamp(item);
+      return time !== null && time >= start && time <= end
+        && [...(item.conditional || []), ...(item.becoming || [])].some(entry => entry.conditions?.windSpeedKt != null);
+    });
+    // Conditional wind qualifiers need more horizontal room than ordinary columns.
+    const pageLimit = hasConditionalWind ? Math.min(limit, 8) : limit;
+    if (times.length <= pageLimit) return [page];
     const middle = Math.floor(times.length / 2);
     const boundary = Math.floor((times[middle - 1] + times[middle]) / 2);
     if (boundary <= start || boundary >= end) return [page];

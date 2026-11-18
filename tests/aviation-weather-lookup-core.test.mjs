@@ -117,13 +117,13 @@ test("station timezone resolution uses exact overrides and conservative country-
 });
 
 test("station-local formatting handles DST, standard time, and the prior local calendar date", () => {
-  assert.equal(formatStationLocalTime("2026-08-28T00:55:00Z", "KVOK"), "27 AUG 2026 1955L");
-  assert.equal(formatStationLocalTime("2026-01-28T00:55:00Z", "KJFK"), "27 JAN 2026 1955L");
-  assert.equal(formatStationLocalTime("2026-08-28T00:55:00Z", "KJFK"), "27 AUG 2026 2055L");
-  assert.equal(formatStationLocalTime("2026-01-15T12:00:00Z", "EGLL"), "15 JAN 2026 1200L");
-  assert.equal(formatStationLocalTime("2026-08-15T12:00:00Z", "EGLL"), "15 AUG 2026 1300L");
-  assert.equal(formatStationLocalTime("2026-01-15T12:00:00Z", "LROP"), "15 JAN 2026 1400L");
-  assert.equal(formatStationLocalTime("2026-08-15T12:00:00Z", "LROP"), "15 AUG 2026 1500L");
+  assert.equal(formatStationLocalTime("2026-08-28T00:55:00Z", "KVOK"), "27 AUG 2026 1955L (UTC-5)");
+  assert.equal(formatStationLocalTime("2026-01-28T00:55:00Z", "KJFK"), "27 JAN 2026 1955L (UTC-5)");
+  assert.equal(formatStationLocalTime("2026-08-28T00:55:00Z", "KJFK"), "27 AUG 2026 2055L (UTC-4)");
+  assert.equal(formatStationLocalTime("2026-01-15T12:00:00Z", "EGLL"), "15 JAN 2026 1200L (UTC)");
+  assert.equal(formatStationLocalTime("2026-08-15T12:00:00Z", "EGLL"), "15 AUG 2026 1300L (UTC+1)");
+  assert.equal(formatStationLocalTime("2026-01-15T12:00:00Z", "LROP"), "15 JAN 2026 1400L (UTC+2)");
+  assert.equal(formatStationLocalTime("2026-08-15T12:00:00Z", "LROP"), "15 AUG 2026 1500L (UTC+3)");
   assert.equal(formatStationLocalTime("2026-08-15T12:00:00Z", "ZZZZ"), "LOCAL TIME UNAVAILABLE");
 });
 
@@ -227,7 +227,7 @@ test("METAR decoder preserves raw data and decodes the KVOK calm-wind regression
   assert.equal(decoded.raw, raw);
   assert.equal(decoded.title, "METAR — KVOK");
   assert.equal(decoded.observationUtc, "2026-08-28T00:55:00.000Z");
-  assert.equal(decoded.observationLocal, "27 AUG 2026 1955L");
+  assert.equal(decoded.observationLocal, "27 AUG 2026 1955L (UTC-5)");
   assert.equal(decoded.conditions.winds[0], "Calm");
   assert.equal(decoded.conditions.visibility[0], "10 statute miles");
   assert.equal(decoded.conditions.sky[0], "Clear below reporting threshold");
@@ -453,12 +453,12 @@ test("TAF decoder produces chronological blocks, station-local equivalents, temp
   assert.equal(decoded.raw, raw);
   assert.equal(decoded.title, "TAF — KVOK");
   assert.equal(decoded.issuanceUtc, "2026-08-27T17:00:00.000Z");
-  assert.equal(decoded.issuanceLocal, "27 AUG 2026 1200L");
+  assert.equal(decoded.issuanceLocal, "27 AUG 2026 1200L (UTC-5)");
   assert.deepEqual(decoded.validity, {
     startUtc: "2026-08-27T17:00:00.000Z",
     endUtc: "2026-08-28T23:00:00.000Z",
     utcLabel: "27 AUG 2026 1700Z through 28 AUG 2026 2300Z",
-    localLabel: "27 AUG 2026 1200L through 28 AUG 2026 1800L",
+    localLabel: "27 AUG 2026 1200L (UTC-5) through 28 AUG 2026 1800L (UTC-5)",
   });
   assert.deepEqual(decoded.blocks.map((block) => block.type), ["INITIAL", "BECOMING"]);
   assert.equal(decoded.blocks[0].conditions.winds[0], "Variable at 6 kt");
@@ -468,7 +468,7 @@ test("TAF decoder produces chronological blocks, station-local equivalents, temp
   assert.equal(decoded.blocks[1].sourceToken, "BECMG 2800/2801");
   assert.equal(decoded.blocks[1].startUtc, "2026-08-28T00:00:00.000Z");
   assert.equal(decoded.blocks[1].endUtc, "2026-08-28T01:00:00.000Z");
-  assert.match(decoded.blocks[1].localLabel, /27 AUG 2026 1900L through 27 AUG 2026 2000L/);
+  assert.match(decoded.blocks[1].localLabel, /27 AUG 2026 1900L \(UTC-5\) through 27 AUG 2026 2000L \(UTC-5\)/);
   assert.deepEqual(decoded.temperatures.map((item) => [item.type, item.valueC, item.timestampUtc]), [
     ["Maximum temperature", 23, "2026-08-27T19:00:00.000Z"],
     ["Minimum temperature", 12, "2026-08-28T11:00:00.000Z"],

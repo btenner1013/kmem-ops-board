@@ -22,6 +22,9 @@ const TAF_CURRENT_SOURCE_POLICY = "NOAA_AWC_COMPLETE_CURRENT_CACHE";
 // several time zones. Prefix rules are used only where the prefix has one
 // dependable civil timezone. Unknown stations deliberately remain UTC-only.
 const STATION_TIMEZONE_OVERRIDES = Object.freeze({
+  // Overseas exceptions: ICAO prefixes alone do not identify civil time here.
+  // LFVP/LFVM: French decree 2017-292; EGYP: Falkland government UTC-3 policy.
+  LFVP: "America/Miquelon", LFVM: "America/Miquelon", EGYP: "Atlantic/Stanley",
   KMEM: "America/Chicago", KVOK: "America/Chicago", KJFK: "America/New_York",
   KLGA: "America/New_York", KEWR: "America/New_York", KBOS: "America/New_York",
   KIAD: "America/New_York", KDCA: "America/New_York", KATL: "America/New_York",
@@ -116,6 +119,7 @@ function dateParts(value, options = {}) {
       hour: "2-digit",
       minute: "2-digit",
       hourCycle: "h23",
+      timeZoneName: "shortOffset",
     }).formatToParts(date);
     return Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
   } catch (_error) {
@@ -135,7 +139,8 @@ export function formatStationLocalTime(value, stationValue, { includeYear = true
   const parts = dateParts(value, { timeZone });
   if (!parts) return "LOCAL TIME UNAVAILABLE";
   const year = includeYear ? ` ${parts.year}` : "";
-  return `${parts.day} ${parts.month.toUpperCase()}${year} ${parts.hour}${parts.minute}L`;
+  const offset = String(parts.timeZoneName || "").replace(/^GMT/, "UTC").replace(/^UTC[+-]0(?::00)?$/, "UTC");
+  return `${parts.day} ${parts.month.toUpperCase()}${year} ${parts.hour}${parts.minute}L${offset ? ` (${offset})` : ""}`;
 }
 
 export function rangeHours(value) {

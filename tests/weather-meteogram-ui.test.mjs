@@ -3666,7 +3666,7 @@ test("sunrise and sunset markers use exact shared timeline geometry across multi
   }
   assert.equal((svg.match(/data-solar-label=/g) || []).length, 4);
   assert.ok(svg.indexOf("data-solar-event=") < svg.indexOf("aviation-meteogram-observation"), "solar reference lines render behind weather and meteorological data");
-  assert.ok(svg.indexOf("data-solar-label=") < svg.indexOf("aviation-meteogram-now-divider"), "NOW remains visually above solar labels");
+  assert.ok(svg.indexOf("data-solar-label=") < svg.indexOf("aviation-meteogram-now-label"), "NOW remains visually above solar labels");
   assert.match(svg, /SUNRISE/);
   assert.match(svg, /SUNSET/);
 });
@@ -3689,8 +3689,9 @@ test("CAVOK and non-clear weather retain their existing symbols while unsupporte
 
   const unsupportedModel = manualMeteogramModel([manualMeteogramPoint()], { station: "KATL", timeZone: "America/New_York" });
   const unsupported = buildMeteogramSvgMarkup(unsupportedModel, { timeMode: "Z" });
-  assert.doesNotMatch(unsupported, /data-solar-event=|data-weather-symbol=/);
-  assert.match(unsupported, />·<\/text>/, "unsupported stations retain their existing explicit-clear glyph path");
+  assert.doesNotMatch(unsupported, /data-solar-event=|data-weather-symbol="(?:sun|moon)"/);
+  assert.match(unsupported, /data-weather-symbol="neutral-clear"/);
+  assert.match(unsupported, /data-solar-phase="unknown"/, "unsupported stations never imply daylight");
 });
 
 test("observed and forecast weather symbols receive restrained semantic colors without changing weather codes", () => {
