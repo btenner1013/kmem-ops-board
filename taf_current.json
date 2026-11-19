@@ -1884,11 +1884,11 @@
     },
     {
       "station": "EDDH",
-      "issueTime": "2026-11-18T23:00:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
+      "issueTime": "2026-11-19T03:24:00Z",
+      "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-20T06:00:00Z",
-      "variant": "",
-      "raw": "TAF EDDH 182300Z 1900/2006 28008KT 9999 BKN025 BECMG 1900/1902 VRB03KT TEMPO 1902/1907 3500 BR PROB30 TEMPO 1904/1907 BKN006 BECMG 1907/1909 07006KT OVC008 TEMPO 1907/1921 2500 DZRA OVC003 BECMG 1921/1923 01004KT SCT025"
+      "variant": "AMD",
+      "raw": "TAF AMD EDDH 190324Z 1903/2006 VRB03KT 9999 BKN025 TEMPO 1903/1907 3500 -DZ BR BKN003 BECMG 1907/1909 07006KT OVC008 TEMPO 1907/1921 2500 DZRA OVC003 BECMG 1921/1923 01004KT SCT025"
     },
     {
       "station": "EDDK",
@@ -2180,11 +2180,11 @@
     },
     {
       "station": "EFVA",
-      "issueTime": "2026-11-19T02:36:00Z",
+      "issueTime": "2026-11-19T03:28:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-20T03:00:00Z",
-      "variant": "",
-      "raw": "TAF EFVA 190236Z 1903/2003 12004KT 9999 -RA SCT010 BKN025 BECMG 1913/1915 6000 -RASN BECMG 1919/1921 06010KT TEMPO 1921/2001 3500 -SN BR BKN012 BECMG 2001/2003 2000 RASN BKN008"
+      "variant": "AMD",
+      "raw": "TAF AMD EFVA 190328Z 1903/2003 12004KT 9999 -RA SCT007 BKN009 BKN030 BECMG 1913/1915 6000 -RASN BECMG 1919/1921 06010KT TEMPO 1921/2001 3500 -SN BR BKN012 BECMG 2001/2003 2000 RASN"
     },
     {
       "station": "EGAA",
@@ -2673,6 +2673,14 @@
       "validTimeTo": "2026-11-20T03:00:00Z",
       "variant": "",
       "raw": "TAF EKCH 190227Z 1903/2003 31006KT 6000 BKN010 TEMPO 1903/1905 4000 DZ BR BKN006 BECMG 1905/1907 BKN020"
+    },
+    {
+      "station": "EKEB",
+      "issueTime": "2026-11-19T03:27:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T12:00:00Z",
+      "variant": "",
+      "raw": "TAF EKEB 190327Z 1904/1912 32003KT 0300 FZFG FEW045 TEMPO 1904/1907 5000 NSW BECMG 1907/1909 9999 NSW"
     },
     {
       "station": "EKKA",
@@ -3243,6 +3251,14 @@
       "raw": "TAF ESMK 190227Z 1903/1912 32006KT 8000 BKN006 TEMPO 1903/1905 2700 DZ BR BKN015 BECMG 1905/1907 0800 DZ FG BKN004 BECMG 1907/1909 9999 NSW BKN012 TEMPO 1909/1912 BKN008"
     },
     {
+      "station": "ESMQ",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T12:00:00Z",
+      "variant": "",
+      "raw": "TAF ESMQ 190330Z 1904/1912 34008KT 9999 BKN004 BECMG 1904/1906 BKN010 TEMPO 1906/1912 4000 -RADZ BKN009 BECMG 1910/1912 BKN004"
+    },
+    {
       "station": "ESMS",
       "issueTime": "2026-11-19T02:27:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
@@ -3251,12 +3267,52 @@
       "raw": "TAF ESMS 190227Z 1903/2003 31008KT 8000 BKN006 TEMPO 1903/1907 2500 DZ BR BKN004 BECMG 1907/1910 BKN020"
     },
     {
+      "station": "ESMT",
+      "issueTime": "2026-11-19T03:27:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T12:00:00Z",
+      "variant": "",
+      "raw": "TAF ESMT 190327Z 1904/1912 33004KT 9999 -RASN FEW010"
+    },
+    {
+      "station": "ESNG",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T12:00:00Z",
+      "variant": "",
+      "raw": "TAF ESNG 190330Z 1904/1912 34002KT 9999 -SG BKN015 TEMPO 1904/1912 2500 SN VV009"
+    },
+    {
+      "station": "ESNK",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T11:00:00Z",
+      "variant": "",
+      "raw": "TAF ESNK 190330Z 1904/1911 34005KT 7000 -SG OVC010 TEMPO 1904/1911 1400 SN VV004"
+    },
+    {
+      "station": "ESNN",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T12:00:00Z",
+      "variant": "",
+      "raw": "TAF ESNN 190330Z 1904/1912 32009KT 7000 -SG OVC008 TEMPO 1904/1912 1400 SN VV004"
+    },
+    {
       "station": "ESNQ",
       "issueTime": "2026-11-19T02:30:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-19T07:00:00Z",
       "variant": "",
       "raw": "TAF ESNQ 190230Z 1903/1907 04004KT 5000 -SN SCT006 BKN018 TEMPO 1903/1907 1400 SN BKN004"
+    },
+    {
+      "station": "ESNS",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T12:00:00Z",
+      "variant": "",
+      "raw": "TAF ESNS 190330Z 1904/1912 33005KT 7000 -SG BR OVC005 TEMPO 1904/1912 1600 SN OVC003"
     },
     {
       "station": "ESNU",
@@ -3299,6 +3355,22 @@
       "raw": "TAF ESSA 190230Z 1903/2003 35008KT 9999 BKN007 PROB40 1903/1904 2000 SN OVC010 TEMPO 1904/1908 4000 SNRA BECMG 1915/1917 BKN015 PROB40 1917/1922 BKN007 PROB40 1922/2002 3000 BR BKN004"
     },
     {
+      "station": "ESSB",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T12:00:00Z",
+      "variant": "",
+      "raw": "TAF ESSB 190330Z 1904/1912 34007KT 9999 BKN007 PROB40 1904/1912 4000 SN BKN004"
+    },
+    {
+      "station": "ESSL",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T12:00:00Z",
+      "variant": "",
+      "raw": "TAF ESSL 190330Z 1904/1912 32005KT 9999 OVC009 PROB40 1904/1909 BKN004 TEMPO 1909/1912 2500 SN BKN011"
+    },
+    {
       "station": "ESSV",
       "issueTime": "2026-11-19T02:30:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
@@ -3321,14 +3393,6 @@
       "validTimeTo": "2026-11-20T08:00:00Z",
       "variant": "",
       "raw": "TAF ETAR 190200Z 1902/2008 24009KT 9000 -SHRA SCT020 BKN050 QNH2923INS BECMG 1904/1905 21010G20KT 9000 -SHRA BKN035 640809 520005 QNH2917INS BECMG 1907/1908 21010G25KT 9999 NSW BKN020 620804 520005 QNH2920INS TEMPO 1910/1915 24015G30KT 9000 -SHRA BKN010 BECMG 1914/1915 24010G20KT 9000 -RA BKN050 620804 510005 QNH2925INS BECMG 1917/1918 24010G25KT 9000 -RA BKN040 620804 520005 QNH2929INS BECMG 2003/2004 24010G25KT 9999 NSW BKN020 520005 QNH2946INS TX11/1912Z TN09/1904Z"
-    },
-    {
-      "station": "ETEB",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-18T15:00:00Z",
-      "validTimeTo": "2026-11-19T21:00:00Z",
-      "variant": "",
-      "raw": "TAF ETEB 181530Z 1815/1921 25020G35KT 9999 BKN035 520006 QNH2930INS TEMPO 1815/1816 25025G43KT BECMG 1816/1817 25012G22KT 9999 FEW030 BKN040 QNH2934INS TEMPO 1817/1818 8000 -SHRA BECMG 1905/1906 18008KT 6000 -SHRA SCT015 BKN020 QNH2933INS BECMG 1908/1909 19010KT 5000 -SHRA SCT015 BKN020 OVC060 640703 QNH2930INS BECMG 1912/1913 21010G25KT 6000 -SHRA BKN020 OVC035 610703 QNH2931INS TX11/1815Z TN05/1903Z LAST NO AMDS AFT 1822 NEXT 1907"
     },
     {
       "station": "ETHB",
@@ -3491,12 +3555,44 @@
       "raw": "TAF FACT 182200Z 1900/2006 20012KT 9999 BKN007 TX26/1912Z TN15/1904Z PROB40 TEMPO 1900/1903 4500 BR BKN005 BECMG 1903/1905 BKN013 BECMG 1907/1909 SCT020 FM191000 19012KT 9999 FEW030 FM191600 19012KT 9999 BKN025 TEMPO 1916/1919 BKN015 FM200000 18010KT 9999 SCT030"
     },
     {
+      "station": "FAEL",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FAEL 190300Z 1904/1915 06012KT CAVOK TX30/1910Z TN16/1904Z"
+    },
+    {
       "station": "FAGG",
       "issueTime": "2026-11-18T22:00:00Z",
       "validTimeFrom": "2026-11-19T00:00:00Z",
       "validTimeTo": "2026-11-20T00:00:00Z",
       "variant": "",
       "raw": "TAF FAGG 182200Z 1900/1924 11008KT CAVOK TX24/1912Z TN15/1904Z FM191000 23012KT 9999 SCT020 FM192000 VRB03KT 9999 SCT020"
+    },
+    {
+      "station": "FAHS",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FAHS 190300Z 1904/1915 34010KT 9999 BKN020 TX36/1912Z TN16/1904Z BECMG 1907/1909 CAVOK"
+    },
+    {
+      "station": "FAKM",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FAKM 190300Z 1904/1915 36012KT CAVOK TX37/1912Z TN11/1904Z TEMPO 1910/1914 31006KT"
+    },
+    {
+      "station": "FAKN",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FAKN 190300Z 1904/1915 VRB03KT 9999 BKN015 TX33/1912Z TN15/1904Z PROB30 TEMPO 1904/1906 5000 BR BKN010 BECMG 1907/1909 SCT025 PROB30 TEMPO 1913/1915 -TSRA FEW045CB"
     },
     {
       "station": "FALA",
@@ -3513,6 +3609,14 @@
       "validTimeTo": "2026-11-20T06:00:00Z",
       "variant": "",
       "raw": "TAF FALE 182200Z 1900/2006 01005KT 9999 BKN040 TX28/1912Z TN17/1904Z FM190200 05010KT CAVOK BECMG 1916/1918 VRB03KT BECMG 1922/1924 0900 FG BKN010 BECMG 2002/2004 19012KT 9999 BKN020"
+    },
+    {
+      "station": "FALM",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FALM 190300Z 1904/1915 VRB03KT CAVOK TX30/1912Z TN15/1904Z BECMG 1907/1909 32008KT PROB30 TEMPO 1913/1915 FEW045TCU"
     },
     {
       "station": "FAOR",
@@ -3532,11 +3636,27 @@
     },
     {
       "station": "FAPM",
-      "issueTime": "2026-11-18T18:00:00Z",
-      "validTimeFrom": "2026-11-18T19:00:00Z",
-      "validTimeTo": "2026-11-19T06:00:00Z",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
       "variant": "",
-      "raw": "TAF FAPM 181800Z 1819/1906 VRB03KT 9999 SCT008 BKN020 TX15/1819Z TN13/1903Z PROB30 TEMPO 1900/1903 4000 BR BKN015"
+      "raw": "TAF FAPM 190300Z 1904/1915 VRB03KT 0900 FG OVC005 TX33/1910Z TN14/1904Z BECMG 1904/1906 7000 SCT012 BECMG 1910/1912 09010KT"
+    },
+    {
+      "station": "FAPP",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FAPP 190300Z 1904/1915 VRB03KT CAVOK TX30/1912Z TN15/1904Z BECMG 1907/1909 32008KT PROB30 TEMPO 1913/1915 FEW045TCU"
+    },
+    {
+      "station": "FARB",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FARB 190300Z 1904/1915 02005KT 9999 BKN025 TX33/1911Z TN19/1904Z BECMG 1904/1906 03015KT CAVOK"
     },
     {
       "station": "FAUP",
@@ -3545,6 +3665,22 @@
       "validTimeTo": "2026-11-20T00:00:00Z",
       "variant": "",
       "raw": "TAF FAUP 182200Z 1900/1924 VRB03KT CAVOK TX41/1912Z TN20/1903Z BECMG 1910/1912 27010KT TEMPO 1916/1920 25015KT"
+    },
+    {
+      "station": "FAUT",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FAUT 190300Z 1904/1915 VRB03KT 5000 BR SCT009 TX36/1911Z TN12/1904Z BECMG 1904/1906 CAVOK BECMG 1913/1914 14008KT"
+    },
+    {
+      "station": "FAWB",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
+      "validTimeTo": "2026-11-19T15:00:00Z",
+      "variant": "",
+      "raw": "TAF FAWB 190300Z 1904/1915 VRB03KT CAVOK TX30/1912Z TN16/1904Z BECMG 1907/1909 32010KT PROB30 TEMPO 1913/1915 FEW045TCU"
     },
     {
       "station": "FBKE",
@@ -5492,11 +5628,11 @@
     },
     {
       "station": "KBIX",
-      "issueTime": "2026-11-18T19:00:00Z",
-      "validTimeFrom": "2026-11-18T19:00:00Z",
-      "validTimeTo": "2026-11-20T01:00:00Z",
+      "issueTime": "2026-11-19T03:00:00Z",
+      "validTimeFrom": "2026-11-19T03:00:00Z",
+      "validTimeTo": "2026-11-20T09:00:00Z",
       "variant": "",
-      "raw": "TAF KBIX 181900Z 1819/2001 21012KT 9999 BKN040 OVC050 QNH3017INS BECMG 1900/1901 06012KT 9999 SCT035 BKN080 QNH3018INS BECMG 1910/1911 04012G18KT 9999 BKN020 BKN100 QNH3013INS TX22/1820Z TN16/1910Z"
+      "raw": "TAF KBIX 190300Z 1903/2009 05009KT 9999 FEW010 BKN050 QNH3019INS TEMPO 1907/1913 BKN010 BECMG 1912/1913 07012G18KT 9999 BKN015 BKN040 QNH3017INS BECMG 1921/1922 08012G18KT 9999 SCT020 BKN065 QNH3014INS TX23/1919Z TN17/1912Z LAST NO AMDS AFT 1905 NEXT 1911"
     },
     {
       "station": "KBJC",
@@ -6684,11 +6820,11 @@
     },
     {
       "station": "KEWR",
-      "issueTime": "2026-11-19T02:39:00Z",
+      "issueTime": "2026-11-19T03:27:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-20T06:00:00Z",
       "variant": "",
-      "raw": "TAF KEWR 190239Z 1903/2006 27005KT P6SM SKC FM192000 23007KT P6SM SKC"
+      "raw": "TAF KEWR 190327Z 1903/2006 28006KT P6SM SKC FM192000 23007KT P6SM FEW250 FM200200 26005KT P6SM FEW250"
     },
     {
       "station": "KEYW",
@@ -7812,11 +7948,11 @@
     },
     {
       "station": "KJFK",
-      "issueTime": "2026-11-19T02:39:00Z",
+      "issueTime": "2026-11-19T03:27:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-20T06:00:00Z",
       "variant": "",
-      "raw": "TAF KJFK 190239Z 1903/2006 29006KT P6SM SKC FM191900 21007KT P6SM SKC"
+      "raw": "TAF KJFK 190327Z 1903/2006 29006KT P6SM SKC FM191700 25007KT P6SM SKC FM191900 21007KT P6SM FEW250 FM200200 26005KT P6SM FEW250"
     },
     {
       "station": "KJHW",
@@ -7940,11 +8076,11 @@
     },
     {
       "station": "KLAX",
-      "issueTime": "2026-11-18T23:38:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
+      "issueTime": "2026-11-19T03:31:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
       "validTimeTo": "2026-11-20T06:00:00Z",
       "variant": "",
-      "raw": "TAF KLAX 182338Z 1900/2006 25010KT P6SM SCT100 BKN250 FM190800 17012KT P6SM SCT035 OVC050 PROB30 1910/1912 P6SM -SHRA BKN025 FM191200 18012G18KT 5SM -RA OVC025 FM191500 21020G30KT 3SM -RA BR OVC015 FM191900 25018G28KT 6SM -SHRA SCT035 OVC050 FM200300 30015KT P6SM SCT050 BKN100"
+      "raw": "TAF KLAX 190331Z 1904/2006 24008KT P6SM FEW020 BKN040 BKN050 FM190800 20010KT P6SM OVC035 PROB30 1910/1912 P6SM -SHRA BKN025 FM191200 18012G18KT 5SM -RA OVC025 FM191500 21020G30KT 3SM -RA BR OVC015 FM191900 25018G28KT 6SM -SHRA SCT035 OVC050 FM200300 30015KT P6SM SCT050 BKN100"
     },
     {
       "station": "KLBB",
@@ -8060,11 +8196,11 @@
     },
     {
       "station": "KLGA",
-      "issueTime": "2026-11-19T02:39:00Z",
+      "issueTime": "2026-11-19T03:27:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-20T06:00:00Z",
       "variant": "",
-      "raw": "TAF KLGA 190239Z 1903/2006 29006KT P6SM FEW250 FM191400 31005KT P6SM SKC FM192000 21007KT P6SM FEW250"
+      "raw": "TAF KLGA 190327Z 1903/2006 31007KT P6SM SKC FM192000 21007KT P6SM FEW250 FM200200 26005KT P6SM FEW250"
     },
     {
       "station": "KLGB",
@@ -9564,11 +9700,11 @@
     },
     {
       "station": "KPVU",
-      "issueTime": "2026-11-18T23:20:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
+      "issueTime": "2026-11-19T03:32:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
       "validTimeTo": "2026-11-20T00:00:00Z",
       "variant": "",
-      "raw": "TAF KPVU 182320Z 1900/1924 VRB06KT P6SM SCT100 BKN200 FM190300 15009KT P6SM BKN100 OVC200 FM191700 18009KT P6SM BKN050 OVC080 PROB30 1917/1921 -SHRA BKN040 OVC060 FM192100 VRB06KT 6SM -RA BR BKN040 OVC060"
+      "raw": "TAF KPVU 190332Z 1904/1924 15014KT P6SM BKN100 OVC200 FM191700 18009KT P6SM BKN050 OVC080 PROB30 1917/1921 -SHRA BKN040 OVC060 FM192100 VRB06KT 6SM -RA BR BKN040 OVC060"
     },
     {
       "station": "KPVW",
@@ -9948,11 +10084,11 @@
     },
     {
       "station": "KSBP",
-      "issueTime": "2026-11-19T00:27:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
+      "issueTime": "2026-11-19T03:29:00Z",
+      "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-20T00:00:00Z",
       "variant": "",
-      "raw": "TAF KSBP 190027Z 1900/1924 14015KT P6SM -RA OVC080 FM190300 17017G25KT 6SM -RA OVC030 FM190700 17018KT 4SM -RA BR SCT015 OVC025 FM191300 22017G25KT P6SM -SHRA BKN035 FM192000 27015G25KT P6SM -SHRA OVC045"
+      "raw": "TAF KSBP 190329Z 1903/1924 16012G18KT 2SM RA BR BKN025 OVC035 FM190700 17017G25KT 6SM -RA OVC030 FM191000 17018KT 4SM -RA BR SCT015 OVC025 FM191300 22017G25KT P6SM -SHRA BKN035 FM192000 27015G25KT P6SM -SHRA OVC045"
     },
     {
       "station": "KSBY",
@@ -10444,11 +10580,11 @@
     },
     {
       "station": "KTEB",
-      "issueTime": "2026-11-19T02:39:00Z",
+      "issueTime": "2026-11-19T03:27:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-20T06:00:00Z",
       "variant": "",
-      "raw": "TAF KTEB 190239Z 1903/2006 VRB04KT P6SM SKC FM191500 30005KT P6SM SKC FM192000 22005KT P6SM SKC"
+      "raw": "TAF KTEB 190327Z 1903/2006 VRB03KT P6SM SKC FM191300 30005KT P6SM SKC FM192000 22005KT P6SM FEW250 FM200200 26005KT P6SM FEW250"
     },
     {
       "station": "KTEX",
@@ -12884,11 +13020,11 @@
     },
     {
       "station": "LQTZ",
-      "issueTime": "2026-11-18T23:00:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-20T00:00:00Z",
-      "variant": "",
-      "raw": "TAF LQTZ 182300Z 1900/1924 15006KT CAVOK TX16/1913Z TN06/1905Z TEMPO 1910/1920 22012KT TEMPO 1910/1914 RA TEMPO 1914/1919 24017G27KT PROB30 TEMPO 1915/1919 SHRA FEW035TCU BKN040"
+      "variant": "AMD",
+      "raw": "TAF AMD LQTZ 190330Z 1903/1924 15006KT CAVOK TX16/1913Z TN04/1905Z TEMPO 1903/1909 3000 BR PROB40 1903/1908 0300 FG BKN002 TEMPO 1910/1920 22012KT TEMPO 1910/1914 RA TEMPO 1914/1919 24017G27KT PROB30 TEMPO 1915/1919 SHRA FEW035TCU BKN040"
     },
     {
       "station": "LRAR",
@@ -18428,11 +18564,11 @@
     },
     {
       "station": "UACC",
-      "issueTime": "2026-11-19T02:23:00Z",
-      "validTimeFrom": "2026-11-19T02:00:00Z",
+      "issueTime": "2026-11-19T03:31:00Z",
+      "validTimeFrom": "2026-11-19T04:00:00Z",
       "validTimeTo": "2026-11-20T00:00:00Z",
       "variant": "AMD",
-      "raw": "TAF AMD UACC 190223Z 1902/1924 16004MPS 3100 BR SCT011 BKN030 TX02/1909Z TNM05/1902Z TEMPO 1902/1905 VRB01MPS 0200 FZFG VV001 BECMG 1905/1906 9999 NSW TEMPO 1905/1912 VRB01MPS -SHRA SCT005 BKN015CB BECMG 1912/1914 VRB01MPS 3100 BR TEMPO 1912/1924 0300 -FZRA -SHSN FZFG BKN002 BKN015CB"
+      "raw": "TAF AMD UACC 190331Z 1904/1924 16004MPS 9999 SCT011 BKN030 TX02/1909Z TNM03/1904Z TEMPO 1904/1907 3100 BR SCT005 TEMPO 1907/1912 VRB01MPS -SHRA SCT005 BKN015CB BECMG 1912/1914 VRB01MPS 3100 BR TEMPO 1912/1924 0300 -FZRA -SHSN FZFG BKN002 BKN015CB"
     },
     {
       "station": "UACK",
@@ -19540,11 +19676,11 @@
     },
     {
       "station": "VABJ",
-      "issueTime": "2026-11-19T02:00:00Z",
-      "validTimeFrom": "2026-11-19T03:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
       "variant": "",
-      "raw": "TAF VABJ 190200Z 1903/1912 03005KT 6000 NSC BECMG 1904/1906 05008KT BECMG 1907/1909 02008KT"
+      "raw": "TAF VABJ 190330Z 1906/1918 06005KT 6000 NSC BECMG 1912/1914 VRB02KT"
     },
     {
       "station": "VABO",
@@ -19601,6 +19737,14 @@
       "validTimeTo": "2026-11-19T12:00:00Z",
       "variant": "",
       "raw": "TAF VAJL 190200Z 1903/1912 VRB03KT 2000 BR HZ NSC BECMG 1904/1906 02008KT 3000 HZ BECMG 1908/1910 08008KT 4000 HZ FEW020"
+    },
+    {
+      "station": "VAJM",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
+      "variant": "",
+      "raw": "TAF VAJM 190330Z 1906/1918 04008KT 6000 FEW025"
     },
     {
       "station": "VAKE",
@@ -19739,14 +19883,6 @@
       "raw": "TAF VDTI 182300Z 1900/1924 04010KT 9999 SCT017"
     },
     {
-      "station": "VEAB",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VEAB 181530Z 1900/1912 VRB02KT 2000 BR FEW250 TEMPO 1901/1903 0800 FG BECMG 1905/1907 05005KT 3000 HZ BECMG 1910/1912 5000 HZ"
-    },
-    {
       "station": "VEAT",
       "issueTime": "2026-11-19T02:00:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
@@ -19787,36 +19923,12 @@
       "raw": "TAF VECC 182300Z 1900/2006 04007KT 1800 BR SCT018 BKN100 BECMG 1904/1906 3200 -RA HZ TEMPO 1907/1911 09010G25KT 1500 TSRA SCT015 FEW025CB OVC090 BECMG 1915/1917 10010KT 2500 -RA HZ TEMPO 1923/2003 12010G25KT 1400 TSRA SCT015 FEW025CB OVC090 BECMG 2003/2005 3200 -RA HZ"
     },
     {
-      "station": "VECX",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VECX 181530Z 1900/1912 00000KT 0800 FG NSC TEMPO 1901/1903 0600 FG BECMG 1902/1904 1500 HZ BECMG 1904/1906 3000 HZ BECMG 1906/1908 31003KT 5000 HZ"
-    },
-    {
       "station": "VEDG",
       "issueTime": "2026-11-18T17:00:00Z",
       "validTimeFrom": "2026-11-18T18:00:00Z",
       "validTimeTo": "2026-11-20T00:00:00Z",
       "variant": "",
       "raw": "TAF VEDG 181700Z 1818/1924 00000KT 1800 BR SCT020 BKN100 BECMG 1901/1903 1200 MIFG BECMG 1904/1906 34005KT 2000 BR BECMG 1907/1909 04005KT 3200 HZ BECMG 1914/1916 2200 -RA BR PROB40 TEMPO 1917/1921 2000 TSRA SCT015 FEW025CB OVC090"
-    },
-    {
-      "station": "VEDX",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VEDX 181530Z 1900/1912 01007KT 5000 RABR SCT015 FEW020CB BKN080 TEMPO 1902/1906 3000 TSRABR SCT012 SCT018 FEW025CB BKN070 TEMPO 1908/1912 34015G25KT 3000 TSRABR SCT012 SCT018 FEW025CB BKN080"
-    },
-    {
-      "station": "VEGK",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VEGK 181530Z 1900/1912 VRB02KT 0300 FG NSC BECMG 1904/1905 1200 BR BECMG 1906/1908 04005KT 2000 HZ"
     },
     {
       "station": "VEGT",
@@ -19835,28 +19947,20 @@
       "raw": "TAF VEGY 182300Z 1900/2006 26002KT 1400 BR NSC BECMG 1903/1905 09007KT 3900 HZ BECMG 1913/1915 00000KT 2100 BR HZ BECMG 1919/1921 1400 BR BECMG 2003/2005 09007KT 3900 HZ"
     },
     {
+      "station": "VEHX",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
+      "variant": "",
+      "raw": "TAF VEHX 190330Z 1906/1918 14010KT 5000 BR FEW025 SCT090 SCT200 BECMG 1912/1914 VRB02KT 4000 BR"
+    },
+    {
       "station": "VEJS",
       "issueTime": "2026-11-19T02:00:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-19T12:00:00Z",
       "variant": "",
       "raw": "TAF VEJS 190200Z 1903/1912 02010KT 2000 BR HZ SCT020 BKN100 TEMPO 1908/1912 05010G20KT 2500 -TSRA FEW010 SCT016 FEW030CB BKN090"
-    },
-    {
-      "station": "VEJT",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VEJT 181530Z 1900/1912 04005KT 0500 FG FEW025 BECMG 1902/1903 1500 BR BECMG 1904/1905 4000 BR BECMG 1906/1907 6000"
-    },
-    {
-      "station": "VEKU",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VEKU 181530Z 1900/1912 12005KT 5000 BR FEW025 SCT100 SCT200 TEMPO 1908/1912 3000 RABR SCT025 BKN100"
     },
     {
       "station": "VELP",
@@ -19939,36 +20043,12 @@
       "raw": "TAF VIAG 182300Z 1900/2006 VRB02KT 0800 FG VV/// BECMG 1903/1905 34005KT 1500 BR NSC BECMG 1906/1907 3000 HZ BECMG 1908/1909 34007KT 5000 HZ BECMG 1912/1914 VRB02KT 3500 HZ FEW250 BECMG 1916/1918 2000 HZ BECMG 1922/2002 VRB02KT 0800 FG"
     },
     {
-      "station": "VIAM",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VIAM 181530Z 1900/1912 VRB02KT 1500 BR NSC BECMG 1904/1905 3000 BR BECMG 1905/1907 5000 HZ"
-    },
-    {
       "station": "VIAR",
       "issueTime": "2026-11-19T02:00:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
       "validTimeTo": "2026-11-19T12:00:00Z",
       "variant": "",
       "raw": "TAF VIAR 190200Z 1903/1912 VRB02KT 0800 MIFG NSC BECMG 1905/1907 29006KT 1800 BR HZ FEW090 BECMG 1910/1912 3500 HZ"
-    },
-    {
-      "station": "VIAX",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VIAX 181530Z 1900/1912 VRB02KT 1500 BR NSC TEMPO 1901/1902 0800 FG BECMG 1904/1905 3000 BR BECMG 1905/1906 5000 BR BECMG 1907/1908 30005KT 6000 NSC"
-    },
-    {
-      "station": "VIBK",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VIBK 181530Z 1900/1912 05005KT 6000 NSC TEMPO 1900/1904 14005KT 4000 BR"
     },
     {
       "station": "VIBR",
@@ -19980,19 +20060,11 @@
     },
     {
       "station": "VIBT",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
       "variant": "",
-      "raw": "TAF VIBT 181530Z 1900/1912 VRB02KT 0500 FG NSC BECMG 1904/1905 29010KT 1500 FU BECMG 1906/1907 3000 FU BECMG 1907/1908 5000 FU"
-    },
-    {
-      "station": "VIBY",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VIBY 181530Z 1900/1912 VRB02KT 0800 FG NSC BECMG 1903/1904 1500 BR BECMG 1905/1906 33005KT 3000 HZ BECMG 1906/1907 4000 HZ"
+      "raw": "TAF VIBT 190330Z 1906/1918 32008KT 3000 FU NSC BECMG 1908/1909 6000 BECMG 1912/1913 VRB02KT 4000 FU BECMG 1915/1916 2000 BR"
     },
     {
       "station": "VICG",
@@ -20020,11 +20092,11 @@
     },
     {
       "station": "VIDX",
-      "issueTime": "2026-11-18T21:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
       "variant": "",
-      "raw": "TAF VIDX 182130Z 1900/1912 VRB02KT 0800 FG NSC BECMG 1903/1904 1200 BR BECMG 1905/1906 3500 HZ BECMG 1907/1908 5000 HZ TX28/09Z TN12/01Z"
+      "raw": "TAF VIDX 190330Z 1906/1918 29005KT 2500 FU NSC TEMPO 1907/1911 4000 FU BECMG 1916/1918 VRB02KT 2000 BR TX28/09Z"
     },
     {
       "station": "VIGG",
@@ -20036,27 +20108,19 @@
     },
     {
       "station": "VIGR",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
       "variant": "",
-      "raw": "TAF VIGR 181530Z 1900/1912 VRB02KT 1500 BR NSC BECMG 1903/1905 34005KT 2000 BR NSC BECMG 1906/1908 34005KT 4000 BR NSC BECMG 1909/1911 01005KT 6000 NSC"
-    },
-    {
-      "station": "VIHX",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VIHX 181530Z 1900/1912 VRB02KT 0600 FG NSC BECMG 1903/1904 30005KT 1500 BR BECMG 1905/1906 3000 FU BECMG 1908/1909 5000 HZ"
+      "raw": "TAF VIGR 190330Z 1906/1918 26005KT 5000 HZ NSC BECMG 1914/1915 VRB02KT 3000 BR NSC"
     },
     {
       "station": "VIJO",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
       "variant": "",
-      "raw": "TAF VIJO 181530Z 1900/1912 VRB02KT 5000 HZ NSC BECMG 1903/1905 03005KT 6000"
+      "raw": "TAF VIJO 190330Z 1906/1918 05010KT 6000 NSC"
     },
     {
       "station": "VIJP",
@@ -20065,6 +20129,14 @@
       "validTimeTo": "2026-11-20T06:00:00Z",
       "variant": "",
       "raw": "TAF VIJP 182300Z 1900/2006 36004KT 2500 HZ BECMG 1903/1905 02005KT 3000 HZ BECMG 1907/1909 36005KT 4000 HZ BECMG 1913/1915 02005KT3000 HZ BECMG 2003/2005 02005KT 3000 HZ"
+    },
+    {
+      "station": "VIJR",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
+      "variant": "",
+      "raw": "TAF VIJR 190330Z 1906/1918 04010KT 6000 NSC"
     },
     {
       "station": "VIJU",
@@ -20091,14 +20163,6 @@
       "raw": "TAF VIND 190200Z 1903/1912 VRB02KT 1200 BR NSC BECMG 1905/1907 23005KT 2000 BR HZ BECMG 1910/1912 29008KT 3000 HZ FEW100"
     },
     {
-      "station": "VIPK",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VIPK 181530Z 1900/1912 VRB02KT 6000 SKC BECMG 1900/1903 5000 BR"
-    },
-    {
       "station": "VIPT",
       "issueTime": "2026-11-18T23:00:00Z",
       "validTimeFrom": "2026-11-19T00:00:00Z",
@@ -20115,20 +20179,20 @@
       "raw": "TAF VISM 182300Z 1900/1909 07005KT 3000 BR HZ NSC BECMG 1906/1908 25005KT 6000 FEW030"
     },
     {
+      "station": "VISP",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
+      "variant": "",
+      "raw": "TAF VISP 190330Z 1906/1918 27005KT 5000 HZ SKC BECMG 1907/1908 6000 1916/1918 5000 BR"
+    },
+    {
       "station": "VISR",
       "issueTime": "2026-11-18T21:30:00Z",
       "validTimeFrom": "2026-11-19T00:00:00Z",
       "validTimeTo": "2026-11-19T12:00:00Z",
       "variant": "",
       "raw": "TAF VISR 182130Z 1900/1912 VRB02KT 3000 BR FEW200 BECMG 1905/1907 4000 HZ FEW090 SCT200 TEMPO 1911/1912 3000 FU"
-    },
-    {
-      "station": "VIUT",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VIUT 181530Z 1900/1912 VRB02KT 5000 HZ NSC BECMG 1904/1905 01010KT 6000"
     },
     {
       "station": "VLLB",
@@ -20219,6 +20283,14 @@
       "raw": "TAF VOBM 190200Z 1903/1912 02005KT 6000 FEW015"
     },
     {
+      "station": "VOBR",
+      "issueTime": "2026-11-19T03:30:00Z",
+      "validTimeFrom": "2026-11-19T06:00:00Z",
+      "validTimeTo": "2026-11-19T18:00:00Z",
+      "variant": "",
+      "raw": "TAF VOBR 190330Z 1906/1918 03010KT 6000 SCT250 TEMPO 1911/1914 5000 HZ"
+    },
+    {
       "station": "VOBZ",
       "issueTime": "2026-11-19T02:00:00Z",
       "validTimeFrom": "2026-11-19T03:00:00Z",
@@ -20265,14 +20337,6 @@
       "validTimeTo": "2026-11-19T12:00:00Z",
       "variant": "",
       "raw": "TAF VOCP 190200Z 1903/1912 33006KT 3000 BR HZ FEW020 BECMG 1905/1907 34010KT 4000 HZ SCT020"
-    },
-    {
-      "station": "VOCX",
-      "issueTime": "2026-11-18T15:30:00Z",
-      "validTimeFrom": "2026-11-19T00:00:00Z",
-      "validTimeTo": "2026-11-19T12:00:00Z",
-      "variant": "",
-      "raw": "TAF VOCX 181530Z 1900/1912 16005KT 6000 SCT018 BKN090 TEMPO 1906/1908 6000 -RA"
     },
     {
       "station": "VOGA",
@@ -21796,11 +21860,11 @@
     },
     {
       "station": "ZBSJ",
-      "issueTime": "2026-11-18T21:20:00Z",
+      "issueTime": "2026-11-19T03:26:00Z",
       "validTimeFrom": "2026-11-19T00:00:00Z",
       "validTimeTo": "2026-11-20T00:00:00Z",
-      "variant": "",
-      "raw": "TAF ZBSJ 182120Z 1900/1924 33004MPS CAVOK TX10/1907Z TNM01/1922Z"
+      "variant": "AMD",
+      "raw": "TAF AMD ZBSJ 190326Z 1900/1924 33004MPS CAVOK TX10/1907Z TNM01/1922Z BECMG 1903/1904 33010G15MPS BECMG 1910/1911 03004MPS"
     },
     {
       "station": "ZBTJ",
