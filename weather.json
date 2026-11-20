@@ -1,43 +1,49 @@
 {
   "metar": "METAR KMEM 201854Z 08005KT 10SM FEW250 24/08 A3019 RMK AO2 SLP222 T02390083 $",
   "taf": "TAF KMEM 201804Z 2018/2124 12006KT P6SM SKC \n  FM210000 08006KT P6SM SKC \n  FM211700 15006KT P6SM BKN060 \n  FM212300 09006KT P6SM FEW250",
-  "atisText": "MEM ATIS INFO K 1854Z. 08005KT 10SM FEW250 24/08 A3019 (THREE ZERO ONE NINER). VISUAL APCH IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. TWY M CLSD BTN TWY, M9 AND TWY N, TWY Y CLSD BTN MIL RAMP AND Y2, TWY P CLSD BTN RWY 18L/36R AND TYL P, TWY N CLSD BTN M9 AND SIGN RAMP. RY 36C ALS OTS. RWY 18R ALIGNMENT INDICATOR LIGHTS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO K",
-  "atisLetter": "K",
-  "atisPhonetic": "KILO",
-  "atisDisplay": "KILO",
+  "atisText": "MEM ATIS INFO L 1854Z. 08005KT 10SM FEW250 24/08 A3019 (THREE ZERO ONE NINER). VISUAL APCH IN USE RY 18L, 18R. SIMUL DEPS IN USE RY 18R 18C 18L. NOTICE TO AIRMEN. TWY M CLSD BTN TWY, M9 AND TWY N, TWY N CLSD BTN M9 AND SIGN RAMP. RY 36C ALS OTS. RWY 18R ALIGNMENT INDICATOR LIGHTS OTS. BIRD ACTIVITY RPTD IN THE VC OF THE ARPT. READBACK ALL RWY HOLD SHORT INSTRUCTIONS. CONSOLIDATED WAKE TURBULENCE . STANDARDS IN EFFECT. 222' CRANE IS DOWN. AT GATES 18, 20, 22, 23, 40 CTC GC FOR PUSHBACK. ...ADVS YOU HAVE INFO L",
+  "atisLetter": "L",
+  "atisPhonetic": "LIMA",
+  "atisDisplay": "LIMA",
   "metarFetchStatus": "OK",
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-20T18:54:00Z",
-  "metarAgeMinutes": 42,
+  "metarAgeMinutes": 52,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-20T18:54:00Z",
-  "atisAgeMinutes": 42,
-  "atisReportIdentity": "K:1854Z",
-  "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
+  "atisAgeMinutes": 52,
+  "atisReportIdentity": "L:1854Z",
+  "atisSelectedSource": "ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
   "atisSourcesChecked": [
     "ATIS_INFO_API",
     "ATIS_RELAY"
   ],
-  "atisLiveCandidateCount": 1,
+  "atisLiveCandidateCount": 2,
   "atisLiveCandidates": [
     {
       "identity": "K:1854Z",
       "observedZ": "2026-11-20T18:54:00Z",
       "sources": [
-        "ATIS_INFO_API",
+        "ATIS_INFO_API"
+      ]
+    },
+    {
+      "identity": "L:1854Z",
+      "observedZ": "2026-11-20T18:54:00Z",
+      "sources": [
         "ATIS_RELAY"
       ]
     }
   ],
   "atisSourceIsCurrent": true,
-  "atisReportedLetter": "K",
-  "atisReportedPhonetic": "KILO",
+  "atisReportedLetter": "L",
+  "atisReportedPhonetic": "LIMA",
   "atisReportedArrRunways": "18L / 18R",
   "atisReportedDepRunways": "18R / 18C / 18L",
   "atisReportedClosedRunways": "NONE",
@@ -132,7 +138,7 @@
   "tafTrend": "WX ALERT | NONE",
   "bwc": "MODERATE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-20 19:30:00.000",
+  "bwcUpdatedZ": "2026-11-20 19:42:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "NO DATA",
   "bwcBamRisk": "LOW",
@@ -147,7 +153,7 @@
   "bwcRetrievalTransport": "PYTHON_URLLIB",
   "bwcLiveValidated": true,
   "bwcLatestAttemptStatus": "PARSED_DIRECT_XML",
-  "bwcLatestAttemptZ": "2026-11-20T19:35:50Z",
+  "bwcLatestAttemptZ": "2026-11-20T19:45:48Z",
   "bwcLatestAttemptError": "NONE",
   "bwcLatestAttemptPrimaryError": "NONE",
   "bwcLatestAttemptTransportSecurity": "CA_VERIFIED_TLS",
@@ -158,7 +164,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-20 19:35:53Z",
+  "milNotamUpdatedZ": "2026-11-20 19:45:51Z",
   "milNotamScrollText": "M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0042/26 MIL RAMP OPR HR MON-FRI 1500-0500Z++. CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED.",
   "milNotams": [
     {
@@ -195,7 +201,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-20 19:35:53Z",
+  "milNotamAttemptZ": "2026-11-20 19:45:51Z",
   "ficonNotams": [],
   "ficonNotamCount": 0,
   "runwayClosureNotams": [],
@@ -229,7 +235,7 @@
       "rawText": "TWY N BTN TWY M9 AND SIGNATURE RAMP, TWY M BTN TWY M9 AND TWY N CLSD"
     },
     {
-      "number": "11/277",
+      "number": "A8790/26",
       "classification": "TAXI_ROUTE_RESTR",
       "severity": "red",
       "text": "TWY P BTN RWY 18L/36R AND TXL P CLSD EXC 30MIN PPR 901-922-8117",
@@ -239,18 +245,6 @@
       "lastUpdated": "2026-11-19T22:40:00.000Z",
       "source": "FAA_NMS_STAGING",
       "rawText": "TWY P BTN RWY 18L/36R AND TXL P CLSD EXC 30MIN PPR 901-922-8117"
-    },
-    {
-      "number": "11/276",
-      "classification": "TAXI_ROUTE_RESTR",
-      "severity": "amber",
-      "text": "TWY Y BTN MIL RAMP AND TWY Y2 CLSD EXC 30MIN PPR 901-922-8117",
-      "displayText": "TWY Y BTN MIL RAMP AND TWY Y2 CLSD EXC 30MIN PPR 901-922-8117",
-      "effectiveStart": "202611201400",
-      "effectiveEnd": "202611202030",
-      "lastUpdated": "2026-11-19T22:35:00.000Z",
-      "source": "FAA_NMS_STAGING",
-      "rawText": "TWY Y BTN MIL RAMP AND TWY Y2 CLSD EXC 30MIN PPR 901-922-8117"
     },
     {
       "number": "M0042/26",
@@ -265,14 +259,14 @@
       "rawText": "MIL RAMP OPR HR MON-FRI 1500-0500Z++. CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED."
     }
   ],
-  "taxiRestrictionNotamCount": 4,
-  "allFeedsUpdatedZ": "2026-11-20 19:35Z",
+  "taxiRestrictionNotamCount": 3,
+  "allFeedsUpdatedZ": "2026-11-20 19:45Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-20 19:35:43Z"
+    "lastWorkflowTimestampZ": "2026-11-20 19:45:43Z"
   }
 }
