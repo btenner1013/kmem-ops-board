@@ -1427,13 +1427,13 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
   <div class="bottom">
     <div class="panel footer">
       <div class="footer-left"><span id="hostHealth" class="host-health host-no-heartbeat">HOST NO HEARTBEAT</span><span class="feed-sep">|</span><span class="data-updated-compact">DATA UPDATED: <span id="dataUpdated">--:--Z</span></span></div>
-      <div class="footer-center footer-health"><div id="feedHealth" class="footer-center feed-health feed-warn">FEEDS: CHECKING...</div><div id="clockHealth" class="clock-health" role="status">CLOCK SYSTEM · CHECKING</div></div>
+      <div class="footer-center footer-health"><div id="feedHealth" class="footer-center feed-health feed-warn">FEEDS: CHECKING...</div><div id="clockHealth" class="clock-health" role="status">CLOCK · TIME UNVERIFIED · CHECKING</div></div>
       <div id="staleWarning" class="footer-right">REFRESH IN: <span id="refreshCountdown">10:00</span></div>
     </div>
   </div>
 </div>
 
-<script src="clock-sync.js?v=20261016-1"></script>
+<script src="clock-sync.js?v=20261123-1"></script>
 <script>
 // Keep these synchronous globals: weather, host, and BWC age checks use the same
 // validated display clock. Source timestamps themselves are never rewritten.
@@ -1454,7 +1454,7 @@ function updateClock(current){
   if(health){
     const source=status?.source ?? "SYSTEM CLOCK";
     const uncertainty=status?.uncertaintyMs;
-    const detail=source==="SYSTEM CLOCK" ? ` · ${status?.state ?? "WARNING"}` : ` · EST ±${(uncertainty/1000).toFixed(1)}S${status?.state!=="OK"?" · "+status.state:""}`;
+    const detail=source==="SYSTEM CLOCK" ? ` · ${status?.state ?? "WARNING"} · TIME UNVERIFIED` : ` · EST ±${(uncertainty/1000).toFixed(1)}S${status?.state!=="OK"?" · "+status.state:""}`;
     health.textContent="CLOCK "+source+detail;
     health.className="clock-health"+(status?.state==="OK"?" clock-ok":"");
     health.title=status ? window.KmemClockSync.formatClockStatus(status)+" · "+status.detail+" · Display estimate only; not NTP" : "Clock sync module unavailable; using the system clock";

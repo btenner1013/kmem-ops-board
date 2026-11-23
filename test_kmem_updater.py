@@ -240,6 +240,16 @@ def write(path, value):
     Path(path).write_text(value, encoding="utf-8")
 
 
+# These pre-existing tests simulate multi-minute wall-clock advances without
+# real monotonic time/network. The HTTP/continuity guard is exercised against
+# the same local Git fixture in test_updater_host_clock.py.
+def setUpModule():
+    for name in ("_verify_mutation_clock", "_require_clock_continuity"):
+        patch = mock.patch.object(UpdaterCoordinator, name)
+        patch.start()
+        unittest.addModuleCleanup(patch.stop)
+
+
 class WeatherCacheHandoffTests(unittest.TestCase):
     def load_caches(self, local, repo_last_good, repo_weather):
         with tempfile.TemporaryDirectory(prefix="KMEM weather cache handoff ") as directory:

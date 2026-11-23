@@ -16,7 +16,6 @@ const CLOCK_LIMITS = {
     maxRoundTripMs: 1500,
     requestTimeoutMs: 2500,
     sampleGapMs: 1100,
-    maxCorrectionMs: 5 * 60_000,
     maxSampleSpreadMs: 1000,
     wallJumpMs: 1000,
     requestWallJumpMs: 100,
@@ -96,7 +95,7 @@ function chooseTimeEstimate(samples) {
     // Reject the entire batch instead of accidentally treating two sides of that jump as consensus.
     if (chronological.some((s, i) => i > 0 && Math.abs((s.received.wallMs - chronological[i - 1].received.wallMs) - (s.received.monoMs - chronological[i - 1].received.monoMs)) > CLOCK_LIMITS.requestWallJumpMs))
         return null;
-    const valid = chronological.filter(s => Number.isFinite(s.offsetMs) && Math.abs(s.offsetMs) <= CLOCK_LIMITS.maxCorrectionMs);
+    const valid = chronological.filter(s => Number.isFinite(s.offsetMs));
     let best = [];
     for (const first of valid) {
         const group = valid.filter(s => s.offsetMs >= first.offsetMs && s.offsetMs - first.offsetMs <= CLOCK_LIMITS.maxSampleSpreadMs);
@@ -110,7 +109,7 @@ function chooseTimeEstimate(samples) {
         return null;
     const latest = best.reduce((a, b) => a.received.monoMs > b.received.monoMs ? a : b);
     const offsetMs = median(best.map(s => s.offsetMs));
-    return { ...latest, offsetMs, roundTripMs: Math.min(...best.map(s => s.roundTripMs)), uncertaintyMs: Math.max(...best.map(s => s.uncertaintyMs + Math.abs(s.offsetMs - offsetMs))), samples: best.length };
+    return { ...latest, offsetMs, anchorUtcMs: latest.received.wallMs + offsetMs, roundTripMs: Math.min(...best.map(s => s.roundTripMs)), uncertaintyMs: Math.max(...best.map(s => s.uncertaintyMs + Math.abs(s.offsetMs - offsetMs))), samples: best.length };
 }
 function spread(samples) { return samples.length ? Math.max(...samples.map(s => s.offsetMs)) - Math.min(...samples.map(s => s.offsetMs)) : Infinity; }
 function waitForSample(ms, signal) {
@@ -136,9 +135,9 @@ class ClockDiscipline {
             this.failed(true, "SYSTEM TIME CHANGED");
             return false;
         }
-        this.estimate = estimate;
+        this.estimate = { ...estimate, anchorUtcMs: estimate.anchorUtcMs ?? estimate.received.wallMs + estimate.offsetMs };
         this.previous = now;
-        this.lastCheckedUtc = estimate.received.wallMs + estimate.offsetMs;
+        this.lastCheckedUtc = this.estimate.anchorUtcMs;
         this.state = "OK";
         this.detail = "HTTP ESTIMATE";
         return true;
@@ -167,7 +166,7 @@ class ClockDiscipline {
         const estimate = this.estimate;
         // Re-read an absolute anchor, never increment a second counter. A delayed tick catches
         // up immediately. A wall-clock change cannot accidentally apply the old offset twice.
-        const nowMs = estimate ? estimate.received.wallMs + estimate.offsetMs + age : now.wallMs;
+        const nowMs = estimate ? estimate.anchorUtcMs + age : now.wallMs;
         return { nowMs, recheck, status: {
                 source: estimate ? this.state === "OK" ? "GITHUB HTTP" : "HTTP HOLDOVER" : "SYSTEM CLOCK",
                 networkSource: "GITHUB EDGE DATE", lastCheckedUtc: this.lastCheckedUtc,
@@ -183,7 +182,7 @@ function formatClockStatus(status) {
     if (status.source === "PREVIEW")
         return `${prefix} · ${status.detail}`;
     if (status.source === "SYSTEM CLOCK")
-        return `${prefix} · ${status.state === "CHECK" ? status.detail : `NETWORK ${status.state}: ${status.detail}`}`;
+        return `${prefix} · TIME UNVERIFIED · ${status.state === "CHECK" ? status.detail : `NETWORK ${status.state}: ${status.detail}`}`;
     const offset = status.estimatedOffsetMs ?? 0;
     const correction = `${offset >= 0 ? "+" : "-"}${(Math.abs(offset) / 1000).toFixed(1)}S`;
     const error = status.uncertaintyMs === null ? "" : ` · EST ±${(status.uncertaintyMs / 1000).toFixed(1)}S`;
@@ -199,14 +198,70 @@ function timeEndpoint(location) {
     return { url: sameOrigin ? "./" : PAGES_TIME_URL, crossOrigin: !sameOrigin };
 }
 
+const PAGES_TIME_ORIGIN = "https://btenner1013.github.io";
+const LOOPBACK_ORIGINS = new Set(["http://localhost:8765", "http://127.0.0.1:8765", "http://[::1]:8765"]);
+function createLoopbackRelay(host, doc) {
+    let frame, ready;
+    const clear = () => { frame?.remove(); frame = null; ready = null; };
+    const prepare = () => {
+        if (ready) return ready;
+        const next = doc.createElement("iframe");
+        frame = next;
+        next.hidden = true;
+        next.title = "KMEM network time";
+        next.referrerPolicy = "no-referrer";
+        next.setAttribute("sandbox", "allow-scripts allow-same-origin");
+        ready = new Promise(resolve => {
+            const timer = host.setTimeout(() => { if (frame === next) clear(); resolve(null); }, 4000);
+            next.addEventListener("load", () => { host.clearTimeout(timer); resolve(frame === next ? next : null); }, { once: true });
+        });
+        next.src = new URL("clock-time-relay.html", PAGES_TIME_URL).href;
+        doc.body.appendChild(next);
+        return ready;
+    };
+    const sample = async ({ read, signal }) => {
+        const next = await prepare();
+        if (!next || signal.aborted) return { error: "NETWORK TIME RELAY UNAVAILABLE" };
+        return new Promise(resolve => {
+            const started = read();
+            const id = started.monoMs + "_" + Math.random().toString(36).slice(2);
+            const finish = result => {
+                host.clearTimeout(timer);
+                host.removeEventListener("message", receive);
+                signal.removeEventListener("abort", cancel);
+                resolve(result);
+            };
+            const receive = event => {
+                if (event.origin !== PAGES_TIME_ORIGIN || event.source !== next.contentWindow ||
+                    event.data?.type !== "kmem-clock-response" || event.data.id !== id) return;
+                const { ok, date, age } = event.data;
+                if ((date !== null && typeof date !== "string") || (age !== null && typeof age !== "string")) return;
+                finish(validateHttpSample({ ok: ok === true, redirected: false,
+                    headers: { get: key => key === "date" ? date : age } }, started, read()));
+            };
+            const cancel = () => finish({ error: "CANCELLED" });
+            const timer = host.setTimeout(() => {
+                if (frame === next) clear();
+                finish({ error: "NETWORK TIME RELAY UNAVAILABLE" });
+            }, CLOCK_LIMITS.requestTimeoutMs);
+            host.addEventListener("message", receive);
+            signal.addEventListener("abort", cancel, { once: true });
+            try { next.contentWindow.postMessage({ type: "kmem-clock-request", id }, PAGES_TIME_ORIGIN); }
+            catch { finish({ error: "NETWORK TIME RELAY UNAVAILABLE" }); }
+        });
+    };
+    return { sample, clear };
+}
 function createClock(options = {}) {
     const host = options.window ?? window;
     const doc = options.document ?? document;
     const nav = options.navigator ?? navigator;
     const read = options.read ?? readClock;
-    const sample = options.sample ?? sampleHttpTime;
     const wait = options.wait ?? waitForSample;
-    const endpoint = timeEndpoint(options.location ?? host.location);
+    const location = options.location ?? host.location;
+    const endpoint = timeEndpoint(location);
+    const relay = LOOPBACK_ORIGINS.has(location?.origin) ? createLoopbackRelay(host, doc) : null;
+    const sample = options.sample ?? relay?.sample ?? sampleHttpTime;
     let discipline = new ClockDiscipline();
     let session = null;
     const current = () => {
@@ -269,6 +324,7 @@ function createClock(options = {}) {
         state.stop = () => {
             state.stopped = true;
             controller.abort();
+            relay?.clear();
             host.clearTimeout(state.timer);
             host.clearInterval(state.interval);
             doc.removeEventListener("visibilitychange", onVisibility);
@@ -291,5 +347,5 @@ function createClock(options = {}) {
 
 return { CLOCK_LIMITS, PAGES_TIME_URL, readClock, boundaryDelay, median, validateHttpSample,
     sampleHttpTime, chooseTimeEstimate, waitForSample, ClockDiscipline, formatClockStatus,
-    timeEndpoint, createClock };
+    timeEndpoint, createLoopbackRelay, createClock };
 });

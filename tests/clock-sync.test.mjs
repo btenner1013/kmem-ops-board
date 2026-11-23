@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 const clockSource = readFileSync(new URL('../clock-sync.js', import.meta.url), 'utf8');
-const context = { module: { exports: {} }, Date, performance, setTimeout, clearTimeout, AbortController, fetch };
+const context = { module: { exports: {} }, Date, URL, performance, setTimeout, clearTimeout, AbortController, fetch };
 vm.runInNewContext(clockSource, context);
 const sync = context.module.exports;
 const { CLOCK_LIMITS, validateHttpSample, chooseTimeEstimate, ClockDiscipline, sampleHttpTime, boundaryDelay, formatClockStatus, waitForSample } = sync;
@@ -83,7 +83,6 @@ test('two advancing consistent dates confirm correction; one or frozen dates can
 test('one outlier is rejected and no coherent pair means no correction', () => {
   assert.equal(chooseTimeEstimate([sample(28000), sample(28100, 1100), sample(-15000, 2200)]).offsetMs, 28050);
   assert.equal(chooseTimeEstimate([sample(28000), sample(-15000, 1100), sample(100000, 2200)]), null);
-  assert.equal(chooseTimeEstimate([sample(400000), sample(400010, 1100)]), null);
   assert.equal(chooseTimeEstimate([sample(NaN), sample(Infinity, 1100)]), null);
 });
 test('system fallback works immediately without any network time', () => {
@@ -336,4 +335,65 @@ test('clock correction preserves weather fetch failures until a successful snaps
   const fetchCode = page.slice(page.indexOf('async function loadWeatherJson('), page.indexOf('async function loadHostStatus('));
   assert.match(snapshotCode, /window\.kmemWeatherFetchFailed=false/);
   assert.match(fetchCode, /catch\(e\)\{\s*window\.kmemWeatherFetchFailed=true/);
+});
+
+test('consistent network UTC corrects either direction of a one-hour PC error', () => {
+  for (const skew of [-3_600_000, 3_600_000]) {
+    const samples = [0, 1100, 2200].map(delta => {
+      const start = reading(epoch + delta + skew, 1000 + delta);
+      return validateHttpSample(response({ Date: new Date(epoch + Math.floor(delta / 1000) * 1000).toUTCString() }),
+        start, reading(start.wallMs + 100, start.monoMs + 100)).sample;
+    });
+    const result = chooseTimeEstimate(samples);
+    assert.equal(result.samples, 3);
+    const clock = new ClockDiscipline();
+    assert.equal(clock.accept(result, result.received), true);
+    const delta = 3000;
+    const actual = clock.read(reading(epoch + delta + skew, 1000 + delta));
+    assert.ok(Math.abs(actual.nowMs - epoch - delta) < 1000);
+    assert.equal(actual.status.source, 'GITHUB HTTP');
+  }
+});
+
+test('loopback relay pins the Pages origin, frame and request ID before accepting time', async () => {
+  let load, sent, receive;
+  const frameWindow = { postMessage(message, origin) { sent = { message, origin }; } };
+  const frame = { contentWindow: frameWindow, addEventListener(_, callback) { load = callback; }, setAttribute() {}, remove() {} };
+  const doc = { createElement: () => frame, body: { appendChild() { load(); } } };
+  const host = { setTimeout, clearTimeout, addEventListener(_, f) { receive = f; }, removeEventListener() { receive = null; } };
+  const relay = sync.createLoopbackRelay(host, doc), signal = new AbortController().signal;
+  let count = 0;
+  const pending = relay.sample({ read: () => count++ ? reading(epoch + 100, 1100) : reading(), signal });
+  await Promise.resolve();
+  assert.equal(sent.origin, 'https://btenner1013.github.io');
+  assert.match(frame.src, /^https:\/\/btenner1013\.github\.io\/kmem-ops-board\/clock-time-relay\.html$/);
+  const data = { type: 'kmem-clock-response', id: sent.message.id, ok: true, date: new Date(epoch).toUTCString(), age: '0' };
+  receive({ origin: 'https://unrelated.example', source: frameWindow, data });
+  receive({ origin: sent.origin, source: {}, data });
+  receive({ origin: sent.origin, source: frameWindow, data: { ...data, id: 'old-response' } });
+  assert.equal(count, 1);
+  receive({ origin: sent.origin, source: frameWindow, data });
+  assert.ok((await pending).sample);
+  assert.equal(receive, null);
+  relay.clear();
+});
+
+test('Pages time relay only answers the actual loopback kiosk and uses a fresh HEAD', async () => {
+  const source = readFileSync(new URL('../clock-time-relay.js', import.meta.url), 'utf8');
+  const request = { type: 'kmem-clock-request', id: 'abc' };
+  let receive, probe, reply;
+  const parent = { postMessage(data, origin) { reply = { data, origin }; } };
+  const window = { parent, addEventListener(_, f) { receive = f; } };
+  vm.runInNewContext(source, { window, AbortSignal, fetch: async (...args) => { probe = args; return response({ Age: '0' }); } });
+  await receive({ source: parent, origin: 'http://localhost:8766', data: request });
+  await receive({ source: {}, origin: 'http://localhost:8765', data: request });
+  assert.equal(probe, undefined);
+  await receive({ source: parent, origin: 'http://localhost:8765', data: request });
+  assert.equal(probe[0], './?clockrelay=abc');
+  assert.equal(probe[1].method, 'HEAD');
+  assert.equal(probe[1].redirect, 'error');
+  assert.equal(probe[1].credentials, 'omit');
+  assert.equal(reply.origin, 'http://localhost:8765');
+  assert.equal(reply.data.type, 'kmem-clock-response');
+  assert.equal(reply.data.date, new Date(epoch).toUTCString());
 });

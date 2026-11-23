@@ -14,8 +14,10 @@ import subprocess
 import sys
 import time
 import uuid
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime, parsedate_to_datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Callable, Optional
@@ -143,6 +145,65 @@ LOGGER = logging.getLogger("kmem-updater")
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# This estimate is a gate, never a correction: the generator and Git still
+# timestamp their own output from local UTC. Block the entire phase when the
+# two disagree, rather than fixing just the coordinator's timestamps.
+HOST_CLOCK_CHECK_URL = "https://github.com/robots.txt"
+HOST_CLOCK_CHECK_TIMEOUT_SECONDS = 8
+HOST_CLOCK_MAX_SKEW_SECONDS = 30
+HOST_CLOCK_MAX_STEP_SECONDS = 3
+
+
+class _NoClockRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def verify_host_clock(now_fn: Callable[[], datetime]) -> None:
+    """Fail closed unless local UTC agrees with a bounded fresh HTTPS Date."""
+    url = f"{HOST_CLOCK_CHECK_URL}?updater-clock={uuid.uuid4().hex}"
+    req = urllib.request.Request(
+        url, method="HEAD", headers={"Cache-Control": "no-cache, no-store"},
+    )
+    start = now_fn()
+    mono_start = time.monotonic()
+    try:
+        # Default HTTPSHandler validates TLS certificates, including on Windows.
+        with urllib.request.build_opener(_NoClockRedirect()).open(
+            req, timeout=HOST_CLOCK_CHECK_TIMEOUT_SECONDS,
+        ) as response:
+            dates = response.headers.get_all("Date", [])
+            ages = response.headers.get_all("Age", [])
+            if response.status != 200 or response.geturl() != url or len(dates) != 1:
+                raise ValueError("unexpected clock response")
+            if ages not in ([], ["0"]):
+                raise ValueError("cached clock response")
+            server_date = parsedate_to_datetime(dates[0])
+            if server_date.utcoffset() != timedelta(0) or format_datetime(
+                server_date, usegmt=True,
+            ) != dates[0]:
+                raise ValueError("invalid clock date")
+    except (OSError, ValueError, TypeError, OverflowError, AttributeError):
+        # Do not include raw exceptions or response headers; proxy details need
+        # not appear in the updater log.
+        raise GitSafetyError(
+            "HOST_CLOCK_UNVERIFIED",
+            "Independent HTTPS UTC could not be verified; updater will retry next cycle.",
+        ) from None
+    end = now_fn()
+    elapsed = time.monotonic() - mono_start
+    if elapsed > HOST_CLOCK_CHECK_TIMEOUT_SECONDS:
+        raise GitSafetyError("HOST_CLOCK_UNVERIFIED", "Independent UTC check was too slow.")
+    if abs((end - start).total_seconds() - elapsed) > HOST_CLOCK_MAX_STEP_SECONDS:
+        raise GitSafetyError("HOST_CLOCK_CHANGED", "System time changed during UTC verification.")
+    estimate = server_date + timedelta(seconds=0.5 + elapsed / 2)
+    if abs((end - estimate).total_seconds()) > HOST_CLOCK_MAX_SKEW_SECONDS:
+        raise GitSafetyError(
+            "HOST_CLOCK_SKEW",
+            "System UTC disagrees with independent HTTPS UTC; sync the host clock.",
+        )
 
 
 def format_utc(value: datetime) -> str:
@@ -965,6 +1026,22 @@ class UpdaterCoordinator:
         self.probe_result_path: Optional[Path] = None  # validated recovery-probe result to reuse
         self.probe_token: Optional[str] = None
         self.cycle_started_monotonic: Optional[float] = None
+        self.clock_anchor: Optional[tuple[datetime, float]] = None
+
+    def _require_clock_continuity(self) -> None:
+        if self.clock_anchor is None:
+            raise GitSafetyError("HOST_CLOCK_UNVERIFIED", "No validated host clock anchor.")
+        wall, mono = self.clock_anchor
+        if abs((self.now_fn() - wall).total_seconds() - (time.monotonic() - mono)) > HOST_CLOCK_MAX_STEP_SECONDS:
+            raise GitSafetyError("HOST_CLOCK_CHANGED", "System time moved during updater cycle.")
+
+    def _verify_mutation_clock(self) -> None:
+        if self.clock_anchor is not None:
+            self._require_clock_continuity()
+        verify_host_clock(self.now_fn)
+        if self.clock_anchor is not None:
+            self._require_clock_continuity()
+        self.clock_anchor = (self.now_fn(), time.monotonic())
 
     def skipped_cycle_result(self) -> int:
         return REQUIRED_OWNED_CYCLE_SKIPPED_EXIT if self.require_owned_cycle else 0
@@ -1327,6 +1404,7 @@ class UpdaterCoordinator:
     def acquire_lease(self) -> Optional[LeaseOwnership]:
         for attempt in range(1, LEASE_ATTEMPTS + 1):
             self.repo.fetch()
+            self._verify_mutation_clock()
             local_sha = self.repo.sha("HEAD")
             origin_sha = self.repo.sha("origin/main")
             if local_sha != origin_sha:
@@ -1380,6 +1458,7 @@ class UpdaterCoordinator:
                 )
                 if not lease_sha:
                     raise GitSafetyError("LEASE_COMMIT_FAILED", "Lease candidate produced no commit.")
+                self._require_clock_continuity()
                 push_ok = scratch.push_main()
                 if not push_ok:
                     self.repo.fetch()
@@ -1599,6 +1678,7 @@ class UpdaterCoordinator:
 
         for attempt in range(1, FINAL_PUSH_ATTEMPTS + 1):
             self.repo.fetch()
+            self._verify_mutation_clock()
             kind, lease, _fingerprint = self._read_lease_document("origin/main")
             lease_state = classify_lease_state(lease, self.now_fn()) if kind == "VALID" else kind
             if kind != "VALID" or lease_state not in {"FREE", "EXPIRED"}:
@@ -1643,6 +1723,7 @@ class UpdaterCoordinator:
                 )
                 if not status_sha:
                     return True
+                self._require_clock_continuity()
                 if scratch.push_main():
                     LOGGER.info("Code-sync blocked status published code=%s", error.code)
                     return True
@@ -1689,6 +1770,7 @@ class UpdaterCoordinator:
                 scratch = self._new_scratch("origin/main")
                 ownership.scratch = scratch
 
+            self._require_clock_continuity()
             generation_ok, error_code = self._run_generator(scratch)
             changed = scratch.status_paths()
             deleted_output = scratch.run(
@@ -1722,6 +1804,10 @@ class UpdaterCoordinator:
                 LOGGER.info("Expected generated-only remote movement; regenerating once.")
                 continue
 
+            # On failure, never publish suspect generated data or a release
+            # stamped by the unreliable host. The existing valid lease expires
+            # naturally, after which a healthy host can take over.
+            self._verify_mutation_clock()
             now = self.now_fn()
             if not lease_is_active(ownership.lease, now):
                 scratch.close()
@@ -1795,6 +1881,7 @@ class UpdaterCoordinator:
                 scratch.close()
                 raise GitSafetyError("FINAL_COMMIT_FAILED", "Final updater candidate produced no commit.")
 
+            self._require_clock_continuity()
             push_ok = scratch.push_main()
             if not push_ok:
                 fetched = scratch.run(
@@ -1834,7 +1921,7 @@ class UpdaterCoordinator:
         return False
 
     def run_once(self) -> int:
-        run_started = self.now_fn()
+        self.clock_anchor = None
         self.cycle_started_monotonic = time.monotonic()
         self.feed_takeover_active = False
         self.publish_reason = "SCHEDULED"
@@ -1857,6 +1944,8 @@ class UpdaterCoordinator:
             LOGGER.info("Code fast-forwarded; restarting to load the synchronized coordinator.")
             return RESTART_AFTER_SYNC_EXIT
 
+        self._verify_mutation_clock()
+        run_started = self.now_fn()
         snapshot = self._read_snapshot()
         if self.role == "BACKUP":
             if lease_is_active(snapshot.lease, self.now_fn()):
