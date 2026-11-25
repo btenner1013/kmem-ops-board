@@ -56,33 +56,30 @@ class CurrentWeatherPriorityTests(unittest.TestCase):
 
     def test_reported_live_case_current_rain_beats_midnight_thunder(self):
         alerts = updater.detect_weather_alerts(METAR, TAF, ATIS)
-        self.assertEqual(len(alerts), 2)
+        self.assertEqual(len(alerts), 1)
         self.assertEqual(alerts[0]["code"], "-RA")
         self.assertEqual(alerts[0]["sources"], ["ATIS", "METAR"])
         self.assertEqual(alerts[0]["text"], "-RA ATIS")
         summary = updater.summarize_weather_alerts(alerts)
-        self.assertEqual(summary["wxAlertText"], "🌧️ -RA ATIS → ⛈️ -TSRA PSBL 04 NOV 00-04Z")
+        self.assertEqual(summary["wxAlertText"], "🌧️ -RA ATIS")
         self.assertEqual(summary["wxAlertTone"], "blue")
         self.assertFalse(summary["wxAlertFlash"])
         self.assertFalse(summary["wxAlertPulse"])
-        self.assertEqual(summary["wxSecondaryAlert"]["sources"], ["TAF"])
-        self.assertEqual(summary["wxSecondaryAlert"]["text"], "-TSRA PSBL 04 NOV 00-04Z")
+        self.assertIsNone(summary["wxSecondaryAlert"])
 
-    def test_same_code_shows_once_but_retains_possible_window(self):
+    def test_rain_in_either_report_hides_matching_forecast_until_both_clear(self):
         taf = "TAF KMEM 032101Z 0321/0424 17010KT P6SM SCT040 FM040000 18010KT 5SM -RA BKN015"
-        alerts = updater.detect_weather_alerts(METAR, taf, ATIS)
-        summary = updater.summarize_weather_alerts(alerts)
-        self.assertEqual(summary["wxAlertText"].count("-RA"), 1)
-        self.assertIn(" → PSBL 04 NOV 00-24Z", summary["wxAlertText"])
-        self.assertEqual(summary["wxSecondaryAlert"]["code"], "-RA")
-        self.assertEqual(summary["wxSecondaryAlert"]["sources"], ["TAF"])
-        self.assertIn("PSBL", summary["wxAlertLogText"])
-
-    def test_distinct_intensity_codes_are_not_deduplicated(self):
-        taf = "TAF KMEM 032101Z 0321/0424 17010KT P6SM SCT040 FM040000 18010KT 3SM +RA BKN015"
-        summary = updater.summarize_weather_alerts(updater.detect_weather_alerts(METAR, taf, ATIS))
-        self.assertIn("-RA ATIS", summary["wxAlertText"])
-        self.assertIn("+RA PSBL", summary["wxAlertText"])
+        clear_atis = ATIS.replace("-RA ", "")
+        for metar, atis, expected in (
+            (METAR, ATIS, "🌧️ -RA ATIS"),
+            (CLEAR, ATIS, "🌧️ -RA ATIS"),
+            (METAR, clear_atis, "🌧️ -RA METAR"),
+            (CLEAR, clear_atis, "🌧️ -RA PSBL 04 NOV 00-24Z"),
+        ):
+            with self.subTest(expected=expected, metar=metar, atis=atis):
+                summary = updater.summarize_weather_alerts(updater.detect_weather_alerts(metar, taf, atis))
+                self.assertEqual(summary["wxAlertText"], expected)
+                self.assertIsNone(summary["wxSecondaryAlert"])
 
     def test_current_source_is_not_relabeled_now_or_redated(self):
         # Retained reports remain METAR; freshness/observation time belongs to
@@ -91,7 +88,7 @@ class CurrentWeatherPriorityTests(unittest.TestCase):
         summary = updater.summarize_weather_alerts(updater.detect_weather_alerts(old_metar, TAF))
         self.assertEqual(summary["wxPrimaryAlert"]["text"], "-RA METAR")
         self.assertNotIn("NOW", summary["wxPrimaryAlert"]["text"])
-        self.assertEqual(summary["wxSecondaryAlert"]["tafStartIso"], "2026-11-04T00:00:00Z")
+        self.assertIsNone(summary["wxSecondaryAlert"])
 
     def test_future_hazard_severity_cannot_override_current_rain(self):
         for code in ("VCTS", "-TSRA", "+TSRA", "FZRA", "VA", "FC"):
@@ -136,7 +133,7 @@ class CurrentWeatherPriorityTests(unittest.TestCase):
                 self.assertEqual(alerts[0]["code"], expected_code)
                 self.assertEqual(alerts[0]["sources"], [expected_source])
                 self.assertEqual(alerts[0]["text"], f"{expected_code} {expected_source}")
-                self.assertEqual(alerts[1]["sources"], ["TAF"])
+                self.assertEqual(len(alerts), 1)
 
     def test_current_thunder_keeps_red_flash(self):
         alert = updater.detect_weather_alerts(METAR.replace("-RA", "TSRA"), TAF, ATIS)[0]

@@ -4279,20 +4279,17 @@ def detect_weather_alerts(metar, taf, atis_text=""):
 
     current_alerts.sort(key=current_sort_key)
     selected_current_alert = select_current_alert(current_alerts)
-    selected_taf_alert = select_taf_alert(taf_alerts, now_z)
-
-    # Observed weather leads the existing WX ALERT slot before any forecast,
-    # including a TAF group whose validity window already includes NOW.
-    # Severity and ATIS tie-breaking still apply within current sources.
-    # With no current weather-code alert, retain the existing TAF selection.
+    # Forecast is a fallback only. Current hazards are already severity-ranked,
+    # with ATIS winning ties against METAR.
     if selected_current_alert:
-        return [selected_current_alert] + ([selected_taf_alert] if selected_taf_alert else [])
+        return [selected_current_alert]
+    selected_taf_alert = select_taf_alert(taf_alerts, now_z)
     if selected_taf_alert:
         return [selected_taf_alert]
     return []
 
 def summarize_weather_alerts(alerts):
-    """Format current WX followed by possible WX in the existing alert slot.
+    """Format current WX or fallback possible WX in the existing alert slot.
 
     No weather-code alert does not establish VFR or a 24-hour TAF outlook:
     ceilings, visibility, and forecast coverage are not evaluated here.
