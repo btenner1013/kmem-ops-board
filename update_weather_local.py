@@ -3795,20 +3795,21 @@ def split_taf_groups_for_windows(taf):
     return groups
 
 
-def merge_adjacent_taf_fm_alerts(taf_alerts, current_utc_dt=None):
-    """Merge adjacent FM groups with the same TAF weather code so display is not just '09Z'."""
+def merge_adjacent_taf_prevailing_alerts(taf_alerts, current_utc_dt=None):
+    """Keep the same weather code continuous across adjacent prevailing groups."""
     current_utc_dt = current_utc_dt or datetime.now(timezone.utc)
-    fm_alerts = []
+    prevailing_alerts = []
     other_alerts = []
 
     for alert in taf_alerts:
-        if alert.get("tafGroupType") == "FM" and alert.get("tafStartIso") and alert.get("tafEndIso"):
-            fm_alerts.append(dict(alert))
+        if (alert.get("tafGroupType") in {"PREVAILING", "FM"}
+                and alert.get("tafStartIso") and alert.get("tafEndIso")):
+            prevailing_alerts.append(dict(alert))
         else:
             other_alerts.append(alert)
 
     grouped = {}
-    for alert in fm_alerts:
+    for alert in prevailing_alerts:
         key = (alert.get("code"), alert.get("category"), alert.get("displayTone"))
         grouped.setdefault(key, []).append(alert)
 
@@ -3832,8 +3833,8 @@ def merge_adjacent_taf_fm_alerts(taf_alerts, current_utc_dt=None):
                 current_end = end
                 continue
 
-            # Merge contiguous or overlapping FM periods of the same code.
-            if start <= current_end + timedelta(minutes=1):
+            # Do not bridge a gap or extend a prevailing period with TEMPO/PROB.
+            if start <= current_end:
                 if end > current_end:
                     current_end = end
             else:
@@ -4269,7 +4270,7 @@ def detect_weather_alerts(metar, taf, atis_text=""):
     ]
     taf_alerts = [alert for alert in alerts if "TAF" in alert.get("sources", [])]
     now_z = datetime.now(timezone.utc)
-    taf_alerts = merge_adjacent_taf_fm_alerts(taf_alerts, now_z)
+    taf_alerts = merge_adjacent_taf_prevailing_alerts(taf_alerts, now_z)
 
     def current_sort_key(alert):
         sources = set(alert.get("sources", []))
