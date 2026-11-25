@@ -3528,12 +3528,14 @@ def taf_token_start_datetime(window_token, taf_issue_dt=None):
     token = (window_token or "").upper().strip()
     taf_issue_dt = taf_issue_dt or datetime.now(timezone.utc)
 
+    minute = 0
     if re.match(r"^\d{4}/\d{4}$", token):
         day = int(token[0:2])
         hour = int(token[2:4])
     elif re.match(r"^FM\d{6}$", token):
         day = int(token[2:4])
         hour = int(token[4:6])
+        minute = int(token[6:8])
     else:
         return None
 
@@ -3548,7 +3550,7 @@ def taf_token_start_datetime(window_token, taf_issue_dt=None):
             month = 1
             year += 1
         try:
-            candidates.append(datetime(year, month, day, hour, tzinfo=timezone.utc))
+            candidates.append(datetime(year, month, day, hour, minute, tzinfo=timezone.utc))
         except ValueError:
             pass
 
@@ -3727,7 +3729,7 @@ def split_taf_groups_for_windows(taf):
     main_start_dt = taf_token_start_datetime(main_valid, taf_issue_dt) if main_valid else None
     main_end_dt = taf_token_end_datetime(main_valid, taf_issue_dt) if main_valid else None
 
-    markers = list(re.finditer(r"\b(FM\d{6}|TEMPO|BECMG|PROB30|PROB40)\b", text))
+    markers = list(re.finditer(r"\b(FM\d{6}|PROB(?:30|40)(?: TEMPO)?|TEMPO|BECMG)\b", text))
 
     def next_fm_start_datetime(after_idx):
         for later in markers[after_idx + 1:]:
@@ -4111,6 +4113,43 @@ def atis_plain_weather_present(source_text, code):
 
     return False
 
+def current_wx_forecast_timing(selected, forecast, now_z):
+    """The trend may qualify current rain, never replace it or bridge a dry gap."""
+    if selected.get("category") not in {"rain", "shower", "drizzle"}:
+        return ""
+    if str(selected.get("code", "")).startswith("VC"):
+        return ""
+    prevailing = []
+    temporary = []
+    for entry in forecast:
+        if entry.get("code") != selected.get("code"):
+            continue
+        start = parse_iso_z(entry.get("tafStartIso"))
+        end = parse_iso_z(entry.get("tafEndIso"))
+        if not start or not end or not start <= now_z < end:
+            continue
+        kind = entry.get("tafGroupType")
+        if kind in {"PREVAILING", "FM"}:
+            prevailing.append(end)
+        elif kind == "TEMPO":
+            temporary.append((start, end))
+    if prevailing:
+        end = max(prevailing)
+        day = "" if end.date() == now_z.date() else f"{end.day:02d} {TAF_MONTHS[end.month - 1]} "
+        hour = end.strftime("%H%MZ" if end.minute or day else "%HZ")
+        return f"through {day}{hour}"
+    if temporary:
+        start, end = min(temporary)
+        start_hour = start.strftime("%H%M" if start.minute else "%H")
+        end_hour = end.strftime("%H%MZ" if end.minute else "%HZ")
+        if start.date() != now_z.date():
+            start_hour = f"{start.day:02d} {TAF_MONTHS[start.month - 1]} {start_hour}Z"
+        if end.date() != now_z.date():
+            end_hour = f"{end.day:02d} {TAF_MONTHS[end.month - 1]} {end_hour}"
+        return f"TEMPO {start_hour}–{end_hour}"
+    return ""
+
+
 def detect_weather_alerts(metar, taf, atis_text=""):
     checks = [
         {"code": "+TSRA", "label": "HEAVY THUNDERSTORM RAIN", "emoji": "⛈️", "category": "thunder"},
@@ -4279,10 +4318,10 @@ def detect_weather_alerts(metar, taf, atis_text=""):
 
     current_alerts.sort(key=current_sort_key)
     selected_current_alert = select_current_alert(current_alerts)
-    # Forecast is a fallback only. Current hazards are already severity-ranked,
-    # with ATIS winning ties against METAR.
+    # A matching active forecast can annotate the observation, never outrank it.
     if selected_current_alert:
-        return [selected_current_alert]
+        timing = current_wx_forecast_timing(selected_current_alert, taf_alerts, now_z)
+        return [{**selected_current_alert, "forecastTiming": timing}]
     selected_taf_alert = select_taf_alert(taf_alerts, now_z)
     if selected_taf_alert:
         return [selected_taf_alert]

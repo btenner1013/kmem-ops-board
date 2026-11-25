@@ -630,6 +630,9 @@ body.radar-hidden .middle{ grid-template-columns:1fr !important; }
 #tafTrend.wx-alert-pair{ white-space:normal !important; overflow-wrap:normal; }
 .wx-alert-segment{ display:inline-block; max-width:100%; white-space:normal; }
 .wx-alert-separator{ color:var(--dim); margin:0 .3em; }
+#tafTrendLabel{ display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:.35em; }
+.wx-alert-source{ font-size:.9em; font-weight:900; white-space:nowrap; }
+#tafTrend.wx-alert-compact{ white-space:normal !important; overflow-wrap:anywhere; }
 
 /* Manual Alert Override */
 .manual-alert-overlay{ position:fixed; z-index:99999; display:none; align-items:center; justify-content:center; pointer-events:none; padding:3px 8px; }
@@ -1398,7 +1401,7 @@ body.getac-preset .mil-notam-active .mil-notam-crawl{
 
       <div class="status-grid">
         <div id="wxTrendBox" class="trend-box">
-          <div id="tafTrendLabel" class="trend-label">TAF TREND</div>
+          <div id="tafTrendLabel" class="trend-label">WX ALERT</div>
           <div id="tafTrend" class="trend-value wx-alert-compact">--</div>
         </div>
       </div>
@@ -2418,6 +2421,27 @@ function setRcrDisplay(data){
   el.textContent=displayValue;
 }
 
+function formatWxAlertRow(alert){
+  const sources=Array.isArray(alert.sources)?alert.sources:[];
+  const source=sources.includes("ATIS")?"ATIS":sources.some(value=>value==="METAR"||value==="SPECI")?"METAR":"";
+  const tone=["red","blue","yellow"].includes(alert.displayTone)?alert.displayTone:"yellow";
+  const code=String(alert.code||"");
+  let text=String(alert.displayText||"").replace(/\bTAF\b/gi,"").replace(/\s+/g," ").trim();
+  if(source){
+    const rainLabels={"-RA":"Rain now","RA":"Rain now","+RA":"Heavy rain now","-SHRA":"Rain showers now","SHRA":"Rain showers now","+SHRA":"Heavy showers now","-DZ":"Drizzle now","DZ":"Drizzle now","+DZ":"Heavy drizzle now"};
+    if(Object.hasOwn(rainLabels,code)){
+      text=`${alert.emoji||"🌧️"} ${rainLabels[code]}`;
+    }else{
+      text=text.replace(/\s+(?:ATIS|METAR|SPECI)\s*$/i,"");
+    }
+    const timing=alert.forecastTiming;
+    if(typeof timing==="string"&&/^(?:through|TEMPO) [0-9 A-Z–]+$/.test(timing))text+=timing.startsWith("through ")?` – ${timing.slice(8)}`:` · ${timing}`;
+  }else if(sources.includes("TAF")&&typeof alert.tafWindow==="string"&&alert.tafWindow){
+    text=`${alert.emoji||""} PSBL ${code} ${alert.tafWindow.replace(/-/g,"–")}`.trim();
+  }
+  return {source,tone,text};
+}
+
 function setTafTrend(data){
   const box=document.getElementById("wxTrendBox");
   const label=document.getElementById("tafTrendLabel");
@@ -2443,9 +2467,16 @@ function setTafTrend(data){
     const primary=data.wxPrimaryAlert;
     const secondary=data.wxSecondaryAlert;
     if(primary&&primary.displayText){
-      trend.innerHTML=wxAlertSegmentHtml(primary,primary.displayText);
+      const row=formatWxAlertRow(primary);
+      if(row.source){
+        const badge=document.createElement("span");
+        badge.className=`wx-alert-source alert-${row.tone}`;
+        badge.textContent=row.source;
+        label.append(badge);
+      }
+      trend.innerHTML=wxAlertSegmentHtml(primary,row.text);
       if(secondary&&secondary.displayText){
-        let secondaryDisplay=secondary.displayText;
+        let secondaryDisplay=formatWxAlertRow(secondary).text;
         if(primary.code===secondary.code&&secondary.tafWindow){
           secondaryDisplay=`PSBL ${secondary.tafWindow}`;
         }
@@ -2462,7 +2493,7 @@ function setTafTrend(data){
     if(data.wxAlertFlash===true)trend.classList.add("alert-flash");
     if(data.wxAlertPulse===true)trend.classList.add("alert-pulse");
 
-    trend.innerHTML=wxAlertDisplayHtml(wxDisplayText,data);
+    trend.innerHTML=wxAlertDisplayHtml(wxDisplayText,data).replace(/\bTAF\b/gi,"");
     trend.title=data.wxAlertLogText||wxDisplayText;
     return;
   }
