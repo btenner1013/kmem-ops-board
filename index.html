@@ -2429,9 +2429,10 @@ function formatWxAlertRow(alert){
   const code=String(alert.code||"");
   let text=String(alert.displayText||"").replace(/\bTAF\b/gi,"").replace(/\s+/g," ").trim();
   if(source){
-    const rainLabels={"-RA":"Rain now","RA":"Rain now","+RA":"Heavy rain now","-SHRA":"Rain showers now","SHRA":"Rain showers now","+SHRA":"Heavy showers now","-DZ":"Drizzle now","DZ":"Drizzle now","+DZ":"Heavy drizzle now"};
-    if(Object.hasOwn(rainLabels,code)){
-      text=`${alert.emoji||"🌧️"} ${rainLabels[code]}`;
+    const observedCode=/^[+-]?[A-Z]{2,8}(?:\/[+-]?[A-Z]{2,8})*$/.test(code);
+    if(observedCode){
+      const showNow=/^[+-]?(?:RA|SHRA|DZ)$/.test(code);
+      text=`${alert.emoji||""} ${code.replace(/\//g," / ")}${showNow?" NOW":""}`.trim();
     }else{
       text=text.replace(/\s+(?:ATIS|METAR|SPECI)\s*$/i,"");
     }
