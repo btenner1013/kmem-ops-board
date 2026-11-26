@@ -9,14 +9,14 @@
   "tafFetchStatus": "OK",
   "atisFetchStatus": "OK",
   "metarObservedZ": "2026-11-26T13:54:00Z",
-  "metarAgeMinutes": 32,
+  "metarAgeMinutes": 42,
   "metarSelectedSource": "AWC",
   "metarOriginalSource": "AWC",
   "metarSelectionReason": "LIVE",
   "metarSourcePolicy": "NEWEST_OBSERVATION_TIME",
   "metarLiveCandidateCount": 3,
   "atisObservedZ": "2026-11-26T13:54:00Z",
-  "atisAgeMinutes": 32,
+  "atisAgeMinutes": 42,
   "atisReportIdentity": "R:1354Z",
   "atisSelectedSource": "ATIS_INFO_API+ATIS_RELAY",
   "atisSourcePolicy": "NEWEST_HEADER_TIME",
@@ -50,7 +50,7 @@
   },
   "trendLookbackHours": 3,
   "trendReferenceSource": "3HR_HISTORY",
-  "trendReferenceTimestampZ": "2026-11-26T11:25:44Z",
+  "trendReferenceTimestampZ": "2026-11-26T11:45:41Z",
   "trendSampleCount": 21,
   "obsSource": "ATIS",
   "obsFieldSources": {
@@ -174,7 +174,7 @@
   "tafTrend": "WX ALERT | \ud83c\udf2b\ufe0f BR ATIS",
   "bwc": "SEVERE",
   "bwcSource": "AHAS",
-  "bwcUpdatedZ": "2026-11-26 14:24:00.000",
+  "bwcUpdatedZ": "2026-11-26 14:30:00.000",
   "bwcNexrad": "MODERATE",
   "bwcSoarRisk": "SEVERE",
   "bwcBamRisk": "LOW",
@@ -189,7 +189,7 @@
   "bwcRetrievalTransport": "PYTHON_URLLIB",
   "bwcLiveValidated": true,
   "bwcLatestAttemptStatus": "PARSED_DIRECT_XML",
-  "bwcLatestAttemptZ": "2026-11-26T14:25:46Z",
+  "bwcLatestAttemptZ": "2026-11-26T14:35:46Z",
   "bwcLatestAttemptError": "NONE",
   "bwcLatestAttemptPrimaryError": "NONE",
   "bwcLatestAttemptTransportSecurity": "CA_VERIFIED_TLS",
@@ -200,7 +200,7 @@
   "milNotamCount": 2,
   "milNotamStatus": "2 ACTIVE",
   "milNotamSource": "FAA_NMS_STAGING",
-  "milNotamUpdatedZ": "2026-11-26 14:25:49Z",
+  "milNotamUpdatedZ": "2026-11-26 14:35:49Z",
   "milNotamScrollText": "M0038/26 MIL RAMP 164AW MEMPHIS AIR NATIONAL GUARD DSN LINES INOP. PLEASE UTILIZE COMMAND POST COMM 901-291-7148 FOR OFFICIAL BUSINESS ONLY UFN. ALL OTHER D...  |  M0042/26 MIL RAMP OPR HR MON-FRI 1500-0500Z++. CLSD ALTN MON AND FED HOL. IFR SUP AND GIANT REPORT CHG REQUESTS SUBMITTED.",
   "milNotams": [
     {
@@ -237,7 +237,7 @@
   "milNotamAttemptReason": "NOT_USED",
   "milNotamAcquisition": "GENERATION",
   "milNotamFailureCategory": "NONE",
-  "milNotamAttemptZ": "2026-11-26 14:25:49Z",
+  "milNotamAttemptZ": "2026-11-26 14:35:49Z",
   "ficonNotams": [
     {
       "number": "11/337",
@@ -247,7 +247,7 @@
       "displayText": "APRON ALL FICON WET OBS AT 2611261425.",
       "effectiveStart": "202611261425",
       "effectiveEnd": "202611271425",
-      "lastUpdated": "2026-11-26T14:25:00.000Z",
+      "lastUpdated": "2026-11-26T14:27:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -258,7 +258,7 @@
       "displayText": "TWY ALL FICON WET OBS AT 2611261424.",
       "effectiveStart": "202611261424",
       "effectiveEnd": "202611271424",
-      "lastUpdated": "2026-11-26T14:24:00.000Z",
+      "lastUpdated": "2026-11-26T14:27:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -269,7 +269,7 @@
       "displayText": "RWY 36R FICON 5/5/5 100 PCT WET OBS AT 2611261424.",
       "effectiveStart": "202611261424",
       "effectiveEnd": "202611271424",
-      "lastUpdated": "2026-11-26T14:24:00.000Z",
+      "lastUpdated": "2026-11-26T14:27:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -280,7 +280,7 @@
       "displayText": "RWY 36L FICON 5/5/5 100 PCT WET OBS AT 2611261424.",
       "effectiveStart": "202611261424",
       "effectiveEnd": "202611271424",
-      "lastUpdated": "2026-11-26T14:24:00.000Z",
+      "lastUpdated": "2026-11-26T14:27:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -291,7 +291,7 @@
       "displayText": "RWY 36C FICON 5/5/5 100 PCT WET OBS AT 2611261423.",
       "effectiveStart": "202611261424",
       "effectiveEnd": "202611271424",
-      "lastUpdated": "2026-11-26T14:24:00.000Z",
+      "lastUpdated": "2026-11-26T14:27:00.000Z",
       "source": "FAA_NMS_STAGING"
     },
     {
@@ -302,22 +302,11 @@
       "displayText": "RWY 27 FICON 5/5/5 100 PCT WET OBS AT 2611261423.",
       "effectiveStart": "202611261423",
       "effectiveEnd": "202611271423",
-      "lastUpdated": "2026-11-26T14:23:00.000Z",
-      "source": "FAA_NMS_STAGING"
-    },
-    {
-      "number": "A8875/26",
-      "classification": "INTL",
-      "severity": "green",
-      "text": "APRON ALL FICON WET OBS AT 2611260041.",
-      "displayText": "APRON ALL FICON WET OBS AT 2611260041.",
-      "effectiveStart": "202611260041",
-      "effectiveEnd": "202611270041",
-      "lastUpdated": "2026-11-26T00:45:00.000Z",
+      "lastUpdated": "2026-11-26T14:27:00.000Z",
       "source": "FAA_NMS_STAGING"
     }
   ],
-  "ficonNotamCount": 7,
+  "ficonNotamCount": 6,
   "runwayClosureNotams": [],
   "runwayClosureNotamCount": 0,
   "constructionStatusNotams": [
@@ -350,13 +339,13 @@
     }
   ],
   "taxiRestrictionNotamCount": 1,
-  "allFeedsUpdatedZ": "2026-11-26 14:25Z",
+  "allFeedsUpdatedZ": "2026-11-26 14:35Z",
   "workflowMetadata": {
     "lastWorkflowEvent": "local_windows_task",
     "lastWorkflowActor": "KMEM_PRIMARY_UPDATER",
     "lastWorkflowName": "KMEM Lease-Aware Updater",
     "lastWorkflowRunNumber": "LOCAL",
     "lastWorkflowRunId": "LOCAL",
-    "lastWorkflowTimestampZ": "2026-11-26 14:25:41Z"
+    "lastWorkflowTimestampZ": "2026-11-26 14:35:41Z"
   }
 }
