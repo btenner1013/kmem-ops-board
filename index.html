@@ -1842,7 +1842,7 @@ function wxAlertDisplayHtml(value,data={}){
 
 function wxAlertSegmentHtml(alert,displayText){
   // Normalize retained pre-fix reports without changing severity or effects.
-  if(String(alert.code||"").toUpperCase()==="BR"){
+  if(String(alert.code||"").toUpperCase()==="BR"&&!formatWxAlertRow(alert).source){
     displayText=String(displayText).replace(/\bMIST\b/gi,"BR");
   }
   // Structured alerts already carry their own source/window. Do not infer
@@ -2431,7 +2431,8 @@ function formatWxAlertRow(alert){
   if(source){
     const labels={"-RA":"LIGHT RAIN","RA":"RAIN","+RA":"HEAVY RAIN","-SHRA":"LIGHT RAIN SHOWERS","SHRA":"RAIN SHOWERS","+SHRA":"HEAVY RAIN SHOWERS","-DZ":"LIGHT DRIZZLE","DZ":"DRIZZLE","+DZ":"HEAVY DRIZZLE"};
     if(/^[+-]?[A-Z]{2,8}(?:\/[+-]?[A-Z]{2,8})*$/.test(code)){
-      const label=Object.hasOwn(labels,code)?labels[code]:code.replace(/\//g," / ");
+      const named=typeof alert.label==="string"?[...new Set(alert.label.toUpperCase().split(/\s+\/\s+/).map(x=>x.trim()).filter(Boolean))].join(" / "):"";
+      const label=named||(Object.hasOwn(labels,code)?labels[code]:code.replace(/\//g," / "));
       text=`${alert.emoji||""} ${label}`.trim();
     }else{
       text=text.replace(/\s+(?:ATIS|METAR|SPECI)\s*$/i,"");
